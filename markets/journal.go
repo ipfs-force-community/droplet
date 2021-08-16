@@ -4,7 +4,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
-	"github.com/filecoin-project/venus-market/journal"
+	"github.com/filecoin-project/lotus/journal"
 )
 
 type StorageClientEvt struct {

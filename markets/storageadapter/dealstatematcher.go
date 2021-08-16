@@ -5,10 +5,10 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	actorsmarket "github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/events"
-	"github.com/filecoin-project/venus/pkg/events/state"
-	"github.com/filecoin-project/venus/pkg/types"
+	actorsmarket "github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/events/state"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // dealStateMatcher caches the DealStates for the most recent

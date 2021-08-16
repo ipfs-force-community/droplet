@@ -5,16 +5,6 @@ package storageadapter
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus-market/client"
-	"github.com/filecoin-project/venus-market/markets/utils"
-	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
-	"github.com/filecoin-project/venus/pkg/events"
-	"github.com/filecoin-project/venus/pkg/events/state"
-	"github.com/filecoin-project/venus/pkg/market"
-	"github.com/filecoin-project/venus/pkg/types"
-	peer "github.com/libp2p/go-libp2p-peer"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -30,11 +20,24 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	marketActor "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/events/state"
+	"github.com/filecoin-project/lotus/chain/market"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/markets/utils"
+	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
 type ClientNodeAdapter struct {
 	*clientApi
+
 	fundmgr   *market.FundManager
 	ev        *events.Events
 	dsMatcher *dealStateMatcher
@@ -42,14 +45,14 @@ type ClientNodeAdapter struct {
 }
 
 type clientApi struct {
-	client.ChainAPI
-	client.StateAPI
-	client.MpoolAPI
+	full.ChainAPI
+	full.StateAPI
+	full.MpoolAPI
 }
 
-func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, stateapi client.StateAPI, chain client.ChainAPI, mpool client.MpoolAPI, fundmgr *market.FundManager) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(mctx helpers.MetricsCtx, lc fx.Lifecycle, stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fundmgr *market.FundManager) storagemarket.StorageClientNode {
 	capi := &clientApi{chain, stateapi, mpool}
-	ctx := metrics.LifecycleCtx(mctx, lc)
+	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	ev := events.NewEvents(ctx, capi)
 	a := &ClientNodeAdapter{
@@ -157,8 +160,16 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("failed to resolve from msg ID addr: %w", err)
 	}
 
-	if fromid != mi.Worker {
-		return 0, xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s", pubmsg.From, deal.Proposal.Provider)
+	var pubOk bool
+	pubAddrs := append([]address.Address{mi.Worker, mi.Owner}, mi.ControlAddresses...)
+	for _, a := range pubAddrs {
+		if fromid == a {
+			pubOk = true
+			break
+		}
+	}
+	if !pubOk {
+		return 0, xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s,%+v", pubmsg.From, deal.Proposal.Provider, pubAddrs)
 	}
 
 	if pubmsg.To != miner2.StorageMarketActorAddr {
@@ -169,7 +180,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
 	}
 
-	var params marketActor.PublishStorageDealsParams
+	var params market2.PublishStorageDealsParams
 	if err := params.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
 		return 0, err
 	}
@@ -193,7 +204,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, uint64(constants.MessageConfidence), constants.LookbackNoLimit, true)
+	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
@@ -201,8 +212,8 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("deal publish failed: exit=%d", ret.Receipt.ExitCode)
 	}
 
-	var res marketActor.PublishStorageDealsReturn
-	if err := res.UnmarshalCBOR(bytes.NewReader(ret.Receipt.ReturnValue)); err != nil {
+	var res market2.PublishStorageDealsReturn
+	if err := res.UnmarshalCBOR(bytes.NewReader(ret.Receipt.Return)); err != nil {
 		return 0, err
 	}
 
@@ -230,12 +241,12 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
 func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
-	return c.scMgr.OnDealSectorPreCommitted(ctx, provider, marketActor.DealProposal(proposal), *publishCid, cb)
+	return c.scMgr.OnDealSectorPreCommitted(ctx, provider, marketactor.DealProposal(proposal), *publishCid, cb)
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
 func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
-	return c.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, marketActor.DealProposal(proposal), *publishCid, cb)
+	return c.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, marketactor.DealProposal(proposal), *publishCid, cb)
 }
 
 // TODO: Replace dealID parameter with DealProposal
@@ -321,14 +332,14 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 
 	// Wait until after the end epoch for the deal and then timeout
 	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1
-	if err := c.ev.StateChanged(checkFunc, stateChanged, revert, int(constants.MessageConfidence)+1, timeout, match); err != nil {
+	if err := c.ev.StateChanged(checkFunc, stateChanged, revert, int(build.MessageConfidence)+1, timeout, match); err != nil {
 		return xerrors.Errorf("failed to set up state changed handler: %w", err)
 	}
 
 	return nil
 }
 
-func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal marketActor.DealProposal) (*marketActor.ClientDealProposal, error) {
+func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal market2.DealProposal) (*market2.ClientDealProposal, error) {
 	// TODO: output spec signed proposal
 	buf, err := cborutil.Dump(&proposal)
 	if err != nil {
@@ -347,14 +358,15 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	return &marketActor.ClientDealProposal{
+	return &market2.ClientDealProposal{
 		Proposal:        proposal,
 		ClientSignature: *sig,
 	}, nil
 }
 
 func (c *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
-	panic("todo")
+	addr, err := c.DefWallet.GetDefault()
+	return addr, err
 }
 
 func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
@@ -367,11 +379,11 @@ func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 }
 
 func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
-	receipt, err := c.StateWaitMsg(ctx, mcid, uint64(constants.MessageConfidence), constants.LookbackNoLimit, true)
+	receipt, err := c.StateWaitMsg(ctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}
-	return cb(receipt.Receipt.ExitCode, receipt.Receipt.ReturnValue, receipt.Message, nil)
+	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
 func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*storagemarket.StorageProviderInfo, error) {
@@ -384,7 +396,7 @@ func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Addre
 		return nil, err
 	}
 
-	out := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, peer.ID(*mi.PeerId), mi.Multiaddrs)
+	out := utils.NewStorageProviderInfo(addr, mi.Worker, mi.SectorSize, *mi.PeerId, mi.Multiaddrs)
 	return &out, nil
 }
 

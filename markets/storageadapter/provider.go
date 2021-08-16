@@ -4,13 +4,7 @@ package storageadapter
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/client"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-wallet/node"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/crypto/sigs"
+	"github.com/filecoin-project/venus-market/constants"
 	"io"
 	"time"
 
@@ -27,13 +21,20 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
-
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/events"
-	"github.com/filecoin-project/venus/pkg/events/state"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus-market/markets/utils"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/events/state"
+	"github.com/filecoin-project/lotus/chain/types"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/markets/utils"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/dtypes"
 )
 
 var addPieceRetryWait = 5 * time.Minute
@@ -42,29 +43,29 @@ var defaultMaxProviderCollateralMultiplier = uint64(2)
 var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
-	client.NodeClient
+	v1api.FullNode
 
 	// this goes away with the data transfer module
-	dag network.StagingDAG
+	dag dtypes.StagingDAG
 
 	secb *sectorblocks.SectorBlocks
 	ev   *events.Events
 
 	dealPublisher *DealPublisher
 
-	addBalanceSpec              *types.MessageSendSpec
+	addBalanceSpec              *api.MessageSendSpec
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketFeeConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag network.StagingDAG, secb *sectorblocks.SectorBlocks, full client.NodeClient, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag network.StagingDAG, secb *sectorblocks.SectorBlocks, full node.NodeClient, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
-		ctx := metrics.LifecycleCtx(mctx, lc)
+func NewProviderNodeAdapter(cfg *config.Market) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
+		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		ev := events.NewEvents(ctx, full)
 		na := &ProviderNodeAdapter{
-			NodeClient: full,
+			FullNode: full,
 
 			dag:           dag,
 			secb:          secb,
@@ -72,11 +73,13 @@ func NewProviderNodeAdapter(fc *config.MarketFeeConfig) func(mctx metrics.Metric
 			dealPublisher: dealPublisher,
 			dsMatcher:     newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
 		}
-		if fc != nil {
-			na.addBalanceSpec = &types.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
-			na.maxDealCollateralMultiplier = fc.MaxProviderCollateralMultiplier
+		if cfg != nil {
+			na.addBalanceSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(cfg.MaxMarketBalanceAddFee)}
 		}
 		na.maxDealCollateralMultiplier = defaultMaxProviderCollateralMultiplier
+		if cfg != nil {
+			na.maxDealCollateralMultiplier = cfg.MaxProviderCollateralMultiplier
+		}
 		na.scMgr = NewSectorCommittedManager(ev, na, &apiWrapper{api: full})
 
 		return na
@@ -92,11 +95,11 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 		return nil, xerrors.Errorf("deal.PublishCid can't be nil")
 	}
 
-	sdInfo := sealing.DealInfo{
+	sdInfo := api.PieceDealInfo{
 		DealID:       deal.DealID,
 		DealProposal: &deal.Proposal,
 		PublishCid:   deal.PublishCid,
-		DealSchedule: sealing.DealSchedule{
+		DealSchedule: api.DealSchedule{
 			StartEpoch: deal.ClientDealProposal.Proposal.StartEpoch,
 			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
 		},
@@ -104,8 +107,8 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	}
 
 	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
-	curTime := time.Now()
-	for time.Since(curTime) < addPieceRetryTimeout {
+	curTime := constants.Clock.Now()
+	for constants.Clock.Since(curTime) < addPieceRetryTimeout {
 		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
 			if err != nil {
 				log.Errorf("failed to addPiece for deal %d, err: %v", deal.DealID, err)
@@ -113,7 +116,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 			break
 		}
 		select {
-		case <-time.After(addPieceRetryWait):
+		case <-constants.Clock.After(addPieceRetryWait):
 			p, offset, err = n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
 		case <-ctx.Done():
 			return nil, xerrors.New("context expired while waiting to retry AddPiece")
@@ -188,11 +191,11 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 }
 
 func (n *ProviderNodeAdapter) ReserveFunds(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
-	panic("to imple in local but not api")
+	return n.MarketReserveFunds(ctx, wallet, addr, amt)
 }
 
 func (n *ProviderNodeAdapter) ReleaseFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
-	panic("to imple in local but not api")
+	return n.MarketReleaseFunds(ctx, addr, amt)
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
@@ -237,19 +240,19 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 
 	// TODO: better strategy (e.g. look for already unsealed)
 	var best api.SealedRef
-	var bestSi sealing.SectorInfo
+	var bestSi api.SectorInfo
 	for _, r := range refs {
-		si, err := n.secb.Miner.GetSectorInfo(r.SectorID)
+		si, err := n.secb.SectorBuilder.SectorsStatus(ctx, r.SectorID, false)
 		if err != nil {
 			return 0, 0, 0, xerrors.Errorf("getting sector info: %w", err)
 		}
-		if si.State == sealing.Proving {
+		if si.State == api.SectorState(sealing.Proving) {
 			best = r
 			bestSi = si
 			break
 		}
 	}
-	if bestSi.State == sealing.UndefinedSectorState {
+	if bestSi.State == api.SectorState(sealing.UndefinedSectorState) {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
 	return best.SectorID, best.Offset, best.Size.Padded(), nil
@@ -288,16 +291,16 @@ func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetTo
 }
 
 func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
-	receipt, err := n.StateWaitMsg(ctx, mcid, uint64(2*constants.MessageConfidence), constants.LookbackNoLimit, true)
+	receipt, err := n.StateWaitMsg(ctx, mcid, 2*constants.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}
-	return cb(receipt.Receipt.ExitCode, receipt.Receipt.ReturnValue, receipt.Message, nil)
+	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
 func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
 	// Wait for deal to be published (plus additional time for confidence)
-	receipt, err := n.StateWaitMsg(ctx, publishCid, uint64(2*constants.MessageConfidence), constants.LookbackNoLimit, true)
+	receipt, err := n.StateWaitMsg(ctx, publishCid, 2*constants.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return nil, xerrors.Errorf("WaitForPublishDeals errored: %w", err)
 	}

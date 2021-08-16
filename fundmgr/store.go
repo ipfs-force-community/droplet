@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/venus-market/dtypes"
 )
 
 const dsKeyAddr = "Addr"

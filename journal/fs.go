@@ -3,9 +3,9 @@ package journal
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus-market/constants"
 	"os"
 	"path/filepath"
-	"time"
 
 	"golang.org/x/xerrors"
 )
@@ -30,8 +30,8 @@ type fsJournal struct {
 
 // OpenFSJournal constructs a rolling filesystem journal, with a default
 // per-file size limit of 1GiB.
-func OpenFSJournal(datadir string, disabled DisabledEvents) (Journal, error) {
-	dir := filepath.Join(datadir, "journal")
+func OpenFSJournal(path string, disabled DisabledEvents) (Journal, error) {
+	dir := filepath.Join(path, "journal")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to mk directory %s for file journal: %w", dir, err)
 	}
@@ -67,7 +67,7 @@ func (f *fsJournal) RecordEvent(evtType EventType, supplier func() interface{}) 
 
 	je := &Event{
 		EventType: evtType,
-		Timestamp: time.Now(),
+		Timestamp: constants.Clock.Now(),
 		Data:      supplier(),
 	}
 	select {
@@ -107,7 +107,7 @@ func (f *fsJournal) rollJournalFile() error {
 		_ = f.fi.Close()
 	}
 
-	nfi, err := os.Create(filepath.Join(f.dir, fmt.Sprintf("markets-journal-%s.ndjson", time.Now().Format(RFC3339nocolon))))
+	nfi, err := os.Create(filepath.Join(f.dir, fmt.Sprintf("lotus-journal-%s.ndjson", constants.Clock.Now().Format(RFC3339nocolon))))
 	if err != nil {
 		return xerrors.Errorf("failed to open journal file: %w", err)
 	}

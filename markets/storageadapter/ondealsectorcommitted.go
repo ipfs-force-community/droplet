@@ -3,21 +3,22 @@ package storageadapter
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus-market/constants"
 	"sync"
 
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/events"
-	"github.com/filecoin-project/venus/pkg/types"
-	markettype "github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/events"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type eventsCalledAPI interface {
@@ -25,7 +26,7 @@ type eventsCalledAPI interface {
 }
 
 type dealInfoAPI interface {
-	GetCurrentDealInfo(ctx context.Context, tok markettype.TipSetToken, proposal *market.DealProposal, publishCid cid.Cid) (CurrentDealInfo, error)
+	GetCurrentDealInfo(ctx context.Context, tok sealing.TipSetToken, proposal *market.DealProposal, publishCid cid.Cid) (sealing.CurrentDealInfo, error)
 }
 
 type diffPreCommitsAPI interface {
@@ -38,9 +39,9 @@ type SectorCommittedManager struct {
 	dpc      diffPreCommitsAPI
 }
 
-func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI CurrentDealInfoTskAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
-	dim := &CurrentDealInfoManager{
-		CDAPI: &CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: tskAPI},
+func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI sealing.CurrentDealInfoTskAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
+	dim := &sealing.CurrentDealInfoManager{
+		CDAPI: &sealing.CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: tskAPI},
 	}
 	return newSectorCommittedManager(ev, dim, dpcAPI)
 }
@@ -109,7 +110,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 
 	// Watch for a pre-commit message to the provider.
 	matchEvent := func(msg *types.Message) (bool, error) {
-		matched := msg.To == provider && msg.Method == miner.Methods.PreCommitSector
+		matched := msg.To == provider && (msg.Method == miner.Methods.PreCommitSector || msg.Method == miner.Methods.PreCommitSectorBatch)
 		return matched, nil
 	}
 
@@ -137,12 +138,6 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 			return true, nil
 		}
 
-		// Extract the message parameters
-		var params miner.SectorPreCommitInfo
-		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-			return false, xerrors.Errorf("unmarshal pre commit: %w", err)
-		}
-
 		// When there is a reorg, the deal ID may change, so get the
 		// current deal ID from the publish message CID
 		res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key().Bytes(), &proposal, publishCid)
@@ -150,13 +145,14 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 			return false, err
 		}
 
-		// Check through the deal IDs associated with this message
-		for _, did := range params.DealIDs {
-			if did == res.DealID {
-				// Found the deal ID in this message. Callback with the sector ID.
-				cb(params.SectorNumber, false, nil)
-				return false, nil
-			}
+		// Extract the message parameters
+		sn, err := dealSectorInPreCommitMsg(msg, res)
+		if err != nil {
+			return false, err
+		}
+
+		if sn != nil {
+			cb(*sn, false, nil)
 		}
 
 		// Didn't find the deal ID in this message, so keep looking
@@ -207,16 +203,11 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 
 	// Match a prove-commit sent to the provider with the given sector number
 	matchEvent := func(msg *types.Message) (matched bool, err error) {
-		if msg.To != provider || msg.Method != miner.Methods.ProveCommitSector {
+		if msg.To != provider {
 			return false, nil
 		}
 
-		var params miner.ProveCommitSectorParams
-		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
-			return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
-		}
-
-		return params.SectorNumber == sectorNumber, nil
+		return sectorInCommitMsg(msg, sectorNumber)
 	}
 
 	// The deal must be accepted by the deal proposal start epoch, so timeout
@@ -250,7 +241,7 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 
 		// Make sure the deal is active
 		if res.MarketDeal.State.SectorStartEpoch < 1 {
-			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", res.DealID, ts.At(0).ParentStateRoot, ts.Height())
+			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", res.DealID, ts.ParentState(), ts.Height())
 		}
 
 		log.Infof("Storage deal %d activated at epoch %d", res.DealID, res.MarketDeal.State.SectorStartEpoch)
@@ -273,7 +264,74 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 	return nil
 }
 
-func (mgr *SectorCommittedManager) checkIfDealAlreadyActive(ctx context.Context, ts *types.TipSet, proposal *market.DealProposal, publishCid cid.Cid) (CurrentDealInfo, bool, error) {
+// dealSectorInPreCommitMsg tries to find a sector containing the specified deal
+func dealSectorInPreCommitMsg(msg *types.Message, res sealing.CurrentDealInfo) (*abi.SectorNumber, error) {
+	switch msg.Method {
+	case miner.Methods.PreCommitSector:
+		var params miner.SectorPreCommitInfo
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return nil, xerrors.Errorf("unmarshal pre commit: %w", err)
+		}
+
+		// Check through the deal IDs associated with this message
+		for _, did := range params.DealIDs {
+			if did == res.DealID {
+				// Found the deal ID in this message. Callback with the sector ID.
+				return &params.SectorNumber, nil
+			}
+		}
+	case miner.Methods.PreCommitSectorBatch:
+		var params miner5.PreCommitSectorBatchParams
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return nil, xerrors.Errorf("unmarshal pre commit: %w", err)
+		}
+
+		for _, precommit := range params.Sectors {
+			// Check through the deal IDs associated with this message
+			for _, did := range precommit.DealIDs {
+				if did == res.DealID {
+					// Found the deal ID in this message. Callback with the sector ID.
+					return &precommit.SectorNumber, nil
+				}
+			}
+		}
+	default:
+		return nil, xerrors.Errorf("unexpected method %d", msg.Method)
+	}
+
+	return nil, nil
+}
+
+// sectorInCommitMsg checks if the provided message commits specified sector
+func sectorInCommitMsg(msg *types.Message, sectorNumber abi.SectorNumber) (bool, error) {
+	switch msg.Method {
+	case miner.Methods.ProveCommitSector:
+		var params miner.ProveCommitSectorParams
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+		}
+
+		return params.SectorNumber == sectorNumber, nil
+
+	case miner.Methods.ProveCommitAggregate:
+		var params miner5.ProveCommitAggregateParams
+		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+			return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
+		}
+
+		set, err := params.SectorNumbers.IsSet(uint64(sectorNumber))
+		if err != nil {
+			return false, xerrors.Errorf("checking if sectorNumber is set in commit aggregate message: %w", err)
+		}
+
+		return set, nil
+
+	default:
+		return false, nil
+	}
+}
+
+func (mgr *SectorCommittedManager) checkIfDealAlreadyActive(ctx context.Context, ts *types.TipSet, proposal *market.DealProposal, publishCid cid.Cid) (sealing.CurrentDealInfo, bool, error) {
 	res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key().Bytes(), proposal, publishCid)
 	if err != nil {
 		// TODO: This may be fine for some errors
