@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-address"
@@ -13,17 +12,14 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
-	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/dtypes"
@@ -31,6 +27,7 @@ import (
 	"github.com/filecoin-project/venus-market/markets"
 	marketevents "github.com/filecoin-project/venus-market/markets/loggers"
 	"github.com/filecoin-project/venus-market/markets/pricing"
+	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -45,7 +42,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 	"os"
 	"path/filepath"
 	"time"
@@ -54,6 +50,14 @@ import (
 var (
 	log = logging.Logger("modules")
 )
+
+func MinerAddress(cfg config.Market) (dtypes.MinerAddress, error) {
+	addr, err := address.NewFromString(cfg.MinerAddress)
+	if err != nil {
+		return dtypes.MinerAddress{}, err
+	}
+	return dtypes.MinerAddress(addr), nil
+}
 
 // RetrievalPricingFunc configures the pricing function to use for retrieval deals.
 func RetrievalPricingFunc(cfg *config.Market) func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
@@ -99,7 +103,11 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 	return dt, nil
 }
 
-func NewStorageAsk(ctx helpers.MetricsCtx, fapi v1api.FullNode, ds dtypes.MetadataDS, minerAddress dtypes.MinerAddress, spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
+func NewStorageAsk(ctx metrics.MetricsCtx,
+	fapi v1api.FullNode,
+	ds dtypes.MetadataDS,
+	minerAddress dtypes.MinerAddress,
+	spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
 
 	mi, err := fapi.StateMinerInfo(ctx, address.Address(minerAddress), types.EmptyTSK)
 	if err != nil {
@@ -107,11 +115,6 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi v1api.FullNode, ds dtypes.Metada
 	}
 
 	providerDs := namespace.Wrap(ds, datastore.NewKey("/deals/provider"))
-	// legacy this was mistake where this key was place -- so we move the legacy key if need be
-	err = shared.MoveKey(providerDs, "/latest-ask", "/storage-ask/latest")
-	if err != nil {
-		return nil, err
-	}
 	return storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
 		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 }
@@ -227,11 +230,13 @@ func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
 	return rmnet.NewFromLibp2pHost(h)
 }
 
-func StorageProvider(minerAddress dtypes.MinerAddress,
-	storedAsk *storedask.StoredAsk,
-	h host.Host, ds dtypes.MetadataDS,
-	mds dtypes.StagingMultiDstore,
+func StorageProvider(
 	cfg *config.Market,
+	minerAddress dtypes.MinerAddress,
+	storedAsk *storedask.StoredAsk,
+	h host.Host,
+	ds dtypes.MetadataDS,
+	mds dtypes.StagingMultiDstore,
 	pieceStore dtypes.ProviderPieceStore,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
@@ -248,8 +253,8 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
-func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider, j journal.Journal) {
-	ctx := helpers.LifecycleCtx(mctx, lc)
+func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider, j journal.Journal) {
+	ctx := metrics.LifecycleCtx(mctx, lc)
 	h.OnReady(marketevents.ReadyLogger("storage provider"))
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
@@ -262,45 +267,6 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 		},
 		OnStop: func(context.Context) error {
 			return h.Stop()
-		},
-	})
-}
-
-func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.FullNode, minerAddress dtypes.MinerAddress) {
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			b, err := ds.Get(datastore.NewKey("/marketfunds/provider"))
-			if err != nil {
-				if xerrors.Is(err, datastore.ErrNotFound) {
-					return nil
-				}
-				return err
-			}
-
-			var value abi.TokenAmount
-			if err = value.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
-				return err
-			}
-			ts, err := node.ChainHead(ctx)
-			if err != nil {
-				log.Errorf("provider funds migration - getting chain head: %v", err)
-				return nil
-			}
-
-			mi, err := node.StateMinerInfo(ctx, address.Address(minerAddress), ts.Key())
-			if err != nil {
-				log.Errorf("provider funds migration - getting miner info %s: %v", minerAddress, err)
-				return nil
-			}
-
-			_, err = node.MarketReserveFunds(ctx, mi.Worker, address.Address(minerAddress), value)
-			if err != nil {
-				log.Errorf("provider funds migration - reserving funds (wallet %s, addr %s, funds %d): %v",
-					mi.Worker, minerAddress, value, err)
-				return nil
-			}
-
-			return ds.Delete(datastore.NewKey("/marketfunds/provider"))
 		},
 	})
 }
@@ -355,7 +321,11 @@ func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dt
 	}
 }
 
-func HandleRetrieval(host host.Host, lc fx.Lifecycle, m retrievalmarket.RetrievalProvider, j journal.Journal) {
+func HandleRetrieval(host host.Host,
+	lc fx.Lifecycle,
+	m retrievalmarket.RetrievalProvider,
+	j journal.Journal,
+) {
 	m.OnReady(marketevents.ReadyLogger("retrieval provider"))
 	lc.Append(fx.Hook{
 
@@ -491,7 +461,8 @@ func NewGetMaxDealStartDelayFunc(cfg *config.Market) (dtypes.GetMaxDealStartDela
 }
 
 // StagingDAG is a DAGService for the StagingBlockstore
-func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, rt routing.Routing, h host.Host) (dtypes.StagingDAG, error) {
+// not imple bitswap network for now
+func StagingDAG(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, rt routing.Routing, h host.Host) (dtypes.StagingDAG, error) {
 
 	bitswapNetwork := network.NewFromIpfsHost(h, rt)
 	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
@@ -512,12 +483,12 @@ func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBloc
 
 // StagingGraphsync creates a graphsync instance which reads and writes blocks
 // to the StagingBlockstore
-func StagingGraphsync(parallelTransfers uint64) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
+func StagingGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
 		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
 		loader := storeutil.LoaderForBlockstore(ibs)
 		storer := storeutil.StorerForBlockstore(ibs)
-		gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, loader, storer, graphsync.RejectAllRequestsByDefault(), graphsync.MaxInProgressRequests(parallelTransfers))
+		gs := graphsync.New(metrics.LifecycleCtx(mctx, lc), graphsyncNetwork, loader, storer, graphsync.RejectAllRequestsByDefault(), graphsync.MaxInProgressRequests(parallelTransfers))
 
 		return gs
 	}

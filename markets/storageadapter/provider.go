@@ -5,6 +5,7 @@ package storageadapter
 import (
 	"context"
 	"github.com/filecoin-project/venus-market/constants"
+	"github.com/filecoin-project/venus-market/fundmgr"
 	"io"
 	"time"
 
@@ -46,8 +47,7 @@ var log = logging.Logger("storageadapter")
 type ProviderNodeAdapter struct {
 	v1api.FullNode
 
-	// this goes away with the data transfer module
-	dag dtypes.StagingDAG
+	fundMgr *fundmgr.FundManager
 
 	secb *sectorblocks.SectorBlocks
 	ev   *events.Events
@@ -60,15 +60,13 @@ type ProviderNodeAdapter struct {
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager) storagemarket.StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager) storagemarket.StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev := events.NewEvents(ctx, full)
 		na := &ProviderNodeAdapter{
-			FullNode: full,
-
-			dag:           dag,
+			FullNode:      full,
 			secb:          secb,
 			ev:            ev,
 			dealPublisher: dealPublisher,
@@ -189,11 +187,11 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 }
 
 func (n *ProviderNodeAdapter) ReserveFunds(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
-	return n.MarketReserveFunds(ctx, wallet, addr, amt)
+	return n.fundMgr.Reserve(ctx, wallet, addr, amt)
 }
 
 func (n *ProviderNodeAdapter) ReleaseFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
-	return n.MarketReleaseFunds(ctx, addr, amt)
+	return n.fundMgr.Release(addr, amt)
 }
 
 // Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.

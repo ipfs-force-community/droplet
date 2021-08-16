@@ -93,7 +93,7 @@ type ProviderRequestValidator *requestvalidation.UnifiedRequestValidator
 // ProviderDataTransfer is a data transfer manager for the provider
 type ProviderDataTransfer datatransfer.Manager
 
-type StagingDAG format.DAGService
+type StagingDAG format.DAGService //todo bitswap not support for now
 
 type StagingBlockstore blockstore.BasicBlockstore
 type StagingDs datastore.Batching

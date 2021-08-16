@@ -42,6 +42,11 @@ type Node struct {
 	Token string
 }
 
+type Sealer struct {
+	Url   string
+	Token string
+}
+
 type Messager struct {
 	Url   string
 	Token string
@@ -85,14 +90,32 @@ type RetrievalPricingDefault struct {
 	VerifiedDealsFreeTransfer bool
 }
 
+type AddressConfig struct {
+	DealPublishControl []string
+
+	// DisableOwnerFallback disables usage of the owner address for messages
+	// sent automatically
+	DisableOwnerFallback bool
+	// DisableWorkerFallback disables usage of the worker address for messages
+	// sent automatically, if control addresses are configured.
+	// A control address that doesn't have enough funds will still be chosen
+	// over the worker address if this flag is set.
+	DisableWorkerFallback bool
+}
+
 // StorageMiner is a miner config
 type Market struct {
 	HomeDir string
+
 	Common
 	Node
+	Sealer
 	Messager
 	Gateway
 	Journal
+	AddressConfig
+
+	MinerAddress string
 	// When enabled, the miner can accept online deals
 	ConsiderOnlineStorageDeals bool
 	// When enabled, the miner can accept offline deals

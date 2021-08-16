@@ -8,7 +8,9 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
@@ -18,6 +20,7 @@ import (
 	"github.com/filecoin-project/venus-market/markets/storageadapter"
 	"github.com/filecoin-project/venus-market/network"
 	lp2p2 "github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/sealer"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -28,7 +31,6 @@ import (
 	"os"
 
 	"go.uber.org/fx"
-	"time"
 )
 
 type special struct{ id int }
@@ -135,6 +137,12 @@ func run(cctx *cli.Context) error {
 		Override(new(api.FullNode), nodeClient),
 		Override(new(dtypes.ShutdownChan), shutdownChan),
 
+		//连接sealer提供服务
+		Override(new(modules.MinerStorageService), sealer.ConnectStorageService),
+		Override(new(sectorstorage.Unsealer), From(new(sealer.MinerStorageService))),
+		Override(new(sectorblocks.SectorBuilder), From(new(sealer.MinerStorageService))),
+		//兼容模块
+		Override(new(storage.AddressSelector), MigrateAddressSelector),
 		//libp2p
 		// Host dependencies
 		Override(new(crypto.PrivKey), lp2p2.PrivKey),
@@ -149,13 +157,14 @@ func run(cctx *cli.Context) error {
 		Override(RelayKey, network.NoRelay()),
 		Override(SecurityKey, network.Security(true, false)),
 
+		//miner single miner todo change to support multiple miner
+		Override(new(dtypes.MinerAddress), MinerAddress),
 		// Host
 		Override(new(host.Host), network.Host),
 		// Markets
-		Override(new(dtypes.StagingDAG), StagingDAG),
 		Override(new(dtypes.StagingGraphsync), StagingGraphsync(cfg.SimultaneousTransfers)),
-		Override(new(dtypes.ProviderPieceStore), NewProviderPieceStore),
-		Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
+		Override(new(dtypes.ProviderPieceStore), NewProviderPieceStore), //save to metadata /storagemarket
+		Override(new(*sectorblocks.SectorBlocks), NewSectorBlocks),      //save to metadata /sealedblocks
 
 		// Markets (retrieval deps)
 		Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
@@ -164,17 +173,16 @@ func run(cctx *cli.Context) error {
 		// Markets (retrieval)
 		Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
 		Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
-		Override(new(retrievalmarket.RetrievalProvider), RetrievalProvider),
+		Override(new(retrievalmarket.RetrievalProvider), RetrievalProvider), //save to metadata /retrievals/provider
 		Override(new(dtypes.RetrievalDealFilter), RetrievalDealFilter(nil)),
 		Override(HandleRetrievalKey, HandleRetrieval),
 
 		// Markets (storage)
-		Override(new(dtypes.ProviderDataTransfer), NewProviderDAGServiceDataTransfer),
-		Override(new(*storedask.StoredAsk), NewStorageAsk),
+		Override(new(dtypes.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), //save to metadata /datatransfer/provider/transfers
+		Override(new(*storedask.StoredAsk), NewStorageAsk),                            //   save to metadata /deals/provider/storage-ask/latest
 		Override(new(dtypes.StorageDealFilter), BasicDealFilter(nil)),
 		Override(new(storagemarket.StorageProvider), StorageProvider),
-		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
-		Override(HandleMigrateProviderFundsKey, HandleMigrateProviderFunds),
+		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(cfg)),
 		Override(HandleDealsKey, HandleDeals),
 
 		// Config (todo: get a real property system)
@@ -204,10 +212,7 @@ func run(cctx *cli.Context) error {
 		If(cfg.RetrievalFilter != "",
 			Override(new(dtypes.RetrievalDealFilter), RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.RetrievalFilter))),
 		),
-		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(cfg, storageadapter.PublishMsgConfig{
-			Period:         time.Duration(cfg.PublishMsgPeriod),
-			MaxDealsPerMsg: cfg.MaxDealsPerPublishMsg,
-		})),
+		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(cfg)),
 		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(cfg)),
 	)
 	if err != nil {

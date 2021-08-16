@@ -93,16 +93,17 @@ type PublishMsgConfig struct {
 }
 
 func NewDealPublisher(
-	feeConfig *config.Market,
-	publishMsgCfg PublishMsgConfig,
+	cfg *config.Market,
 ) func(lc fx.Lifecycle, full api.FullNode, as *storage.AddressSelector) *DealPublisher {
 	return func(lc fx.Lifecycle, full api.FullNode, as *storage.AddressSelector) *DealPublisher {
-		maxFee := abi.NewTokenAmount(0)
-		if feeConfig != nil {
-			maxFee = abi.TokenAmount(feeConfig.MaxPublishDealsFee)
+		maxFee := abi.TokenAmount(cfg.MaxPublishDealsFee)
+		publishMsgConfig := PublishMsgConfig{
+			Period:         time.Duration(cfg.PublishMsgPeriod),
+			MaxDealsPerMsg: cfg.MaxDealsPerPublishMsg,
 		}
+
 		publishSpec := &api.MessageSendSpec{MaxFee: maxFee}
-		dp := newDealPublisher(full, as, publishMsgCfg, publishSpec)
+		dp := newDealPublisher(full, as, publishMsgConfig, publishSpec)
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
 				dp.Shutdown()
