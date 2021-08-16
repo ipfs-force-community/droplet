@@ -3,6 +3,7 @@ package storageadapter
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/constants"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +18,6 @@ import (
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -219,7 +219,7 @@ func (p *DealPublisher) processNewDeal(pdeal *pendingDeal) {
 func (p *DealPublisher) waitForMoreDeals() {
 	// Check if we're already waiting for deals
 	if !p.publishPeriodStart.IsZero() {
-		elapsed := build.Clock.Since(p.publishPeriodStart)
+		elapsed := constants.Clock.Since(p.publishPeriodStart)
 		log.Infof("%s elapsed of / %s until publish deals queue is published",
 			elapsed, p.publishPeriod)
 		return
@@ -228,11 +228,11 @@ func (p *DealPublisher) waitForMoreDeals() {
 	// Set a timeout to wait for more deals to arrive
 	log.Infof("waiting publish deals queue period of %s before publishing", p.publishPeriod)
 	ctx, cancel := context.WithCancel(p.ctx)
-	p.publishPeriodStart = build.Clock.Now()
+	p.publishPeriodStart = constants.Clock.Now()
 	p.cancelWaitForMoreDeals = cancel
 
 	go func() {
-		timer := build.Clock.Timer(p.publishPeriod)
+		timer := constants.Clock.Timer(p.publishPeriod)
 		select {
 		case <-ctx.Done():
 			timer.Stop()

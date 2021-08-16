@@ -5,6 +5,7 @@ package storageadapter
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus-market/constants"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -23,22 +24,21 @@ import (
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
-	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/venus-market/fundmgr"
+	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/utils"
 )
 
 type ClientNodeAdapter struct {
 	*clientApi
 
-	fundmgr   *market.FundManager
+	fundmgr   *fundmgr.FundManager
 	ev        *events.Events
 	dsMatcher *dealStateMatcher
 	scMgr     *SectorCommittedManager
@@ -50,9 +50,9 @@ type clientApi struct {
 	full.MpoolAPI
 }
 
-func NewClientNodeAdapter(mctx helpers.MetricsCtx, lc fx.Lifecycle, stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fundmgr *market.FundManager) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fundmgr *fundmgr.FundManager) storagemarket.StorageClientNode {
 	capi := &clientApi{chain, stateapi, mpool}
-	ctx := helpers.LifecycleCtx(mctx, lc)
+	ctx := metrics.LifecycleCtx(mctx, lc)
 
 	ev := events.NewEvents(ctx, capi)
 	a := &ClientNodeAdapter{
@@ -204,7 +204,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, build.MessageConfidence, api.LookbackNoLimit, true)
+	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
@@ -332,7 +332,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 
 	// Wait until after the end epoch for the deal and then timeout
 	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1
-	if err := c.ev.StateChanged(checkFunc, stateChanged, revert, int(build.MessageConfidence)+1, timeout, match); err != nil {
+	if err := c.ev.StateChanged(checkFunc, stateChanged, revert, int(constants.MessageConfidence)+1, timeout, match); err != nil {
 		return xerrors.Errorf("failed to set up state changed handler: %w", err)
 	}
 
@@ -379,7 +379,7 @@ func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 }
 
 func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
-	receipt, err := c.StateWaitMsg(ctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
+	receipt, err := c.StateWaitMsg(ctx, mcid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}

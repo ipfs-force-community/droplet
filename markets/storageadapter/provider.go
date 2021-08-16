@@ -30,11 +30,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/markets/utils"
-	"github.com/filecoin-project/lotus/node/modules/helpers"
-	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dtypes"
+	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/utils"
+
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 var addPieceRetryWait = 5 * time.Minute
@@ -59,9 +60,9 @@ type ProviderNodeAdapter struct {
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(cfg *config.Market) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
-		ctx := helpers.LifecycleCtx(mctx, lc)
+func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
+		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev := events.NewEvents(ctx, full)
 		na := &ProviderNodeAdapter{
@@ -73,15 +74,12 @@ func NewProviderNodeAdapter(cfg *config.Market) func(mctx helpers.MetricsCtx, lc
 			dealPublisher: dealPublisher,
 			dsMatcher:     newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
 		}
-		if cfg != nil {
-			na.addBalanceSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(cfg.MaxMarketBalanceAddFee)}
+		if fc != nil {
+			na.addBalanceSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
+			na.maxDealCollateralMultiplier = fc.MaxProviderCollateralMultiplier
 		}
 		na.maxDealCollateralMultiplier = defaultMaxProviderCollateralMultiplier
-		if cfg != nil {
-			na.maxDealCollateralMultiplier = cfg.MaxProviderCollateralMultiplier
-		}
 		na.scMgr = NewSectorCommittedManager(ev, na, &apiWrapper{api: full})
-
 		return na
 	}
 }
@@ -291,7 +289,7 @@ func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetTo
 }
 
 func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
-	receipt, err := n.StateWaitMsg(ctx, mcid, 2*constants.MessageConfidence, api.LookbackNoLimit, true)
+	receipt, err := n.StateWaitMsg(ctx, mcid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}
@@ -300,7 +298,7 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 
 func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
 	// Wait for deal to be published (plus additional time for confidence)
-	receipt, err := n.StateWaitMsg(ctx, publishCid, 2*constants.MessageConfidence, api.LookbackNoLimit, true)
+	receipt, err := n.StateWaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return nil, xerrors.Errorf("WaitForPublishDeals errored: %w", err)
 	}

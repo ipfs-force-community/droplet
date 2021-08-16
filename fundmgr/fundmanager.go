@@ -3,17 +3,17 @@ package fundmgr
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/blockstore"
-	"github.com/filecoin-project/venus-market/client"
-	"github.com/filecoin-project/venus/app/submodule/chain"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/specactors"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus-market/constants"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/venus-market/dtypes"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -27,16 +27,16 @@ var log = logging.Logger("market_adapter")
 type FundManagerAPI struct {
 	fx.In
 
-	client.StateAPI
-	client.MpoolAPI
+	full.StateAPI
+	full.MpoolAPI
 }
 
 // fundManagerAPI is the specific methods called by the FundManager
 // (used by the tests)
 type fundManagerAPI interface {
-	MpoolPushMessage(context.Context, *types.Message, *types.MessageSendSpec) (*types.SignedMessage, error)
-	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (chain.MarketBalance, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error)
+	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
+	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (api.MarketBalance, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 }
 
 // FundManager keeps track of funds in a set of addresses
@@ -50,7 +50,7 @@ type FundManager struct {
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds blockstore.MetadataDS) *FundManager {
+func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds dtypes.MetadataDS) *FundManager {
 	fm := newFundManager(&api, ds)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -671,7 +671,7 @@ func (env *fundManagerEnvironment) AddFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	params, err := specactors.SerializeParams(&addr)
+	params, err := actors.SerializeParams(&addr)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -697,7 +697,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	params, err := specactors.SerializeParams(&market.WithdrawBalanceParams{
+	params, err := actors.SerializeParams(&market.WithdrawBalanceParams{
 		ProviderOrClientAddress: addr,
 		Amount:                  amt,
 	})
@@ -721,6 +721,6 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 }
 
 func (env *fundManagerEnvironment) WaitMsg(ctx context.Context, c cid.Cid) error {
-	_, err := env.api.StateWaitMsg(ctx, c, uint64(constants.MessageConfidence), constants.LookbackNoLimit, true)
+	_, err := env.api.StateWaitMsg(ctx, c, constants.MessageConfidence, constants.LookbackNoLimit, true)
 	return err
 }

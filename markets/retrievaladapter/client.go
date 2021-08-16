@@ -2,8 +2,6 @@ package retrievaladapter
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/client"
-	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -12,17 +10,21 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/impl/full"
+	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 )
 
 type retrievalClientNode struct {
-	chainAPI client.ChainAPI
-	payAPI   client.PaychAPI
-	stateAPI client.StateAPI
+	chainAPI full.ChainAPI
+	payAPI   payapi.PaychAPI
+	stateAPI full.StateAPI
 }
 
 // NewRetrievalClientNode returns a new node adapter for a retrieval client that talks to the
 // Lotus Node
-func NewRetrievalClientNode(payAPI client.PaychAPI, chainAPI client.ChainAPI, stateAPI client.StateAPI) retrievalmarket.RetrievalClientNode {
+func NewRetrievalClientNode(payAPI payapi.PaychAPI, chainAPI full.ChainAPI, stateAPI full.StateAPI) retrievalmarket.RetrievalClientNode {
 	return &retrievalClientNode{payAPI: payAPI, chainAPI: chainAPI, stateAPI: stateAPI}
 }
 

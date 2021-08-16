@@ -3,6 +3,7 @@ package storageadapter
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus-market/constants"
 	"testing"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -27,10 +27,10 @@ import (
 )
 
 func TestDealPublisher(t *testing.T) {
-	oldClock := build.Clock
-	t.Cleanup(func() { build.Clock = oldClock })
+	oldClock := constants.Clock
+	t.Cleanup(func() { constants.Clock = oldClock })
 	mc := clock.NewMock()
-	build.Clock = mc
+	constants.Clock = mc
 
 	testCases := []struct {
 		name                            string
@@ -177,7 +177,7 @@ func TestForcePublish(t *testing.T) {
 	dpapi := newDPAPI(t)
 
 	// Create a deal publisher
-	start := build.Clock.Now()
+	start := constants.Clock.Now()
 	publishPeriod := time.Hour
 	dp := newDealPublisher(dpapi, nil, PublishMsgConfig{
 		Period:         publishPeriod,
@@ -196,7 +196,7 @@ func TestForcePublish(t *testing.T) {
 	dealsToPublish = append(dealsToPublish, deal)
 
 	// Allow a moment for them to be queued
-	build.Clock.Sleep(10 * time.Millisecond)
+	constants.Clock.Sleep(10 * time.Millisecond)
 
 	// Should be two deals in the pending deals list
 	// (deal with cancelled context is ignored)
@@ -204,7 +204,7 @@ func TestForcePublish(t *testing.T) {
 	require.Len(t, pendingInfo.Deals, 2)
 	require.Equal(t, publishPeriod, pendingInfo.PublishPeriod)
 	require.True(t, pendingInfo.PublishPeriodStart.After(start))
-	require.True(t, pendingInfo.PublishPeriodStart.Before(build.Clock.Now()))
+	require.True(t, pendingInfo.PublishPeriodStart.Before(constants.Clock.Now()))
 
 	// Force publish all pending deals
 	dp.ForcePublishPendingDeals()

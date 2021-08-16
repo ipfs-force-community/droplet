@@ -2,10 +2,9 @@ package storageadapter
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/blockstore"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/events"
+	"github.com/filecoin-project/lotus/chain/events"
 	"golang.org/x/sync/errgroup"
 
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -15,20 +14,21 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	test "github.com/filecoin-project/venus/pkg/events/state/mock"
+	bstore "github.com/filecoin-project/lotus/blockstore"
+	test "github.com/filecoin-project/lotus/chain/events/state/mock"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus/pkg/events/state"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/lotus/chain/events/state"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func TestDealStateMatcher(t *testing.T) {
 	ctx := context.Background()
-	bs := blockstore.NewMemorySync()
+	bs := bstore.NewMemorySync()
 	store := adt2.WrapStore(ctx, cbornode.NewCborStore(bs))
 
 	deal1 := &market2.DealState{
