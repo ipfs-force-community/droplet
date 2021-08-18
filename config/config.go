@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	"time"
@@ -91,7 +92,7 @@ type RetrievalPricingDefault struct {
 }
 
 type AddressConfig struct {
-	DealPublishControl []string
+	DealPublishControl []address.Address
 
 	// DisableOwnerFallback disables usage of the owner address for messages
 	// sent automatically

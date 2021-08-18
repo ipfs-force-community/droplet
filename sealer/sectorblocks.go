@@ -1,10 +1,11 @@
-package main
+package sealer
 
 import (
 	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
+	"github.com/filecoin-project/venus-market/types"
 	"io"
 	"sync"
 
@@ -16,16 +17,7 @@ import (
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-storage/storage"
-
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-)
-
-type SealSerialization uint8
-
-const (
-	SerializationUnixfs0 SealSerialization = 'u'
+	"github.com/filecoin-project/venus-market/dtypes"
 )
 
 var dsPrefix = datastore.NewKey("/sealedblocks")
@@ -45,11 +37,6 @@ func DsKeyToDealID(key datastore.Key) (uint64, error) {
 	}
 	dealID, _ := binary.Uvarint(buf)
 	return dealID, nil
-}
-
-type SectorBuilder interface {
-	SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storage.Data, d api.PieceDealInfo) (api.SectorOffset, error)
-	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error)
 }
 
 type SectorBlocks struct {
@@ -80,14 +67,14 @@ func (st *SectorBlocks) writeRef(dealID abi.DealID, sectorID abi.SectorNumber, o
 		return xerrors.Errorf("getting existing refs: %w", err)
 	}
 
-	var refs api.SealedRefs
+	var refs types.SealedRefs
 	if len(v) > 0 {
 		if err := cborutil.ReadCborRPC(bytes.NewReader(v), &refs); err != nil {
 			return xerrors.Errorf("decoding existing refs: %w", err)
 		}
 	}
 
-	refs.Refs = append(refs.Refs, api.SealedRef{
+	refs.Refs = append(refs.Refs, types.SealedRef{
 		SectorID: sectorID,
 		Offset:   offset,
 		Size:     size,
@@ -100,22 +87,12 @@ func (st *SectorBlocks) writeRef(dealID abi.DealID, sectorID abi.SectorNumber, o
 	return st.keys.Put(DealIDToDsKey(dealID), newRef) // TODO: batch somehow
 }
 
-func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d api.PieceDealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
-	so, err := st.SectorBuilder.SectorAddPieceToAny(ctx, size, r, d)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	// TODO: DealID has very low finality here
-	err = st.writeRef(d.DealID, so.Sector, so.Offset, size)
-	if err != nil {
-		return 0, 0, xerrors.Errorf("writeRef: %w", err)
-	}
-
-	return so.Sector, so.Offset, nil
+func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d types.PieceDealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
+	//transfer data to sealer
+	panic("to impl")
 }
 
-func (st *SectorBlocks) List() (map[uint64][]api.SealedRef, error) {
+func (st *SectorBlocks) List() (map[uint64][]types.SealedRef, error) {
 	res, err := st.keys.Query(query.Query{})
 	if err != nil {
 		return nil, err
@@ -126,14 +103,14 @@ func (st *SectorBlocks) List() (map[uint64][]api.SealedRef, error) {
 		return nil, err
 	}
 
-	out := map[uint64][]api.SealedRef{}
+	out := map[uint64][]types.SealedRef{}
 	for _, ent := range ents {
 		dealID, err := DsKeyToDealID(datastore.RawKey(ent.Key))
 		if err != nil {
 			return nil, err
 		}
 
-		var refs api.SealedRefs
+		var refs types.SealedRefs
 		if err := cborutil.ReadCborRPC(bytes.NewReader(ent.Value), &refs); err != nil {
 			return nil, err
 		}
@@ -144,7 +121,7 @@ func (st *SectorBlocks) List() (map[uint64][]api.SealedRef, error) {
 	return out, nil
 }
 
-func (st *SectorBlocks) GetRefs(dealID abi.DealID) ([]api.SealedRef, error) { // TODO: track local sectors
+func (st *SectorBlocks) GetRefs(dealID abi.DealID) ([]types.SealedRef, error) { // TODO: track local sectors
 	ent, err := st.keys.Get(DealIDToDsKey(dealID))
 	if err == datastore.ErrNotFound {
 		err = ErrNotFound
@@ -153,7 +130,7 @@ func (st *SectorBlocks) GetRefs(dealID abi.DealID) ([]api.SealedRef, error) { //
 		return nil, err
 	}
 
-	var refs api.SealedRefs
+	var refs types.SealedRefs
 	if err := cborutil.ReadCborRPC(bytes.NewReader(ent), &refs); err != nil {
 		return nil, err
 	}

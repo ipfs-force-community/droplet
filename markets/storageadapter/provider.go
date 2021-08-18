@@ -6,6 +6,10 @@ import (
 	"context"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/fundmgr"
+	"github.com/filecoin-project/venus-market/sealer"
+	marketTypes "github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	"io"
 	"time"
 
@@ -22,21 +26,18 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/events"
-	"github.com/filecoin-project/lotus/chain/events/state"
-	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/lib/sigs"
+	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/events"
+	"github.com/filecoin-project/venus/pkg/events/state"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types"
+
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dtypes"
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/utils"
-
-	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 var addPieceRetryWait = 5 * time.Minute
@@ -45,23 +46,23 @@ var defaultMaxProviderCollateralMultiplier = uint64(2)
 var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
-	v1api.FullNode
+	apiface.FullNode
 
 	fundMgr *fundmgr.FundManager
 
-	secb *sectorblocks.SectorBlocks
+	secb *sealer.SectorBlocks
 	ev   *events.Events
 
 	dealPublisher *DealPublisher
 
-	addBalanceSpec              *api.MessageSendSpec
+	addBalanceSpec              *types.MessageSendSpec
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager) storagemarket.StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sealer.SectorBlocks, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager) storagemarket.StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sealer.SectorBlocks, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager) storagemarket.StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev := events.NewEvents(ctx, full)
@@ -73,7 +74,7 @@ func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc 
 			dsMatcher:     newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
 		}
 		if fc != nil {
-			na.addBalanceSpec = &api.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
+			na.addBalanceSpec = &types.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
 			na.maxDealCollateralMultiplier = fc.MaxProviderCollateralMultiplier
 		}
 		na.maxDealCollateralMultiplier = defaultMaxProviderCollateralMultiplier
@@ -87,15 +88,17 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 }
 
 func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) (*storagemarket.PackingResult, error) {
-	if deal.PublishCid == nil {
+	panic("to impl")
+	//todo wait until assign deals
+	/*if deal.PublishCid == nil {
 		return nil, xerrors.Errorf("deal.PublishCid can't be nil")
 	}
 
-	sdInfo := api.PieceDealInfo{
+	sdInfo := marketTypes.PieceDealInfo{
 		DealID:       deal.DealID,
 		DealProposal: &deal.Proposal,
 		PublishCid:   deal.PublishCid,
-		DealSchedule: api.DealSchedule{
+		DealSchedule: marketTypes.DealSchedule{
 			StartEpoch: deal.ClientDealProposal.Proposal.StartEpoch,
 			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
 		},
@@ -128,7 +131,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 		SectorNumber: p,
 		Offset:       offset,
 		Size:         pieceSize.Padded(),
-	}, nil
+	}, nil*/
 }
 
 func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
@@ -137,7 +140,7 @@ func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Si
 		return false, err
 	}
 
-	err = sigs.Verify(&sig, addr, input)
+	err = vCrypto.Verify(&sig, addr, input)
 	return err == nil, err
 }
 
@@ -179,7 +182,7 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 		return nil, err
 	}
 
-	localSignature, err := n.WalletSign(ctx, signer, b)
+	localSignature, err := n.WalletSign(ctx, signer, b, wallet.MsgMeta{})
 	if err != nil {
 		return nil, err
 	}
@@ -235,20 +238,20 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 	}
 
 	// TODO: better strategy (e.g. look for already unsealed)
-	var best api.SealedRef
-	var bestSi api.SectorInfo
+	var best marketTypes.SealedRef
+	var bestSi marketTypes.SectorInfo
 	for _, r := range refs {
 		si, err := n.secb.SectorBuilder.SectorsStatus(ctx, r.SectorID, false)
 		if err != nil {
 			return 0, 0, 0, xerrors.Errorf("getting sector info: %w", err)
 		}
-		if si.State == api.SectorState(sealing.Proving) {
+		if si.State == marketTypes.SectorState(sealing.Proving) {
 			best = r
 			bestSi = si
 			break
 		}
 	}
-	if bestSi.State == api.SectorState(sealing.UndefinedSectorState) {
+	if bestSi.State == marketTypes.SectorState(sealing.UndefinedSectorState) {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
 	return best.SectorID, best.Offset, best.Size.Padded(), nil
@@ -291,7 +294,7 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}
-	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
+	return cb(receipt.Receipt.ExitCode, receipt.Receipt.ReturnValue, receipt.Message, nil)
 }
 
 func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
@@ -311,7 +314,7 @@ func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCi
 		return nil, xerrors.Errorf("WaitForPublishDeals failed to get chain head: %w", err)
 	}
 
-	res, err := n.scMgr.dealInfo.GetCurrentDealInfo(ctx, head.Key().Bytes(), (*market.DealProposal)(&proposal), publishCid)
+	res, err := n.scMgr.dealInfo.GetCurrentDealInfo(ctx, head.Key(), (*market.DealProposal)(&proposal), publishCid)
 	if err != nil {
 		return nil, xerrors.Errorf("WaitForPublishDeals getting deal info errored: %w", err)
 	}

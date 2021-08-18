@@ -17,9 +17,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/dtypes"
@@ -28,6 +25,8 @@ import (
 	marketevents "github.com/filecoin-project/venus-market/markets/loggers"
 	"github.com/filecoin-project/venus-market/markets/pricing"
 	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
 	"github.com/ipfs/go-blockservice"
@@ -104,7 +103,7 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.S
 }
 
 func NewStorageAsk(ctx metrics.MetricsCtx,
-	fapi v1api.FullNode,
+	fapi apiface.FullNode,
 	ds dtypes.MetadataDS,
 	minerAddress dtypes.MinerAddress,
 	spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
@@ -194,7 +193,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 				return false, "miner error", err
 			}
 
-			sealEpochs := sealDuration / (time.Duration(build.BlockDelaySecs) * time.Second)
+			sealEpochs := sealDuration / (time.Duration(constants.BlockDelaySecs) * time.Second)
 			_, ht, err := spn.GetChainHead(ctx)
 			if err != nil {
 				return false, "failed to get chain head", err

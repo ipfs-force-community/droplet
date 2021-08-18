@@ -9,15 +9,15 @@ var DefaultMarketConfig = &Market{
 	HomeDir: "~/.venusmarket",
 	Common:  deferCommon,
 	Node: Node{
-		Url:   "/ip5/8.130.165.167/tcp/34530",
+		Url:   "/ip4/8.130.165.167/tcp/34530",
 		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoic3Rlc3QiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.FEPMm5aKcm7pyn7iDMRl4CEs0-X3MQpgjORPRy9WPso",
 	},
 	Messager: Messager{
-		Url:   "/ip5/8.130.164.80/tcp/39813",
+		Url:   "/ip4/8.130.164.80/tcp/39813",
 		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoic3Rlc3QiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.FEPMm5aKcm7pyn7iDMRl4CEs0-X3MQpgjORPRy9WPso",
 	},
 	Gateway: Gateway{
-		Url:   "/ip5/8.130.165.167/tcp/45130",
+		Url:   "/ip4/8.130.165.167/tcp/45130",
 		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoic3Rlc3QiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.FEPMm5aKcm7pyn7iDMRl4CEs0-X3MQpgjORPRy9WPso",
 	},
 	Journal: Journal{Path: "journal"},

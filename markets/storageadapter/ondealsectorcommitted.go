@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"github.com/filecoin-project/venus-market/constants"
+	"github.com/filecoin-project/venus-market/sealer"
 	"sync"
 
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -15,10 +15,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/events"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/venus/pkg/events"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 type eventsCalledAPI interface {
@@ -26,7 +26,7 @@ type eventsCalledAPI interface {
 }
 
 type dealInfoAPI interface {
-	GetCurrentDealInfo(ctx context.Context, tok sealing.TipSetToken, proposal *market.DealProposal, publishCid cid.Cid) (sealing.CurrentDealInfo, error)
+	GetCurrentDealInfo(ctx context.Context, tok types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (sealer.CurrentDealInfo, error)
 }
 
 type diffPreCommitsAPI interface {
@@ -39,10 +39,11 @@ type SectorCommittedManager struct {
 	dpc      diffPreCommitsAPI
 }
 
-func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI sealing.CurrentDealInfoTskAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
-	dim := &sealing.CurrentDealInfoManager{
-		CDAPI: &sealing.CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: tskAPI},
+func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI sealer.CurrentDealInfoTskAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
+	dim := &sealer.CurrentDealInfoManager{
+		CDAPI: &sealer.CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: tskAPI},
 	}
+
 	return newSectorCommittedManager(ev, dim, dpcAPI)
 }
 
@@ -85,12 +86,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 		// when the client node was down after the deal was published, and when
 		// the precommit containing it landed on chain)
 
-		publishTs, err := types.TipSetKeyFromBytes(dealInfo.PublishMsgTipSet)
-		if err != nil {
-			return false, false, err
-		}
-
-		diff, err := mgr.dpc.diffPreCommits(ctx, provider, publishTs, ts.Key())
+		diff, err := mgr.dpc.diffPreCommits(ctx, provider, dealInfo.PublishMsgTipSet, ts.Key())
 		if err != nil {
 			return false, false, err
 		}
@@ -140,7 +136,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 
 		// When there is a reorg, the deal ID may change, so get the
 		// current deal ID from the publish message CID
-		res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key().Bytes(), &proposal, publishCid)
+		res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key(), &proposal, publishCid)
 		if err != nil {
 			return false, err
 		}
@@ -234,14 +230,14 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 		}
 
 		// Get the deal info
-		res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key().Bytes(), &proposal, publishCid)
+		res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key(), &proposal, publishCid)
 		if err != nil {
 			return false, xerrors.Errorf("failed to look up deal on chain: %w", err)
 		}
 
 		// Make sure the deal is active
 		if res.MarketDeal.State.SectorStartEpoch < 1 {
-			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", res.DealID, ts.ParentState(), ts.Height())
+			return false, xerrors.Errorf("deal wasn't active: deal=%d, parentState=%s, h=%d", res.DealID, ts.Parents(), ts.Height())
 		}
 
 		log.Infof("Storage deal %d activated at epoch %d", res.DealID, res.MarketDeal.State.SectorStartEpoch)
@@ -265,7 +261,7 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 }
 
 // dealSectorInPreCommitMsg tries to find a sector containing the specified deal
-func dealSectorInPreCommitMsg(msg *types.Message, res sealing.CurrentDealInfo) (*abi.SectorNumber, error) {
+func dealSectorInPreCommitMsg(msg *types.Message, res sealer.CurrentDealInfo) (*abi.SectorNumber, error) {
 	switch msg.Method {
 	case miner.Methods.PreCommitSector:
 		var params miner.SectorPreCommitInfo
@@ -331,8 +327,8 @@ func sectorInCommitMsg(msg *types.Message, sectorNumber abi.SectorNumber) (bool,
 	}
 }
 
-func (mgr *SectorCommittedManager) checkIfDealAlreadyActive(ctx context.Context, ts *types.TipSet, proposal *market.DealProposal, publishCid cid.Cid) (sealing.CurrentDealInfo, bool, error) {
-	res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key().Bytes(), proposal, publishCid)
+func (mgr *SectorCommittedManager) checkIfDealAlreadyActive(ctx context.Context, ts *types.TipSet, proposal *market.DealProposal, publishCid cid.Cid) (sealer.CurrentDealInfo, bool, error) {
+	res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key(), proposal, publishCid)
 	if err != nil {
 		// TODO: This may be fine for some errors
 		return res, false, xerrors.Errorf("failed to look up deal on chain: %w", err)

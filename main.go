@@ -5,13 +5,10 @@ import (
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dtypes"
@@ -21,6 +18,7 @@ import (
 	"github.com/filecoin-project/venus-market/network"
 	lp2p2 "github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/sealer"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -117,34 +115,34 @@ func run(cctx *cli.Context) error {
 	ctx := cctx.Context
 	cfg := config.DefaultMarketConfig
 
-	nodeClient, closer, err := clients.NewNodeClient(ctx, &cfg.Node)
-	if err != nil {
-		return err
-	}
-	defer closer()
-
 	shutdownChan := make(chan struct{})
-	_, err = New(ctx,
+	_, err := New(ctx,
 		//config
 		Override(new(config.Market), cfg),
+		Override(new(config.Node), &cfg.Node),
+		Override(new(config.Messager), &cfg.Messager),
+		Override(new(config.Gateway), &cfg.Gateway),
+
+		//clients
+		Override(new(apiface.FullNode), clients.NodeClient),
+		Override(new(clients.IMessager), clients.MessagerClient),
+		Override(new(clients.IWalletClient), clients.NewWalletClient),
+		Override(new(clients.IStorageMiner), clients.NewStorageMiner),
+		Override(new(dtypes.ShutdownChan), shutdownChan),
 		//database
 		Override(new(dtypes.StagingDS), MetadataDs),
 		Override(new(dtypes.StagingDS), StageingDs),
 		Override(new(dtypes.StagingBlockstore), StagingBlockStore),
 		Override(new(dtypes.StagingMultiDstore), StagingMultiDatastore),
 
-		//node
-		Override(new(api.FullNode), nodeClient),
-		Override(new(dtypes.ShutdownChan), shutdownChan),
+		//sealer service
 
-		//连接sealer提供服务
+		Override(new(dtypes.MinerAddress), MinerAddress), //todo miner single miner todo change to support multiple miner
 		Override(new(modules.MinerStorageService), sealer.ConnectStorageService),
-		Override(new(sectorstorage.Unsealer), From(new(sealer.MinerStorageService))),
-		Override(new(sectorblocks.SectorBuilder), From(new(sealer.MinerStorageService))),
-		//兼容模块
-		Override(new(storage.AddressSelector), MigrateAddressSelector),
+		Override(new(sealer.Unsealer), From(new(sealer.MinerStorageService))),
+		Override(new(sealer.SectorBuilder), From(new(sealer.MinerStorageService))),
+		Override(new(sealer.AddressSelector), AddressSelector),
 		//libp2p
-		// Host dependencies
 		Override(new(crypto.PrivKey), lp2p2.PrivKey),
 		Override(new(crypto.PubKey), crypto.PrivKey.GetPublic),
 		Override(new(peer.ID), peer.IDFromPublicKey),
@@ -157,14 +155,12 @@ func run(cctx *cli.Context) error {
 		Override(RelayKey, network.NoRelay()),
 		Override(SecurityKey, network.Security(true, false)),
 
-		//miner single miner todo change to support multiple miner
-		Override(new(dtypes.MinerAddress), MinerAddress),
 		// Host
 		Override(new(host.Host), network.Host),
 		// Markets
 		Override(new(dtypes.StagingGraphsync), StagingGraphsync(cfg.SimultaneousTransfers)),
 		Override(new(dtypes.ProviderPieceStore), NewProviderPieceStore), //save to metadata /storagemarket
-		Override(new(*sectorblocks.SectorBlocks), NewSectorBlocks),      //save to metadata /sealedblocks
+		Override(new(*sealer.SectorBlocks), sealer.NewSectorBlocks),     //save to metadata /sealedblocks
 
 		// Markets (retrieval deps)
 		Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),

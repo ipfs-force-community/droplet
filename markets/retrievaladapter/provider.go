@@ -2,21 +2,20 @@ package retrievaladapter
 
 import (
 	"context"
-	"io"
-
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/venus-market/dtypes"
+	"github.com/filecoin-project/venus-market/sealer"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
+	"io"
 
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	marketTypes "github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -31,18 +30,18 @@ var log = logging.Logger("retrievaladapter")
 
 type retrievalProviderNode struct {
 	maddr address.Address
-	secb  sectorblocks.SectorBuilder
+	secb  sealer.SectorBuilder
 	pp    sectorstorage.PieceProvider
-	full  v1api.FullNode
+	full  apiface.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
 func NewRetrievalProviderNode(
 	maddr dtypes.MinerAddress,
-	secb sectorblocks.SectorBuilder,
+	secb sealer.SectorBuilder,
 	pp sectorstorage.PieceProvider,
-	full v1api.FullNode,
+	full apiface.FullNode,
 ) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{address.Address(maddr), secb, pp, full}
 }
@@ -181,10 +180,10 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 	return resp, nil
 }
 
-func (rpn *retrievalProviderNode) sectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
+func (rpn *retrievalProviderNode) sectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (marketTypes.SectorInfo, error) {
 	sInfo, err := rpn.secb.SectorsStatus(ctx, sid, false)
 	if err != nil {
-		return api.SectorInfo{}, err
+		return marketTypes.SectorInfo{}, err
 	}
 
 	if !showOnChainInfo {

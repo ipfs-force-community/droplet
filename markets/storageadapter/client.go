@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"context"
 	"github.com/filecoin-project/venus-market/constants"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/wallet"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -23,16 +25,14 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
-	"github.com/filecoin-project/lotus/api"
-	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/events"
-	"github.com/filecoin-project/lotus/chain/events/state"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/venus-market/fundmgr"
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/utils"
+	vcrypto "github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/events"
+	"github.com/filecoin-project/venus/pkg/events/state"
+	marketactor "github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 type ClientNodeAdapter struct {
@@ -45,13 +45,11 @@ type ClientNodeAdapter struct {
 }
 
 type clientApi struct {
-	full.ChainAPI
-	full.StateAPI
-	full.MpoolAPI
+	apiface.FullNode
 }
 
-func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fundmgr *fundmgr.FundManager) storagemarket.StorageClientNode {
-	capi := &clientApi{chain, stateapi, mpool}
+func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, fundmgr *fundmgr.FundManager) storagemarket.StorageClientNode {
+	capi := &clientApi{fullNode}
 	ctx := metrics.LifecycleCtx(mctx, lc)
 
 	ev := events.NewEvents(ctx, capi)
@@ -97,7 +95,7 @@ func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Sign
 		return false, err
 	}
 
-	err = sigs.Verify(&sig, addr, input)
+	err = vcrypto.Verify(&sig, addr, input)
 	return err == nil, err
 }
 
@@ -213,7 +211,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	var res market2.PublishStorageDealsReturn
-	if err := res.UnmarshalCBOR(bytes.NewReader(ret.Receipt.Return)); err != nil {
+	if err := res.UnmarshalCBOR(bytes.NewReader(ret.Receipt.ReturnValue)); err != nil {
 		return 0, err
 	}
 
@@ -351,8 +349,8 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	sig, err := c.Wallet.WalletSign(ctx, signer, buf, api.MsgMeta{
-		Type: api.MTDealProposal,
+	sig, err := c.WalletSign(ctx, signer, buf, wallet.MsgMeta{
+		Type: wallet.MTDealProposal,
 	})
 	if err != nil {
 		return nil, err
@@ -365,7 +363,8 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 }
 
 func (c *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
-	addr, err := c.DefWallet.GetDefault()
+	panic("to impl")
+	addr, err := c.WalletDefaultAddress(ctx)
 	return addr, err
 }
 
@@ -383,7 +382,7 @@ func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}
-	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
+	return cb(receipt.Receipt.ExitCode, receipt.Receipt.ReturnValue, receipt.Message, nil)
 }
 
 func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*storagemarket.StorageProviderInfo, error) {
@@ -406,8 +405,8 @@ func (c *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Addres
 		return nil, err
 	}
 
-	localSignature, err := c.Wallet.WalletSign(ctx, signer, b, api.MsgMeta{
-		Type: api.MTUnknown, // TODO: pass type here
+	localSignature, err := c.WalletSign(ctx, signer, b, wallet.MsgMeta{
+		Type: wallet.MTUnknown, // TODO: pass type here
 	})
 	if err != nil {
 		return nil, err

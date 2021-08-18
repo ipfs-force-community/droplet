@@ -3,7 +3,11 @@ package storageadapter
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/venus-market/constants"
+	"github.com/filecoin-project/venus-market/sealer"
+	marketTypes "github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"strings"
 	"sync"
 	"time"
@@ -17,18 +21,15 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 type dealPublisherAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
-	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
+	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec) (*types.SignedMessage, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
 
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
@@ -47,14 +48,14 @@ type dealPublisherAPI interface {
 // publish message with all deals in the queue.
 type DealPublisher struct {
 	api dealPublisherAPI
-	as  *storage.AddressSelector
+	as  *sealer.AddressSelector
 
 	ctx      context.Context
 	Shutdown context.CancelFunc
 
 	maxDealsPerPublishMsg uint64
 	publishPeriod         time.Duration
-	publishSpec           *api.MessageSendSpec
+	publishSpec           *types.MessageSendSpec
 
 	lk                     sync.Mutex
 	pending                []*pendingDeal
@@ -94,15 +95,15 @@ type PublishMsgConfig struct {
 
 func NewDealPublisher(
 	cfg *config.Market,
-) func(lc fx.Lifecycle, full api.FullNode, as *storage.AddressSelector) *DealPublisher {
-	return func(lc fx.Lifecycle, full api.FullNode, as *storage.AddressSelector) *DealPublisher {
+) func(lc fx.Lifecycle, full apiface.FullNode, as *sealer.AddressSelector) *DealPublisher {
+	return func(lc fx.Lifecycle, full apiface.FullNode, as *sealer.AddressSelector) *DealPublisher {
 		maxFee := abi.TokenAmount(cfg.MaxPublishDealsFee)
 		publishMsgConfig := PublishMsgConfig{
 			Period:         time.Duration(cfg.PublishMsgPeriod),
 			MaxDealsPerMsg: cfg.MaxDealsPerPublishMsg,
 		}
 
-		publishSpec := &api.MessageSendSpec{MaxFee: maxFee}
+		publishSpec := &types.MessageSendSpec{MaxFee: maxFee}
 		dp := newDealPublisher(full, as, publishMsgConfig, publishSpec)
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
@@ -116,9 +117,9 @@ func NewDealPublisher(
 
 func newDealPublisher(
 	dpapi dealPublisherAPI,
-	as *storage.AddressSelector,
+	as *sealer.AddressSelector,
 	publishMsgCfg PublishMsgConfig,
-	publishSpec *api.MessageSendSpec,
+	publishSpec *types.MessageSendSpec,
 ) *DealPublisher {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &DealPublisher{
@@ -133,7 +134,7 @@ func newDealPublisher(
 }
 
 // PendingDeals returns the list of deals that are queued up to be published
-func (p *DealPublisher) PendingDeals() api.PendingDealInfo {
+func (p *DealPublisher) PendingDeals() marketTypes.PendingDealInfo {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 
@@ -150,7 +151,7 @@ func (p *DealPublisher) PendingDeals() api.PendingDealInfo {
 		pending[i] = deal.deal
 	}
 
-	return api.PendingDealInfo{
+	return marketTypes.PendingDealInfo{
 		Deals:              pending,
 		PublishPeriodStart: p.publishPeriodStart,
 		PublishPeriod:      p.publishPeriod,
@@ -356,7 +357,7 @@ func (p *DealPublisher) publishDealProposals(deals []market2.ClientDealProposal)
 		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: %w", err)
 	}
 
-	addr, _, err := p.as.AddressFor(p.ctx, p.api, mi, api.DealPublishAddr, big.Zero(), big.Zero())
+	addr, _, err := p.as.AddressFor(p.ctx, p.api, mi, marketTypes.DealPublishAddr, big.Zero(), big.Zero())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("selecting address for publishing deals: %w", err)
 	}

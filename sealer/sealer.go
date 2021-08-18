@@ -2,12 +2,15 @@ package sealer
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
-	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/specs-storage/storage"
+	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/types"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -15,13 +18,22 @@ import (
 
 var log = logging.Logger("sealer")
 
-type MinerSealingService api.StorageMiner
-type MinerStorageService api.StorageMiner
+type SectorBuilder interface {
+	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (types.SectorInfo, error)
+}
 
-var _ sectorblocks.SectorBuilder = *new(MinerSealingService)
+type Unsealer interface {
+	// SectorsUnsealPiece will Unseal a Sealed sector file for the given sector.
+	SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error
+}
 
-func connectMinerService(sealerCfg *config.Sealer) func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (api.StorageMiner, error) {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (api.StorageMiner, error) {
+type MinerStorageService interface {
+	Unsealer
+	SectorBuilder
+}
+
+func connectMinerService(sealerCfg *config.Sealer) func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (clients.IStorageMiner, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle) (clients.IStorageMiner, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 		info := apiinfo.NewAPIInfo(sealerCfg.Url, sealerCfg.Token)
 		addr, err := info.DialArgs("v0")
@@ -31,23 +43,11 @@ func connectMinerService(sealerCfg *config.Sealer) func(mctx helpers.MetricsCtx,
 
 		log.Infof("Checking (svc) api version of %s", addr)
 
-		mapi, closer, err := client.NewStorageMinerRPCV0(ctx, addr, info.AuthHeader())
+		mapi, closer, err := clients.NewStorageMiner(ctx, addr)
 		if err != nil {
 			return nil, err
 		}
 		lc.Append(fx.Hook{
-			OnStart: func(ctx context.Context) error {
-				v, err := mapi.Version(ctx)
-				if err != nil {
-					return xerrors.Errorf("checking version: %w", err)
-				}
-
-				if !v.APIVersion.EqMajorMinor(api.MinerAPIVersion0) {
-					return xerrors.Errorf("remote service API version didn't match (expected %s, remote %s)", api.MinerAPIVersion0, v.APIVersion)
-				}
-
-				return nil
-			},
 			OnStop: func(context.Context) error {
 				closer()
 				return nil
@@ -55,11 +55,6 @@ func connectMinerService(sealerCfg *config.Sealer) func(mctx helpers.MetricsCtx,
 
 		return mapi, nil
 	}
-}
-
-func ConnectSealingService(mctx helpers.MetricsCtx, lc fx.Lifecycle, cfg *config.Market) (MinerSealingService, error) {
-	log.Info("Connecting sealing service to miner")
-	return connectMinerService(&cfg.Sealer)(mctx, lc)
 }
 
 func ConnectStorageService(mctx helpers.MetricsCtx, lc fx.Lifecycle, cfg *config.Market) (MinerStorageService, error) {
