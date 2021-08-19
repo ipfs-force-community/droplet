@@ -129,6 +129,7 @@ func run(cctx *cli.Context) error {
 		Override(new(clients.IWalletClient), clients.NewWalletClient),
 		Override(new(clients.IStorageMiner), clients.NewStorageMiner),
 		Override(new(dtypes.ShutdownChan), shutdownChan),
+
 		//database
 		Override(new(dtypes.StagingDS), MetadataDs),
 		Override(new(dtypes.StagingDS), StageingDs),
@@ -136,12 +137,12 @@ func run(cctx *cli.Context) error {
 		Override(new(dtypes.StagingMultiDstore), StagingMultiDatastore),
 
 		//sealer service
-
 		Override(new(dtypes.MinerAddress), MinerAddress), //todo miner single miner todo change to support multiple miner
 		Override(new(modules.MinerStorageService), sealer.ConnectStorageService),
 		Override(new(sealer.Unsealer), From(new(sealer.MinerStorageService))),
 		Override(new(sealer.SectorBuilder), From(new(sealer.MinerStorageService))),
 		Override(new(sealer.AddressSelector), AddressSelector),
+
 		//libp2p
 		Override(new(crypto.PrivKey), lp2p2.PrivKey),
 		Override(new(crypto.PubKey), crypto.PrivKey.GetPublic),

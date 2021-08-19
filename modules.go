@@ -8,7 +8,6 @@ import (
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
-	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
@@ -25,6 +24,7 @@ import (
 	marketevents "github.com/filecoin-project/venus-market/markets/loggers"
 	"github.com/filecoin-project/venus-market/markets/pricing"
 	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/piece"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-bitswap"
@@ -496,10 +496,11 @@ func StagingGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx, lc
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
 // shared by the storage and retrieval providers
 func NewProviderPieceStore(lc fx.Lifecycle, ds dtypes.MetadataDS) (dtypes.ProviderPieceStore, error) {
-	ps, err := piecestoreimpl.NewPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
+	ps, err := piece.NewPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
 	if err != nil {
 		return nil, err
 	}
+
 	ps.OnReady(marketevents.ReadyLogger("piecestore"))
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

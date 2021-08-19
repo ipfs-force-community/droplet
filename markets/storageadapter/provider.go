@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/fundmgr"
 	"github.com/filecoin-project/venus-market/sealer"
-	marketTypes "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"io"
@@ -26,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/state"
@@ -49,9 +47,7 @@ type ProviderNodeAdapter struct {
 	apiface.FullNode
 
 	fundMgr *fundmgr.FundManager
-
-	secb *sealer.SectorBlocks
-	ev   *events.Events
+	ev      *events.Events
 
 	dealPublisher *DealPublisher
 
@@ -68,7 +64,6 @@ func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc 
 		ev := events.NewEvents(ctx, full)
 		na := &ProviderNodeAdapter{
 			FullNode:      full,
-			secb:          secb,
 			ev:            ev,
 			dealPublisher: dealPublisher,
 			dsMatcher:     newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
@@ -89,6 +84,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 
 func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) (*storagemarket.PackingResult, error) {
 	panic("to impl")
+
 	//todo wait until assign deals
 	/*if deal.PublishCid == nil {
 		return nil, xerrors.Errorf("deal.PublishCid can't be nil")
@@ -229,7 +225,8 @@ func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Addre
 
 // TODO: why doesnt this method take in a sector ID?
 func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (sectorID abi.SectorNumber, offset abi.PaddedPieceSize, length abi.PaddedPieceSize, err error) {
-	refs, err := n.secb.GetRefs(dealID)
+	panic("depresated")
+	/*refs, err := n.secb.GetRefs(dealID)
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -254,7 +251,7 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 	if bestSi.State == marketTypes.SectorState(sealing.UndefinedSectorState) {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
-	return best.SectorID, best.Offset, best.Size.Padded(), nil
+	return best.SectorID, best.Offset, best.Size.Padded(), nil*/
 }
 
 func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
