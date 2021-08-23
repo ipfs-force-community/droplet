@@ -62,6 +62,11 @@ type Journal struct {
 	Path string
 }
 
+type PieceStorage struct {
+	Type string
+	Path string
+}
+
 const (
 	// RetrievalPricingDefault configures the node to use the default retrieval pricing policy.
 	RetrievalPricingDefaultMode = "default"
@@ -85,7 +90,7 @@ type RetrievalPricingExternal struct {
 
 type RetrievalPricingDefault struct {
 	// VerifiedDealsFreeTransfer configures zero fees for data transfer for a retrieval deal
-	// of a payloadCid that belongs to a verified storage deal.
+	// of a payloadCid that belongs to a verified piecestorage deal.
 	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "default".
 	// default value is true
 	VerifiedDealsFreeTransfer bool
@@ -110,6 +115,7 @@ type Market struct {
 
 	Common
 	Node
+	PieceStorage
 	Sealer
 	Messager
 	Gateway
@@ -147,10 +153,10 @@ type Market struct {
 	// as a multiplier of the minimum collateral bound
 	MaxProviderCollateralMultiplier uint64
 
-	// The maximum number of parallel online data transfers (storage+retrieval)
+	// The maximum number of parallel online data transfers (piecestorage+retrieval)
 	SimultaneousTransfers uint64
 
-	// A command used for fine-grained evaluation of storage deals
+	// A command used for fine-grained evaluation of piecestorage deals
 	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
 	Filter string
 	// A command used for fine-grained evaluation of retrieval deals

@@ -10,14 +10,14 @@ import (
 
 var log = logging.Logger("markets")
 
-// StorageClientLogger logs events from the storage client
+// StorageClientLogger logs events from the piecestorage client
 func StorageClientLogger(event storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
-	log.Infow("storage client event", "name", storagemarket.ClientEvents[event], "proposal CID", deal.ProposalCid, "state", storagemarket.DealStates[deal.State], "message", deal.Message)
+	log.Infow("piecestorage client event", "name", storagemarket.ClientEvents[event], "proposal CID", deal.ProposalCid, "state", storagemarket.DealStates[deal.State], "message", deal.Message)
 }
 
-// StorageProviderLogger logs events from the storage provider
+// StorageProviderLogger logs events from the piecestorage provider
 func StorageProviderLogger(event storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
-	log.Infow("storage provider event", "name", storagemarket.ProviderEvents[event], "proposal CID", deal.ProposalCid, "state", storagemarket.DealStates[deal.State], "message", deal.Message)
+	log.Infow("piecestorage provider event", "name", storagemarket.ProviderEvents[event], "proposal CID", deal.ProposalCid, "state", storagemarket.DealStates[deal.State], "message", deal.Message)
 }
 
 // RetrievalClientLogger logs events from the retrieval client

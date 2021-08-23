@@ -6,7 +6,7 @@ import (
 	"context"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/fundmgr"
-	"github.com/filecoin-project/venus-market/sealer"
+	"github.com/filecoin-project/venus-market/piecestorage"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"io"
@@ -51,14 +51,15 @@ type ProviderNodeAdapter struct {
 
 	dealPublisher *DealPublisher
 
+	storage                     piecestorage.IPieceStorage
 	addBalanceSpec              *types.MessageSendSpec
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sealer.SectorBlocks, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager) storagemarket.StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sealer.SectorBlocks, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piecestorage.IPieceStorage) storagemarket.StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piecestorage.IPieceStorage) storagemarket.StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev := events.NewEvents(ctx, full)
@@ -67,6 +68,7 @@ func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc 
 			ev:            ev,
 			dealPublisher: dealPublisher,
 			dsMatcher:     newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
+			storage:       storage,
 		}
 		if fc != nil {
 			na.addBalanceSpec = &types.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
@@ -83,8 +85,19 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 }
 
 func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) (*storagemarket.PackingResult, error) {
-	panic("to impl")
+	wLen, err := n.storage.SaveTo(deal.ClientDealProposal.Proposal.PieceCID, pieceData)
+	if err != nil {
+		return nil, err
+	}
+	if wLen != int64(pieceSize) {
+		return nil, xerrors.Errorf("save piece expect len %d but got %d", pieceSize, wLen)
+	}
 
+	return &storagemarket.PackingResult{
+		SectorNumber: 0,
+		Offset:       0,
+		Size:         pieceSize.Padded(),
+	}, nil
 	//todo wait until assign deals
 	/*if deal.PublishCid == nil {
 		return nil, xerrors.Errorf("deal.PublishCid can't be nil")
@@ -193,7 +206,7 @@ func (n *ProviderNodeAdapter) ReleaseFunds(ctx context.Context, addr address.Add
 	return n.fundMgr.Release(addr, amt)
 }
 
-// Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
+// Adds funds with the StorageMinerActor for a piecestorage participant.  Used by both providers and clients.
 func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
 	smsg, err := n.MpoolPushMessage(ctx, &types.Message{

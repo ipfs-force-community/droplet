@@ -22,28 +22,30 @@ var DSPiecePrefix = "/pieces"
 // DSCIDPrefix is the name space for storing CID infos
 var DSCIDPrefix = "/cid-infos"
 
-// NewPieceStore returns a new piecestore based on the given datastore
-func NewPieceStore(ds datastore.Batching) (piecestore.PieceStore, error) {
-	return &pieceStore{
+// NewDsPieceStore returns a new piecestore based on the given datastore
+func NewDsPieceStore(ds datastore.Batching) (piecestore.PieceStore, error) {
+	return &dsPieceStore{
 		pieces:   namespace.Wrap(ds, datastore.NewKey(DSPiecePrefix)),
 		cidInfos: namespace.Wrap(ds, datastore.NewKey(DSCIDPrefix)),
 	}, nil
 }
 
-type pieceStore struct {
+type dsPieceStore struct {
 	pieces   datastore.Batching
 	cidInfos datastore.Batching
 }
 
-func (ps *pieceStore) Start(ctx context.Context) error {
+var _ piecestore.PieceStore = (*dsPieceStore)(nil)
+
+func (ps *dsPieceStore) Start(ctx context.Context) error {
 	return nil
 }
 
-func (ps *pieceStore) OnReady(ready shared.ReadyFunc) {
+func (ps *dsPieceStore) OnReady(ready shared.ReadyFunc) {
 }
 
 // Store `dealInfo` in the PieceStore with key `pieceCID`.
-func (ps *pieceStore) AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error {
+func (ps *dsPieceStore) AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error {
 	return ps.mutatePieceInfo(pieceCID, func(pi *piecestore.PieceInfo) error {
 		for _, di := range pi.Deals {
 			if di == dealInfo {
@@ -56,7 +58,7 @@ func (ps *pieceStore) AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.Deal
 }
 
 // Store the map of blockLocations in the PieceStore's CIDInfo store, with key `pieceCID`
-func (ps *pieceStore) AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
+func (ps *dsPieceStore) AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
 	for c, blockLocation := range blockLocations {
 		err := ps.mutateCIDInfo(c, func(ci *piecestore.CIDInfo) error {
 			for _, pbl := range ci.PieceBlockLocations {
@@ -74,7 +76,7 @@ func (ps *pieceStore) AddPieceBlockLocations(pieceCID cid.Cid, blockLocations ma
 	return nil
 }
 
-func (ps *pieceStore) ListPieceInfoKeys() ([]cid.Cid, error) {
+func (ps *dsPieceStore) ListPieceInfoKeys() ([]cid.Cid, error) {
 	qres, err := ps.pieces.Query(query.Query{})
 	if err != nil {
 		return nil, xerrors.Errorf("query error: %w", err)
@@ -93,7 +95,7 @@ func (ps *pieceStore) ListPieceInfoKeys() ([]cid.Cid, error) {
 	return out, nil
 }
 
-func (ps *pieceStore) ListCidInfoKeys() ([]cid.Cid, error) {
+func (ps *dsPieceStore) ListCidInfoKeys() ([]cid.Cid, error) {
 	qres, err := ps.cidInfos.Query(query.Query{})
 	if err != nil {
 		return nil, xerrors.Errorf("query error: %w", err)
@@ -113,7 +115,7 @@ func (ps *pieceStore) ListCidInfoKeys() ([]cid.Cid, error) {
 }
 
 // Retrieve the PieceInfo associated with `pieceCID` from the piece info store.
-func (ps *pieceStore) GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, error) {
+func (ps *dsPieceStore) GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, error) {
 	key := datastore.NewKey(pieceCID.String())
 	pieceBytes, err := ps.pieces.Get(key)
 	if err != nil {
@@ -127,7 +129,7 @@ func (ps *pieceStore) GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, erro
 }
 
 // Retrieve the CIDInfo associated with `pieceCID` from the CID info store.
-func (ps *pieceStore) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error) {
+func (ps *dsPieceStore) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error) {
 	key := datastore.NewKey(payloadCID.String())
 	cidInfoBytes, err := ps.pieces.Get(key)
 	if err != nil {
@@ -140,7 +142,7 @@ func (ps *pieceStore) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error)
 	return cidInfo, nil
 }
 
-func (ps *pieceStore) mutatePieceInfo(pieceCID cid.Cid, mutator func(pi *piecestore.PieceInfo) error) error {
+func (ps *dsPieceStore) mutatePieceInfo(pieceCID cid.Cid, mutator func(pi *piecestore.PieceInfo) error) error {
 	key := datastore.NewKey(pieceCID.String())
 	pieceBytes, err := ps.pieces.Get(key)
 	if err != nil && datastore.ErrNotFound != err {
@@ -164,7 +166,7 @@ func (ps *pieceStore) mutatePieceInfo(pieceCID cid.Cid, mutator func(pi *piecest
 	return ps.pieces.Put(key, result.Bytes())
 }
 
-func (ps *pieceStore) mutateCIDInfo(c cid.Cid, mutator func(ci *piecestore.CIDInfo) error) error {
+func (ps *dsPieceStore) mutateCIDInfo(c cid.Cid, mutator func(ci *piecestore.CIDInfo) error) error {
 	key := datastore.NewKey(c.String())
 	cidInfoBytes, err := ps.pieces.Get(key)
 	if err != nil && datastore.ErrNotFound != err {

@@ -17,6 +17,9 @@ require (
 	github.com/filecoin-project/specs-actors/v5 v5.0.3
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/filecoin-project/venus v1.0.5-0.20210817051858-2ea8ad0498e1
+	github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578
+	github.com/gbrlsnchs/jwt/v3 v3.0.0
+	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210817020216-e774586a8875
 	github.com/ipfs/go-bitswap v0.3.2
@@ -27,7 +30,6 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.1-0.20200708190120-187fc06f714e
 	github.com/ipfs/go-graphsync v0.6.6
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
-	github.com/ipfs/go-ipfs-ds-help v1.0.0
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
 	github.com/ipfs/go-ipfs-http-client v0.0.5
@@ -52,6 +54,8 @@ require (
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.3.3
 	github.com/multiformats/go-multihash v0.0.15
+	github.com/pelletier/go-toml v1.6.0
+	github.com/pkg/errors v0.9.1
 	github.com/raulk/clock v1.1.0
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/stretchr/testify v1.7.0

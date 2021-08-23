@@ -74,17 +74,17 @@ func RetrievalPricingFunc(cfg *config.Market) func(_ dtypes.ConsiderOnlineRetrie
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS, cfg *config.Market) (dtypes.ProviderDataTransfer, error) {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, homeDir config.HomeDir, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS, cfg *config.Market) (dtypes.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
 
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/provider/transfers"))
 	transport := dtgstransport.NewTransport(h.ID(), gs)
-	err := os.MkdirAll(filepath.Join(cfg.HomeDir, "data-transfer"), 0755) //nolint: gosec
+	err := os.MkdirAll(filepath.Join(string(homeDir), "data-transfer"), 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
 
-	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(cfg.HomeDir, "data-transfer"), net, transport)
+	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(string(homeDir), "data-transfer"), net, transport)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func NewStorageAsk(ctx metrics.MetricsCtx,
 	}
 
 	providerDs := namespace.Wrap(ds, datastore.NewKey("/deals/provider"))
-	return storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
+	return storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/piecestorage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
 		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 }
 
@@ -142,8 +142,8 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 			}
 
 			if deal.Ref != nil && deal.Ref.TransferType != storagemarket.TTManual && !b {
-				log.Warnf("online storage deal consideration disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
-				return false, "miner is not considering online storage deals", nil
+				log.Warnf("online piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", deal.Client.String())
+				return false, "miner is not considering online piecestorage deals", nil
 			}
 
 			b, err = offlineOk()
@@ -152,8 +152,8 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 			}
 
 			if deal.Ref != nil && deal.Ref.TransferType == storagemarket.TTManual && !b {
-				log.Warnf("offline storage deal consideration disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
-				return false, "miner is not accepting offline storage deals", nil
+				log.Warnf("offline piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", deal.Client.String())
+				return false, "miner is not accepting offline piecestorage deals", nil
 			}
 
 			b, err = verifiedOk()
@@ -162,8 +162,8 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 			}
 
 			if deal.Proposal.VerifiedDeal && !b {
-				log.Warnf("verified storage deal consideration disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
-				return false, "miner is not accepting verified storage deals", nil
+				log.Warnf("verified piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", deal.Client.String())
+				return false, "miner is not accepting verified piecestorage deals", nil
 			}
 
 			b, err = unverifiedOk()
@@ -172,8 +172,8 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 			}
 
 			if !deal.Proposal.VerifiedDeal && !b {
-				log.Warnf("unverified storage deal consideration disabled; rejecting storage deal proposal from client: %s", deal.Client.String())
-				return false, "miner is not accepting unverified storage deals", nil
+				log.Warnf("unverified piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", deal.Client.String())
+				return false, "miner is not accepting unverified piecestorage deals", nil
 			}
 
 			blocklist, err := blocklistFunc()
@@ -183,7 +183,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 
 			for idx := range blocklist {
 				if deal.Proposal.PieceCID.Equals(blocklist[idx]) {
-					log.Warnf("piece CID in proposal %s is blocklisted; rejecting storage deal proposal from client: %s", deal.Proposal.PieceCID, deal.Client.String())
+					log.Warnf("piece CID in proposal %s is blocklisted; rejecting piecestorage deal proposal from client: %s", deal.Proposal.PieceCID, deal.Client.String())
 					return false, fmt.Sprintf("miner has blocklisted piece CID %s", deal.Proposal.PieceCID), nil
 				}
 			}
@@ -200,7 +200,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 			}
 			earliest := abi.ChainEpoch(sealEpochs) + ht
 			if deal.Proposal.StartEpoch < earliest {
-				log.Warnw("proposed deal would start before sealing can be completed; rejecting storage deal proposal from client", "piece_cid", deal.Proposal.PieceCID, "client", deal.Client.String(), "seal_duration", sealDuration, "earliest", earliest, "curepoch", ht)
+				log.Warnw("proposed deal would start before sealing can be completed; rejecting piecestorage deal proposal from client", "piece_cid", deal.Proposal.PieceCID, "client", deal.Client.String(), "seal_duration", sealDuration, "earliest", earliest, "curepoch", ht)
 				return false, fmt.Sprintf("cannot seal a sector before %s", deal.Proposal.StartEpoch), nil
 			}
 
@@ -230,7 +230,7 @@ func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
 }
 
 func StorageProvider(
-	cfg *config.Market,
+	homeDir config.HomeDir,
 	minerAddress dtypes.MinerAddress,
 	storedAsk *storedask.StoredAsk,
 	h host.Host,
@@ -242,7 +242,7 @@ func StorageProvider(
 	df dtypes.StorageDealFilter,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
-	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(cfg.HomeDir))
+	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(string(homeDir)))
 	if err != nil {
 		return nil, err
 	}
@@ -254,12 +254,12 @@ func StorageProvider(
 
 func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider, j journal.Journal) {
 	ctx := metrics.LifecycleCtx(mctx, lc)
-	h.OnReady(marketevents.ReadyLogger("storage provider"))
+	h.OnReady(marketevents.ReadyLogger("piecestorage provider"))
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			h.SubscribeToEvents(marketevents.StorageProviderLogger)
 
-			evtType := j.RegisterEventType("markets/storage/provider", "state_change")
+			evtType := j.RegisterEventType("markets/piecestorage/provider", "state_change")
 			h.SubscribeToEvents(markets.StorageProviderJournaler(j, evtType))
 
 			return h.Start(ctx)
@@ -494,9 +494,9 @@ func StagingGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx, lc
 }
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
-// shared by the storage and retrieval providers
+// shared by the piecestorage and retrieval providers
 func NewProviderPieceStore(lc fx.Lifecycle, ds dtypes.MetadataDS) (dtypes.ProviderPieceStore, error) {
-	ps, err := piece.NewPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
+	ps, err := piece.NewDsPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
 	if err != nil {
 		return nil, err
 	}

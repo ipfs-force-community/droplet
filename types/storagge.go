@@ -31,7 +31,7 @@ type PieceDealInfo struct {
 	KeepUnsealed bool
 }
 
-// DealSchedule communicates the time interval of a storage deal. The deal must
+// DealSchedule communicates the time interval of a piecestorage deal. The deal must
 // appear in a sealed (proven) sector no later than StartEpoch, otherwise it
 // is invalid.
 type DealSchedule struct {

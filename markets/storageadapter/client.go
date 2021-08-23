@@ -99,7 +99,7 @@ func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Sign
 	return err == nil, err
 }
 
-// Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
+// Adds funds with the StorageMinerActor for a piecestorage participant.  Used by both providers and clients.
 func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
 	smsg, err := c.MpoolPushMessage(ctx, &types.Message{
@@ -167,7 +167,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		}
 	}
 	if !pubOk {
-		return 0, xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s,%+v", pubmsg.From, deal.Proposal.Provider, pubAddrs)
+		return 0, xerrors.Errorf("deal wasn't published by piecestorage provider: from=%s, provider=%s,%+v", pubmsg.From, deal.Proposal.Provider, pubAddrs)
 	}
 
 	if pubmsg.To != miner2.StorageMarketActorAddr {

@@ -16,11 +16,11 @@ type MinerAddress address.Address
 type MinerID abi.ActorID
 
 // ConsiderOnlineStorageDealsConfigFunc is a function which reads from miner
-// config to determine if the user has disabled storage deals (or not).
+// config to determine if the user has disabled piecestorage deals (or not).
 type ConsiderOnlineStorageDealsConfigFunc func() (bool, error)
 
 // SetConsiderOnlineStorageDealsConfigFunc is a function which is used to
-// disable or enable storage deal acceptance.
+// disable or enable piecestorage deal acceptance.
 type SetConsiderOnlineStorageDealsConfigFunc func(bool) error
 
 // ConsiderOnlineRetrievalDealsConfigFunc is a function which reads from miner
@@ -33,7 +33,7 @@ type SetConsiderOnlineRetrievalDealsConfigFunc func(bool) error
 
 // StorageDealPieceCidBlocklistConfigFunc is a function which reads from miner
 // config to obtain a list of CIDs for which the miner will not accept
-// storage proposals.
+// piecestorage proposals.
 type StorageDealPieceCidBlocklistConfigFunc func() ([]cid.Cid, error)
 
 // SetStorageDealPieceCidBlocklistConfigFunc is a function which is used to set a
@@ -41,11 +41,11 @@ type StorageDealPieceCidBlocklistConfigFunc func() ([]cid.Cid, error)
 type SetStorageDealPieceCidBlocklistConfigFunc func([]cid.Cid) error
 
 // ConsiderOfflineStorageDealsConfigFunc is a function which reads from miner
-// config to determine if the user has disabled storage deals (or not).
+// config to determine if the user has disabled piecestorage deals (or not).
 type ConsiderOfflineStorageDealsConfigFunc func() (bool, error)
 
 // SetConsiderOfflineStorageDealsConfigFunc is a function which is used to
-// disable or enable storage deal acceptance.
+// disable or enable piecestorage deal acceptance.
 type SetConsiderOfflineStorageDealsConfigFunc func(bool) error
 
 // ConsiderOfflineRetrievalDealsConfigFunc is a function which reads from miner
@@ -57,19 +57,19 @@ type ConsiderOfflineRetrievalDealsConfigFunc func() (bool, error)
 type SetConsiderOfflineRetrievalDealsConfigFunc func(bool) error
 
 // ConsiderVerifiedStorageDealsConfigFunc is a function which reads from miner
-// config to determine if the user has disabled verified storage deals (or not).
+// config to determine if the user has disabled verified piecestorage deals (or not).
 type ConsiderVerifiedStorageDealsConfigFunc func() (bool, error)
 
 // SetConsiderVerifiedStorageDealsConfigFunc is a function which is used to
-// disable or enable verified storage deal acceptance.
+// disable or enable verified piecestorage deal acceptance.
 type SetConsiderVerifiedStorageDealsConfigFunc func(bool) error
 
 // ConsiderUnverifiedStorageDealsConfigFunc is a function which reads from miner
-// config to determine if the user has disabled unverified storage deals (or not).
+// config to determine if the user has disabled unverified piecestorage deals (or not).
 type ConsiderUnverifiedStorageDealsConfigFunc func() (bool, error)
 
 // SetConsiderUnverifiedStorageDealsConfigFunc is a function which is used to
-// disable or enable unverified storage deal acceptance.
+// disable or enable unverified piecestorage deal acceptance.
 type SetConsiderUnverifiedStorageDealsConfigFunc func(bool) error
 
 type SetMaxDealStartDelayFunc func(time.Duration) error

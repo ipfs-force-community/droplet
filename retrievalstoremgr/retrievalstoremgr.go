@@ -20,7 +20,7 @@ type RetrievalStore interface {
 }
 
 // RetrievalStoreManager manages stores for retrieval deals, abstracting
-// the underlying storage mechanism
+// the underlying piecestorage mechanism
 type RetrievalStoreManager interface {
 	NewStore() (RetrievalStore, error)
 	ReleaseStore(RetrievalStore) error

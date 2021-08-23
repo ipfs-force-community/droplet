@@ -27,7 +27,7 @@ type RetrievalProviderEvt struct {
 	Deal  retrievalmarket.ProviderDealState
 }
 
-// StorageClientJournaler records journal events from the storage client.
+// StorageClientJournaler records journal events from the piecestorage client.
 func StorageClientJournaler(j journal.Journal, evtType journal.EventType) func(event storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
 	return func(event storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
 		j.RecordEvent(evtType, func() interface{} {
@@ -39,7 +39,7 @@ func StorageClientJournaler(j journal.Journal, evtType journal.EventType) func(e
 	}
 }
 
-// StorageProviderJournaler records journal events from the storage provider.
+// StorageProviderJournaler records journal events from the piecestorage provider.
 func StorageProviderJournaler(j journal.Journal, evtType journal.EventType) func(event storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
 	return func(event storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
 		j.RecordEvent(evtType, func() interface{} {

@@ -131,7 +131,7 @@ func (rpn *retrievalProviderNode) IsUnsealed(ctx context.Context, sectorID abi.S
 	return rpn.pp.IsUnsealed(ctx, ref, storiface.UnpaddedByteIndex(offset), length)
 }
 
-// GetRetrievalPricingInput takes a set of candidate storage deals that can serve a retrieval request,
+// GetRetrievalPricingInput takes a set of candidate piecestorage deals that can serve a retrieval request,
 // and returns an minimally populated PricingInput. This PricingInput should be enhanced
 // with more data, and passed to the pricing function to determine the final quoted price.
 func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, pieceCID cid.Cid, storageDeals []abi.DealID) (retrievalmarket.PricingInput, error) {
@@ -174,7 +174,7 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 			return resp, xerrors.New("failed to find matching piece")
 		}
 
-		return resp, xerrors.Errorf("failed to fetch storage deal state: %w", mErr)
+		return resp, xerrors.Errorf("failed to fetch piecestorage deal state: %w", mErr)
 	}
 
 	return resp, nil

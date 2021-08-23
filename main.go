@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/venus-market/markets/storageadapter"
 	"github.com/filecoin-project/venus-market/network"
 	lp2p2 "github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/piecestorage"
 	"github.com/filecoin-project/venus-market/sealer"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -60,11 +61,8 @@ const (
 	// miner
 	PstoreAddSelfKeysKey
 	StartListeningKey
-	GetParamsKey
-	HandleMigrateProviderFundsKey
 	HandleDealsKey
 	HandleRetrievalKey
-	RunSectorServiceKey
 
 	_nInvokes // keep this last
 )
@@ -111,17 +109,44 @@ func main() {
 	}
 }
 
+func prepare(cctx *cli.Context) (*config.Market, error) {
+	cfgPath := cctx.String("config")
+
+	cfg := config.DefaultMarketConfig
+	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		//create
+		err = config.SaveConfig(cfg)
+		if err != nil {
+			return nil, err
+		}
+	} else if err == nil {
+		//loadConfig
+		err = config.LoadConfig(cfgPath, cfg)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, err
+	}
+	return cfg, nil
+}
+
 func run(cctx *cli.Context) error {
 	ctx := cctx.Context
-	cfg := config.DefaultMarketConfig
+	cfg, err := prepare(cctx)
+	if err != nil {
+		return nil
+	}
 
 	shutdownChan := make(chan struct{})
-	_, err := New(ctx,
+	_, err = New(ctx,
 		//config
+		Override(new(config.HomeDir), cfg.HomePath),
 		Override(new(config.Market), cfg),
 		Override(new(config.Node), &cfg.Node),
 		Override(new(config.Messager), &cfg.Messager),
 		Override(new(config.Gateway), &cfg.Gateway),
+		Override(new(config.PieceStorage), &cfg.PieceStorage),
 
 		//clients
 		Override(new(apiface.FullNode), clients.NodeClient),
@@ -135,6 +160,9 @@ func run(cctx *cli.Context) error {
 		Override(new(dtypes.StagingDS), StageingDs),
 		Override(new(dtypes.StagingBlockstore), StagingBlockStore),
 		Override(new(dtypes.StagingMultiDstore), StagingMultiDatastore),
+
+		//piece
+		Override(new(piecestorage.IPieceStorage), piecestorage.NewPieceStorage),
 
 		//sealer service
 		Override(new(dtypes.MinerAddress), MinerAddress), //todo miner single miner todo change to support multiple miner
@@ -161,8 +189,6 @@ func run(cctx *cli.Context) error {
 		// Markets
 		Override(new(dtypes.StagingGraphsync), StagingGraphsync(cfg.SimultaneousTransfers)),
 		Override(new(dtypes.ProviderPieceStore), NewProviderPieceStore), //save to metadata /storagemarket
-		Override(new(*sealer.SectorBlocks), sealer.NewSectorBlocks),     //save to metadata /sealedblocks
-
 		// Markets (retrieval deps)
 		Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
 		Override(new(dtypes.RetrievalPricingFunc), RetrievalPricingFunc(cfg)),
@@ -174,9 +200,9 @@ func run(cctx *cli.Context) error {
 		Override(new(dtypes.RetrievalDealFilter), RetrievalDealFilter(nil)),
 		Override(HandleRetrievalKey, HandleRetrieval),
 
-		// Markets (storage)
+		// Markets (piecestorage)
 		Override(new(dtypes.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), //save to metadata /datatransfer/provider/transfers
-		Override(new(*storedask.StoredAsk), NewStorageAsk),                            //   save to metadata /deals/provider/storage-ask/latest
+		Override(new(*storedask.StoredAsk), NewStorageAsk),                            //   save to metadata /deals/provider/piecestorage-ask/latest
 		Override(new(dtypes.StorageDealFilter), BasicDealFilter(nil)),
 		Override(new(storagemarket.StorageProvider), StorageProvider),
 		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(cfg)),
@@ -216,6 +242,5 @@ func run(cctx *cli.Context) error {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := MonitorShutdown(shutdownChan)
-	<-finishCh // fires when shutdown is complete.
-	return nil
+	return serveRPC(ctx, &cfg.API, MarketNodeImpl{}, finishCh, 1000, "")
 }

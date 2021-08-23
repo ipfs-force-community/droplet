@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	// KeyPool is the buffer pool we use to compute storage keys.
+	// KeyPool is the buffer pool we use to compute piecestorage keys.
 	KeyPool *pool.BufferPool = pool.GlobalPool
 )
 
@@ -931,7 +931,7 @@ func (b *Blockstore) HashOnRead(_ bool) {
 	log.Warnf("called HashOnRead on badger blockstore; function not supported; ignoring")
 }
 
-// PooledStorageKey returns the storage key under which this CID is stored.
+// PooledStorageKey returns the piecestorage key under which this CID is stored.
 //
 // The key is: prefix + base32_no_padding(cid.Hash)
 //
@@ -953,7 +953,7 @@ func (b *Blockstore) PooledStorageKey(cid cid.Cid) (key []byte, pooled bool) {
 	return k, true // slicing upto length unnecessary; the pool has already done this.
 }
 
-// Storage acts like PooledStorageKey, but attempts to write the storage key
+// Storage acts like PooledStorageKey, but attempts to write the piecestorage key
 // into the provided slice. If the slice capacity is insufficient, it allocates
 // a new byte slice with enough capacity to accommodate the result. This method
 // returns the resulting slice.

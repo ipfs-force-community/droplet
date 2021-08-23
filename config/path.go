@@ -7,8 +7,12 @@ import (
 
 type HomeDir string
 
-func (m *Market) HomePath() (string, error) {
-	return homedir.Expand(m.HomeDir)
+func (m *Market) HomePath() (HomeDir, error) {
+	path, err := homedir.Expand(m.HomeDir)
+	if err != nil {
+		return "", err
+	}
+	return HomeDir(path), nil
 }
 
 func (m *Market) HomeJoin(sep ...string) (string, error) {
