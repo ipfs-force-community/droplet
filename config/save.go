@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 )
 
-func SaveConfig(market *Market) error {
+func SaveConfig(market *MarketConfig) error {
 	cfgBytes, err := toml.Marshal(market)
 	if err != nil {
 		return err
@@ -13,7 +13,7 @@ func SaveConfig(market *Market) error {
 	return ioutil.WriteFile(market.HomeDir, cfgBytes, 0x777)
 }
 
-func LoadConfig(cfgPath string, market *Market) error {
+func LoadConfig(cfgPath string, market *MarketConfig) error {
 	cfgBytes, err := ioutil.ReadFile(cfgPath)
 	if err != nil {
 		return err

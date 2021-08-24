@@ -31,8 +31,8 @@ import (
 	vcrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/state"
-	marketactor "github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types"
+	marketactor "github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 )
 
 type ClientNodeAdapter struct {

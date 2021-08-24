@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
@@ -13,7 +14,7 @@ import (
 	"net/http"
 )
 
-func serveRPC(ctx context.Context, cfg *config.API, a MarketNode, shutdownCh <-chan struct{}, maxRequestSize int64, authUrl string) error {
+func serveRPC(ctx context.Context, cfg *config.API, a api.MarketNode, shutdownCh <-chan struct{}, maxRequestSize int64, authUrl string) error {
 	seckey, err := MakeToken()
 	if err != nil {
 		return fmt.Errorf("make token failed:%s", err.Error())
@@ -36,11 +37,11 @@ func serveRPC(ctx context.Context, cfg *config.API, a MarketNode, shutdownCh <-c
 		cli := jwtclient.NewJWTClient(authUrl)
 		handler = jwtclient.NewAuthMux(
 			&localJwtClient{seckey: seckey}, jwtclient.WarpIJwtAuthClient(cli),
-			mux, logging.Logger("Auth"))
+			mux, logging.Logger("auth"))
 	} else {
 		handler = jwtclient.NewAuthMux(
 			&localJwtClient{seckey: seckey}, nil,
-			mux, logging.Logger("Auth"))
+			mux, logging.Logger("auth"))
 	}
 	srv := &http.Server{Handler: handler}
 

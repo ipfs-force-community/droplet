@@ -25,7 +25,7 @@ func defaults() []Option {
 	}
 }
 
-func OpenFilesystemJournal(lr *config.Market, lc fx.Lifecycle, disabled journal.DisabledEvents) (journal.Journal, error) {
+func OpenFilesystemJournal(lr *config.MarketConfig, lc fx.Lifecycle, disabled journal.DisabledEvents) (journal.Journal, error) {
 	jrnl, err := journal.OpenFSJournal(lr.Journal.Path, disabled)
 	if err != nil {
 		return nil, err

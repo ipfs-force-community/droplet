@@ -57,7 +57,7 @@ func connectMinerService(sealerCfg *config.Sealer) func(mctx helpers.MetricsCtx,
 	}
 }
 
-func ConnectStorageService(mctx helpers.MetricsCtx, lc fx.Lifecycle, cfg *config.Market) (MinerStorageService, error) {
+func ConnectStorageService(mctx helpers.MetricsCtx, lc fx.Lifecycle, cfg *config.MarketConfig) (MinerStorageService, error) {
 	log.Info("Connecting piecestorage service to miner")
 	return connectMinerService(&cfg.Sealer)(mctx, lc)
 }

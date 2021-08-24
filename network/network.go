@@ -26,7 +26,7 @@ type Libp2pOpts struct {
 	Opts []libp2p.Option `group:"libp2p"`
 }
 
-func PrivKey(cfg *config.Market) (crypto.PrivKey, error) {
+func PrivKey(cfg *config.MarketConfig) (crypto.PrivKey, error) {
 	if len(cfg.Libp2p.PrivateKey) > 0 {
 		decodePriv, err := hex.DecodeString(cfg.Libp2p.PrivateKey)
 		if err != nil {

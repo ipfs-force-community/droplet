@@ -10,7 +10,7 @@ import (
 	"go.uber.org/fx"
 )
 
-func MetadataDs(cfg *config.Market) (dtypes.MetadataDS, error) {
+func MetadataDs(cfg *config.MarketConfig) (dtypes.MetadataDS, error) {
 	metaDataPath, err := cfg.HomeJoin("metadata")
 	if err != nil {
 		return nil, err
@@ -18,7 +18,7 @@ func MetadataDs(cfg *config.Market) (dtypes.MetadataDS, error) {
 	return badger.NewDatastore(metaDataPath, &badger.DefaultOptions)
 }
 
-func StageingDs(cfg *config.Market) (dtypes.MetadataDS, error) {
+func StageingDs(cfg *config.MarketConfig) (dtypes.MetadataDS, error) {
 	metaDataPath, err := cfg.HomeJoin("staging")
 	if err != nil {
 		return nil, err

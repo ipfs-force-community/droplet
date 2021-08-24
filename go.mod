@@ -18,6 +18,7 @@ require (
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
 	github.com/filecoin-project/venus v1.0.5-0.20210817051858-2ea8ad0498e1
 	github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578
+	github.com/filecoin-project/venus-messager v1.1.1 // indirect
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-multierror v1.1.0

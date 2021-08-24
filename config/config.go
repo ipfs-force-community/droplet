@@ -13,6 +13,8 @@ type API struct {
 	// Binding address for the Lotus API
 	ListenAddress       string
 	RemoteListenAddress string
+	Secret              string
+	Token               string
 	Timeout             Duration
 }
 
@@ -110,7 +112,7 @@ type AddressConfig struct {
 }
 
 // StorageMiner is a miner config
-type Market struct {
+type MarketConfig struct {
 	HomeDir string
 
 	Common

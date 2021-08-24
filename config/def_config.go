@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-var DefaultMarketConfig = &Market{
+var DefaultMarketConfig = &MarketConfig{
 	HomeDir: "~/.venusmarket",
 	Common:  deferCommon,
 	Node: Node{

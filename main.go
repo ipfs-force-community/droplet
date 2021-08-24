@@ -9,6 +9,7 @@ import (
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/venus-market/api/impl"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dtypes"
@@ -28,6 +29,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 	"os"
+	"path"
 
 	"go.uber.org/fx"
 )
@@ -93,7 +95,12 @@ func main() {
 		Usage:                "venus-market",
 		Version:              build.UserVersion(),
 		EnableBashCompletion: true,
-		Flags:                []cli.Flag{},
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "repo",
+				Value: "./venusmarket",
+			},
+		},
 		Commands: []*cli.Command{
 			{
 				Name:   "run",
@@ -109,8 +116,8 @@ func main() {
 	}
 }
 
-func prepare(cctx *cli.Context) (*config.Market, error) {
-	cfgPath := cctx.String("config")
+func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
+	cfgPath := path.Join(cctx.String("repo"), "config.toml")
 
 	cfg := config.DefaultMarketConfig
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
@@ -142,7 +149,7 @@ func run(cctx *cli.Context) error {
 	_, err = New(ctx,
 		//config
 		Override(new(config.HomeDir), cfg.HomePath),
-		Override(new(config.Market), cfg),
+		Override(new(config.MarketConfig), cfg),
 		Override(new(config.Node), &cfg.Node),
 		Override(new(config.Messager), &cfg.Messager),
 		Override(new(config.Gateway), &cfg.Gateway),
@@ -242,5 +249,5 @@ func run(cctx *cli.Context) error {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := MonitorShutdown(shutdownChan)
-	return serveRPC(ctx, &cfg.API, MarketNodeImpl{}, finishCh, 1000, "")
+	return serveRPC(ctx, &cfg.API, impl.MarketNodeImpl{}, finishCh, 1000, "")
 }

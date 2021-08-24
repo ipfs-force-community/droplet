@@ -7,8 +7,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/state"
-	actorsmarket "github.com/filecoin-project/venus/pkg/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types"
+	actorsmarket "github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 )
 
 // dealStateMatcher caches the DealStates for the most recent

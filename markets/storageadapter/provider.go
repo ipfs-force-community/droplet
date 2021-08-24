@@ -28,9 +28,9 @@ import (
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/state"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dtypes"
@@ -58,7 +58,7 @@ type ProviderNodeAdapter struct {
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.Market) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piecestorage.IPieceStorage) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piecestorage.IPieceStorage) storagemarket.StorageProviderNode {
 	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piecestorage.IPieceStorage) storagemarket.StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 

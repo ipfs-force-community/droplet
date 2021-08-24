@@ -22,9 +22,9 @@ import (
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/specactors/builtin/miner"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 )
 
 type dealPublisherAPI interface {
@@ -94,7 +94,7 @@ type PublishMsgConfig struct {
 }
 
 func NewDealPublisher(
-	cfg *config.Market,
+	cfg *config.MarketConfig,
 ) func(lc fx.Lifecycle, full apiface.FullNode, as *sealer.AddressSelector) *DealPublisher {
 	return func(lc fx.Lifecycle, full apiface.FullNode, as *sealer.AddressSelector) *DealPublisher {
 		maxFee := abi.TokenAmount(cfg.MaxPublishDealsFee)

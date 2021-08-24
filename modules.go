@@ -50,7 +50,7 @@ var (
 	log = logging.Logger("modules")
 )
 
-func MinerAddress(cfg config.Market) (dtypes.MinerAddress, error) {
+func MinerAddress(cfg config.MarketConfig) (dtypes.MinerAddress, error) {
 	addr, err := address.NewFromString(cfg.MinerAddress)
 	if err != nil {
 		return dtypes.MinerAddress{}, err
@@ -59,7 +59,7 @@ func MinerAddress(cfg config.Market) (dtypes.MinerAddress, error) {
 }
 
 // RetrievalPricingFunc configures the pricing function to use for retrieval deals.
-func RetrievalPricingFunc(cfg *config.Market) func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
+func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
 	_ dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalPricingFunc {
 
 	return func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
@@ -74,7 +74,7 @@ func RetrievalPricingFunc(cfg *config.Market) func(_ dtypes.ConsiderOnlineRetrie
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, homeDir config.HomeDir, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS, cfg *config.Market) (dtypes.ProviderDataTransfer, error) {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, homeDir config.HomeDir, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS, cfg *config.MarketConfig) (dtypes.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
 
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/provider/transfers"))
@@ -342,118 +342,118 @@ func HandleRetrieval(host host.Host,
 	})
 }
 
-func NewConsiderOnlineStorageDealsConfigFunc(cfg *config.Market) (dtypes.ConsiderOnlineStorageDealsConfigFunc, error) {
+func NewConsiderOnlineStorageDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderOnlineStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderOnlineStorageDeals, nil
 	}, nil
 }
 
-func NewSetConsideringOnlineStorageDealsFunc(cfg *config.Market) (dtypes.SetConsiderOnlineStorageDealsConfigFunc, error) {
+func NewSetConsideringOnlineStorageDealsFunc(cfg *config.MarketConfig) (dtypes.SetConsiderOnlineStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderOnlineStorageDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewConsiderOnlineRetrievalDealsConfigFunc(cfg *config.Market) (dtypes.ConsiderOnlineRetrievalDealsConfigFunc, error) {
+func NewConsiderOnlineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderOnlineRetrievalDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderOnlineRetrievalDeals, nil
 	}, nil
 }
 
-func NewSetConsiderOnlineRetrievalDealsConfigFunc(cfg *config.Market) (dtypes.SetConsiderOnlineRetrievalDealsConfigFunc, error) {
+func NewSetConsiderOnlineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (dtypes.SetConsiderOnlineRetrievalDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderOnlineRetrievalDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewStorageDealPieceCidBlocklistConfigFunc(cfg *config.Market) (dtypes.StorageDealPieceCidBlocklistConfigFunc, error) {
+func NewStorageDealPieceCidBlocklistConfigFunc(cfg *config.MarketConfig) (dtypes.StorageDealPieceCidBlocklistConfigFunc, error) {
 	return func() (out []cid.Cid, err error) {
 		return cfg.PieceCidBlocklist, nil
 	}, nil
 }
 
-func NewSetStorageDealPieceCidBlocklistConfigFunc(cfg *config.Market) (dtypes.SetStorageDealPieceCidBlocklistConfigFunc, error) {
+func NewSetStorageDealPieceCidBlocklistConfigFunc(cfg *config.MarketConfig) (dtypes.SetStorageDealPieceCidBlocklistConfigFunc, error) {
 	return func(blocklist []cid.Cid) (err error) {
 		cfg.PieceCidBlocklist = blocklist
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewConsiderOfflineStorageDealsConfigFunc(cfg *config.Market) (dtypes.ConsiderOfflineStorageDealsConfigFunc, error) {
+func NewConsiderOfflineStorageDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderOfflineStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderOfflineStorageDeals, nil
 	}, nil
 }
 
-func NewSetConsideringOfflineStorageDealsFunc(cfg *config.Market) (dtypes.SetConsiderOfflineStorageDealsConfigFunc, error) {
+func NewSetConsideringOfflineStorageDealsFunc(cfg *config.MarketConfig) (dtypes.SetConsiderOfflineStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderOfflineStorageDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewConsiderOfflineRetrievalDealsConfigFunc(cfg *config.Market) (dtypes.ConsiderOfflineRetrievalDealsConfigFunc, error) {
+func NewConsiderOfflineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderOfflineRetrievalDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderOfflineRetrievalDeals, nil
 	}, nil
 }
 
-func NewSetConsiderOfflineRetrievalDealsConfigFunc(cfg *config.Market) (dtypes.SetConsiderOfflineRetrievalDealsConfigFunc, error) {
+func NewSetConsiderOfflineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (dtypes.SetConsiderOfflineRetrievalDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderOfflineRetrievalDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewConsiderVerifiedStorageDealsConfigFunc(cfg *config.Market) (dtypes.ConsiderVerifiedStorageDealsConfigFunc, error) {
+func NewConsiderVerifiedStorageDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderVerifiedStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderVerifiedStorageDeals, nil
 	}, nil
 }
 
-func NewSetConsideringVerifiedStorageDealsFunc(cfg *config.Market) (dtypes.SetConsiderVerifiedStorageDealsConfigFunc, error) {
+func NewSetConsideringVerifiedStorageDealsFunc(cfg *config.MarketConfig) (dtypes.SetConsiderVerifiedStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderVerifiedStorageDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewConsiderUnverifiedStorageDealsConfigFunc(cfg *config.Market) (dtypes.ConsiderUnverifiedStorageDealsConfigFunc, error) {
+func NewConsiderUnverifiedStorageDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderUnverifiedStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderUnverifiedStorageDeals, nil
 	}, nil
 }
 
-func NewSetConsideringUnverifiedStorageDealsFunc(cfg *config.Market) (dtypes.SetConsiderUnverifiedStorageDealsConfigFunc, error) {
+func NewSetConsideringUnverifiedStorageDealsFunc(cfg *config.MarketConfig) (dtypes.SetConsiderUnverifiedStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderUnverifiedStorageDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewSetExpectedSealDurationFunc(cfg *config.Market) (dtypes.SetExpectedSealDurationFunc, error) {
+func NewSetExpectedSealDurationFunc(cfg *config.MarketConfig) (dtypes.SetExpectedSealDurationFunc, error) {
 	return func(delay time.Duration) (err error) {
 		cfg.ExpectedSealDuration = config.Duration(delay)
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewGetExpectedSealDurationFunc(cfg *config.Market) (dtypes.GetExpectedSealDurationFunc, error) {
+func NewGetExpectedSealDurationFunc(cfg *config.MarketConfig) (dtypes.GetExpectedSealDurationFunc, error) {
 	return func() (out time.Duration, err error) {
 		return time.Duration(cfg.ExpectedSealDuration), nil
 	}, nil
 }
 
-func NewSetMaxDealStartDelayFunc(cfg *config.Market) (dtypes.SetMaxDealStartDelayFunc, error) {
+func NewSetMaxDealStartDelayFunc(cfg *config.MarketConfig) (dtypes.SetMaxDealStartDelayFunc, error) {
 	return func(delay time.Duration) (err error) {
 		cfg.MaxDealStartDelay = config.Duration(delay)
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewGetMaxDealStartDelayFunc(cfg *config.Market) (dtypes.GetMaxDealStartDelayFunc, error) {
+func NewGetMaxDealStartDelayFunc(cfg *config.MarketConfig) (dtypes.GetMaxDealStartDelayFunc, error) {
 	return func() (out time.Duration, err error) {
 		return time.Duration(cfg.MaxDealStartDelay), nil
 	}, nil
