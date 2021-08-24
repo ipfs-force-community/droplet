@@ -249,5 +249,5 @@ func run(cctx *cli.Context) error {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := MonitorShutdown(shutdownChan)
-	return serveRPC(ctx, &cfg.API, impl.MarketNodeImpl{}, finishCh, 1000, "")
+	return serveRPC(ctx, &cfg.API, &impl.MarketNodeImpl{}, finishCh, 1000, "")
 }

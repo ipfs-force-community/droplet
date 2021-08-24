@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/venus-market/types"
 	mTypes "github.com/filecoin-project/venus-messager/types"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -69,8 +70,8 @@ type MarketNode interface {
 	SectorSetExpectedSealDuration(context.Context, time.Duration) error //perm:write
 
 	//messager
-	MessagerWaitMessage(ctx context.Context, uuid cid.Cid) (*mTypes.Message, error)                      //perm:read
-	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (cid.Cid, error) //perm:write
-	MessagerGetMessage(ctx context.Context, uuid cid.Cid) (*mTypes.Message, error)                       //perm:read
+	MessagerWaitMessage(ctx context.Context, uuid uuid.UUID) (*mTypes.Message, error)                      //perm:read
+	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (uuid.UUID, error) //perm:write
+	MessagerGetMessage(ctx context.Context, uuid uuid.UUID) (*mTypes.Message, error)                       //perm:read
 
 }

@@ -20,6 +20,7 @@ require (
 	github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578
 	github.com/filecoin-project/venus-messager v1.1.1 // indirect
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
+	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210817020216-e774586a8875

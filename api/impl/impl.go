@@ -8,12 +8,18 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/constants"
+	"github.com/filecoin-project/venus-market/dtypes"
+	"github.com/filecoin-project/venus-market/markets/storageadapter"
 	"github.com/filecoin-project/venus-market/types"
 	mTypes "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -23,9 +29,34 @@ import (
 
 type MarketNodeImpl struct {
 	fx.In
-	Cfg             *config.MarketConfig
-	FullNode        apiface.FullNode
-	StorageProvider storagemarket.StorageProvider
+	Cfg               *config.MarketConfig
+	FullNode          apiface.FullNode
+	Host              host.Host
+	StorageProvider   storagemarket.StorageProvider
+	RetrievalProvider retrievalmarket.RetrievalProvider
+	DataTransfer      dtypes.ProviderDataTransfer
+	DealPublisher     *storageadapter.DealPublisher
+	PieceStore        dtypes.ProviderPieceStore
+	Messager          clients.IMessager
+
+	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc
+	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc
+	ConsiderOnlineRetrievalDealsConfigFunc      dtypes.ConsiderOnlineRetrievalDealsConfigFunc
+	SetConsiderOnlineRetrievalDealsConfigFunc   dtypes.SetConsiderOnlineRetrievalDealsConfigFunc
+	StorageDealPieceCidBlocklistConfigFunc      dtypes.StorageDealPieceCidBlocklistConfigFunc
+	SetStorageDealPieceCidBlocklistConfigFunc   dtypes.SetStorageDealPieceCidBlocklistConfigFunc
+	ConsiderOfflineStorageDealsConfigFunc       dtypes.ConsiderOfflineStorageDealsConfigFunc
+	SetConsiderOfflineStorageDealsConfigFunc    dtypes.SetConsiderOfflineStorageDealsConfigFunc
+	ConsiderOfflineRetrievalDealsConfigFunc     dtypes.ConsiderOfflineRetrievalDealsConfigFunc
+	SetConsiderOfflineRetrievalDealsConfigFunc  dtypes.SetConsiderOfflineRetrievalDealsConfigFunc
+	ConsiderVerifiedStorageDealsConfigFunc      dtypes.ConsiderVerifiedStorageDealsConfigFunc
+	SetConsiderVerifiedStorageDealsConfigFunc   dtypes.SetConsiderVerifiedStorageDealsConfigFunc
+	ConsiderUnverifiedStorageDealsConfigFunc    dtypes.ConsiderUnverifiedStorageDealsConfigFunc
+	SetConsiderUnverifiedStorageDealsConfigFunc dtypes.SetConsiderUnverifiedStorageDealsConfigFunc
+	/*	SetSealingConfigFunc                        dtypes.SetSealingConfigFunc
+		GetSealingConfigFunc                        dtypes.GetSealingConfigFunc  */
+	GetExpectedSealDurationFunc dtypes.GetExpectedSealDurationFunc
+	SetExpectedSealDurationFunc dtypes.SetExpectedSealDurationFunc
 }
 
 func (m MarketNodeImpl) ActorAddress(ctx context.Context) (address.Address, error) {
@@ -59,155 +90,239 @@ func (m MarketNodeImpl) MarketListDeals(ctx context.Context) ([]types.MarketDeal
 }
 
 func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {
-	panic("implement me")
+	var out []retrievalmarket.ProviderDealState
+	deals := m.RetrievalProvider.ListDeals()
+
+	for _, deal := range deals {
+		if deal.ChannelID != nil {
+			if deal.ChannelID.Initiator == "" || deal.ChannelID.Responder == "" {
+				deal.ChannelID = nil // don't try to push unparsable peer IDs over jsonrpc
+			}
+		}
+		out = append(out, deal)
+	}
+
+	return out, nil
 }
 
 func (m MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error) {
-	panic("implement me")
+	results := make(chan storagemarket.MinerDeal)
+	unsub := m.StorageProvider.SubscribeToEvents(func(evt storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
+		select {
+		case results <- deal:
+		case <-ctx.Done():
+		}
+	})
+	go func() {
+		<-ctx.Done()
+		unsub()
+		close(results)
+	}()
+	return results, nil
 }
 
 func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
-	panic("implement me")
+	return m.StorageProvider.ListLocalDeals()
 }
 
 func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
-	panic("implement me")
+	options := []storagemarket.StorageAskOption{
+		storagemarket.MinPieceSize(minPieceSize),
+		storagemarket.MaxPieceSize(maxPieceSize),
+	}
+
+	return m.StorageProvider.SetAsk(price, verifiedPrice, duration, options...)
 }
 
 func (m MarketNodeImpl) MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error) {
-	panic("implement me")
+	return m.StorageProvider.GetAsk(), nil
 }
 
 func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error {
-	panic("implement me")
+	m.RetrievalProvider.SetAsk(rask)
+	return nil
 }
 
 func (m MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error) {
-	panic("implement me")
+	return m.RetrievalProvider.GetAsk(), nil
 }
 
 func (m MarketNodeImpl) MarketListDataTransfers(ctx context.Context) ([]types.DataTransferChannel, error) {
-	panic("implement me")
+	inProgressChannels, err := m.DataTransfer.InProgressChannels(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	apiChannels := make([]types.DataTransferChannel, 0, len(inProgressChannels))
+	for _, channelState := range inProgressChannels {
+		apiChannels = append(apiChannels, types.NewDataTransferChannel(m.Host.ID(), channelState))
+	}
+
+	return apiChannels, nil
 }
 
 func (m MarketNodeImpl) MarketDataTransferUpdates(ctx context.Context) (<-chan types.DataTransferChannel, error) {
-	panic("implement me")
+	channels := make(chan types.DataTransferChannel)
+
+	unsub := m.DataTransfer.SubscribeToEvents(func(evt datatransfer.Event, channelState datatransfer.ChannelState) {
+		channel := types.NewDataTransferChannel(m.Host.ID(), channelState)
+		select {
+		case <-ctx.Done():
+		case channels <- channel:
+		}
+	})
+
+	go func() {
+		defer unsub()
+		<-ctx.Done()
+	}()
+
+	return channels, nil
 }
 
 func (m MarketNodeImpl) MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
-	panic("implement me")
+	selfPeer := m.Host.ID()
+	if isInitiator {
+		return m.DataTransfer.RestartDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: selfPeer, Responder: otherPeer, ID: transferID})
+	}
+	return m.DataTransfer.RestartDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: otherPeer, Responder: selfPeer, ID: transferID})
 }
 
 func (m MarketNodeImpl) MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
-	panic("implement me")
+	selfPeer := m.Host.ID()
+	if isInitiator {
+		return m.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: selfPeer, Responder: otherPeer, ID: transferID})
+	}
+	return m.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: otherPeer, Responder: selfPeer, ID: transferID})
 }
 
 func (m MarketNodeImpl) MarketPendingDeals(ctx context.Context) (types.PendingDealInfo, error) {
-	panic("implement me")
+	return m.DealPublisher.PendingDeals(), nil
 }
 
 func (m MarketNodeImpl) MarketPublishPendingDeals(ctx context.Context) error {
-	panic("implement me")
+	m.DealPublisher.ForcePublishPendingDeals()
+	return nil
 }
 
 func (m MarketNodeImpl) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
-	panic("implement me")
+	return m.PieceStore.ListPieceInfoKeys()
 }
 
 func (m MarketNodeImpl) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
-	panic("implement me")
+	return m.PieceStore.ListCidInfoKeys()
 }
 
 func (m MarketNodeImpl) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
-	panic("implement me")
+	pi, err := m.PieceStore.GetPieceInfo(pieceCid)
+	if err != nil {
+		return nil, err
+	}
+	return &pi, nil
 }
 
 func (m MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
-	panic("implement me")
+	ci, err := m.PieceStore.GetCIDInfo(payloadCid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ci, nil
 }
 
-func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error {
-	panic("implement me")
+func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {
+	fi, err := os.Open(fname)
+	if err != nil {
+		return xerrors.Errorf("failed to open given file: %w", err)
+	}
+	defer fi.Close() //nolint:errcheck
+
+	return m.StorageProvider.ImportDataForDeal(ctx, dealPropCid, fi)
 }
 
 func (m MarketNodeImpl) DealsList(ctx context.Context) ([]types.MarketDeal, error) {
-	panic("implement me")
+	return m.listDeals(ctx)
 }
 
 func (m MarketNodeImpl) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
-	panic("implement me")
+	return m.ConsiderOnlineStorageDealsConfigFunc()
 }
 
 func (m MarketNodeImpl) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
-	panic("implement me")
+	return m.DealsSetConsiderOnlineStorageDeals(ctx, b)
 }
 
 func (m MarketNodeImpl) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
-	panic("implement me")
+	return m.DealsConsiderOnlineRetrievalDeals(ctx)
 }
 
 func (m MarketNodeImpl) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
-	panic("implement me")
+	return m.DealsSetConsiderOnlineRetrievalDeals(ctx, b)
 }
 
 func (m MarketNodeImpl) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
-	panic("implement me")
+	return m.DealsPieceCidBlocklist(ctx)
 }
 
 func (m MarketNodeImpl) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
-	panic("implement me")
+	return m.DealsSetPieceCidBlocklist(ctx, cids)
 }
 
 func (m MarketNodeImpl) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {
-	panic("implement me")
+	return m.DealsConsiderOfflineStorageDeals(ctx)
 }
 
 func (m MarketNodeImpl) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {
-	panic("implement me")
+	return m.DealsSetConsiderOfflineStorageDeals(ctx, b)
 }
 
 func (m MarketNodeImpl) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {
-	panic("implement me")
+	return m.DealsConsiderOfflineRetrievalDeals(ctx)
 }
 
 func (m MarketNodeImpl) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
-	panic("implement me")
+	return m.DealsSetConsiderOfflineRetrievalDeals(ctx, b)
 }
 
 func (m MarketNodeImpl) DealsConsiderVerifiedStorageDeals(ctx context.Context) (bool, error) {
-	panic("implement me")
+	return m.DealsConsiderVerifiedStorageDeals(ctx)
 }
 
 func (m MarketNodeImpl) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, b bool) error {
-	panic("implement me")
+	return m.DealsSetConsiderVerifiedStorageDeals(ctx, b)
 }
 
 func (m MarketNodeImpl) DealsConsiderUnverifiedStorageDeals(ctx context.Context) (bool, error) {
-	panic("implement me")
+	return m.DealsConsiderUnverifiedStorageDeals(ctx)
 }
 
 func (m MarketNodeImpl) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, b bool) error {
-	panic("implement me")
+	return m.DealsSetConsiderUnverifiedStorageDeals(ctx, b)
 }
 
 func (m MarketNodeImpl) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
-	panic("implement me")
+	return m.SectorGetSealDelay(ctx)
 }
 
 func (m MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, duration time.Duration) error {
-	panic("implement me")
+	return m.SectorSetExpectedSealDuration(ctx, duration)
 }
 
-func (m MarketNodeImpl) MessagerWaitMessage(ctx context.Context, uuid cid.Cid) (*mTypes.Message, error) {
-	panic("implement me")
+func (m MarketNodeImpl) MessagerWaitMessage(ctx context.Context, uid uuid.UUID) (*mTypes.Message, error) {
+	return m.Messager.WaitMessage(ctx, uid.String(), constants.MessageConfidence)
 }
 
-func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (cid.Cid, error) {
-	panic("implement me")
+func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (uuid.UUID, error) {
+	uid := uuid.New()
+	_, err := m.Messager.PushMessageWithId(ctx, uid.String(), msg, meta)
+	if err != nil {
+		return uuid.UUID{}, nil
+	}
+	return uid, nil
 }
 
-func (m MarketNodeImpl) MessagerGetMessage(ctx context.Context, uuid cid.Cid) (*mTypes.Message, error) {
-	panic("implement me")
+func (m MarketNodeImpl) MessagerGetMessage(ctx context.Context, uid uuid.UUID) (*mTypes.Message, error) {
+	return m.Messager.GetMessageByUid(ctx, uid.String())
 }
 
 func (m MarketNodeImpl) listDeals(ctx context.Context) ([]types.MarketDeal, error) {
