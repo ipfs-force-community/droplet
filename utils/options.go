@@ -1,12 +1,17 @@
-package main
+package utils
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/node/repo"
 	"golang.org/x/xerrors"
 	"reflect"
 
 	"go.uber.org/fx"
 )
+
+type Special struct{ ID int }
+
+type Invoke string
 
 // Option is a functional option which can be used with the New function to
 // change how the node is constructed
@@ -51,37 +56,37 @@ func If(b bool, opts ...Option) Option {
 // Override option changes constructor for a given type
 func Override(typ, constructor interface{}) Option {
 	return func(s *Settings) error {
-		if i, ok := typ.(invoke); ok {
-			s.invokes[i] = fx.Invoke(constructor)
+		if key, ok := typ.(Invoke); ok {
+			s.Invokes[key] = fx.Invoke(constructor)
 			return nil
 		}
 
-		if c, ok := typ.(special); ok {
-			s.modules[c] = fx.Provide(constructor)
+		if c, ok := typ.(Special); ok {
+			s.Modules[c] = fx.Provide(constructor)
 			return nil
 		}
 		ctor := as(constructor, typ)
 		rt := reflect.TypeOf(typ).Elem()
 
-		s.modules[rt] = fx.Provide(ctor)
+		s.Modules[rt] = fx.Provide(ctor)
 		return nil
 	}
 }
 
 func Unset(typ interface{}) Option {
 	return func(s *Settings) error {
-		if i, ok := typ.(invoke); ok {
-			s.invokes[i] = nil
+		if i, ok := typ.(Invoke); ok {
+			s.Invokes[i] = nil
 			return nil
 		}
 
-		if c, ok := typ.(special); ok {
-			delete(s.modules, c)
+		if c, ok := typ.(Special); ok {
+			delete(s.Modules, c)
 			return nil
 		}
 		rt := reflect.TypeOf(typ).Elem()
 
-		delete(s.modules, rt)
+		delete(s.Modules, rt)
 		return nil
 	}
 }
@@ -162,8 +167,8 @@ type StopFunc func(context.Context) error
 // New builds and starts new Filecoin node
 func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	settings := Settings{
-		modules: map[interface{}]fx.Option{},
-		invokes: make([]fx.Option, _nInvokes),
+		Modules: map[interface{}]fx.Option{},
+		Invokes: map[Invoke]fx.Option{},
 	}
 
 	// apply module options in the right order
@@ -172,21 +177,22 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	}
 
 	// gather constructors for fx.Options
-	ctors := make([]fx.Option, 0, len(settings.modules))
-	for _, opt := range settings.modules {
+	ctors := make([]fx.Option, 0, len(settings.Modules))
+	for _, opt := range settings.Modules {
 		ctors = append(ctors, opt)
 	}
 
 	// fill holes in invokes for use in fx.Options
-	for i, opt := range settings.invokes {
-		if opt == nil {
-			settings.invokes[i] = fx.Options()
+	invokes := []fx.Option{}
+	for _, opt := range settings.Invokes {
+		if opt != nil {
+			invokes = append(invokes, opt)
 		}
 	}
 
 	app := fx.New(
 		fx.Options(ctors...),
-		fx.Options(settings.invokes...),
+		fx.Options(invokes...),
 
 		fx.NopLogger,
 	)
@@ -200,4 +206,22 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	}
 
 	return app.Stop, nil
+}
+
+type Settings struct {
+	// modules is a map of constructors for DI
+	//
+	// In most cases the index will be a reflect. Type of element returned by
+	// the constructor, but for some 'constructors' it's hard to specify what's
+	// the return type should be (or the constructor returns fx group)
+	Modules map[interface{}]fx.Option
+
+	// invokes are separate from modules as they can't be referenced by return
+	// type, and must be applied in correct order
+	Invokes map[Invoke]fx.Option
+
+	NodeType repo.RepoType
+
+	Base   bool // Base option applied
+	Config bool // Config option applied
 }

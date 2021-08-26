@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/venus-market/config"
 	"os/exec"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/venus-market/dtypes"
 	"golang.org/x/xerrors"
 )
 
-func ExternalRetrievalPricingFunc(cmd string) dtypes.RetrievalPricingFunc {
+func ExternalRetrievalPricingFunc(cmd string) config.RetrievalPricingFunc {
 	return func(ctx context.Context, pricingInput retrievalmarket.PricingInput) (retrievalmarket.Ask, error) {
 		return runPricingFunc(ctx, cmd, pricingInput)
 	}

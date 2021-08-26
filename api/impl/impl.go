@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
-	"github.com/filecoin-project/venus-market/dtypes"
 	"github.com/filecoin-project/venus-market/markets/storageadapter"
+	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/types"
 	mTypes "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -34,29 +34,29 @@ type MarketNodeImpl struct {
 	Host              host.Host
 	StorageProvider   storagemarket.StorageProvider
 	RetrievalProvider retrievalmarket.RetrievalProvider
-	DataTransfer      dtypes.ProviderDataTransfer
+	DataTransfer      network.ProviderDataTransfer
 	DealPublisher     *storageadapter.DealPublisher
-	PieceStore        dtypes.ProviderPieceStore
+	PieceStore        piecestore.PieceStore
 	Messager          clients.IMessager
 
-	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc
-	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc
-	ConsiderOnlineRetrievalDealsConfigFunc      dtypes.ConsiderOnlineRetrievalDealsConfigFunc
-	SetConsiderOnlineRetrievalDealsConfigFunc   dtypes.SetConsiderOnlineRetrievalDealsConfigFunc
-	StorageDealPieceCidBlocklistConfigFunc      dtypes.StorageDealPieceCidBlocklistConfigFunc
-	SetStorageDealPieceCidBlocklistConfigFunc   dtypes.SetStorageDealPieceCidBlocklistConfigFunc
-	ConsiderOfflineStorageDealsConfigFunc       dtypes.ConsiderOfflineStorageDealsConfigFunc
-	SetConsiderOfflineStorageDealsConfigFunc    dtypes.SetConsiderOfflineStorageDealsConfigFunc
-	ConsiderOfflineRetrievalDealsConfigFunc     dtypes.ConsiderOfflineRetrievalDealsConfigFunc
-	SetConsiderOfflineRetrievalDealsConfigFunc  dtypes.SetConsiderOfflineRetrievalDealsConfigFunc
-	ConsiderVerifiedStorageDealsConfigFunc      dtypes.ConsiderVerifiedStorageDealsConfigFunc
-	SetConsiderVerifiedStorageDealsConfigFunc   dtypes.SetConsiderVerifiedStorageDealsConfigFunc
-	ConsiderUnverifiedStorageDealsConfigFunc    dtypes.ConsiderUnverifiedStorageDealsConfigFunc
-	SetConsiderUnverifiedStorageDealsConfigFunc dtypes.SetConsiderUnverifiedStorageDealsConfigFunc
+	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
+	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc
+	ConsiderOnlineRetrievalDealsConfigFunc      config.ConsiderOnlineRetrievalDealsConfigFunc
+	SetConsiderOnlineRetrievalDealsConfigFunc   config.SetConsiderOnlineRetrievalDealsConfigFunc
+	StorageDealPieceCidBlocklistConfigFunc      config.StorageDealPieceCidBlocklistConfigFunc
+	SetStorageDealPieceCidBlocklistConfigFunc   config.SetStorageDealPieceCidBlocklistConfigFunc
+	ConsiderOfflineStorageDealsConfigFunc       config.ConsiderOfflineStorageDealsConfigFunc
+	SetConsiderOfflineStorageDealsConfigFunc    config.SetConsiderOfflineStorageDealsConfigFunc
+	ConsiderOfflineRetrievalDealsConfigFunc     config.ConsiderOfflineRetrievalDealsConfigFunc
+	SetConsiderOfflineRetrievalDealsConfigFunc  config.SetConsiderOfflineRetrievalDealsConfigFunc
+	ConsiderVerifiedStorageDealsConfigFunc      config.ConsiderVerifiedStorageDealsConfigFunc
+	SetConsiderVerifiedStorageDealsConfigFunc   config.SetConsiderVerifiedStorageDealsConfigFunc
+	ConsiderUnverifiedStorageDealsConfigFunc    config.ConsiderUnverifiedStorageDealsConfigFunc
+	SetConsiderUnverifiedStorageDealsConfigFunc config.SetConsiderUnverifiedStorageDealsConfigFunc
 	/*	SetSealingConfigFunc                        dtypes.SetSealingConfigFunc
 		GetSealingConfigFunc                        dtypes.GetSealingConfigFunc  */
-	GetExpectedSealDurationFunc dtypes.GetExpectedSealDurationFunc
-	SetExpectedSealDurationFunc dtypes.SetExpectedSealDurationFunc
+	GetExpectedSealDurationFunc config.GetExpectedSealDurationFunc
+	SetExpectedSealDurationFunc config.SetExpectedSealDurationFunc
 }
 
 func (m MarketNodeImpl) ActorAddress(ctx context.Context) (address.Address, error) {

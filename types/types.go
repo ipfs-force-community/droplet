@@ -3,12 +3,21 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
+
+type MinerAddress address.Address
+type MinerID abi.ActorID
+
+// ShutdownChan is a channel to which you send a value if you intend to shut
+// down the daemon (or miner), including the node and RPC server.
+type ShutdownChan chan struct{}
 
 type MarketBalance struct {
 	Escrow big.Int

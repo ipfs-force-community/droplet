@@ -1,19 +1,12 @@
-package dtypes
+package config
 
 import (
 	"context"
-	"time"
-
-	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+	"time"
 )
-
-type MinerAddress address.Address
-type MinerID abi.ActorID
 
 // ConsiderOnlineStorageDealsConfigFunc is a function which reads from miner
 // config to determine if the user has disabled piecestorage deals (or not).

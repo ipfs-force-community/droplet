@@ -1,11 +1,11 @@
-package main
+package utils
 
 import (
 	"context"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/dtypes"
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/types"
 	metricsi "github.com/ipfs/go-metrics-interface"
 	"go.uber.org/fx"
 )
@@ -21,7 +21,7 @@ func defaults() []Option {
 			return metricsi.CtxScope(context.Background(), "venus-market")
 		}),
 
-		Override(new(dtypes.ShutdownChan), make(chan struct{})),
+		Override(new(types.ShutdownChan), make(chan struct{})),
 	}
 }
 

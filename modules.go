@@ -8,6 +8,7 @@ import (
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
@@ -18,18 +19,17 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
-	"github.com/filecoin-project/venus-market/dtypes"
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/markets"
 	marketevents "github.com/filecoin-project/venus-market/markets/loggers"
 	"github.com/filecoin-project/venus-market/markets/pricing"
 	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piece"
+	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs/go-bitswap"
-	"github.com/ipfs/go-bitswap/network"
-	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -37,9 +37,7 @@ import (
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/routing"
 	"go.uber.org/fx"
 	"os"
 	"path/filepath"
@@ -50,20 +48,20 @@ var (
 	log = logging.Logger("modules")
 )
 
-func MinerAddress(cfg config.MarketConfig) (dtypes.MinerAddress, error) {
+func MinerAddress(cfg config.MarketConfig) (types2.MinerAddress, error) {
 	addr, err := address.NewFromString(cfg.MinerAddress)
 	if err != nil {
-		return dtypes.MinerAddress{}, err
+		return types2.MinerAddress{}, err
 	}
-	return dtypes.MinerAddress(addr), nil
+	return types2.MinerAddress(addr), nil
 }
 
 // RetrievalPricingFunc configures the pricing function to use for retrieval deals.
-func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
-	_ dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalPricingFunc {
+func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ config.ConsiderOnlineRetrievalDealsConfigFunc,
+	_ config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalPricingFunc {
 
-	return func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
-		_ dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalPricingFunc {
+	return func(_ config.ConsiderOnlineRetrievalDealsConfigFunc,
+		_ config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalPricingFunc {
 		if cfg.RetrievalPricing.Strategy == config.RetrievalPricingExternalMode {
 			return pricing.ExternalRetrievalPricingFunc(cfg.RetrievalPricing.External.Path)
 		}
@@ -74,7 +72,7 @@ func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ dtypes.ConsiderOnline
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, homeDir config.HomeDir, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS, cfg *config.MarketConfig) (dtypes.ProviderDataTransfer, error) {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, homeDir config.HomeDir, gs network.StagingGraphsync, ds models.MetadataDS, cfg *config.MarketConfig) (network.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
 
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/provider/transfers"))
@@ -104,8 +102,8 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, homeDir con
 
 func NewStorageAsk(ctx metrics.MetricsCtx,
 	fapi apiface.FullNode,
-	ds dtypes.MetadataDS,
-	minerAddress dtypes.MinerAddress,
+	ds models.MetadataDS,
+	minerAddress types2.MinerAddress,
 	spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
 
 	mi, err := fapi.StateMinerInfo(ctx, address.Address(minerAddress), types.EmptyTSK)
@@ -114,26 +112,26 @@ func NewStorageAsk(ctx metrics.MetricsCtx,
 	}
 
 	providerDs := namespace.Wrap(ds, datastore.NewKey("/deals/provider"))
-	return storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/piecestorage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
+	return storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
 		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 }
 
-func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
-	offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
-	verifiedOk dtypes.ConsiderVerifiedStorageDealsConfigFunc,
-	unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
-	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
-	expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
-	startDelay dtypes.GetMaxDealStartDelayFunc,
-	spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
-	return func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
-		offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
-		verifiedOk dtypes.ConsiderVerifiedStorageDealsConfigFunc,
-		unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
-		blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
-		expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
-		startDelay dtypes.GetMaxDealStartDelayFunc,
-		spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
+func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.ConsiderOnlineStorageDealsConfigFunc,
+	offlineOk config.ConsiderOfflineStorageDealsConfigFunc,
+	verifiedOk config.ConsiderVerifiedStorageDealsConfigFunc,
+	unverifiedOk config.ConsiderUnverifiedStorageDealsConfigFunc,
+	blocklistFunc config.StorageDealPieceCidBlocklistConfigFunc,
+	expectedSealTimeFunc config.GetExpectedSealDurationFunc,
+	startDelay config.GetMaxDealStartDelayFunc,
+	spn storagemarket.StorageProviderNode) config.StorageDealFilter {
+	return func(onlineOk config.ConsiderOnlineStorageDealsConfigFunc,
+		offlineOk config.ConsiderOfflineStorageDealsConfigFunc,
+		verifiedOk config.ConsiderVerifiedStorageDealsConfigFunc,
+		unverifiedOk config.ConsiderUnverifiedStorageDealsConfigFunc,
+		blocklistFunc config.StorageDealPieceCidBlocklistConfigFunc,
+		expectedSealTimeFunc config.GetExpectedSealDurationFunc,
+		startDelay config.GetMaxDealStartDelayFunc,
+		spn storagemarket.StorageProviderNode) config.StorageDealFilter {
 
 		return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
 			b, err := onlineOk()
@@ -231,15 +229,15 @@ func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
 
 func StorageProvider(
 	homeDir config.HomeDir,
-	minerAddress dtypes.MinerAddress,
+	minerAddress types2.MinerAddress,
 	storedAsk *storedask.StoredAsk,
 	h host.Host,
-	ds dtypes.MetadataDS,
-	mds dtypes.StagingMultiDstore,
-	pieceStore dtypes.ProviderPieceStore,
-	dataTransfer dtypes.ProviderDataTransfer,
+	ds models.MetadataDS,
+	mds models.StagingMultiDstore,
+	pieceStore piecestore.PieceStore,
+	dataTransfer network.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
-	df dtypes.StorageDealFilter,
+	df config.StorageDealFilter,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(string(homeDir)))
@@ -272,25 +270,25 @@ func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
 func RetrievalProvider(
-	maddr dtypes.MinerAddress,
+	maddr types2.MinerAddress,
 	adapter retrievalmarket.RetrievalProviderNode,
 	netwk rmnet.RetrievalMarketNetwork,
-	ds dtypes.MetadataDS,
-	pieceStore dtypes.ProviderPieceStore,
-	mds dtypes.StagingMultiDstore,
-	dt dtypes.ProviderDataTransfer,
-	pricingFnc dtypes.RetrievalPricingFunc,
-	userFilter dtypes.RetrievalDealFilter,
+	ds models.MetadataDS,
+	pieceStore piecestore.PieceStore,
+	mds models.StagingMultiDstore,
+	dt network.ProviderDataTransfer,
+	pricingFnc config.RetrievalPricingFunc,
+	userFilter config.RetrievalDealFilter,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
 	return retrievalimpl.NewProvider(address.Address(maddr), adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
 		retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
 }
 
-func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
-	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalDealFilter {
-	return func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
-		offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalDealFilter {
+func RetrievalDealFilter(userFilter config.RetrievalDealFilter) func(onlineOk config.ConsiderOnlineRetrievalDealsConfigFunc,
+	offlineOk config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalDealFilter {
+	return func(onlineOk config.ConsiderOnlineRetrievalDealsConfigFunc,
+		offlineOk config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalDealFilter {
 		return func(ctx context.Context, state retrievalmarket.ProviderDealState) (bool, string, error) {
 			b, err := onlineOk()
 			if err != nil {
@@ -342,148 +340,127 @@ func HandleRetrieval(host host.Host,
 	})
 }
 
-func NewConsiderOnlineStorageDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderOnlineStorageDealsConfigFunc, error) {
+func NewConsiderOnlineStorageDealsConfigFunc(cfg *config.MarketConfig) (config.ConsiderOnlineStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderOnlineStorageDeals, nil
 	}, nil
 }
 
-func NewSetConsideringOnlineStorageDealsFunc(cfg *config.MarketConfig) (dtypes.SetConsiderOnlineStorageDealsConfigFunc, error) {
+func NewSetConsideringOnlineStorageDealsFunc(cfg *config.MarketConfig) (config.SetConsiderOnlineStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderOnlineStorageDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewConsiderOnlineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderOnlineRetrievalDealsConfigFunc, error) {
+func NewConsiderOnlineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (config.ConsiderOnlineRetrievalDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderOnlineRetrievalDeals, nil
 	}, nil
 }
 
-func NewSetConsiderOnlineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (dtypes.SetConsiderOnlineRetrievalDealsConfigFunc, error) {
+func NewSetConsiderOnlineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (config.SetConsiderOnlineRetrievalDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderOnlineRetrievalDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewStorageDealPieceCidBlocklistConfigFunc(cfg *config.MarketConfig) (dtypes.StorageDealPieceCidBlocklistConfigFunc, error) {
+func NewStorageDealPieceCidBlocklistConfigFunc(cfg *config.MarketConfig) (config.StorageDealPieceCidBlocklistConfigFunc, error) {
 	return func() (out []cid.Cid, err error) {
 		return cfg.PieceCidBlocklist, nil
 	}, nil
 }
 
-func NewSetStorageDealPieceCidBlocklistConfigFunc(cfg *config.MarketConfig) (dtypes.SetStorageDealPieceCidBlocklistConfigFunc, error) {
+func NewSetStorageDealPieceCidBlocklistConfigFunc(cfg *config.MarketConfig) (config.SetStorageDealPieceCidBlocklistConfigFunc, error) {
 	return func(blocklist []cid.Cid) (err error) {
 		cfg.PieceCidBlocklist = blocklist
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewConsiderOfflineStorageDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderOfflineStorageDealsConfigFunc, error) {
+func NewConsiderOfflineStorageDealsConfigFunc(cfg *config.MarketConfig) (config.ConsiderOfflineStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderOfflineStorageDeals, nil
 	}, nil
 }
 
-func NewSetConsideringOfflineStorageDealsFunc(cfg *config.MarketConfig) (dtypes.SetConsiderOfflineStorageDealsConfigFunc, error) {
+func NewSetConsideringOfflineStorageDealsFunc(cfg *config.MarketConfig) (config.SetConsiderOfflineStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderOfflineStorageDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewConsiderOfflineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderOfflineRetrievalDealsConfigFunc, error) {
+func NewConsiderOfflineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (config.ConsiderOfflineRetrievalDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderOfflineRetrievalDeals, nil
 	}, nil
 }
 
-func NewSetConsiderOfflineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (dtypes.SetConsiderOfflineRetrievalDealsConfigFunc, error) {
+func NewSetConsiderOfflineRetrievalDealsConfigFunc(cfg *config.MarketConfig) (config.SetConsiderOfflineRetrievalDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderOfflineRetrievalDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewConsiderVerifiedStorageDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderVerifiedStorageDealsConfigFunc, error) {
+func NewConsiderVerifiedStorageDealsConfigFunc(cfg *config.MarketConfig) (config.ConsiderVerifiedStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderVerifiedStorageDeals, nil
 	}, nil
 }
 
-func NewSetConsideringVerifiedStorageDealsFunc(cfg *config.MarketConfig) (dtypes.SetConsiderVerifiedStorageDealsConfigFunc, error) {
+func NewSetConsideringVerifiedStorageDealsFunc(cfg *config.MarketConfig) (config.SetConsiderVerifiedStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderVerifiedStorageDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewConsiderUnverifiedStorageDealsConfigFunc(cfg *config.MarketConfig) (dtypes.ConsiderUnverifiedStorageDealsConfigFunc, error) {
+func NewConsiderUnverifiedStorageDealsConfigFunc(cfg *config.MarketConfig) (config.ConsiderUnverifiedStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
 		return cfg.ConsiderUnverifiedStorageDeals, nil
 	}, nil
 }
 
-func NewSetConsideringUnverifiedStorageDealsFunc(cfg *config.MarketConfig) (dtypes.SetConsiderUnverifiedStorageDealsConfigFunc, error) {
+func NewSetConsideringUnverifiedStorageDealsFunc(cfg *config.MarketConfig) (config.SetConsiderUnverifiedStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
 		cfg.ConsiderUnverifiedStorageDeals = b
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewSetExpectedSealDurationFunc(cfg *config.MarketConfig) (dtypes.SetExpectedSealDurationFunc, error) {
+func NewSetExpectedSealDurationFunc(cfg *config.MarketConfig) (config.SetExpectedSealDurationFunc, error) {
 	return func(delay time.Duration) (err error) {
 		cfg.ExpectedSealDuration = config.Duration(delay)
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewGetExpectedSealDurationFunc(cfg *config.MarketConfig) (dtypes.GetExpectedSealDurationFunc, error) {
+func NewGetExpectedSealDurationFunc(cfg *config.MarketConfig) (config.GetExpectedSealDurationFunc, error) {
 	return func() (out time.Duration, err error) {
 		return time.Duration(cfg.ExpectedSealDuration), nil
 	}, nil
 }
 
-func NewSetMaxDealStartDelayFunc(cfg *config.MarketConfig) (dtypes.SetMaxDealStartDelayFunc, error) {
+func NewSetMaxDealStartDelayFunc(cfg *config.MarketConfig) (config.SetMaxDealStartDelayFunc, error) {
 	return func(delay time.Duration) (err error) {
 		cfg.MaxDealStartDelay = config.Duration(delay)
 		return config.SaveConfig(cfg)
 	}, nil
 }
 
-func NewGetMaxDealStartDelayFunc(cfg *config.MarketConfig) (dtypes.GetMaxDealStartDelayFunc, error) {
+func NewGetMaxDealStartDelayFunc(cfg *config.MarketConfig) (config.GetMaxDealStartDelayFunc, error) {
 	return func() (out time.Duration, err error) {
 		return time.Duration(cfg.MaxDealStartDelay), nil
 	}, nil
 }
 
-// StagingDAG is a DAGService for the StagingBlockstore
-// not imple bitswap network for now
-func StagingDAG(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, rt routing.Routing, h host.Host) (dtypes.StagingDAG, error) {
-
-	bitswapNetwork := network.NewFromIpfsHost(h, rt)
-	bitswapOptions := []bitswap.Option{bitswap.ProvideEnabled(false)}
-	exch := bitswap.New(mctx, bitswapNetwork, ibs, bitswapOptions...)
-
-	bsvc := blockservice.New(ibs, exch)
-	dag := merkledag.NewDAGService(bsvc)
-
-	lc.Append(fx.Hook{
-		OnStop: func(_ context.Context) error {
-			// blockservice closes the exchange
-			return bsvc.Close()
-		},
-	})
-
-	return dag, nil
-}
-
 // StagingGraphsync creates a graphsync instance which reads and writes blocks
 // to the StagingBlockstore
-func StagingGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
+func StagingGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs models.StagingBlockstore, h host.Host) network.StagingGraphsync {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs models.StagingBlockstore, h host.Host) network.StagingGraphsync {
 		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
 		loader := storeutil.LoaderForBlockstore(ibs)
 		storer := storeutil.StorerForBlockstore(ibs)
@@ -495,7 +472,7 @@ func StagingGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx, lc
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
 // shared by the piecestorage and retrieval providers
-func NewProviderPieceStore(lc fx.Lifecycle, ds dtypes.MetadataDS) (dtypes.ProviderPieceStore, error) {
+func NewProviderPieceStore(lc fx.Lifecycle, ds models.MetadataDS) (piecestore.PieceStore, error) {
 	ps, err := piece.NewDsPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
 	if err != nil {
 		return nil, err

@@ -2,7 +2,6 @@ package retrievaladapter
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/dtypes"
 	"github.com/filecoin-project/venus-market/sealer"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/hashicorp/go-multierror"
@@ -38,7 +37,7 @@ type retrievalProviderNode struct {
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
 func NewRetrievalProviderNode(
-	maddr dtypes.MinerAddress,
+	maddr marketTypes.MinerAddress,
 	secb sealer.SectorBuilder,
 	pp sectorstorage.PieceProvider,
 	full apiface.FullNode,

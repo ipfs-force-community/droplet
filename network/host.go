@@ -3,14 +3,13 @@ package network
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/version"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"go.uber.org/fx"
-
-	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/version"
 )
 
 type P2PHostIn struct {

@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/venus-market/config"
 	"os/exec"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-
-	"github.com/filecoin-project/venus-market/dtypes"
 )
 
-func CliStorageDealFilter(cmd string) dtypes.StorageDealFilter {
+func CliStorageDealFilter(cmd string) config.StorageDealFilter {
 	return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
 		d := struct {
 			storagemarket.MinerDeal
@@ -25,7 +24,7 @@ func CliStorageDealFilter(cmd string) dtypes.StorageDealFilter {
 	}
 }
 
-func CliRetrievalDealFilter(cmd string) dtypes.RetrievalDealFilter {
+func CliRetrievalDealFilter(cmd string) config.RetrievalDealFilter {
 	return func(ctx context.Context, deal retrievalmarket.ProviderDealState) (bool, string, error) {
 		d := struct {
 			retrievalmarket.ProviderDealState

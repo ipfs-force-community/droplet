@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus-market/constants"
+	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/dtypes"
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
@@ -51,7 +51,7 @@ type FundManager struct {
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds dtypes.MetadataDS) *FundManager {
+func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.MetadataDS) *FundManager {
 	fm := newFundManager(&api, ds)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
