@@ -6,7 +6,7 @@ import (
 	"context"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/fundmgr"
-	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/piece"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"io"
@@ -50,15 +50,15 @@ type ProviderNodeAdapter struct {
 
 	dealPublisher *DealPublisher
 
-	storage                     piecestorage.IPieceStorage
+	storage                     piece.IPieceStorage
 	addBalanceSpec              *types.MessageSendSpec
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piecestorage.IPieceStorage) storagemarket.StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piecestorage.IPieceStorage) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage) storagemarket.StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage) storagemarket.StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev := events.NewEvents(ctx, full)

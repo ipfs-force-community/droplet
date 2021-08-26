@@ -26,16 +26,12 @@ import (
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/piece"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	graphsync "github.com/ipfs/go-graphsync/impl"
-	gsnet "github.com/ipfs/go-graphsync/network"
-	"github.com/ipfs/go-graphsync/storeutil"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
@@ -47,14 +43,6 @@ import (
 var (
 	log = logging.Logger("modules")
 )
-
-func MinerAddress(cfg config.MarketConfig) (types2.MinerAddress, error) {
-	addr, err := address.NewFromString(cfg.MinerAddress)
-	if err != nil {
-		return types2.MinerAddress{}, err
-	}
-	return types2.MinerAddress(addr), nil
-}
 
 // RetrievalPricingFunc configures the pricing function to use for retrieval deals.
 func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ config.ConsiderOnlineRetrievalDealsConfigFunc,
@@ -455,34 +443,4 @@ func NewGetMaxDealStartDelayFunc(cfg *config.MarketConfig) (config.GetMaxDealSta
 	return func() (out time.Duration, err error) {
 		return time.Duration(cfg.MaxDealStartDelay), nil
 	}, nil
-}
-
-// StagingGraphsync creates a graphsync instance which reads and writes blocks
-// to the StagingBlockstore
-func StagingGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs models.StagingBlockstore, h host.Host) network.StagingGraphsync {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs models.StagingBlockstore, h host.Host) network.StagingGraphsync {
-		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
-		loader := storeutil.LoaderForBlockstore(ibs)
-		storer := storeutil.StorerForBlockstore(ibs)
-		gs := graphsync.New(metrics.LifecycleCtx(mctx, lc), graphsyncNetwork, loader, storer, graphsync.RejectAllRequestsByDefault(), graphsync.MaxInProgressRequests(parallelTransfers))
-
-		return gs
-	}
-}
-
-// NewProviderPieceStore creates a statestore for storing metadata about pieces
-// shared by the piecestorage and retrieval providers
-func NewProviderPieceStore(lc fx.Lifecycle, ds models.MetadataDS) (piecestore.PieceStore, error) {
-	ps, err := piece.NewDsPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
-	if err != nil {
-		return nil, err
-	}
-
-	ps.OnReady(marketevents.ReadyLogger("piecestore"))
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return ps.Start(ctx)
-		},
-	})
-	return ps, nil
 }

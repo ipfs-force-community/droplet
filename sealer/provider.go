@@ -3,6 +3,8 @@ package sealer
 import (
 	"bufio"
 	"context"
+	"github.com/filecoin-project/venus-market/clients"
+	"github.com/filecoin-project/venus-market/piece"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"io"
@@ -24,16 +26,16 @@ type PieceProvider interface {
 var _ PieceProvider = &pieceProvider{}
 
 type pieceProvider struct {
-	storage *stores.Remote
-	index   stores.SectorIndex
-	uns     Unsealer
+	storage     piece.IPieceStorage
+	uns         Unsealer
+	minerClient clients.IStorageMiner //todo support multi
 }
 
-func NewPieceProvider(storage *stores.Remote, index stores.SectorIndex, uns Unsealer) PieceProvider {
+func NewPieceProvider(storage piece.IPieceStorage, uns Unsealer, minerClient clients.IStorageMiner) PieceProvider {
 	return &pieceProvider{
-		storage: storage,
-		index:   index,
-		uns:     uns,
+		storage:     storage,
+		uns:         uns,
+		minerClient: minerClient,
 	}
 }
 
@@ -50,11 +52,7 @@ func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef
 	ctxLock, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if err := p.index.StorageLock(ctxLock, sector.ID, storiface.FTUnsealed, storiface.FTNone); err != nil {
-		return false, xerrors.Errorf("acquiring read sector lock: %w", err)
-	}
-
-	return p.storage.CheckIsUnsealed(ctxLock, sector, abi.PaddedPieceSize(offset.Padded()), size.Padded())
+	return p.minerClient.IsUnsealed(ctxLock, sector, offset, size)
 }
 
 // tryReadUnsealedPiece will try to read the unsealed piece from an existing unsealed sector file for the given sector from any worker that has it.
@@ -64,7 +62,7 @@ func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef
 func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (io.ReadCloser, context.CancelFunc, error) {
 	// acquire a lock purely for reading unsealed sectors
 	ctx, cancel := context.WithCancel(ctx)
-	if err := p.index.StorageLock(ctx, sector.ID, storiface.FTUnsealed, storiface.FTNone); err != nil {
+	if err := p.storage.StorageLock(ctx, sector.ID, storiface.FTUnsealed, storiface.FTNone); err != nil {
 		cancel()
 		return nil, nil, xerrors.Errorf("acquiring read sector lock: %w", err)
 	}

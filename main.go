@@ -1,14 +1,11 @@
 package main
 
 import (
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/lotus/build"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/venus-market/api/impl"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
@@ -17,49 +14,23 @@ import (
 	"github.com/filecoin-project/venus-market/markets/storageadapter"
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/piece"
 	"github.com/filecoin-project/venus-market/sealer"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 	"os"
 	"path"
 )
 
-//nolint:golint
-var (
-	DefaultTransportsKey = utils.Special{0}  // Libp2p option
-	DiscoveryHandlerKey  = utils.Special{2}  // Private type
-	AddrsFactoryKey      = utils.Special{3}  // Libp2p option
-	SmuxTransportKey     = utils.Special{4}  // Libp2p option
-	RelayKey             = utils.Special{5}  // Libp2p option
-	SecurityKey          = utils.Special{6}  // Libp2p option
-	BaseRoutingKey       = utils.Special{7}  // fx groups + multiret
-	NatPortMapKey        = utils.Special{8}  // Libp2p option
-	ConnectionManagerKey = utils.Special{9}  // Libp2p option
-	AutoNATSvcKey        = utils.Special{10} // Libp2p option
-	BandwidthReporterKey = utils.Special{11} // Libp2p option
-	ConnGaterKey         = utils.Special{12} // libp2p option
-)
-
 // Invokes are called in the order they are defined.
 //nolint:golint
 const (
-	InitJournalKey = "InitJournalKey"
-	// miner
-	PstoreAddSelfKeysKey = "PstoreAddSelfKeysKey"
-	StartListeningKey    = "StartListeningKey"
-	HandleDealsKey       = "HandleDealsKey"
-	HandleRetrievalKey   = "HandleRetrievalKey"
-
-	_nInvokes // keep this last
+	InitJournalKey     = "InitJournalKey"
+	HandleDealsKey     = "HandleDealsKey"
+	HandleRetrievalKey = "HandleRetrievalKey"
 )
 
 func main() {
@@ -132,43 +103,15 @@ func run(cctx *cli.Context) error {
 		utils.Override(new(apiface.FullNode), clients.NodeClient),
 		utils.Override(new(clients.IMessager), clients.MessagerClient),
 		utils.Override(new(clients.IWalletClient), clients.NewWalletClient),
-
 		utils.Override(new(types.ShutdownChan), shutdownChan),
 
 		//database
 		models.DBOptions,
-		// Host
-		utils.Override(new(host.Host), network.Host),
-		//libp2p
-		utils.Override(new(crypto.PrivKey), network.PrivKey),
-		utils.Override(new(crypto.PubKey), crypto.PrivKey.GetPublic),
-		utils.Override(new(peer.ID), peer.IDFromPublicKey),
-		utils.Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
-		utils.Override(PstoreAddSelfKeysKey, network.PstoreAddSelfKeys),
-		utils.Override(StartListeningKey, network.StartListening(cfg.Libp2p.ListenAddresses)),
-		utils.Override(AddrsFactoryKey, network.AddrsFactory(cfg.Libp2p.AnnounceAddresses, cfg.Libp2p.NoAnnounceAddresses)),
-		utils.Override(DefaultTransportsKey, network.DefaultTransports),
-		utils.Override(SmuxTransportKey, network.SmuxTransport(true)),
-		utils.Override(RelayKey, network.NoRelay()),
-		utils.Override(SecurityKey, network.Security(true, false)),
-
-		// Markets
-		utils.Override(new(network.StagingGraphsync), StagingGraphsync(cfg.SimultaneousTransfers)),
-
-		//piece
-		utils.Override(new(piecestorage.IPieceStorage), piecestorage.NewPieceStorage), //save read peiece data
-		utils.Override(new(piecestore.PieceStore), NewProviderPieceStore),             //save piece metadata(location)   save to metadata /storagemarket
-
-		//sealer service
-		utils.Override(new(clients.IStorageMiner), clients.NewStorageMiner),
-		utils.Override(new(types.MinerAddress), MinerAddress), //todo miner single miner todo change to support multiple miner
-		utils.Override(new(modules.MinerStorageService), sealer.ConnectStorageService),
-		utils.Override(new(sealer.Unsealer), utils.From(new(sealer.MinerStorageService))),
-		utils.Override(new(sealer.SectorBuilder), utils.From(new(sealer.MinerStorageService))),
-		utils.Override(new(sealer.AddressSelector), AddressSelector),
+		network.NetworkOpts(cfg),
+		piece.PieceOpts(cfg),
+		sealer.SealerOpts,
 
 		// Markets (retrieval deps)
-		utils.Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
 		utils.Override(new(config.RetrievalPricingFunc), RetrievalPricingFunc(cfg)),
 
 		// Markets (retrieval)
