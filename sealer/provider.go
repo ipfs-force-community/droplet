@@ -1,7 +1,6 @@
 package sealer
 
 import (
-	"bufio"
 	"context"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/piece"
@@ -12,15 +11,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type PieceProvider interface {
-	// ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
-	ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error)
-	IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
+	UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error)
+	IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error)
 }
 
 var _ PieceProvider = &pieceProvider{}
@@ -31,56 +27,39 @@ type pieceProvider struct {
 	minerClient clients.IStorageMiner //todo support multi
 }
 
-func NewPieceProvider(storage piece.IPieceStorage, uns Unsealer, minerClient clients.IStorageMiner) PieceProvider {
-	return &pieceProvider{
-		storage:     storage,
-		uns:         uns,
-		minerClient: minerClient,
-	}
+func (p *pieceProvider) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+	panic("implement me")
 }
 
-// IsUnsealed checks if we have the unsealed piece at the given offset in an already
-// existing unsealed file either locally or on any of the workers.
-func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
-	if err := offset.Valid(); err != nil {
+func (p *pieceProvider) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
+	if err := storiface.UnpaddedByteIndex(offset).Valid(); err != nil {
 		return false, xerrors.Errorf("offset is not valid: %w", err)
 	}
-	if err := size.Validate(); err != nil {
+	if err := storiface.UnpaddedByteIndex(length).Valid(); err != nil {
 		return false, xerrors.Errorf("size is not a valid piece size: %w", err)
 	}
 
 	ctxLock, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	return p.minerClient.IsUnsealed(ctxLock, sector, offset, size)
+	//need piece to found
+	sectorRef := storage.SectorRef{
+		ID: abi.SectorID{
+			Miner:  0,
+			Number: sectorID,
+		},
+		ProofType: 0, //todo miner selector
+	}
+
+	return p.minerClient.IsUnsealed(ctxLock, sectorRef, storiface.UnpaddedByteIndex(offset), length)
 }
 
-// tryReadUnsealedPiece will try to read the unsealed piece from an existing unsealed sector file for the given sector from any worker that has it.
-// It will NOT try to schedule an Unseal of a sealed sector file for the read.
-//
-// Returns a nil reader if the piece does NOT exist in any unsealed file or there is no unsealed file for the given sector on any of the workers.
-func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (io.ReadCloser, context.CancelFunc, error) {
-	// acquire a lock purely for reading unsealed sectors
-	ctx, cancel := context.WithCancel(ctx)
-	if err := p.storage.StorageLock(ctx, sector.ID, storiface.FTUnsealed, storiface.FTNone); err != nil {
-		cancel()
-		return nil, nil, xerrors.Errorf("acquiring read sector lock: %w", err)
+func NewPieceProvider(storage piece.IPieceStorage, uns Unsealer, minerClient clients.IStorageMiner) PieceProvider {
+	return &pieceProvider{
+		storage:     storage,
+		uns:         uns,
+		minerClient: minerClient,
 	}
-
-	// Reader returns a reader for an unsealed piece at the given offset in the given sector.
-	// The returned reader will be nil if none of the workers has an unsealed sector file containing
-	// the unsealed piece.
-	r, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(offset.Padded()), size.Padded())
-	if err != nil {
-		log.Debugf("did not get piecestorage reader;sector=%+v, err:%s", sector.ID, err)
-		cancel()
-		return nil, nil, err
-	}
-	if r == nil {
-		cancel()
-	}
-
-	return r, cancel, nil
 }
 
 // ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
@@ -90,7 +69,8 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage
 // the returned boolean parameter will be set to true.
 // If we have an existing unsealed file containing the given piece, the returned boolean will be set to false.
 func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error) {
-	if err := offset.Valid(); err != nil {
+	panic("to impl")
+	/*if err := offset.Valid(); err != nil {
 		return nil, false, xerrors.Errorf("offset is not valid: %w", err)
 	}
 	if err := size.Validate(); err != nil {
@@ -157,7 +137,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 			unlock()
 			return err
 		},
-	}, uns, nil
+	}, uns, nil*/
 }
 
 type funcCloser struct {

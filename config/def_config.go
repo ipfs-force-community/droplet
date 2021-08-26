@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/venus/pkg/types"
 	"time"
 )
 
@@ -19,6 +19,11 @@ var DefaultMarketConfig = &MarketConfig{
 	Gateway: Gateway{
 		Url:   "/ip4/8.130.165.167/tcp/45130",
 		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoic3Rlc3QiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.FEPMm5aKcm7pyn7iDMRl4CEs0-X3MQpgjORPRy9WPso",
+	},
+	DAGStore: DAGStoreConfig{
+		MaxConcurrentIndex:         5,
+		MaxConcurrencyStorageCalls: 100,
+		GCInterval:                 Duration(1 * time.Minute),
 	},
 	Journal: Journal{Path: "journal"},
 

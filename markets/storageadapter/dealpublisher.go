@@ -3,11 +3,11 @@ package storageadapter
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/sealer"
 	marketTypes "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"strings"
 	"sync"
 	"time"
@@ -349,7 +349,7 @@ func (p *DealPublisher) publishDealProposals(deals []market2.ClientDealProposal)
 		return cid.Undef, err
 	}
 
-	params, err := actors.SerializeParams(&market2.PublishStorageDealsParams{
+	params, err := specactors.SerializeParams(&market2.PublishStorageDealsParams{
 		Deals: deals,
 	})
 

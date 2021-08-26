@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/node/repo"
 	"golang.org/x/xerrors"
 	"reflect"
 
@@ -219,8 +218,6 @@ type Settings struct {
 	// invokes are separate from modules as they can't be referenced by return
 	// type, and must be applied in correct order
 	Invokes map[Invoke]fx.Option
-
-	NodeType repo.RepoType
 
 	Base   bool // Base option applied
 	Config bool // Config option applied

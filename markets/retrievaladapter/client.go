@@ -2,6 +2,7 @@ package retrievaladapter
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/app/client/apiface"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -10,22 +11,20 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
 )
 
 type retrievalClientNode struct {
-	chainAPI full.ChainAPI
+	fullnode apiface.FullNode
 	payAPI   payapi.PaychAPI
-	stateAPI full.StateAPI
 }
 
 // NewRetrievalClientNode returns a new node adapter for a retrieval client that talks to the
 // Lotus Node
-func NewRetrievalClientNode(payAPI payapi.PaychAPI, chainAPI full.ChainAPI, stateAPI full.StateAPI) retrievalmarket.RetrievalClientNode {
-	return &retrievalClientNode{payAPI: payAPI, chainAPI: chainAPI, stateAPI: stateAPI}
+func NewRetrievalClientNode(payAPI payapi.PaychAPI, fullnode apiface.FullNode) retrievalmarket.RetrievalClientNode {
+	return &retrievalClientNode{payAPI: payAPI, fullnode: fullnode}
 }
 
 // GetOrCreatePaymentChannel sets up a new payment channel if one does not exist
@@ -65,7 +64,7 @@ func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymen
 }
 
 func (rcn *retrievalClientNode) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	head, err := rcn.chainAPI.ChainHead(ctx)
+	head, err := rcn.fullnode.ChainHead(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -97,7 +96,7 @@ func (rcn *retrievalClientNode) GetKnownAddresses(ctx context.Context, p retriev
 	if err != nil {
 		return nil, err
 	}
-	mi, err := rcn.stateAPI.StateMinerInfo(ctx, p.Address, tsk)
+	mi, err := rcn.fullnode.StateMinerInfo(ctx, p.Address, tsk)
 	if err != nil {
 		return nil, err
 	}

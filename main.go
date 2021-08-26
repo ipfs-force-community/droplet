@@ -5,7 +5,6 @@ import (
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/venus-market/api/impl"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
@@ -19,6 +18,7 @@ import (
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 	"os"
@@ -37,7 +37,7 @@ func main() {
 	app := &cli.App{
 		Name:                 "venus-market",
 		Usage:                "venus-market",
-		Version:              build.UserVersion(),
+		Version:              constants.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{

@@ -16,6 +16,7 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
@@ -26,6 +27,7 @@ import (
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/sealer"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -221,7 +223,7 @@ func StorageProvider(
 	storedAsk *storedask.StoredAsk,
 	h host.Host,
 	ds models.MetadataDS,
-	mds models.StagingMultiDstore,
+	dagStore stores.DAGStoreWrapper,
 	pieceStore piecestore.PieceStore,
 	dataTransfer network.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
@@ -235,7 +237,7 @@ func StorageProvider(
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
+	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, dagStore, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
 func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider, j journal.Journal) {
@@ -262,14 +264,15 @@ func RetrievalProvider(
 	adapter retrievalmarket.RetrievalProviderNode,
 	netwk rmnet.RetrievalMarketNetwork,
 	ds models.MetadataDS,
+	pieceProvider sealer.PieceProvider,
 	pieceStore piecestore.PieceStore,
-	mds models.StagingMultiDstore,
+	dagStore stores.DAGStoreWrapper,
 	dt network.ProviderDataTransfer,
 	pricingFnc config.RetrievalPricingFunc,
 	userFilter config.RetrievalDealFilter,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-	return retrievalimpl.NewProvider(address.Address(maddr), adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
+	return retrievalimpl.NewProvider(address.Address(maddr), adapter, pieceProvider, netwk, pieceStore, dagStore, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
 		retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
 }
 

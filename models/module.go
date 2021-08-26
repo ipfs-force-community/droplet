@@ -1,8 +1,6 @@
 package models
 
 import (
-	"context"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/venus-market/blockstore"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
@@ -40,21 +38,6 @@ func NewStagingDS(cfg *config.MarketConfig) (StagingDS, error) {
 	return badger.NewDatastore(metaDataPath, &badger.DefaultOptions)
 }
 
-func NewStagingMultiDatastore(lc fx.Lifecycle, stagingDs StagingDS) (StagingMultiDstore, error) {
-	mds, err := multistore.NewMultiDstore(stagingDs)
-	if err != nil {
-		return nil, err
-	}
-
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			return mds.Close()
-		},
-	})
-
-	return mds, nil
-}
-
 func NewStagingBlockStore(lc fx.Lifecycle, stagingDs StagingDS) (StagingBlockstore, error) {
 	return blockstore.FromDatastore(stagingDs), nil
 }
@@ -86,7 +69,6 @@ func NewStorageAskDS(ds ProviderDealDS) StorageAskDS {
 var DBOptions = utils.Options(
 	utils.Override(new(MetadataDS), NewMetadataDS),
 	utils.Override(new(StagingDS), NewStagingDS),
-	utils.Override(new(StagingMultiDstore), NewStagingMultiDatastore),
 	utils.Override(new(StagingBlockstore), NewStagingBlockStore),
 	utils.Override(new(PieceMetaDs), NewPieceMetaDs),
 	utils.Override(new(RetrievalProviderDS), NewRetrievalProviderDS),

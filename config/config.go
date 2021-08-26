@@ -3,7 +3,7 @@ package config
 import (
 	"encoding"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	"time"
 )
@@ -111,6 +111,40 @@ type AddressConfig struct {
 	DisableWorkerFallback bool
 }
 
+type DAGStoreConfig struct {
+	// Path to the dagstore root directory. This directory contains three
+	// subdirectories, which can be symlinked to alternative locations if
+	// need be:
+	//  - ./transients: caches unsealed deals that have been fetched from the
+	//    storage subsystem for serving retrievals.
+	//  - ./indices: stores shard indices.
+	//  - ./datastore: holds the KV store tracking the state of every shard
+	//    known to the DAG store.
+	// Default value: <LOTUS_MARKETS_PATH>/dagstore (split deployment) or
+	// <LOTUS_MINER_PATH>/dagstore (monolith deployment)
+	RootDir string
+
+	// The maximum amount of indexing jobs that can run simultaneously.
+	// 0 means unlimited.
+	// Default value: 5.
+	MaxConcurrentIndex int
+
+	// The maximum amount of unsealed deals that can be fetched simultaneously
+	// from the storage subsystem. 0 means unlimited.
+	// Default value: 0 (unlimited).
+	MaxConcurrentReadyFetches int
+
+	// The maximum number of simultaneous inflight API calls to the storage
+	// subsystem.
+	// Default value: 100.
+	MaxConcurrencyStorageCalls int
+
+	// The time between calls to periodic dagstore GC, in time.Duration string
+	// representation, e.g. 1m, 5m, 1h.
+	// Default value: 1 minute.
+	GCInterval Duration
+}
+
 // StorageMiner is a miner config
 type MarketConfig struct {
 	HomeDir string
@@ -123,6 +157,7 @@ type MarketConfig struct {
 	Gateway
 	Journal
 	AddressConfig
+	DAGStore DAGStoreConfig
 
 	MinerAddress string
 	// When enabled, the miner can accept online deals

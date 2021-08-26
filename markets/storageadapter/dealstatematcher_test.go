@@ -22,8 +22,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/chain/events/state"
-	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/venus/pkg/events/state"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 func TestDealStateMatcher(t *testing.T) {
