@@ -3,8 +3,8 @@ package piece
 import (
 	"context"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
-	marketevents "github.com/filecoin-project/venus-market/markets/loggers"
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/ipfs/go-datastore"
@@ -21,7 +21,7 @@ func NewProviderPieceStore(lc fx.Lifecycle, ds models.MetadataDS) (piecestore.Pi
 		return nil, err
 	}
 
-	ps.OnReady(marketevents.ReadyLogger("piecestore"))
+	ps.OnReady(utils.ReadyLogger("piecestore"))
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return ps.Start(ctx)
@@ -39,10 +39,10 @@ func NewPieceStorage(pieceStrorageCfg *config.PieceStorage) (IPieceStorage, erro
 	}
 }
 
-var PieceOpts = func(cfg *config.MarketConfig) utils.Option {
-	return utils.Options(
+var PieceOpts = func(cfg *config.MarketConfig) builder.Option {
+	return builder.Options(
 		//piece
-		utils.Override(new(IPieceStorage), NewPieceStorage),               //save read peiece data
-		utils.Override(new(piecestore.PieceStore), NewProviderPieceStore), //save piece metadata(location)   save to metadata /storagemarket
+		builder.Override(new(IPieceStorage), NewPieceStorage),               //save read peiece data
+		builder.Override(new(piecestore.PieceStore), NewProviderPieceStore), //save piece metadata(location)   save to metadata /storagemarket
 	)
 }

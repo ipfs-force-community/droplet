@@ -1,10 +1,10 @@
 package network
 
 import (
+	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models"
-	"github.com/filecoin-project/venus-market/utils"
 	graphsync "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
@@ -18,12 +18,12 @@ import (
 
 //nolint:golint
 var (
-	DefaultTransportsKey = utils.Special{0} // Libp2p option
-	DiscoveryHandlerKey  = utils.Special{2} // Private type
-	AddrsFactoryKey      = utils.Special{3} // Libp2p option
-	SmuxTransportKey     = utils.Special{4} // Libp2p option
-	RelayKey             = utils.Special{5} // Libp2p option
-	SecurityKey          = utils.Special{6} // Libp2p option
+	DefaultTransportsKey = builder.Special{0} // Libp2p option
+	DiscoveryHandlerKey  = builder.Special{2} // Private type
+	AddrsFactoryKey      = builder.Special{3} // Libp2p option
+	SmuxTransportKey     = builder.Special{4} // Libp2p option
+	RelayKey             = builder.Special{5} // Libp2p option
+	SecurityKey          = builder.Special{6} // Libp2p option
 )
 
 const (
@@ -44,22 +44,22 @@ func NewStagingGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx,
 	}
 }
 
-var NetworkOpts = func(cfg *config.MarketConfig) utils.Option {
-	return utils.Options(
-		utils.Override(new(host.Host), Host),
+var NetworkOpts = func(cfg *config.MarketConfig) builder.Option {
+	return builder.Options(
+		builder.Override(new(host.Host), Host),
 		//libp2p
-		utils.Override(new(crypto.PrivKey), PrivKey),
-		utils.Override(new(crypto.PubKey), crypto.PrivKey.GetPublic),
-		utils.Override(new(peer.ID), peer.IDFromPublicKey),
-		utils.Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
-		utils.Override(PstoreAddSelfKeysKey, PstoreAddSelfKeys),
-		utils.Override(StartListeningKey, StartListening(cfg.Libp2p.ListenAddresses)),
-		utils.Override(AddrsFactoryKey, AddrsFactory(cfg.Libp2p.AnnounceAddresses, cfg.Libp2p.NoAnnounceAddresses)),
-		utils.Override(DefaultTransportsKey, DefaultTransports),
-		utils.Override(SmuxTransportKey, SmuxTransport(true)),
-		utils.Override(RelayKey, NoRelay()),
-		utils.Override(SecurityKey, Security(true, false)),
+		builder.Override(new(crypto.PrivKey), PrivKey),
+		builder.Override(new(crypto.PubKey), crypto.PrivKey.GetPublic),
+		builder.Override(new(peer.ID), peer.IDFromPublicKey),
+		builder.Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
+		builder.Override(PstoreAddSelfKeysKey, PstoreAddSelfKeys),
+		builder.Override(StartListeningKey, StartListening(cfg.Libp2p.ListenAddresses)),
+		builder.Override(AddrsFactoryKey, AddrsFactory(cfg.Libp2p.AnnounceAddresses, cfg.Libp2p.NoAnnounceAddresses)),
+		builder.Override(DefaultTransportsKey, DefaultTransports),
+		builder.Override(SmuxTransportKey, SmuxTransport(true)),
+		builder.Override(RelayKey, NoRelay()),
+		builder.Override(SecurityKey, Security(true, false)),
 		// Markets
-		utils.Override(new(StagingGraphsync), NewStagingGraphsync(cfg.SimultaneousTransfers)),
+		builder.Override(new(StagingGraphsync), NewStagingGraphsync(cfg.SimultaneousTransfers)),
 	)
 }

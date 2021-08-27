@@ -4,8 +4,9 @@ import (
 	"context"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus-market/config"
+	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 )
 
@@ -17,8 +18,8 @@ type MsgMeta struct {
 }
 
 type IWalletClient interface {
-	WalletHas(ctx context.Context, supportAccount string, addr address.Address) (bool, error)
-	WalletSign(ctx context.Context, account string, addr address.Address, toSign []byte, meta MsgMeta) (*crypto.Signature, error)
+	WalletHas(ctx context.Context, addr address.Address) (bool, error)
+	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*vCrypto.Signature, error)
 }
 
 // *api.MessageImp and *gateway.WalletClient both implement IWalletClient, so injection will fail
@@ -28,17 +29,17 @@ type IWalletCli struct {
 
 type WalletClient struct {
 	Internal struct {
-		WalletHas  func(ctx context.Context, supportAccount string, addr address.Address) (bool, error)
-		WalletSign func(ctx context.Context, account string, addr address.Address, toSign []byte, meta MsgMeta) (*crypto.Signature, error)
+		WalletHas  func(ctx context.Context, addr address.Address) (bool, error)
+		WalletSign func(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*vCrypto.Signature, error)
 	}
 }
 
-func (w *WalletClient) WalletHas(ctx context.Context, supportAccount string, addr address.Address) (bool, error) {
-	return w.Internal.WalletHas(ctx, supportAccount, addr)
+func (walletClient *WalletClient) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
+	return walletClient.Internal.WalletHas(ctx, addr)
 }
 
-func (w *WalletClient) WalletSign(ctx context.Context, account string, addr address.Address, toSign []byte, meta MsgMeta) (*crypto.Signature, error) {
-	return w.Internal.WalletSign(ctx, account, addr, toSign, meta)
+func (walletClient *WalletClient) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*vCrypto.Signature, error) {
+	return walletClient.Internal.WalletSign(ctx, k, msg, meta)
 }
 
 func NewWalletClient(cfg *config.Gateway) (IWalletClient, jsonrpc.ClientCloser, error) {

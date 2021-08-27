@@ -1,4 +1,4 @@
-package utils
+package builder
 
 import (
 	"context"
@@ -171,7 +171,7 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	}
 
 	// apply module options in the right order
-	if err := Options(Options(defaults()...), Options(opts...))(&settings); err != nil {
+	if err := Options(opts...)(&settings); err != nil {
 		return nil, xerrors.Errorf("applying node options failed: %w", err)
 	}
 

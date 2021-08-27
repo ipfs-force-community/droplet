@@ -22,3 +22,6 @@ type ProviderDealDS datastore.Batching
 
 //   /deals/provider/storage-ask
 type StorageAskDS datastore.Batching //key = latest
+
+// /paych/
+type PayChanDS datastore.Batching

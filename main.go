@@ -1,24 +1,29 @@
 package main
 
 import (
+	"context"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/venus-market/api/impl"
+	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/markets/dealfilter"
-	"github.com/filecoin-project/venus-market/markets/retrievaladapter"
-	"github.com/filecoin-project/venus-market/markets/storageadapter"
+	"github.com/filecoin-project/venus-market/dealfilter"
+	"github.com/filecoin-project/venus-market/journal"
+	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/piece"
+	retrievaladapter2 "github.com/filecoin-project/venus-market/retrievaladapter"
 	"github.com/filecoin-project/venus-market/sealer"
+	storageadapter2 "github.com/filecoin-project/venus-market/storageadapter"
 	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
+	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 	"os"
@@ -90,74 +95,79 @@ func run(cctx *cli.Context) error {
 	}
 
 	shutdownChan := make(chan struct{})
-	_, err = utils.New(ctx,
+	_, err = builder.New(ctx,
 		//config
-		utils.Override(new(config.HomeDir), cfg.HomePath),
-		utils.Override(new(config.MarketConfig), cfg),
-		utils.Override(new(config.Node), &cfg.Node),
-		utils.Override(new(config.Messager), &cfg.Messager),
-		utils.Override(new(config.Gateway), &cfg.Gateway),
-		utils.Override(new(config.PieceStorage), &cfg.PieceStorage),
-
+		config.ConfigOpts(cfg),
 		//clients
-		utils.Override(new(apiface.FullNode), clients.NodeClient),
-		utils.Override(new(clients.IMessager), clients.MessagerClient),
-		utils.Override(new(clients.IWalletClient), clients.NewWalletClient),
-		utils.Override(new(types.ShutdownChan), shutdownChan),
+		builder.Override(new(apiface.FullNode), clients.NodeClient),
+		builder.Override(new(clients.IMessager), clients.MessagerClient),
+		builder.Override(new(clients.IWalletClient), clients.NewWalletClient),
+		//defaults
+		// global system journal.
+		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
+		builder.Override(new(journal.Journal), OpenFilesystemJournal),
 
+		builder.Override(new(metrics.MetricsCtx), func() context.Context {
+			return metrics2.CtxScope(context.Background(), "venus-market")
+		}),
+
+		builder.Override(new(types.ShutdownChan), make(chan struct{})),
 		//database
 		models.DBOptions,
 		network.NetworkOpts(cfg),
 		piece.PieceOpts(cfg),
 		sealer.SealerOpts,
+		paychmgr.PaychOpts,
 
 		// Markets (retrieval deps)
-		utils.Override(new(config.RetrievalPricingFunc), RetrievalPricingFunc(cfg)),
+		builder.Override(new(config.RetrievalPricingFunc), RetrievalPricingFunc(cfg)),
 
 		// Markets (retrieval)
-		utils.Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
-		utils.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
-		utils.Override(new(retrievalmarket.RetrievalProvider), RetrievalProvider), //save to metadata /retrievals/provider
-		utils.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(nil)),
-		utils.Override(HandleRetrievalKey, HandleRetrieval),
+		builder.Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter2.NewRetrievalProviderNode),
+		builder.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
+		builder.Override(new(retrievalmarket.RetrievalProvider), RetrievalProvider), //save to metadata /retrievals/provider
+		builder.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(nil)),
+		builder.Override(HandleRetrievalKey, HandleRetrieval),
 
 		// Markets (piecestorage)
-		utils.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), //save to metadata /datatransfer/provider/transfers
-		utils.Override(new(*storedask.StoredAsk), NewStorageAsk),                             //   save to metadata /deals/provider/piecestorage-ask/latest
-		utils.Override(new(config.StorageDealFilter), BasicDealFilter(nil)),
-		utils.Override(new(storagemarket.StorageProvider), StorageProvider),
-		utils.Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(cfg)),
-		utils.Override(HandleDealsKey, HandleDeals),
+		builder.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), //save to metadata /datatransfer/provider/transfers
+		builder.Override(new(*storedask.StoredAsk), NewStorageAsk),                             //   save to metadata /deals/provider/piecestorage-ask/latest
+		builder.Override(new(config.StorageDealFilter), BasicDealFilter(nil)),
+		builder.Override(new(storagemarket.StorageProvider), StorageProvider),
+		builder.Override(new(*storageadapter2.DealPublisher), storageadapter2.NewDealPublisher(cfg)),
+		builder.Override(HandleDealsKey, HandleDeals),
 
 		// Config (todo: get a real property system)
-		utils.Override(new(config.ConsiderOnlineStorageDealsConfigFunc), NewConsiderOnlineStorageDealsConfigFunc),
-		utils.Override(new(config.SetConsiderOnlineStorageDealsConfigFunc), NewSetConsideringOnlineStorageDealsFunc),
-		utils.Override(new(config.ConsiderOnlineRetrievalDealsConfigFunc), NewConsiderOnlineRetrievalDealsConfigFunc),
-		utils.Override(new(config.SetConsiderOnlineRetrievalDealsConfigFunc), NewSetConsiderOnlineRetrievalDealsConfigFunc),
-		utils.Override(new(config.StorageDealPieceCidBlocklistConfigFunc), NewStorageDealPieceCidBlocklistConfigFunc),
-		utils.Override(new(config.SetStorageDealPieceCidBlocklistConfigFunc), NewSetStorageDealPieceCidBlocklistConfigFunc),
-		utils.Override(new(config.ConsiderOfflineStorageDealsConfigFunc), NewConsiderOfflineStorageDealsConfigFunc),
-		utils.Override(new(config.SetConsiderOfflineStorageDealsConfigFunc), NewSetConsideringOfflineStorageDealsFunc),
-		utils.Override(new(config.ConsiderOfflineRetrievalDealsConfigFunc), NewConsiderOfflineRetrievalDealsConfigFunc),
-		utils.Override(new(config.SetConsiderOfflineRetrievalDealsConfigFunc), NewSetConsiderOfflineRetrievalDealsConfigFunc),
-		utils.Override(new(config.ConsiderVerifiedStorageDealsConfigFunc), NewConsiderVerifiedStorageDealsConfigFunc),
-		utils.Override(new(config.SetConsiderVerifiedStorageDealsConfigFunc), NewSetConsideringVerifiedStorageDealsFunc),
-		utils.Override(new(config.ConsiderUnverifiedStorageDealsConfigFunc), NewConsiderUnverifiedStorageDealsConfigFunc),
-		utils.Override(new(config.SetConsiderUnverifiedStorageDealsConfigFunc), NewSetConsideringUnverifiedStorageDealsFunc),
-		utils.Override(new(config.SetExpectedSealDurationFunc), NewSetExpectedSealDurationFunc),
-		utils.Override(new(config.GetExpectedSealDurationFunc), NewGetExpectedSealDurationFunc),
-		utils.Override(new(config.SetMaxDealStartDelayFunc), NewSetMaxDealStartDelayFunc),
-		utils.Override(new(config.GetMaxDealStartDelayFunc), NewGetMaxDealStartDelayFunc),
+		builder.Override(new(config.ConsiderOnlineStorageDealsConfigFunc), NewConsiderOnlineStorageDealsConfigFunc),
+		builder.Override(new(config.SetConsiderOnlineStorageDealsConfigFunc), NewSetConsideringOnlineStorageDealsFunc),
+		builder.Override(new(config.ConsiderOnlineRetrievalDealsConfigFunc), NewConsiderOnlineRetrievalDealsConfigFunc),
+		builder.Override(new(config.SetConsiderOnlineRetrievalDealsConfigFunc), NewSetConsiderOnlineRetrievalDealsConfigFunc),
+		builder.Override(new(config.StorageDealPieceCidBlocklistConfigFunc), NewStorageDealPieceCidBlocklistConfigFunc),
+		builder.Override(new(config.SetStorageDealPieceCidBlocklistConfigFunc), NewSetStorageDealPieceCidBlocklistConfigFunc),
+		builder.Override(new(config.ConsiderOfflineStorageDealsConfigFunc), NewConsiderOfflineStorageDealsConfigFunc),
+		builder.Override(new(config.SetConsiderOfflineStorageDealsConfigFunc), NewSetConsideringOfflineStorageDealsFunc),
+		builder.Override(new(config.ConsiderOfflineRetrievalDealsConfigFunc), NewConsiderOfflineRetrievalDealsConfigFunc),
+		builder.Override(new(config.SetConsiderOfflineRetrievalDealsConfigFunc), NewSetConsiderOfflineRetrievalDealsConfigFunc),
+		builder.Override(new(config.ConsiderVerifiedStorageDealsConfigFunc), NewConsiderVerifiedStorageDealsConfigFunc),
+		builder.Override(new(config.SetConsiderVerifiedStorageDealsConfigFunc), NewSetConsideringVerifiedStorageDealsFunc),
+		builder.Override(new(config.ConsiderUnverifiedStorageDealsConfigFunc), NewConsiderUnverifiedStorageDealsConfigFunc),
+		builder.Override(new(config.SetConsiderUnverifiedStorageDealsConfigFunc), NewSetConsideringUnverifiedStorageDealsFunc),
+		builder.Override(new(config.SetExpectedSealDurationFunc), NewSetExpectedSealDurationFunc),
+		builder.Override(new(config.GetExpectedSealDurationFunc), NewGetExpectedSealDurationFunc),
+		builder.Override(new(config.SetMaxDealStartDelayFunc), NewSetMaxDealStartDelayFunc),
+		builder.Override(new(config.GetMaxDealStartDelayFunc), NewGetMaxDealStartDelayFunc),
 
-		utils.If(cfg.Filter != "",
-			utils.Override(new(config.StorageDealFilter), BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Filter))),
+		builder.If(cfg.Filter != "",
+			builder.Override(new(config.StorageDealFilter), BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Filter))),
 		),
 
-		utils.If(cfg.RetrievalFilter != "",
-			utils.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.RetrievalFilter))),
+		builder.If(cfg.RetrievalFilter != "",
+			builder.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.RetrievalFilter))),
 		),
-		utils.Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(cfg)),
-		utils.Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(cfg)),
+		builder.Override(new(*storageadapter2.DealPublisher), storageadapter2.NewDealPublisher(cfg)),
+		builder.Override(new(storagemarket.StorageProviderNode), storageadapter2.NewProviderNodeAdapter(cfg)),
+
+		builder.Override(new(types.ShutdownChan), shutdownChan),
 	)
 	if err != nil {
 		return xerrors.Errorf("initializing node: %w", err)

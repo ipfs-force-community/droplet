@@ -21,14 +21,12 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/journal"
-	"github.com/filecoin-project/venus-market/markets"
-	marketevents "github.com/filecoin-project/venus-market/markets/loggers"
-	"github.com/filecoin-project/venus-market/markets/pricing"
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/sealer"
+	retrievaladapter2 "github.com/filecoin-project/venus-market/retrievaladapter"
 	types2 "github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
@@ -46,6 +44,19 @@ var (
 	log = logging.Logger("modules")
 )
 
+func OpenFilesystemJournal(lr *config.MarketConfig, lc fx.Lifecycle, disabled journal.DisabledEvents) (journal.Journal, error) {
+	jrnl, err := journal.OpenFSJournal(lr.Journal.Path, disabled)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error { return jrnl.Close() },
+	})
+
+	return jrnl, err
+}
+
 // RetrievalPricingFunc configures the pricing function to use for retrieval deals.
 func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ config.ConsiderOnlineRetrievalDealsConfigFunc,
 	_ config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalPricingFunc {
@@ -53,7 +64,7 @@ func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ config.ConsiderOnline
 	return func(_ config.ConsiderOnlineRetrievalDealsConfigFunc,
 		_ config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalPricingFunc {
 		if cfg.RetrievalPricing.Strategy == config.RetrievalPricingExternalMode {
-			return pricing.ExternalRetrievalPricingFunc(cfg.RetrievalPricing.External.Path)
+			return retrievaladapter2.ExternalRetrievalPricingFunc(cfg.RetrievalPricing.External.Path)
 		}
 
 		return retrievalimpl.DefaultPricingFunc(cfg.RetrievalPricing.Default.VerifiedDealsFreeTransfer)
@@ -77,10 +88,10 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, homeDir con
 		return nil, err
 	}
 
-	dt.OnReady(marketevents.ReadyLogger("provider data transfer"))
+	dt.OnReady(utils.ReadyLogger("provider data transfer"))
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			dt.SubscribeToEvents(marketevents.DataTransferLogger)
+			dt.SubscribeToEvents(utils.DataTransferLogger)
 			return dt.Start(ctx)
 		},
 		OnStop: func(ctx context.Context) error {
@@ -242,13 +253,13 @@ func StorageProvider(
 
 func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider, j journal.Journal) {
 	ctx := metrics.LifecycleCtx(mctx, lc)
-	h.OnReady(marketevents.ReadyLogger("piecestorage provider"))
+	h.OnReady(utils.ReadyLogger("piecestorage provider"))
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			h.SubscribeToEvents(marketevents.StorageProviderLogger)
+			h.SubscribeToEvents(utils.StorageProviderLogger)
 
 			evtType := j.RegisterEventType("markets/piecestorage/provider", "state_change")
-			h.SubscribeToEvents(markets.StorageProviderJournaler(j, evtType))
+			h.SubscribeToEvents(utils.StorageProviderJournaler(j, evtType))
 
 			return h.Start(ctx)
 		},
@@ -264,7 +275,7 @@ func RetrievalProvider(
 	adapter retrievalmarket.RetrievalProviderNode,
 	netwk rmnet.RetrievalMarketNetwork,
 	ds models.MetadataDS,
-	pieceProvider sealer.PieceProvider,
+	sa retrievalmarket.SectorAccessor,
 	pieceStore piecestore.PieceStore,
 	dagStore stores.DAGStoreWrapper,
 	dt network.ProviderDataTransfer,
@@ -272,7 +283,7 @@ func RetrievalProvider(
 	userFilter config.RetrievalDealFilter,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-	return retrievalimpl.NewProvider(address.Address(maddr), adapter, pieceProvider, netwk, pieceStore, dagStore, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
+	return retrievalimpl.NewProvider(address.Address(maddr), adapter, sa, netwk, pieceStore, dagStore, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
 		retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
 }
 
@@ -314,14 +325,14 @@ func HandleRetrieval(host host.Host,
 	m retrievalmarket.RetrievalProvider,
 	j journal.Journal,
 ) {
-	m.OnReady(marketevents.ReadyLogger("retrieval provider"))
+	m.OnReady(utils.ReadyLogger("retrieval provider"))
 	lc.Append(fx.Hook{
 
 		OnStart: func(ctx context.Context) error {
-			m.SubscribeToEvents(marketevents.RetrievalProviderLogger)
+			m.SubscribeToEvents(utils.RetrievalProviderLogger)
 
 			evtType := j.RegisterEventType("markets/retrieval/provider", "state_change")
-			m.SubscribeToEvents(markets.RetrievalProviderJournaler(j, evtType))
+			m.SubscribeToEvents(utils.RetrievalProviderJournaler(j, evtType))
 
 			return m.Start(ctx)
 		},

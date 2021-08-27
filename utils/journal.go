@@ -1,4 +1,4 @@
-package markets
+package utils
 
 import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"

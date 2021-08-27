@@ -1,4 +1,4 @@
-package marketevents
+package utils
 
 import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"

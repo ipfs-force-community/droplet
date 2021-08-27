@@ -2,8 +2,8 @@ package models
 
 import (
 	"github.com/filecoin-project/venus-market/blockstore"
+	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/utils"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -20,6 +20,7 @@ const (
 	transfer          = "transfers"
 	dealProvider      = "/deals/provider"
 	storageAsk        = "storage-ask"
+	paych             = "/paych/"
 )
 
 func NewMetadataDS(cfg *config.MarketConfig) (MetadataDS, error) {
@@ -66,14 +67,19 @@ func NewStorageAskDS(ds ProviderDealDS) StorageAskDS {
 	return namespace.Wrap(ds, datastore.NewKey(storageAsk))
 }
 
-var DBOptions = utils.Options(
-	utils.Override(new(MetadataDS), NewMetadataDS),
-	utils.Override(new(StagingDS), NewStagingDS),
-	utils.Override(new(StagingBlockstore), NewStagingBlockStore),
-	utils.Override(new(PieceMetaDs), NewPieceMetaDs),
-	utils.Override(new(RetrievalProviderDS), NewRetrievalProviderDS),
-	utils.Override(new(RetrievalAskDS), NewRetrievalAskDS),
-	utils.Override(new(DagTransferDS), NewDagTransferDS),
-	utils.Override(new(ProviderDealDS), NewProviderDealDS),
-	utils.Override(new(StorageAskDS), NewStorageAskDS),
+func NewPayChanDS(ds MetadataDS) StorageAskDS {
+	return namespace.Wrap(ds, datastore.NewKey(paych))
+}
+
+var DBOptions = builder.Options(
+	builder.Override(new(MetadataDS), NewMetadataDS),
+	builder.Override(new(StagingDS), NewStagingDS),
+	builder.Override(new(StagingBlockstore), NewStagingBlockStore),
+	builder.Override(new(PieceMetaDs), NewPieceMetaDs),
+	builder.Override(new(RetrievalProviderDS), NewRetrievalProviderDS),
+	builder.Override(new(RetrievalAskDS), NewRetrievalAskDS),
+	builder.Override(new(DagTransferDS), NewDagTransferDS),
+	builder.Override(new(ProviderDealDS), NewProviderDealDS),
+	builder.Override(new(StorageAskDS), NewStorageAskDS),
+	builder.Override(new(PayChanDS), NewPayChanDS),
 )

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/venus-market/dagstore"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus-market/config"
-	mdagstore "github.com/filecoin-project/venus-market/markets/dagstore"
 )
 
 const (
@@ -17,8 +17,8 @@ const (
 )
 
 // NewMinerAPI creates a new MinerAPI adaptor for the dagstore mounts.
-func NewMinerAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, pieceStore piecestore.PieceStore, sa retrievalmarket.SectorAccessor) (mdagstore.MinerAPI, error) {
-	mountApi := mdagstore.NewMinerAPI(pieceStore, sa, r.MaxConcurrencyStorageCalls)
+func NewMinerAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, pieceStore piecestore.PieceStore, sa retrievalmarket.SectorAccessor) (dagstore.MinerAPI, error) {
+	mountApi := dagstore.NewMinerAPI(pieceStore, sa, r.MaxConcurrencyStorageCalls)
 	ready := make(chan error, 1)
 	pieceStore.OnReady(func(err error) {
 		ready <- err

@@ -4,11 +4,12 @@ import (
 	"context"
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
-	mdagstore "github.com/filecoin-project/venus-market/markets/dagstore"
+	dagstore2 "github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus-market/utils"
 	xerrors "github.com/pkg/errors"
 	"go.uber.org/fx"
 	"os"
@@ -37,7 +38,7 @@ func NewAddressSelector(cfg *config.MarketConfig) (*AddressSelector, error) {
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func NewDAGStore(lc fx.Lifecycle, homeDir config.HomeDir, cfg *config.DAGStoreConfig, minerAPI mdagstore.MinerAPI) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
+func NewDAGStore(lc fx.Lifecycle, homeDir config.HomeDir, cfg *config.DAGStoreConfig, minerAPI dagstore2.MinerAPI) (*dagstore.DAGStore, *dagstore2.Wrapper, error) {
 	// fall back to default root directory if not explicitly set in the config.
 	if cfg.RootDir == "" {
 		cfg.RootDir = filepath.Join(string(homeDir), DefaultDAGStoreDir)
@@ -51,7 +52,7 @@ func NewDAGStore(lc fx.Lifecycle, homeDir config.HomeDir, cfg *config.DAGStoreCo
 		}
 	}
 
-	dagst, w, err := mdagstore.NewDAGStore(cfg, minerAPI)
+	dagst, w, err := dagstore2.NewDAGStore(cfg, minerAPI)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
 	}
@@ -68,14 +69,13 @@ func NewDAGStore(lc fx.Lifecycle, homeDir config.HomeDir, cfg *config.DAGStoreCo
 	return dagst, w, nil
 }
 
-var SealerOpts = utils.Options(
+var SealerOpts = builder.Options(
 	//sealer service
-	utils.Override(new(clients.IStorageMiner), clients.NewStorageMiner),
-	utils.Override(new(types.MinerAddress), MinerAddress), //todo miner single miner todo change to support multiple miner
-	utils.Override(new(Unsealer), utils.From(new(clients.IStorageMiner))),
-	utils.Override(new(SectorBuilder), utils.From(new(clients.IStorageMiner))),
-	utils.Override(new(PieceProvider), NewPieceProvider),
-	utils.Override(new(AddressSelector), NewAddressSelector),
-	utils.Override(new(mdagstore.MinerAPI), NewMinerAPI),
-	utils.Override(DAGStoreKey, NewDAGStore),
+	builder.Override(new(clients.IStorageMiner), clients.NewStorageMiner),
+	builder.Override(new(types.MinerAddress), MinerAddress), //todo miner single miner todo change to support multiple miner
+	builder.Override(new(PieceProvider), NewPieceProvider),
+	builder.Override(new(AddressSelector), NewAddressSelector),
+	builder.Override(new(dagstore2.MinerAPI), NewMinerAPI),
+	builder.Override(new(retrievalmarket.SectorAccessor), NewSectorAccessor),
+	builder.Override(DAGStoreKey, NewDAGStore),
 )

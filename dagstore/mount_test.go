@@ -2,6 +2,7 @@ package dagstore
 
 import (
 	"context"
+	mock_dagstore2 "github.com/filecoin-project/venus-market/dagstore/mocks"
 	"io/ioutil"
 	"net/url"
 	"strings"
@@ -12,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/dagstore/mount"
-
-	mock_dagstore "github.com/filecoin-project/venus-market/markets/dagstore/mocks"
 )
 
 func TestLotusMount(t *testing.T) {
@@ -26,7 +25,7 @@ func TestLotusMount(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	// create a mock lotus api that returns the reader we want
-	mockLotusMountAPI := mock_dagstore.NewMockLotusAccessor(mockCtrl)
+	mockLotusMountAPI := mock_dagstore2.NewMockLotusAccessor(mockCtrl)
 
 	mockLotusMountAPI.EXPECT().IsUnsealed(gomock.Any(), cid).Return(true, nil).Times(1)
 
@@ -109,7 +108,7 @@ func TestLotusMountRegistration(t *testing.T) {
 	// when test is done, assert expectations on all mock objects.
 	defer mockCtrl.Finish()
 
-	mockLotusMountAPI := mock_dagstore.NewMockLotusAccessor(mockCtrl)
+	mockLotusMountAPI := mock_dagstore2.NewMockLotusAccessor(mockCtrl)
 	registry := mount.NewRegistry()
 	err = registry.Register(lotusScheme, mountTemplate(mockLotusMountAPI))
 	require.NoError(t, err)

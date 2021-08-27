@@ -3,27 +3,26 @@ package retrievaladapter
 import (
 	"context"
 	"github.com/filecoin-project/venus/app/client/apiface"
+	paych3 "github.com/filecoin-project/venus/app/submodule/paych"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multiaddr"
-
-	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multiaddr"
 )
 
 type retrievalClientNode struct {
 	fullnode apiface.FullNode
-	payAPI   payapi.PaychAPI
+	payAPI   paych3.PaychAPI
 }
 
 // NewRetrievalClientNode returns a new node adapter for a retrieval client that talks to the
 // Lotus Node
-func NewRetrievalClientNode(payAPI payapi.PaychAPI, fullnode apiface.FullNode) retrievalmarket.RetrievalClientNode {
+func NewRetrievalClientNode(payAPI paych3.PaychAPI, fullnode apiface.FullNode) retrievalmarket.RetrievalClientNode {
 	return &retrievalClientNode{payAPI: payAPI, fullnode: fullnode}
 }
 

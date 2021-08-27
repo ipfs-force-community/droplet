@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
-	"github.com/filecoin-project/venus-market/markets/storageadapter"
 	"github.com/filecoin-project/venus-market/network"
+	storageadapter2 "github.com/filecoin-project/venus-market/storageadapter"
 	"github.com/filecoin-project/venus-market/types"
 	mTypes "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -35,7 +35,7 @@ type MarketNodeImpl struct {
 	StorageProvider   storagemarket.StorageProvider
 	RetrievalProvider retrievalmarket.RetrievalProvider
 	DataTransfer      network.ProviderDataTransfer
-	DealPublisher     *storageadapter.DealPublisher
+	DealPublisher     *storageadapter2.DealPublisher
 	PieceStore        piecestore.PieceStore
 	Messager          clients.IMessager
 

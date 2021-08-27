@@ -90,7 +90,7 @@ func TestShardRegistration(t *testing.T) {
 		},
 	}}
 
-	cfg := config.DefaultMarketConfig.DAGStore
+	cfg := &config.DefaultMarketConfig.DAGStore
 	cfg.RootDir = t.TempDir()
 
 	mapi := NewMinerAPI(ps, sa, 10)
