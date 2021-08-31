@@ -51,23 +51,25 @@ type ProviderNodeAdapter struct {
 	dealPublisher *DealPublisher
 
 	storage                     piece.IPieceStorage
+	extendPieceMeta             piece.ExtendPieceStore
 	addBalanceSpec              *types.MessageSendSpec
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage) storagemarket.StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev := events.NewEvents(ctx, full)
 		na := &ProviderNodeAdapter{
-			FullNode:      full,
-			ev:            ev,
-			dealPublisher: dealPublisher,
-			dsMatcher:     newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
-			storage:       storage,
+			FullNode:        full,
+			ev:              ev,
+			dealPublisher:   dealPublisher,
+			dsMatcher:       newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
+			storage:         storage,
+			extendPieceMeta: extendPieceMeta,
 		}
 		if fc != nil {
 			na.addBalanceSpec = &types.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
@@ -90,6 +92,24 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	}
 	if wLen != int64(pieceSize) {
 		return nil, xerrors.Errorf("save piece expect len %d but got %d", pieceSize, wLen)
+	}
+
+	/*	storagemarket.MinerDeal{
+			Client:             deal.Client,
+			ClientDealProposal: deal.ClientDealProposal,
+			ProposalCid:        deal.ProposalCid,
+			State:              deal.State,
+			Ref:                deal.Ref,
+			PublishCid:         deal.PublishCid,
+			DealID:             deal.DealID,
+			FastRetrieval:      deal.FastRetrieval,
+		},
+			deal.Proposal.PieceSize.Unpadded(),
+			paddedReader,*/
+
+	err = n.extendPieceMeta.UpdateDealOnComplete(deal.ClientDealProposal.Proposal.PieceCID, deal.ClientDealProposal, deal.Ref, *deal.PublishCid, deal.DealID, deal.FastRetrieval)
+	if err != nil {
+		return nil, err
 	}
 
 	return &storagemarket.PackingResult{

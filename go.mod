@@ -14,7 +14,6 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.7.6
 	github.com/filecoin-project/go-fil-markets v1.8.1
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
-	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-state-types v0.1.1-0.20210722133031-ad9bfe54c124
 	github.com/filecoin-project/go-statemachine v1.0.1
 	github.com/filecoin-project/lotus v1.11.1-0.20210806222537-5e27023ba75d
@@ -32,7 +31,6 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210817020216-e774586a8875
 	github.com/ipfs/go-block-format v0.0.3
-	github.com/ipfs/go-blockservice v0.1.5
 	github.com/ipfs/go-cid v0.0.8-0.20210716091050-de6c03deae1c
 	github.com/ipfs/go-cidutil v0.0.2
 	github.com/ipfs/go-datastore v0.4.5
@@ -42,14 +40,11 @@ require (
 	github.com/ipfs/go-graphsync v0.6.9
 	github.com/ipfs/go-ipfs-blockstore v1.0.4
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
-	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-ipld-cbor v0.0.5
-	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log/v2 v2.3.0
-	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-metrics-interface v0.0.1
-	github.com/ipld/go-car/v2 v2.0.2 // indirect
+	github.com/ipld/go-car/v2 v2.0.2
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-libp2p v0.14.2
 	github.com/libp2p/go-libp2p-core v0.8.6

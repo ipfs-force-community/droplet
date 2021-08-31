@@ -42,7 +42,8 @@ func NewPieceStorage(pieceStrorageCfg *config.PieceStorage) (IPieceStorage, erro
 var PieceOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
 		//piece
-		builder.Override(new(IPieceStorage), NewPieceStorage),               //save read peiece data
-		builder.Override(new(piecestore.PieceStore), NewProviderPieceStore), //save piece metadata(location)   save to metadata /storagemarket
+		builder.Override(new(IPieceStorage), NewPieceStorage),                             //save read peiece data
+		builder.Override(new(piecestore.PieceStore), builder.From(new(ExtendPieceStore))), //save piece metadata(location)   save to metadata /storagemarket
+		builder.Override(new(ExtendPieceStore), NewDsPieceStore),
 	)
 }
