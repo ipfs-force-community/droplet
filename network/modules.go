@@ -27,8 +27,8 @@ var (
 )
 
 const (
-	PstoreAddSelfKeysKey = "PstoreAddSelfKeysKey"
-	StartListeningKey    = "StartListeningKey"
+	PstoreAddSelfKeysKey builder.Invoke = 0
+	StartListeningKey    builder.Invoke = 1
 )
 
 // StagingGraphsync creates a graphsync instance which reads and writes blocks

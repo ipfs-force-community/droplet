@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/ipfs/go-cid"
@@ -27,9 +27,7 @@ var log = logging.Logger("market_adapter")
 type FundManagerAPI struct {
 	fx.In
 
-	client.IMinerStateStruct
-	client.IChainInfoStruct
-	client.IMessagePoolStruct
+	apiface.FullNode
 }
 
 // fundManagerAPI is the specific methods called by the FundManager

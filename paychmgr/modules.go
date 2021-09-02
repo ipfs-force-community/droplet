@@ -6,5 +6,5 @@ import (
 )
 
 var PaychOpts = builder.Options(
-	builder.Override(new(paychmgr.Manager), paychmgr.NewManager),
+	builder.Override(new(paychmgr.Manager), NewManager),
 )

@@ -16,10 +16,10 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
+	"github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models"
@@ -31,7 +31,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
@@ -73,17 +72,16 @@ func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ config.ConsiderOnline
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, homeDir config.HomeDir, gs network.StagingGraphsync, ds models.MetadataDS, cfg *config.MarketConfig) (network.ProviderDataTransfer, error) {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs models.DagTransferDS, h host.Host, homeDir config.HomeDir, gs network.StagingGraphsync, ds models.MetadataDS, cfg *config.MarketConfig) (network.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
 
-	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/provider/transfers"))
 	transport := dtgstransport.NewTransport(h.ID(), gs)
 	err := os.MkdirAll(filepath.Join(string(homeDir), "data-transfer"), 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
 
-	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(string(homeDir), "data-transfer"), net, transport)
+	dt, err := dtimpl.NewDataTransfer(dagDs, filepath.Join(string(homeDir), "data-transfer"), net, transport)
 	if err != nil {
 		return nil, err
 	}
@@ -103,17 +101,17 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, homeDir con
 
 func NewStorageAsk(ctx metrics.MetricsCtx,
 	fapi apiface.FullNode,
-	ds models.MetadataDS,
+	askDs models.StorageAskDS,
 	minerAddress types2.MinerAddress,
 	spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
 
+	fmt.Println(address.Address(minerAddress).String())
 	mi, err := fapi.StateMinerInfo(ctx, address.Address(minerAddress), types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	providerDs := namespace.Wrap(ds, datastore.NewKey("/deals/provider"))
-	return storedask.NewStoredAsk(namespace.Wrap(providerDs, datastore.NewKey("/storage-ask")), datastore.NewKey("latest"), spn, address.Address(minerAddress),
+	return storedask.NewStoredAsk(askDs, datastore.NewKey("latest"), spn, address.Address(minerAddress),
 		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 }
 
@@ -233,8 +231,8 @@ func StorageProvider(
 	minerAddress types2.MinerAddress,
 	storedAsk *storedask.StoredAsk,
 	h host.Host,
-	ds models.MetadataDS,
-	dagStore stores.DAGStoreWrapper,
+	providerDealsDs models.ProviderDealDS,
+	dagStore *dagstore.Wrapper,
 	pieceStore piecestore.PieceStore,
 	dataTransfer network.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
@@ -248,7 +246,7 @@ func StorageProvider(
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, dagStore, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
+	return storageimpl.NewProvider(net, providerDealsDs, store, dagStore, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
 func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider, j journal.Journal) {
@@ -274,17 +272,16 @@ func RetrievalProvider(
 	maddr types2.MinerAddress,
 	adapter retrievalmarket.RetrievalProviderNode,
 	netwk rmnet.RetrievalMarketNetwork,
-	ds models.MetadataDS,
+	retrievalProviderDs models.RetrievalProviderDS,
 	sa retrievalmarket.SectorAccessor,
 	pieceStore piecestore.PieceStore,
-	dagStore stores.DAGStoreWrapper,
+	dagStore *dagstore.Wrapper,
 	dt network.ProviderDataTransfer,
 	pricingFnc config.RetrievalPricingFunc,
 	userFilter config.RetrievalDealFilter,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-	return retrievalimpl.NewProvider(address.Address(maddr), adapter, sa, netwk, pieceStore, dagStore, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
-		retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
+	return retrievalimpl.NewProvider(address.Address(maddr), adapter, sa, netwk, pieceStore, dagStore, dt, retrievalProviderDs, retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
 }
 
 func RetrievalDealFilter(userFilter config.RetrievalDealFilter) func(onlineOk config.ConsiderOnlineRetrievalDealsConfigFunc,

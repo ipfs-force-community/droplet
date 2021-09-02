@@ -5,9 +5,11 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/metrics"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
+	"go.uber.org/fx"
 )
 
 type MsgMeta struct {
@@ -17,14 +19,9 @@ type MsgMeta struct {
 	Extra []byte
 }
 
-type IWalletClient interface {
+type ISinger interface {
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
 	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*vCrypto.Signature, error)
-}
-
-// *api.MessageImp and *gateway.WalletClient both implement IWalletClient, so injection will fail
-type IWalletCli struct {
-	IWalletClient
 }
 
 type WalletClient struct {
@@ -42,8 +39,16 @@ func (walletClient *WalletClient) WalletSign(ctx context.Context, k address.Addr
 	return walletClient.Internal.WalletSign(ctx, k, msg, meta)
 }
 
-func NewWalletClient(cfg *config.Gateway) (IWalletClient, jsonrpc.ClientCloser, error) {
-	return newWalletClient(context.Background(), cfg.Token, cfg.Url)
+func NewWalletClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, cfg *config.Gateway) (ISinger, error) {
+	client, closer, err := newWalletClient(context.Background(), cfg.Token, cfg.Url)
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			closer()
+			return nil
+		},
+	})
+
+	return client, err
 }
 
 func newWalletClient(ctx context.Context, token, url string) (*WalletClient, jsonrpc.ClientCloser, error) {
@@ -54,7 +59,7 @@ func newWalletClient(ctx context.Context, token, url string) (*WalletClient, jso
 	}
 
 	walletClient := WalletClient{}
-	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Gateway", []interface{}{&walletClient.Internal}, apiInfo.AuthHeader())
+	closer, err := jsonrpc.NewMergeClient(ctx, addr, "Filecoin", []interface{}{&walletClient.Internal}, apiInfo.AuthHeader())
 
 	return &walletClient, closer, err
 }

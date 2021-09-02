@@ -15,6 +15,10 @@ func (m *MarketConfig) HomePath() (HomeDir, error) {
 	return HomeDir(path), nil
 }
 
+func (m *MarketConfig) ConfigPath() (string, error) {
+	return m.HomeJoin("config.toml")
+}
+
 func (m *MarketConfig) HomeJoin(sep ...string) (string, error) {
 	homeDir, err := homedir.Expand(m.HomeDir)
 	if err != nil {

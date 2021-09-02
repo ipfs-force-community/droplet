@@ -4,19 +4,17 @@ import (
 	"context"
 	"github.com/filecoin-project/venus-market/clients"
 	types2 "github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"io"
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	specstorage "github.com/filecoin-project/specs-storage/storage"
+	"github.com/filecoin-project/venus/pkg/types"
 
 	"github.com/ipfs/go-cid"
 )
@@ -25,12 +23,12 @@ type sectorAccessor struct {
 	maddr    address.Address
 	minerapi clients.IStorageMiner
 	pp       PieceProvider
-	full     v1api.FullNode
+	full     apiface.FullNode
 }
 
 var _ retrievalmarket.SectorAccessor = (*sectorAccessor)(nil)
 
-func NewSectorAccessor(maddr dtypes.MinerAddress, minerapi clients.IStorageMiner, pp PieceProvider, full v1api.FullNode) retrievalmarket.SectorAccessor {
+func NewSectorAccessor(maddr types2.MinerAddress, minerapi clients.IStorageMiner, pp PieceProvider, full apiface.FullNode) retrievalmarket.SectorAccessor {
 	return &sectorAccessor{address.Address(maddr), minerapi, pp, full}
 }
 

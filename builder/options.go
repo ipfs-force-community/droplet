@@ -4,13 +4,14 @@ import (
 	"context"
 	"golang.org/x/xerrors"
 	"reflect"
+	"sort"
 
 	"go.uber.org/fx"
 )
 
 type Special struct{ ID int }
 
-type Invoke string
+type Invoke int
 
 // Option is a functional option which can be used with the New function to
 // change how the node is constructed
@@ -56,7 +57,10 @@ func If(b bool, opts ...Option) Option {
 func Override(typ, constructor interface{}) Option {
 	return func(s *Settings) error {
 		if key, ok := typ.(Invoke); ok {
-			s.Invokes[key] = fx.Invoke(constructor)
+			s.Invokes[key] = InvokeOption{
+				Priority: key,
+				Option:   fx.Invoke(constructor),
+			}
 			return nil
 		}
 
@@ -75,7 +79,7 @@ func Override(typ, constructor interface{}) Option {
 func Unset(typ interface{}) Option {
 	return func(s *Settings) error {
 		if i, ok := typ.(Invoke); ok {
-			s.Invokes[i] = nil
+			delete(s.Invokes, i)
 			return nil
 		}
 
@@ -113,7 +117,7 @@ func as(in interface{}, as interface{}) interface{} {
 	outType := reflect.TypeOf(as)
 
 	if outType.Kind() != reflect.Ptr {
-		panic("outType is not a pointer")
+		panic("outType is not a pointer " + outType.String())
 	}
 
 	if reflect.TypeOf(in).Kind() != reflect.Func {
@@ -167,7 +171,7 @@ type StopFunc func(context.Context) error
 func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	settings := Settings{
 		Modules: map[interface{}]fx.Option{},
-		Invokes: map[Invoke]fx.Option{},
+		Invokes: map[Invoke]InvokeOption{},
 	}
 
 	// apply module options in the right order
@@ -182,11 +186,18 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	}
 
 	// fill holes in invokes for use in fx.Options
-	invokes := []fx.Option{}
+	invokeOpts := []InvokeOption{}
 	for _, opt := range settings.Invokes {
-		if opt != nil {
-			invokes = append(invokes, opt)
-		}
+		invokeOpts = append(invokeOpts, opt)
+	}
+
+	sort.Slice(invokeOpts, func(i, j int) bool {
+		return invokeOpts[i].Priority < invokeOpts[j].Priority
+	})
+
+	invokes := []fx.Option{}
+	for _, opt := range invokeOpts {
+		invokes = append(invokes, opt.Option)
 	}
 
 	app := fx.New(
@@ -207,6 +218,13 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 	return app.Stop, nil
 }
 
+type InvokeOption struct {
+	Priority Invoke
+	Option   fx.Option
+}
+
+var emptyInvoke = InvokeOption{}
+
 type Settings struct {
 	// modules is a map of constructors for DI
 	//
@@ -217,7 +235,7 @@ type Settings struct {
 
 	// invokes are separate from modules as they can't be referenced by return
 	// type, and must be applied in correct order
-	Invokes map[Invoke]fx.Option
+	Invokes map[Invoke]InvokeOption
 
 	Base   bool // Base option applied
 	Config bool // Config option applied

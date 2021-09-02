@@ -4,6 +4,7 @@ package storageadapter
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/fundmgr"
 	"github.com/filecoin-project/venus-market/piece"
@@ -49,6 +50,7 @@ type ProviderNodeAdapter struct {
 	ev      *events.Events
 
 	dealPublisher *DealPublisher
+	signerService clients.ISinger
 
 	storage                     piece.IPieceStorage
 	extendPieceMeta             piece.ExtendPieceStore
@@ -58,8 +60,8 @@ type ProviderNodeAdapter struct {
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, signerService clients.ISinger, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, signerService clients.ISinger, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev := events.NewEvents(ctx, full)
@@ -70,6 +72,7 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 			dsMatcher:       newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
 			storage:         storage,
 			extendPieceMeta: extendPieceMeta,
+			signerService:   signerService,
 		}
 		if fc != nil {
 			na.addBalanceSpec = &types.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
@@ -204,13 +207,16 @@ func (n *ProviderNodeAdapter) GetProofType(ctx context.Context, maddr address.Ad
 	return miner.PreferredSealProofTypeFromWindowPoStType(nver, mi.WindowPoStProofType)
 }
 
+//todo need to know which type of message change signature
 func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
 	signer, err := n.StateAccountKey(ctx, signer, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	localSignature, err := n.WalletSign(ctx, signer, b, wallet.MsgMeta{})
+	localSignature, err := n.signerService.WalletSign(ctx, signer, b, wallet.MsgMeta{
+		Type: wallet.MTStorageAsk,
+	})
 	if err != nil {
 		return nil, err
 	}

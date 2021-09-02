@@ -40,14 +40,13 @@ func PrivKey(cfg *config.MarketConfig) (crypto.PrivKey, error) {
 		return nil, err
 	}
 
-	kbytes, err := pk.Raw()
+	kbytes, err := pk.Bytes()
 	if err != nil {
 		return nil, err
 	}
 
 	cfg.Libp2p.PrivateKey = hex.EncodeToString(kbytes)
-	//save to db
-	return pk, nil
+	return pk, config.SaveConfig(cfg)
 }
 
 func genLibp2pKey() (crypto.PrivKey, error) {

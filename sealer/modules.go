@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/venus-market/builder"
-	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
 	dagstore2 "github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/types"
@@ -17,11 +16,11 @@ import (
 	"strconv"
 )
 
-const (
-	DAGStoreKey = "DAGStoreKey"
+var (
+	DAGStoreKey = builder.Special{1}
 )
 
-func MinerAddress(cfg config.MarketConfig) (types.MinerAddress, error) {
+func MinerAddress(cfg *config.MarketConfig) (types.MinerAddress, error) {
 	addr, err := address.NewFromString(cfg.MinerAddress)
 	if err != nil {
 		return types.MinerAddress{}, err
@@ -71,10 +70,9 @@ func NewDAGStore(lc fx.Lifecycle, homeDir config.HomeDir, cfg *config.DAGStoreCo
 
 var SealerOpts = builder.Options(
 	//sealer service
-	builder.Override(new(clients.IStorageMiner), clients.NewStorageMiner),
 	builder.Override(new(types.MinerAddress), MinerAddress), //todo miner single miner todo change to support multiple miner
 	builder.Override(new(PieceProvider), NewPieceProvider),
-	builder.Override(new(AddressSelector), NewAddressSelector),
+	builder.Override(new(*AddressSelector), NewAddressSelector),
 	builder.Override(new(dagstore2.MinerAPI), NewMinerAPI),
 	builder.Override(new(retrievalmarket.SectorAccessor), NewSectorAccessor),
 	builder.Override(DAGStoreKey, NewDAGStore),

@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dealfilter"
+	"github.com/filecoin-project/venus-market/fundmgr"
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models"
@@ -27,15 +28,14 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 	"os"
-	"path"
 )
 
 // Invokes are called in the order they are defined.
 //nolint:golint
 const (
-	InitJournalKey     = "InitJournalKey"
-	HandleDealsKey     = "HandleDealsKey"
-	HandleRetrievalKey = "HandleRetrievalKey"
+	InitJournalKey     builder.Invoke = 3
+	HandleDealsKey     builder.Invoke = 4
+	HandleRetrievalKey builder.Invoke = 5
 )
 
 func main() {
@@ -47,7 +47,7 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "repo",
-				Value: "./venusmarket",
+				Value: "~/.venusmarket",
 			},
 		},
 		Commands: []*cli.Command{
@@ -66,14 +66,17 @@ func main() {
 }
 
 func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
-	cfgPath := path.Join(cctx.String("repo"), "config.toml")
-
 	cfg := config.DefaultMarketConfig
+	cfg.HomeDir = cctx.String("repo")
+	cfgPath, err := cfg.ConfigPath()
+	if err != nil {
+		return nil, err
+	}
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		//create
 		err = config.SaveConfig(cfg)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("save config to %s %w", cfgPath, err)
 		}
 	} else if err == nil {
 		//loadConfig
@@ -91,7 +94,7 @@ func run(cctx *cli.Context) error {
 	ctx := cctx.Context
 	cfg, err := prepare(cctx)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	shutdownChan := make(chan struct{})
@@ -101,7 +104,8 @@ func run(cctx *cli.Context) error {
 		//clients
 		builder.Override(new(apiface.FullNode), clients.NodeClient),
 		builder.Override(new(clients.IMessager), clients.MessagerClient),
-		builder.Override(new(clients.IWalletClient), clients.NewWalletClient),
+		builder.Override(new(clients.ISinger), clients.NewWalletClient),
+		builder.Override(new(clients.IStorageMiner), clients.NewStorageMiner),
 		//defaults
 		// global system journal.
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
@@ -116,6 +120,7 @@ func run(cctx *cli.Context) error {
 		models.DBOptions,
 		network.NetworkOpts(cfg),
 		piece.PieceOpts(cfg),
+		fundmgr.FundMgrOpts,
 		sealer.SealerOpts,
 		paychmgr.PaychOpts,
 

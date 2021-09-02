@@ -8,11 +8,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 )
 
-func NewManager(ctx context.Context, ds models.PayChanDS, messager clients.IMessager, walletClient clients.IWalletClient, fullNode apiface.FullNode) *paychmgr.Manager {
+func NewManager(ctx context.Context, ds models.PayChanDS, messager clients.IMessager, walletClient clients.ISinger, fullNode apiface.FullNode) *paychmgr.Manager {
+	//todo  to use really messager?
 	return paychmgr.NewManager(ctx, ds, &paychmgr.ManagerParams{
-		MPoolAPI:     &MessagePullAdapter{},
+		MPoolAPI:     fullNode,
 		ChainInfoAPI: fullNode,
 		WalletAPI:    walletClient,
-		SM:           &StateMgrAdapter{},
+		SM:           NewStateMgrAdapter(fullNode),
 	})
 }

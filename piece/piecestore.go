@@ -73,7 +73,7 @@ type dsPieceStore struct {
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func NewDsPieceStore(ds models.PieceMetaDs) (piecestore.PieceStore, error) {
+func NewDsPieceStore(ds models.PieceMetaDs) (ExtendPieceStore, error) {
 	return &dsPieceStore{
 		pieces:   namespace.Wrap(ds, datastore.NewKey(DSPiecePrefix)),
 		cidInfos: namespace.Wrap(ds, datastore.NewKey(DSCIDPrefix)),

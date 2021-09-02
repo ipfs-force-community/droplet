@@ -6,19 +6,24 @@ import (
 )
 
 var DefaultMarketConfig = &MarketConfig{
-	HomeDir: "~/.venusmarket",
-	Common:  deferCommon,
+	HomeDir:      "~/.venusmarket",
+	MinerAddress: "f01005",
+	Common:       deferCommon,
 	Node: Node{
-		Url:   "/ip4/8.130.165.167/tcp/34530",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoic3Rlc3QiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.FEPMm5aKcm7pyn7iDMRl4CEs0-X3MQpgjORPRy9WPso",
+		Url:   "/ip4/192.168.200.12/tcp/3453",
+		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
 	},
 	Messager: Messager{
-		Url:   "/ip4/8.130.164.80/tcp/39813",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoic3Rlc3QiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.FEPMm5aKcm7pyn7iDMRl4CEs0-X3MQpgjORPRy9WPso",
+		Url:   "/ip4/192.168.200.12/tcp/39812",
+		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
 	},
 	Gateway: Gateway{
-		Url:   "/ip4/8.130.165.167/tcp/45130",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoic3Rlc3QiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.FEPMm5aKcm7pyn7iDMRl4CEs0-X3MQpgjORPRy9WPso",
+		Url:   "/ip4/127.0.0.1/tcp/5678/http",
+		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIl19.Y03rbv28jVsXK9t4Ih9a0YmmzGoG2fwa5Ek1VkQByQ0",
+	},
+	Sealer: Sealer{
+		Url:   "/ip4/127.0.0.1/tcp/2345",
+		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIiwiYWRtaW4iXX0.0yOKuJxNwI6wVZybM8jwIvUI_M2oZKAyEpeoTG6qN4M",
 	},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
@@ -26,7 +31,10 @@ var DefaultMarketConfig = &MarketConfig{
 		GCInterval:                 Duration(1 * time.Minute),
 	},
 	Journal: Journal{Path: "journal"},
-
+	PieceStorage: PieceStorage{
+		Type: "local",
+		Path: "/Users/lijunlong/.venusmarket",
+	},
 	ConsiderOnlineStorageDeals:      false,
 	ConsiderOfflineStorageDeals:     false,
 	ConsiderOnlineRetrievalDeals:    false,
@@ -42,9 +50,17 @@ var DefaultMarketConfig = &MarketConfig{
 	SimultaneousTransfers:           0,
 	Filter:                          "",
 	RetrievalFilter:                 "",
-	RetrievalPricing:                nil,
-	MaxPublishDealsFee:              types.FIL{},
-	MaxMarketBalanceAddFee:          types.FIL{},
+	RetrievalPricing: &RetrievalPricing{
+		Strategy: RetrievalPricingDefaultMode,
+		Default: &RetrievalPricingDefault{
+			VerifiedDealsFreeTransfer: true,
+		},
+		External: &RetrievalPricingExternal{
+			Path: "",
+		},
+	},
+	MaxPublishDealsFee:     types.FIL{},
+	MaxMarketBalanceAddFee: types.FIL{},
 }
 
 var deferCommon = Common{
