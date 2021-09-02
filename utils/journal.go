@@ -7,38 +7,6 @@ import (
 	"github.com/filecoin-project/venus-market/journal"
 )
 
-type StorageClientEvt struct {
-	Event string
-	Deal  storagemarket.ClientDeal
-}
-
-type StorageProviderEvt struct {
-	Event string
-	Deal  storagemarket.MinerDeal
-}
-
-type RetrievalClientEvt struct {
-	Event string
-	Deal  retrievalmarket.ClientDealState
-}
-
-type RetrievalProviderEvt struct {
-	Event string
-	Deal  retrievalmarket.ProviderDealState
-}
-
-// StorageClientJournaler records journal events from the piecestorage client.
-func StorageClientJournaler(j journal.Journal, evtType journal.EventType) func(event storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
-	return func(event storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
-		j.RecordEvent(evtType, func() interface{} {
-			return StorageClientEvt{
-				Event: storagemarket.ClientEvents[event],
-				Deal:  deal,
-			}
-		})
-	}
-}
-
 // StorageProviderJournaler records journal events from the piecestorage provider.
 func StorageProviderJournaler(j journal.Journal, evtType journal.EventType) func(event storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
 	return func(event storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
@@ -51,16 +19,14 @@ func StorageProviderJournaler(j journal.Journal, evtType journal.EventType) func
 	}
 }
 
-// RetrievalClientJournaler records journal events from the retrieval client.
-func RetrievalClientJournaler(j journal.Journal, evtType journal.EventType) func(event retrievalmarket.ClientEvent, deal retrievalmarket.ClientDealState) {
-	return func(event retrievalmarket.ClientEvent, deal retrievalmarket.ClientDealState) {
-		j.RecordEvent(evtType, func() interface{} {
-			return RetrievalClientEvt{
-				Event: retrievalmarket.ClientEvents[event],
-				Deal:  deal,
-			}
-		})
-	}
+type StorageProviderEvt struct {
+	Event string
+	Deal  storagemarket.MinerDeal
+}
+
+type RetrievalProviderEvt struct {
+	Event string
+	Deal  retrievalmarket.ProviderDealState
 }
 
 // RetrievalProviderJournaler records journal events from the retrieval provider.

@@ -18,10 +18,11 @@ import (
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/piece"
-	retrievaladapter2 "github.com/filecoin-project/venus-market/retrievaladapter"
+	"github.com/filecoin-project/venus-market/retrievaladapter"
 	"github.com/filecoin-project/venus-market/sealer"
-	storageadapter2 "github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/storageadapter"
 	"github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
 	metrics2 "github.com/ipfs/go-metrics-interface"
@@ -54,7 +55,7 @@ func main() {
 			{
 				Name:   "run",
 				Usage:  "run market daemon",
-				Action: run,
+				Action: daemon,
 			},
 		},
 	}
@@ -90,7 +91,7 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 	return cfg, nil
 }
 
-func run(cctx *cli.Context) error {
+func daemon(cctx *cli.Context) error {
 	ctx := cctx.Context
 	cfg, err := prepare(cctx)
 	if err != nil {
@@ -100,7 +101,7 @@ func run(cctx *cli.Context) error {
 	shutdownChan := make(chan struct{})
 	_, err = builder.New(ctx,
 		//config
-		config.ConfigOpts(cfg),
+		config.ConfigServerOpts(cfg),
 		//clients
 		builder.Override(new(apiface.FullNode), clients.NodeClient),
 		builder.Override(new(clients.IMessager), clients.MessagerClient),
@@ -109,7 +110,7 @@ func run(cctx *cli.Context) error {
 		//defaults
 		// global system journal.
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
-		builder.Override(new(journal.Journal), OpenFilesystemJournal),
+		builder.Override(new(journal.Journal), journal.OpenFilesystemJournal),
 
 		builder.Override(new(metrics.MetricsCtx), func() context.Context {
 			return metrics2.CtxScope(context.Background(), "venus-market")
@@ -117,8 +118,8 @@ func run(cctx *cli.Context) error {
 
 		builder.Override(new(types.ShutdownChan), make(chan struct{})),
 		//database
-		models.DBOptions,
-		network.NetworkOpts(cfg),
+		models.DBOptions(true),
+		network.NetworkOpts(true, cfg.SimultaneousTransfers),
 		piece.PieceOpts(cfg),
 		fundmgr.FundMgrOpts,
 		sealer.SealerOpts,
@@ -128,7 +129,7 @@ func run(cctx *cli.Context) error {
 		builder.Override(new(config.RetrievalPricingFunc), RetrievalPricingFunc(cfg)),
 
 		// Markets (retrieval)
-		builder.Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter2.NewRetrievalProviderNode),
+		builder.Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
 		builder.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
 		builder.Override(new(retrievalmarket.RetrievalProvider), RetrievalProvider), //save to metadata /retrievals/provider
 		builder.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(nil)),
@@ -139,7 +140,7 @@ func run(cctx *cli.Context) error {
 		builder.Override(new(*storedask.StoredAsk), NewStorageAsk),                             //   save to metadata /deals/provider/piecestorage-ask/latest
 		builder.Override(new(config.StorageDealFilter), BasicDealFilter(nil)),
 		builder.Override(new(storagemarket.StorageProvider), StorageProvider),
-		builder.Override(new(*storageadapter2.DealPublisher), storageadapter2.NewDealPublisher(cfg)),
+		builder.Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(cfg)),
 		builder.Override(HandleDealsKey, HandleDeals),
 
 		// Config (todo: get a real property system)
@@ -169,14 +170,14 @@ func run(cctx *cli.Context) error {
 		builder.If(cfg.RetrievalFilter != "",
 			builder.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.RetrievalFilter))),
 		),
-		builder.Override(new(*storageadapter2.DealPublisher), storageadapter2.NewDealPublisher(cfg)),
-		builder.Override(new(storagemarket.StorageProviderNode), storageadapter2.NewProviderNodeAdapter(cfg)),
+		builder.Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(cfg)),
+		builder.Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(cfg)),
 
 		builder.Override(new(types.ShutdownChan), shutdownChan),
 	)
 	if err != nil {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
-	finishCh := MonitorShutdown(shutdownChan)
-	return serveRPC(ctx, &cfg.API, &impl.MarketNodeImpl{}, finishCh, 1000, "")
+	finishCh := utils.MonitorShutdown(shutdownChan)
+	return serveRPC(ctx, cfg.MustHomePath(), &cfg.API, &impl.MarketNodeImpl{}, finishCh, 1000, "")
 }

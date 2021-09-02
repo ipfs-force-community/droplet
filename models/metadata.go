@@ -25,3 +25,6 @@ type StorageAskDS datastore.Batching //key = latest
 
 // /paych/
 type PayChanDS datastore.Batching
+
+// /deals/client
+type ClientDatastore datastore.Batching

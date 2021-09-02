@@ -2,6 +2,7 @@ package builder
 
 import (
 	"context"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 	"reflect"
 	"sort"
@@ -204,7 +205,7 @@ func New(ctx context.Context, opts ...Option) (StopFunc, error) {
 		fx.Options(ctors...),
 		fx.Options(invokes...),
 
-		fx.NopLogger,
+		fx.Logger(&debugPrinter{logging.Logger("fx")}),
 	)
 
 	// TODO: we probably should have a 'firewall' for Closing signal

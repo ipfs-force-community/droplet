@@ -55,7 +55,12 @@ type Messager struct {
 	Token string
 }
 
-type Gateway struct {
+type Signer struct {
+	Url   string
+	Token string
+}
+
+type Market struct {
 	Url   string
 	Token string
 }
@@ -147,14 +152,14 @@ type DAGStoreConfig struct {
 
 // StorageMiner is a miner config
 type MarketConfig struct {
-	HomeDir string
+	Home
 
 	Common
 	Node
 	PieceStorage
 	Sealer
 	Messager
-	Gateway
+	Signer
 	Journal
 	AddressConfig
 	DAGStore DAGStoreConfig
@@ -204,6 +209,18 @@ type MarketConfig struct {
 
 	MaxPublishDealsFee     types.FIL
 	MaxMarketBalanceAddFee types.FIL
+}
+
+type MarketClientConfig struct {
+	Home
+	Libp2p Libp2p
+	Node
+	Signer
+	Market
+	Messager
+
+	// The maximum number of parallel online data transfers (piecestorage+retrieval)
+	SimultaneousTransfers uint64
 }
 
 var _ encoding.TextMarshaler = (*Duration)(nil)

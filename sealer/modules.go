@@ -37,10 +37,10 @@ func NewAddressSelector(cfg *config.MarketConfig) (*AddressSelector, error) {
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func NewDAGStore(lc fx.Lifecycle, homeDir config.HomeDir, cfg *config.DAGStoreConfig, minerAPI dagstore2.MinerAPI) (*dagstore.DAGStore, *dagstore2.Wrapper, error) {
+func NewDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI dagstore2.MinerAPI) (*dagstore.DAGStore, *dagstore2.Wrapper, error) {
 	// fall back to default root directory if not explicitly set in the config.
 	if cfg.RootDir == "" {
-		cfg.RootDir = filepath.Join(string(homeDir), DefaultDAGStoreDir)
+		cfg.RootDir = filepath.Join(string(*homeDir), DefaultDAGStoreDir)
 	}
 
 	v, ok := os.LookupEnv(EnvDAGStoreCopyConcurrency)

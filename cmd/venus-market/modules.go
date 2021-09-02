@@ -43,19 +43,6 @@ var (
 	log = logging.Logger("modules")
 )
 
-func OpenFilesystemJournal(lr *config.MarketConfig, lc fx.Lifecycle, disabled journal.DisabledEvents) (journal.Journal, error) {
-	jrnl, err := journal.OpenFSJournal(lr.Journal.Path, disabled)
-	if err != nil {
-		return nil, err
-	}
-
-	lc.Append(fx.Hook{
-		OnStop: func(_ context.Context) error { return jrnl.Close() },
-	})
-
-	return jrnl, err
-}
-
 // RetrievalPricingFunc configures the pricing function to use for retrieval deals.
 func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ config.ConsiderOnlineRetrievalDealsConfigFunc,
 	_ config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalPricingFunc {
@@ -72,16 +59,16 @@ func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ config.ConsiderOnline
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs models.DagTransferDS, h host.Host, homeDir config.HomeDir, gs network.StagingGraphsync, ds models.MetadataDS, cfg *config.MarketConfig) (network.ProviderDataTransfer, error) {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs models.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync, ds models.MetadataDS, cfg *config.MarketConfig) (network.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
 
 	transport := dtgstransport.NewTransport(h.ID(), gs)
-	err := os.MkdirAll(filepath.Join(string(homeDir), "data-transfer"), 0755) //nolint: gosec
+	err := os.MkdirAll(filepath.Join(string(*homeDir), "data-transfer"), 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
 
-	dt, err := dtimpl.NewDataTransfer(dagDs, filepath.Join(string(homeDir), "data-transfer"), net, transport)
+	dt, err := dtimpl.NewDataTransfer(dagDs, filepath.Join(string(*homeDir), "data-transfer"), net, transport)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +214,7 @@ func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
 }
 
 func StorageProvider(
-	homeDir config.HomeDir,
+	homeDir *config.HomeDir,
 	minerAddress types2.MinerAddress,
 	storedAsk *storedask.StoredAsk,
 	h host.Host,
@@ -239,7 +226,7 @@ func StorageProvider(
 	df config.StorageDealFilter,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
-	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(string(homeDir)))
+	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(string(*homeDir)))
 	if err != nil {
 		return nil, err
 	}

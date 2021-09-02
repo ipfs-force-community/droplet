@@ -11,22 +11,26 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
+	"io/ioutil"
 	"net/http"
+	"path"
 )
 
-func serveRPC(ctx context.Context, cfg *config.API, a api.MarketNode, shutdownCh <-chan struct{}, maxRequestSize int64, authUrl string) error {
+func serveRPC(ctx context.Context, homeDir string, cfg *config.API, a api.MarketFullNode, shutdownCh <-chan struct{}, maxRequestSize int64, authUrl string) error {
 	seckey, err := MakeToken()
 	if err != nil {
 		return fmt.Errorf("make token failed:%s", err.Error())
 	}
 
+	_ = ioutil.WriteFile(path.Join(homeDir, "api"), []byte(cfg.ListenAddress), 0644)
+	_ = ioutil.WriteFile(path.Join(homeDir, "token"), seckey, 0644)
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
 	}
 
 	rpcServer := jsonrpc.NewServer(serverOptions...)
-	rpcServer.Register("Gateway", a)
+	rpcServer.Register("Signer", a)
 
 	mux := mux.NewRouter()
 	mux.Handle("/rpc/v0", rpcServer)

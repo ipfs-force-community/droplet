@@ -7,7 +7,17 @@ import (
 
 type HomeDir string
 
-func (m *MarketConfig) HomePath() (HomeDir, error) {
+type IHome interface {
+	HomePath() (HomeDir, error)
+	MustHomePath() string
+	ConfigPath() (string, error)
+	HomeJoin(sep ...string) (string, error)
+}
+type Home struct {
+	HomeDir string
+}
+
+func (m *Home) HomePath() (HomeDir, error) {
 	path, err := homedir.Expand(m.HomeDir)
 	if err != nil {
 		return "", err
@@ -15,11 +25,16 @@ func (m *MarketConfig) HomePath() (HomeDir, error) {
 	return HomeDir(path), nil
 }
 
-func (m *MarketConfig) ConfigPath() (string, error) {
+func (m *Home) MustHomePath() string {
+	path, _ := homedir.Expand(m.HomeDir)
+	return path
+}
+
+func (m *Home) ConfigPath() (string, error) {
 	return m.HomeJoin("config.toml")
 }
 
-func (m *MarketConfig) HomeJoin(sep ...string) (string, error) {
+func (m *Home) HomeJoin(sep ...string) (string, error) {
 	homeDir, err := homedir.Expand(m.HomeDir)
 	if err != nil {
 		return "", err

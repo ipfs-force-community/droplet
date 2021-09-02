@@ -10,7 +10,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus-market/client"
+	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus-market/utils"
 	mTypes "github.com/filecoin-project/venus-messager/types"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
 	"github.com/google/uuid"
@@ -20,7 +23,68 @@ import (
 	"time"
 )
 
-type MarketNodeStruct struct {
+type MarketClientNodeStruct struct {
+	Internal struct {
+		ClientCalcCommP func(p0 context.Context, p1 string) (*client.CommPRet, error) `perm:"write"`
+
+		ClientCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
+
+		ClientCancelRetrievalDeal func(p0 context.Context, p1 retrievalmarket.DealID) error `perm:"write"`
+
+		ClientDataTransferUpdates func(p0 context.Context) (<-chan types.DataTransferChannel, error) `perm:"write"`
+
+		ClientDealPieceCID func(p0 context.Context, p1 cid.Cid) (client.DataCIDSize, error) `perm:"read"`
+
+		ClientDealSize func(p0 context.Context, p1 cid.Cid) (client.DataSize, error) `perm:"read"`
+
+		ClientFindData func(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]client.QueryOffer, error) `perm:"read"`
+
+		ClientGenCar func(p0 context.Context, p1 client.FileRef, p2 string) error `perm:"write"`
+
+		ClientGetDealInfo func(p0 context.Context, p1 cid.Cid) (*client.DealInfo, error) `perm:"read"`
+
+		ClientGetDealStatus func(p0 context.Context, p1 uint64) (string, error) `perm:"read"`
+
+		ClientGetDealUpdates func(p0 context.Context) (<-chan client.DealInfo, error) `perm:"write"`
+
+		ClientGetRetrievalUpdates func(p0 context.Context) (<-chan client.RetrievalInfo, error) `perm:"write"`
+
+		ClientHasLocal func(p0 context.Context, p1 cid.Cid) (bool, error) `perm:"write"`
+
+		ClientImport func(p0 context.Context, p1 client.FileRef) (*client.ImportRes, error) `perm:"admin"`
+
+		ClientListDataTransfers func(p0 context.Context) ([]types.DataTransferChannel, error) `perm:"write"`
+
+		ClientListDeals func(p0 context.Context) ([]client.DealInfo, error) `perm:"write"`
+
+		ClientListImports func(p0 context.Context) ([]client.Import, error) `perm:"write"`
+
+		ClientListRetrievals func(p0 context.Context) ([]client.RetrievalInfo, error) `perm:"write"`
+
+		ClientMinerQueryOffer func(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (client.QueryOffer, error) `perm:"read"`
+
+		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) `perm:"read"`
+
+		ClientRemoveImport func(p0 context.Context, p1 imports.ID) error `perm:"admin"`
+
+		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
+
+		ClientRetrieve func(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) error `perm:"admin"`
+
+		ClientRetrieveTryRestartInsufficientFunds func(p0 context.Context, p1 address.Address) error `perm:"write"`
+
+		ClientRetrieveWithEvents func(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) (<-chan utils.RetrievalEvent, error) `perm:"admin"`
+
+		ClientStartDeal func(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) `perm:"admin"`
+
+		ClientStatelessDeal func(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) `perm:"write"`
+	}
+}
+
+type MarketClientNodeStub struct {
+}
+
+type MarketFullNodeStruct struct {
 	Internal struct {
 		ActorAddress func(p0 context.Context) (address.Address, error) `perm:"read"`
 
@@ -108,343 +172,560 @@ type MarketNodeStruct struct {
 	}
 }
 
-type MarketNodeStub struct {
+type MarketFullNodeStub struct {
 }
 
-func (s *MarketNodeStruct) ActorAddress(p0 context.Context) (address.Address, error) {
-	return s.Internal.ActorAddress(p0)
+func (s *MarketClientNodeStruct) ClientCalcCommP(p0 context.Context, p1 string) (*client.CommPRet, error) {
+	return s.Internal.ClientCalcCommP(p0, p1)
 }
 
-func (s *MarketNodeStub) ActorAddress(p0 context.Context) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
-	return s.Internal.ActorSectorSize(p0, p1)
-}
-
-func (s *MarketNodeStub) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
-	return *new(abi.SectorSize), xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {
-	return s.Internal.DealsConsiderOfflineRetrievalDeals(p0)
-}
-
-func (s *MarketNodeStub) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsConsiderOfflineStorageDeals(p0 context.Context) (bool, error) {
-	return s.Internal.DealsConsiderOfflineStorageDeals(p0)
-}
-
-func (s *MarketNodeStub) DealsConsiderOfflineStorageDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsConsiderOnlineRetrievalDeals(p0 context.Context) (bool, error) {
-	return s.Internal.DealsConsiderOnlineRetrievalDeals(p0)
-}
-
-func (s *MarketNodeStub) DealsConsiderOnlineRetrievalDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsConsiderOnlineStorageDeals(p0 context.Context) (bool, error) {
-	return s.Internal.DealsConsiderOnlineStorageDeals(p0)
-}
-
-func (s *MarketNodeStub) DealsConsiderOnlineStorageDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsConsiderUnverifiedStorageDeals(p0 context.Context) (bool, error) {
-	return s.Internal.DealsConsiderUnverifiedStorageDeals(p0)
-}
-
-func (s *MarketNodeStub) DealsConsiderUnverifiedStorageDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsConsiderVerifiedStorageDeals(p0 context.Context) (bool, error) {
-	return s.Internal.DealsConsiderVerifiedStorageDeals(p0)
-}
-
-func (s *MarketNodeStub) DealsConsiderVerifiedStorageDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
-	return s.Internal.DealsImportData(p0, p1, p2)
-}
-
-func (s *MarketNodeStub) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsList(p0 context.Context) ([]types.MarketDeal, error) {
-	return s.Internal.DealsList(p0)
-}
-
-func (s *MarketNodeStub) DealsList(p0 context.Context) ([]types.MarketDeal, error) {
-	return *new([]types.MarketDeal), xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {
-	return s.Internal.DealsPieceCidBlocklist(p0)
-}
-
-func (s *MarketNodeStub) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {
-	return *new([]cid.Cid), xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {
-	return s.Internal.DealsSetConsiderOfflineRetrievalDeals(p0, p1)
-}
-
-func (s *MarketNodeStub) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {
-	return s.Internal.DealsSetConsiderOfflineStorageDeals(p0, p1)
-}
-
-func (s *MarketNodeStub) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {
-	return s.Internal.DealsSetConsiderOnlineRetrievalDeals(p0, p1)
-}
-
-func (s *MarketNodeStub) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {
-	return s.Internal.DealsSetConsiderOnlineStorageDeals(p0, p1)
-}
-
-func (s *MarketNodeStub) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {
-	return s.Internal.DealsSetConsiderUnverifiedStorageDeals(p0, p1)
-}
-
-func (s *MarketNodeStub) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {
-	return s.Internal.DealsSetConsiderVerifiedStorageDeals(p0, p1)
-}
-
-func (s *MarketNodeStub) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
-	return s.Internal.DealsSetPieceCidBlocklist(p0, p1)
-}
-
-func (s *MarketNodeStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
-	return s.Internal.MarketCancelDataTransfer(p0, p1, p2, p3)
-}
-
-func (s *MarketNodeStub) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) MarketDataTransferUpdates(p0 context.Context) (<-chan types.DataTransferChannel, error) {
-	return s.Internal.MarketDataTransferUpdates(p0)
-}
-
-func (s *MarketNodeStub) MarketDataTransferUpdates(p0 context.Context) (<-chan types.DataTransferChannel, error) {
+func (s *MarketClientNodeStub) ClientCalcCommP(p0 context.Context, p1 string) (*client.CommPRet, error) {
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
-	return s.Internal.MarketGetAsk(p0)
+func (s *MarketClientNodeStruct) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+	return s.Internal.ClientCancelDataTransfer(p0, p1, p2, p3)
 }
 
-func (s *MarketNodeStub) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
-	return nil, xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) MarketGetDealUpdates(p0 context.Context) (<-chan storagemarket.MinerDeal, error) {
-	return s.Internal.MarketGetDealUpdates(p0)
-}
-
-func (s *MarketNodeStub) MarketGetDealUpdates(p0 context.Context) (<-chan storagemarket.MinerDeal, error) {
-	return nil, xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
-	return s.Internal.MarketGetRetrievalAsk(p0)
-}
-
-func (s *MarketNodeStub) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
-	return nil, xerrors.New("method not supported")
-}
-
-func (s *MarketNodeStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
-	return s.Internal.MarketImportDealData(p0, p1, p2)
-}
-
-func (s *MarketNodeStub) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
+func (s *MarketClientNodeStub) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MarketListDataTransfers(p0 context.Context) ([]types.DataTransferChannel, error) {
-	return s.Internal.MarketListDataTransfers(p0)
+func (s *MarketClientNodeStruct) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) error {
+	return s.Internal.ClientCancelRetrievalDeal(p0, p1)
 }
 
-func (s *MarketNodeStub) MarketListDataTransfers(p0 context.Context) ([]types.DataTransferChannel, error) {
+func (s *MarketClientNodeStub) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientDataTransferUpdates(p0 context.Context) (<-chan types.DataTransferChannel, error) {
+	return s.Internal.ClientDataTransferUpdates(p0)
+}
+
+func (s *MarketClientNodeStub) ClientDataTransferUpdates(p0 context.Context) (<-chan types.DataTransferChannel, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientDealPieceCID(p0 context.Context, p1 cid.Cid) (client.DataCIDSize, error) {
+	return s.Internal.ClientDealPieceCID(p0, p1)
+}
+
+func (s *MarketClientNodeStub) ClientDealPieceCID(p0 context.Context, p1 cid.Cid) (client.DataCIDSize, error) {
+	return *new(client.DataCIDSize), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientDealSize(p0 context.Context, p1 cid.Cid) (client.DataSize, error) {
+	return s.Internal.ClientDealSize(p0, p1)
+}
+
+func (s *MarketClientNodeStub) ClientDealSize(p0 context.Context, p1 cid.Cid) (client.DataSize, error) {
+	return *new(client.DataSize), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientFindData(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]client.QueryOffer, error) {
+	return s.Internal.ClientFindData(p0, p1, p2)
+}
+
+func (s *MarketClientNodeStub) ClientFindData(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]client.QueryOffer, error) {
+	return *new([]client.QueryOffer), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientGenCar(p0 context.Context, p1 client.FileRef, p2 string) error {
+	return s.Internal.ClientGenCar(p0, p1, p2)
+}
+
+func (s *MarketClientNodeStub) ClientGenCar(p0 context.Context, p1 client.FileRef, p2 string) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientGetDealInfo(p0 context.Context, p1 cid.Cid) (*client.DealInfo, error) {
+	return s.Internal.ClientGetDealInfo(p0, p1)
+}
+
+func (s *MarketClientNodeStub) ClientGetDealInfo(p0 context.Context, p1 cid.Cid) (*client.DealInfo, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientGetDealStatus(p0 context.Context, p1 uint64) (string, error) {
+	return s.Internal.ClientGetDealStatus(p0, p1)
+}
+
+func (s *MarketClientNodeStub) ClientGetDealStatus(p0 context.Context, p1 uint64) (string, error) {
+	return "", xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientGetDealUpdates(p0 context.Context) (<-chan client.DealInfo, error) {
+	return s.Internal.ClientGetDealUpdates(p0)
+}
+
+func (s *MarketClientNodeStub) ClientGetDealUpdates(p0 context.Context) (<-chan client.DealInfo, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientGetRetrievalUpdates(p0 context.Context) (<-chan client.RetrievalInfo, error) {
+	return s.Internal.ClientGetRetrievalUpdates(p0)
+}
+
+func (s *MarketClientNodeStub) ClientGetRetrievalUpdates(p0 context.Context) (<-chan client.RetrievalInfo, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientHasLocal(p0 context.Context, p1 cid.Cid) (bool, error) {
+	return s.Internal.ClientHasLocal(p0, p1)
+}
+
+func (s *MarketClientNodeStub) ClientHasLocal(p0 context.Context, p1 cid.Cid) (bool, error) {
+	return false, xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientImport(p0 context.Context, p1 client.FileRef) (*client.ImportRes, error) {
+	return s.Internal.ClientImport(p0, p1)
+}
+
+func (s *MarketClientNodeStub) ClientImport(p0 context.Context, p1 client.FileRef) (*client.ImportRes, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientListDataTransfers(p0 context.Context) ([]types.DataTransferChannel, error) {
+	return s.Internal.ClientListDataTransfers(p0)
+}
+
+func (s *MarketClientNodeStub) ClientListDataTransfers(p0 context.Context) ([]types.DataTransferChannel, error) {
 	return *new([]types.DataTransferChannel), xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MarketListDeals(p0 context.Context) ([]types.MarketDeal, error) {
-	return s.Internal.MarketListDeals(p0)
+func (s *MarketClientNodeStruct) ClientListDeals(p0 context.Context) ([]client.DealInfo, error) {
+	return s.Internal.ClientListDeals(p0)
 }
 
-func (s *MarketNodeStub) MarketListDeals(p0 context.Context) ([]types.MarketDeal, error) {
+func (s *MarketClientNodeStub) ClientListDeals(p0 context.Context) ([]client.DealInfo, error) {
+	return *new([]client.DealInfo), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientListImports(p0 context.Context) ([]client.Import, error) {
+	return s.Internal.ClientListImports(p0)
+}
+
+func (s *MarketClientNodeStub) ClientListImports(p0 context.Context) ([]client.Import, error) {
+	return *new([]client.Import), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientListRetrievals(p0 context.Context) ([]client.RetrievalInfo, error) {
+	return s.Internal.ClientListRetrievals(p0)
+}
+
+func (s *MarketClientNodeStub) ClientListRetrievals(p0 context.Context) ([]client.RetrievalInfo, error) {
+	return *new([]client.RetrievalInfo), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientMinerQueryOffer(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (client.QueryOffer, error) {
+	return s.Internal.ClientMinerQueryOffer(p0, p1, p2, p3)
+}
+
+func (s *MarketClientNodeStub) ClientMinerQueryOffer(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (client.QueryOffer, error) {
+	return *new(client.QueryOffer), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) {
+	return s.Internal.ClientQueryAsk(p0, p1, p2)
+}
+
+func (s *MarketClientNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
+	return s.Internal.ClientRemoveImport(p0, p1)
+}
+
+func (s *MarketClientNodeStub) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+	return s.Internal.ClientRestartDataTransfer(p0, p1, p2, p3)
+}
+
+func (s *MarketClientNodeStub) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientRetrieve(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) error {
+	return s.Internal.ClientRetrieve(p0, p1, p2)
+}
+
+func (s *MarketClientNodeStub) ClientRetrieve(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
+	return s.Internal.ClientRetrieveTryRestartInsufficientFunds(p0, p1)
+}
+
+func (s *MarketClientNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientRetrieveWithEvents(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) (<-chan utils.RetrievalEvent, error) {
+	return s.Internal.ClientRetrieveWithEvents(p0, p1, p2)
+}
+
+func (s *MarketClientNodeStub) ClientRetrieveWithEvents(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) (<-chan utils.RetrievalEvent, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientStartDeal(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) {
+	return s.Internal.ClientStartDeal(p0, p1)
+}
+
+func (s *MarketClientNodeStub) ClientStartDeal(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) ClientStatelessDeal(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) {
+	return s.Internal.ClientStatelessDeal(p0, p1)
+}
+
+func (s *MarketClientNodeStub) ClientStatelessDeal(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) ActorAddress(p0 context.Context) (address.Address, error) {
+	return s.Internal.ActorAddress(p0)
+}
+
+func (s *MarketFullNodeStub) ActorAddress(p0 context.Context) (address.Address, error) {
+	return *new(address.Address), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
+	return s.Internal.ActorSectorSize(p0, p1)
+}
+
+func (s *MarketFullNodeStub) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
+	return *new(abi.SectorSize), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {
+	return s.Internal.DealsConsiderOfflineRetrievalDeals(p0)
+}
+
+func (s *MarketFullNodeStub) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {
+	return false, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsConsiderOfflineStorageDeals(p0 context.Context) (bool, error) {
+	return s.Internal.DealsConsiderOfflineStorageDeals(p0)
+}
+
+func (s *MarketFullNodeStub) DealsConsiderOfflineStorageDeals(p0 context.Context) (bool, error) {
+	return false, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsConsiderOnlineRetrievalDeals(p0 context.Context) (bool, error) {
+	return s.Internal.DealsConsiderOnlineRetrievalDeals(p0)
+}
+
+func (s *MarketFullNodeStub) DealsConsiderOnlineRetrievalDeals(p0 context.Context) (bool, error) {
+	return false, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsConsiderOnlineStorageDeals(p0 context.Context) (bool, error) {
+	return s.Internal.DealsConsiderOnlineStorageDeals(p0)
+}
+
+func (s *MarketFullNodeStub) DealsConsiderOnlineStorageDeals(p0 context.Context) (bool, error) {
+	return false, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsConsiderUnverifiedStorageDeals(p0 context.Context) (bool, error) {
+	return s.Internal.DealsConsiderUnverifiedStorageDeals(p0)
+}
+
+func (s *MarketFullNodeStub) DealsConsiderUnverifiedStorageDeals(p0 context.Context) (bool, error) {
+	return false, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsConsiderVerifiedStorageDeals(p0 context.Context) (bool, error) {
+	return s.Internal.DealsConsiderVerifiedStorageDeals(p0)
+}
+
+func (s *MarketFullNodeStub) DealsConsiderVerifiedStorageDeals(p0 context.Context) (bool, error) {
+	return false, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
+	return s.Internal.DealsImportData(p0, p1, p2)
+}
+
+func (s *MarketFullNodeStub) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsList(p0 context.Context) ([]types.MarketDeal, error) {
+	return s.Internal.DealsList(p0)
+}
+
+func (s *MarketFullNodeStub) DealsList(p0 context.Context) ([]types.MarketDeal, error) {
 	return *new([]types.MarketDeal), xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
+func (s *MarketFullNodeStruct) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {
+	return s.Internal.DealsPieceCidBlocklist(p0)
+}
+
+func (s *MarketFullNodeStub) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {
+	return *new([]cid.Cid), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {
+	return s.Internal.DealsSetConsiderOfflineRetrievalDeals(p0, p1)
+}
+
+func (s *MarketFullNodeStub) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {
+	return s.Internal.DealsSetConsiderOfflineStorageDeals(p0, p1)
+}
+
+func (s *MarketFullNodeStub) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {
+	return s.Internal.DealsSetConsiderOnlineRetrievalDeals(p0, p1)
+}
+
+func (s *MarketFullNodeStub) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {
+	return s.Internal.DealsSetConsiderOnlineStorageDeals(p0, p1)
+}
+
+func (s *MarketFullNodeStub) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {
+	return s.Internal.DealsSetConsiderUnverifiedStorageDeals(p0, p1)
+}
+
+func (s *MarketFullNodeStub) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {
+	return s.Internal.DealsSetConsiderVerifiedStorageDeals(p0, p1)
+}
+
+func (s *MarketFullNodeStub) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
+	return s.Internal.DealsSetPieceCidBlocklist(p0, p1)
+}
+
+func (s *MarketFullNodeStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+	return s.Internal.MarketCancelDataTransfer(p0, p1, p2, p3)
+}
+
+func (s *MarketFullNodeStub) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketDataTransferUpdates(p0 context.Context) (<-chan types.DataTransferChannel, error) {
+	return s.Internal.MarketDataTransferUpdates(p0)
+}
+
+func (s *MarketFullNodeStub) MarketDataTransferUpdates(p0 context.Context) (<-chan types.DataTransferChannel, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
+	return s.Internal.MarketGetAsk(p0)
+}
+
+func (s *MarketFullNodeStub) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketGetDealUpdates(p0 context.Context) (<-chan storagemarket.MinerDeal, error) {
+	return s.Internal.MarketGetDealUpdates(p0)
+}
+
+func (s *MarketFullNodeStub) MarketGetDealUpdates(p0 context.Context) (<-chan storagemarket.MinerDeal, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
+	return s.Internal.MarketGetRetrievalAsk(p0)
+}
+
+func (s *MarketFullNodeStub) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
+	return s.Internal.MarketImportDealData(p0, p1, p2)
+}
+
+func (s *MarketFullNodeStub) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketListDataTransfers(p0 context.Context) ([]types.DataTransferChannel, error) {
+	return s.Internal.MarketListDataTransfers(p0)
+}
+
+func (s *MarketFullNodeStub) MarketListDataTransfers(p0 context.Context) ([]types.DataTransferChannel, error) {
+	return *new([]types.DataTransferChannel), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketListDeals(p0 context.Context) ([]types.MarketDeal, error) {
+	return s.Internal.MarketListDeals(p0)
+}
+
+func (s *MarketFullNodeStub) MarketListDeals(p0 context.Context) ([]types.MarketDeal, error) {
+	return *new([]types.MarketDeal), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
 	return s.Internal.MarketListIncompleteDeals(p0)
 }
 
-func (s *MarketNodeStub) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
+func (s *MarketFullNodeStub) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
 	return *new([]storagemarket.MinerDeal), xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MarketListRetrievalDeals(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) {
+func (s *MarketFullNodeStruct) MarketListRetrievalDeals(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) {
 	return s.Internal.MarketListRetrievalDeals(p0)
 }
 
-func (s *MarketNodeStub) MarketListRetrievalDeals(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) {
+func (s *MarketFullNodeStub) MarketListRetrievalDeals(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) {
 	return *new([]retrievalmarket.ProviderDealState), xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MarketPendingDeals(p0 context.Context) (types.PendingDealInfo, error) {
+func (s *MarketFullNodeStruct) MarketPendingDeals(p0 context.Context) (types.PendingDealInfo, error) {
 	return s.Internal.MarketPendingDeals(p0)
 }
 
-func (s *MarketNodeStub) MarketPendingDeals(p0 context.Context) (types.PendingDealInfo, error) {
+func (s *MarketFullNodeStub) MarketPendingDeals(p0 context.Context) (types.PendingDealInfo, error) {
 	return *new(types.PendingDealInfo), xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MarketPublishPendingDeals(p0 context.Context) error {
+func (s *MarketFullNodeStruct) MarketPublishPendingDeals(p0 context.Context) error {
 	return s.Internal.MarketPublishPendingDeals(p0)
 }
 
-func (s *MarketNodeStub) MarketPublishPendingDeals(p0 context.Context) error {
+func (s *MarketFullNodeStub) MarketPublishPendingDeals(p0 context.Context) error {
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *MarketFullNodeStruct) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
 	return s.Internal.MarketRestartDataTransfer(p0, p1, p2, p3)
 }
 
-func (s *MarketNodeStub) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *MarketFullNodeStub) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MarketSetAsk(p0 context.Context, p1 vTypes.BigInt, p2 vTypes.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
+func (s *MarketFullNodeStruct) MarketSetAsk(p0 context.Context, p1 vTypes.BigInt, p2 vTypes.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
 	return s.Internal.MarketSetAsk(p0, p1, p2, p3, p4, p5)
 }
 
-func (s *MarketNodeStub) MarketSetAsk(p0 context.Context, p1 vTypes.BigInt, p2 vTypes.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
+func (s *MarketFullNodeStub) MarketSetAsk(p0 context.Context, p1 vTypes.BigInt, p2 vTypes.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
+func (s *MarketFullNodeStruct) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
 	return s.Internal.MarketSetRetrievalAsk(p0, p1)
 }
 
-func (s *MarketNodeStub) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
+func (s *MarketFullNodeStub) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MessagerGetMessage(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) {
+func (s *MarketFullNodeStruct) MessagerGetMessage(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) {
 	return s.Internal.MessagerGetMessage(p0, p1)
 }
 
-func (s *MarketNodeStub) MessagerGetMessage(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) {
+func (s *MarketFullNodeStub) MessagerGetMessage(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) {
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (uuid.UUID, error) {
+func (s *MarketFullNodeStruct) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (uuid.UUID, error) {
 	return s.Internal.MessagerPushMessage(p0, p1, p2)
 }
 
-func (s *MarketNodeStub) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (uuid.UUID, error) {
+func (s *MarketFullNodeStub) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (uuid.UUID, error) {
 	return *new(uuid.UUID), xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) MessagerWaitMessage(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) {
+func (s *MarketFullNodeStruct) MessagerWaitMessage(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) {
 	return s.Internal.MessagerWaitMessage(p0, p1)
 }
 
-func (s *MarketNodeStub) MessagerWaitMessage(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) {
+func (s *MarketFullNodeStub) MessagerWaitMessage(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) {
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {
+func (s *MarketFullNodeStruct) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {
 	return s.Internal.PiecesGetCIDInfo(p0, p1)
 }
 
-func (s *MarketNodeStub) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {
+func (s *MarketFullNodeStub) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) PiecesGetPieceInfo(p0 context.Context, p1 cid.Cid) (*piecestore.PieceInfo, error) {
+func (s *MarketFullNodeStruct) PiecesGetPieceInfo(p0 context.Context, p1 cid.Cid) (*piecestore.PieceInfo, error) {
 	return s.Internal.PiecesGetPieceInfo(p0, p1)
 }
 
-func (s *MarketNodeStub) PiecesGetPieceInfo(p0 context.Context, p1 cid.Cid) (*piecestore.PieceInfo, error) {
+func (s *MarketFullNodeStub) PiecesGetPieceInfo(p0 context.Context, p1 cid.Cid) (*piecestore.PieceInfo, error) {
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) PiecesListCidInfos(p0 context.Context) ([]cid.Cid, error) {
+func (s *MarketFullNodeStruct) PiecesListCidInfos(p0 context.Context) ([]cid.Cid, error) {
 	return s.Internal.PiecesListCidInfos(p0)
 }
 
-func (s *MarketNodeStub) PiecesListCidInfos(p0 context.Context) ([]cid.Cid, error) {
+func (s *MarketFullNodeStub) PiecesListCidInfos(p0 context.Context) ([]cid.Cid, error) {
 	return *new([]cid.Cid), xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {
+func (s *MarketFullNodeStruct) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {
 	return s.Internal.PiecesListPieces(p0)
 }
 
-func (s *MarketNodeStub) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {
+func (s *MarketFullNodeStub) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {
 	return *new([]cid.Cid), xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) SectorGetSealDelay(p0 context.Context) (time.Duration, error) {
+func (s *MarketFullNodeStruct) SectorGetSealDelay(p0 context.Context) (time.Duration, error) {
 	return s.Internal.SectorGetSealDelay(p0)
 }
 
-func (s *MarketNodeStub) SectorGetSealDelay(p0 context.Context) (time.Duration, error) {
+func (s *MarketFullNodeStub) SectorGetSealDelay(p0 context.Context) (time.Duration, error) {
 	return *new(time.Duration), xerrors.New("method not supported")
 }
 
-func (s *MarketNodeStruct) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) error {
+func (s *MarketFullNodeStruct) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) error {
 	return s.Internal.SectorSetExpectedSealDuration(p0, p1)
 }
 
-func (s *MarketNodeStub) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) error {
+func (s *MarketFullNodeStub) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) error {
 	return xerrors.New("method not supported")
 }
 
-var _ MarketNode = new(MarketNodeStruct)
+var _ MarketClientNode = new(MarketClientNodeStruct)
+var _ MarketFullNode = new(MarketFullNodeStruct)

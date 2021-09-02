@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
 	"go.uber.org/fx"
+	"path"
 )
 
 const (
@@ -21,22 +22,15 @@ const (
 	dealProvider      = "/deals/provider"
 	storageAsk        = "storage-ask"
 	paych             = "/paych/"
+	dealClient        = "/deals/client"
 )
 
-func NewMetadataDS(cfg *config.MarketConfig) (MetadataDS, error) {
-	metaDataPath, err := cfg.HomeJoin(metadata)
-	if err != nil {
-		return nil, err
-	}
-	return badger.NewDatastore(metaDataPath, &badger.DefaultOptions)
+func NewMetadataDS(homeDir *config.HomeDir) (MetadataDS, error) {
+	return badger.NewDatastore(path.Join(string(*homeDir), metadata), &badger.DefaultOptions)
 }
 
-func NewStagingDS(cfg *config.MarketConfig) (StagingDS, error) {
-	metaDataPath, err := cfg.HomeJoin(staging)
-	if err != nil {
-		return nil, err
-	}
-	return badger.NewDatastore(metaDataPath, &badger.DefaultOptions)
+func NewStagingDS(homeDir *config.HomeDir) (StagingDS, error) {
+	return badger.NewDatastore(path.Join(string(*homeDir), staging), &badger.DefaultOptions)
 }
 
 func NewStagingBlockStore(lc fx.Lifecycle, stagingDs StagingDS) (StagingBlockstore, error) {
@@ -71,15 +65,32 @@ func NewPayChanDS(ds MetadataDS) StorageAskDS {
 	return namespace.Wrap(ds, datastore.NewKey(paych))
 }
 
-var DBOptions = builder.Options(
-	builder.Override(new(MetadataDS), NewMetadataDS),
-	builder.Override(new(StagingDS), NewStagingDS),
-	builder.Override(new(StagingBlockstore), NewStagingBlockStore),
-	builder.Override(new(PieceMetaDs), NewPieceMetaDs),
-	builder.Override(new(RetrievalProviderDS), NewRetrievalProviderDS),
-	builder.Override(new(RetrievalAskDS), NewRetrievalAskDS),
-	builder.Override(new(DagTransferDS), NewDagTransferDS),
-	builder.Override(new(ProviderDealDS), NewProviderDealDS),
-	builder.Override(new(StorageAskDS), NewStorageAskDS),
-	builder.Override(new(PayChanDS), NewPayChanDS),
-)
+// NewClientDatastore creates a datastore for the client to store its deals
+func NewClientDatastore(ds MetadataDS) ClientDatastore {
+	return namespace.Wrap(ds, datastore.NewKey(dealClient))
+}
+
+var DBOptions = func(server bool) builder.Option {
+	if server {
+		return builder.Options(
+			builder.Override(new(MetadataDS), NewMetadataDS),
+			builder.Override(new(StagingDS), NewStagingDS),
+			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
+			builder.Override(new(PieceMetaDs), NewPieceMetaDs),
+			builder.Override(new(RetrievalProviderDS), NewRetrievalProviderDS),
+			builder.Override(new(RetrievalAskDS), NewRetrievalAskDS),
+			builder.Override(new(DagTransferDS), NewDagTransferDS),
+			builder.Override(new(ProviderDealDS), NewProviderDealDS),
+			builder.Override(new(StorageAskDS), NewStorageAskDS),
+			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
+			builder.Override(new(PayChanDS), NewPayChanDS),
+		)
+	} else {
+		return builder.Options(
+			builder.Override(new(MetadataDS), NewMetadataDS),
+			builder.Override(new(ClientDatastore), NewClientDatastore),
+			builder.Override(new(ClientBlockstore), NewClientBlockstore),
+			builder.Override(new(PayChanDS), NewPayChanDS),
+		)
+	}
+}

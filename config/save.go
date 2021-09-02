@@ -8,12 +8,12 @@ import (
 	"path"
 )
 
-func SaveConfig(market *MarketConfig) error {
-	cfgBytes, err := toml.Marshal(market)
+func SaveConfig(cfg IHome) error {
+	cfgBytes, err := toml.Marshal(cfg)
 	if err != nil {
 		return err
 	}
-	cfgPath, err := market.ConfigPath()
+	cfgPath, err := cfg.ConfigPath()
 	if err != nil {
 		return err
 	}
@@ -22,7 +22,7 @@ func SaveConfig(market *MarketConfig) error {
 	return ioutil.WriteFile(cfgPath, cfgBytes, 0644)
 }
 
-func LoadConfig(cfgPath string, market *MarketConfig) error {
+func LoadConfig(cfgPath string, cfg IHome) error {
 	homeDir, err := homedir.Expand(cfgPath)
 	if err != nil {
 		return err
@@ -32,5 +32,5 @@ func LoadConfig(cfgPath string, market *MarketConfig) error {
 	if err != nil {
 		return err
 	}
-	return toml.Unmarshal(cfgBytes, market)
+	return toml.Unmarshal(cfgBytes, cfg)
 }

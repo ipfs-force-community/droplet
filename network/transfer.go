@@ -8,4 +8,8 @@ import (
 // ProviderDataTransfer is a data transfer manager for the provider
 type ProviderDataTransfer datatransfer.Manager
 
+type ClientDataTransfer datatransfer.Manager
+
+type Graphsync graphsync.GraphExchange
+
 type StagingGraphsync graphsync.GraphExchange

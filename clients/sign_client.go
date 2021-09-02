@@ -39,7 +39,7 @@ func (walletClient *WalletClient) WalletSign(ctx context.Context, k address.Addr
 	return walletClient.Internal.WalletSign(ctx, k, msg, meta)
 }
 
-func NewWalletClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, cfg *config.Gateway) (ISinger, error) {
+func NewWalletClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, cfg *config.Signer) (ISinger, error) {
 	client, closer, err := newWalletClient(context.Background(), cfg.Token, cfg.Url)
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {

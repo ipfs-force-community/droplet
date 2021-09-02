@@ -25,7 +25,7 @@ import (
 	"syscall"
 )
 
-func NewMarketNode(cctx *cli.Context) (api.MarketNode, jsonrpc.ClientCloser, error) {
+func NewMarketNode(cctx *cli.Context) (api.MarketFullNode, jsonrpc.ClientCloser, error) {
 	cfgPath := path.Join(cctx.String("repo"), "config.toml")
 	marketCfg := &config.MarketConfig{}
 	err := config.LoadConfig(cfgPath, marketCfg)
@@ -190,7 +190,6 @@ func ReqContext(cctx *cli.Context) context.Context {
 
 	return ctx
 }
-
 
 type PrintHelpErr struct {
 	Err error

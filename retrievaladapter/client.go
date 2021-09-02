@@ -17,12 +17,12 @@ import (
 
 type retrievalClientNode struct {
 	fullnode apiface.FullNode
-	payAPI   paych3.PaychAPI
+	payAPI   *paych3.PaychAPI
 }
 
 // NewRetrievalClientNode returns a new node adapter for a retrieval client that talks to the
 // Lotus Node
-func NewRetrievalClientNode(payAPI paych3.PaychAPI, fullnode apiface.FullNode) retrievalmarket.RetrievalClientNode {
+func NewRetrievalClientNode(payAPI *paych3.PaychAPI, fullnode apiface.FullNode) retrievalmarket.RetrievalClientNode {
 	return &retrievalClientNode{payAPI: payAPI, fullnode: fullnode}
 }
 

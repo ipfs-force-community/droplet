@@ -2,6 +2,7 @@ package fundmgr
 
 import (
 	"bytes"
+	"github.com/filecoin-project/venus-market/models"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
@@ -9,8 +10,6 @@ import (
 	dsq "github.com/ipfs/go-datastore/query"
 
 	"github.com/filecoin-project/go-address"
-
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 const dsKeyAddr = "Addr"
@@ -19,7 +18,7 @@ type Store struct {
 	ds datastore.Batching
 }
 
-func newStore(ds dtypes.MetadataDS) *Store {
+func newStore(ds models.MetadataDS) *Store {
 	ds = namespace.Wrap(ds, datastore.NewKey("/fundmgr/"))
 	return &Store{
 		ds: ds,

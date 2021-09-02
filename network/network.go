@@ -26,9 +26,9 @@ type Libp2pOpts struct {
 	Opts []libp2p.Option `group:"libp2p"`
 }
 
-func PrivKey(cfg *config.MarketConfig) (crypto.PrivKey, error) {
-	if len(cfg.Libp2p.PrivateKey) > 0 {
-		decodePriv, err := hex.DecodeString(cfg.Libp2p.PrivateKey)
+func PrivKey(home config.IHome, cfg *config.Libp2p) (crypto.PrivKey, error) {
+	if len(cfg.PrivateKey) > 0 {
+		decodePriv, err := hex.DecodeString(cfg.PrivateKey)
 		if err != nil {
 			return nil, err
 		}
@@ -45,8 +45,8 @@ func PrivKey(cfg *config.MarketConfig) (crypto.PrivKey, error) {
 		return nil, err
 	}
 
-	cfg.Libp2p.PrivateKey = hex.EncodeToString(kbytes)
-	return pk, config.SaveConfig(cfg)
+	cfg.PrivateKey = hex.EncodeToString(kbytes)
+	return pk, config.SaveConfig(home)
 }
 
 func genLibp2pKey() (crypto.PrivKey, error) {
@@ -139,9 +139,9 @@ func makeAddrsFactory(announce []string, noAnnounce []string) (p2pbhost.AddrsFac
 	}, nil
 }
 
-func AddrsFactory(announce []string, noAnnounce []string) func() (opts Libp2pOpts, err error) {
+func AddrsFactory(cfg *config.Libp2p) func() (opts Libp2pOpts, err error) {
 	return func() (opts Libp2pOpts, err error) {
-		addrsFactory, err := makeAddrsFactory(announce, noAnnounce)
+		addrsFactory, err := makeAddrsFactory(cfg.AnnounceAddresses, cfg.NoAnnounceAddresses)
 		if err != nil {
 			return opts, err
 		}
@@ -163,9 +163,9 @@ func listenAddresses(addresses []string) ([]ma.Multiaddr, error) {
 	return listen, nil
 }
 
-func StartListening(addresses []string) func(host host.Host) error {
+func StartListening(cfg *config.Libp2p) func(host host.Host) error {
 	return func(host host.Host) error {
-		listenAddrs, err := listenAddresses(addresses)
+		listenAddrs, err := listenAddresses(cfg.ListenAddresses)
 		if err != nil {
 			return err
 		}
