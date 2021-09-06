@@ -1,11 +1,10 @@
-package main
+package rpc
 
 import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
-	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
@@ -16,21 +15,24 @@ import (
 	"path"
 )
 
-func serveRPC(ctx context.Context, homeDir string, cfg *config.API, a api.MarketFullNode, shutdownCh <-chan struct{}, maxRequestSize int64, authUrl string) error {
-	seckey, err := MakeToken()
+var log = logging.Logger("modules")
+
+func ServeRPC(ctx context.Context, homeDir string, cfg *config.API, api interface{}, shutdownCh <-chan struct{}, maxRequestSize int64, authUrl string) error {
+	seckey, token, err := MakeToken()
 	if err != nil {
 		return fmt.Errorf("make token failed:%s", err.Error())
 	}
 
 	_ = ioutil.WriteFile(path.Join(homeDir, "api"), []byte(cfg.ListenAddress), 0644)
-	_ = ioutil.WriteFile(path.Join(homeDir, "token"), seckey, 0644)
+	_ = ioutil.WriteFile(path.Join(homeDir, "token"), token, 0644)
+
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
 	}
 
 	rpcServer := jsonrpc.NewServer(serverOptions...)
-	rpcServer.Register("Signer", a)
+	rpcServer.Register("VENUS_MARKET", api)
 
 	mux := mux.NewRouter()
 	mux.Handle("/rpc/v0", rpcServer)
@@ -54,7 +56,6 @@ func serveRPC(ctx context.Context, homeDir string, cfg *config.API, a api.Market
 		case <-shutdownCh:
 		case <-ctx.Done():
 		}
-
 		log.Warn("Shutting down...")
 		if err := srv.Shutdown(context.TODO()); err != nil {
 			log.Errorf("shutting down RPC server failed: %s", err)
@@ -71,5 +72,6 @@ func serveRPC(ctx context.Context, homeDir string, cfg *config.API, a api.Market
 	if err != nil {
 		return err
 	}
+	log.Infof("start rpc listen %s", addr)
 	return srv.Serve(manet.NetListener(nl))
 }

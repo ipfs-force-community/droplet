@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/venus-market/api"
+	"github.com/filecoin-project/venus-market/api/impl"
 	"github.com/filecoin-project/venus-market/builder"
+	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/client"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
@@ -16,10 +20,13 @@ import (
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/paychmgr"
+	"github.com/filecoin-project/venus-market/rpc"
 	"github.com/filecoin-project/venus-market/storageadapter"
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
@@ -48,6 +55,7 @@ func main() {
 				Usage:  "run market daemon",
 				Action: marketClient,
 			},
+			cli2.ClientCmd,
 		},
 	}
 
@@ -66,6 +74,7 @@ func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 	}
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		//create
+		fmt.Println(cfgPath)
 		err = config.SaveConfig(cfg)
 		if err != nil {
 			return nil, xerrors.Errorf("save config to %s %w", cfgPath, err)
@@ -83,12 +92,13 @@ func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 }
 
 func marketClient(cctx *cli.Context) error {
+	utils.SetupLogLevels()
 	ctx := cctx.Context
 	cfg, err := prepare(cctx)
 	if err != nil {
 		return err
 	}
-	resAPI := &client.API{}
+	resAPI := &impl.MarketClientNodeImpl{}
 	shutdownChan := make(chan struct{})
 	_, err = builder.New(ctx,
 		builder.Override(new(metrics.MetricsCtx), func() context.Context {
@@ -98,6 +108,7 @@ func marketClient(cctx *cli.Context) error {
 		builder.Override(new(apiface.FullNode), clients.NodeClient),
 		builder.Override(new(clients.ISinger), clients.NewWalletClient),
 		builder.Override(new(clients.IMessager), clients.MessagerClient),
+		clients.ClientsOpts,
 		models.DBOptions(false),
 		network.NetworkOpts(false, cfg.SimultaneousTransfers),
 		paychmgr.PaychOpts,
@@ -131,6 +142,5 @@ func marketClient(cctx *cli.Context) error {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := utils.MonitorShutdown(shutdownChan)
-	<-finishCh
-	return nil
+	return rpc.ServeRPC(ctx, cfg.MustHomePath(), &cfg.API, (api.MarketClientNode)(resAPI), finishCh, 1000, "")
 }

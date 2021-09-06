@@ -14,7 +14,6 @@ type API struct {
 	ListenAddress       string
 	RemoteListenAddress string
 	Secret              string
-	Token               string
 	Timeout             Duration
 }
 
@@ -213,7 +212,7 @@ type MarketConfig struct {
 
 type MarketClientConfig struct {
 	Home
-	Libp2p Libp2p
+	Common
 	Node
 	Signer
 	Market
@@ -221,6 +220,7 @@ type MarketClientConfig struct {
 
 	// The maximum number of parallel online data transfers (piecestorage+retrieval)
 	SimultaneousTransfers uint64
+	DefaultMarketAddress  address.Address
 }
 
 var _ encoding.TextMarshaler = (*Duration)(nil)

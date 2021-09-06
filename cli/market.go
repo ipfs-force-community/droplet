@@ -18,9 +18,7 @@ import (
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -30,32 +28,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/types"
 )
-
-var CidBaseFlag = cli.StringFlag{
-	Name:        "cid-base",
-	Hidden:      true,
-	Value:       "base32",
-	Usage:       "Multibase encoding used for version 1 CIDs in output.",
-	DefaultText: "base32",
-}
-
-// GetCidEncoder returns an encoder using the `cid-base` flag if provided, or
-// the default (Base32) encoder if not.
-func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
-	val := cctx.String("cid-base")
-
-	e := cidenc.Encoder{Base: multibase.MustNewEncoder(multibase.Base32)}
-
-	if val != "" {
-		var err error
-		e.Base, err = multibase.EncoderByName(val)
-		if err != nil {
-			return e, err
-		}
-	}
-
-	return e, nil
-}
 
 var storageDealSelectionCmd = &cli.Command{
 	Name:  "selection",
@@ -327,7 +299,7 @@ var getAskCmd = &cli.Command{
 	},
 }
 
-var storageDealsCmd = &cli.Command{
+var StorageDealsCmd = &cli.Command{
 	Name:  "storage-deals",
 	Usage: "Manage storage deals and related configuration",
 	Subcommands: []*cli.Command{

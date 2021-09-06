@@ -86,6 +86,7 @@ func (ps *dsPieceStore) Start(ctx context.Context) error {
 }
 
 func (ps *dsPieceStore) OnReady(ready shared.ReadyFunc) {
+	ready(nil)
 }
 
 // Store `dealInfo` in the PieceStore with key `pieceCID`.

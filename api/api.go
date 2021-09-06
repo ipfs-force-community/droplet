@@ -77,12 +77,17 @@ type MarketFullNode interface {
 	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (uuid.UUID, error) //perm:write
 	MessagerGetMessage(ctx context.Context, uuid uuid.UUID) (*mTypes.Message, error)                       //perm:read
 
+	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)                   //perm:sign
+	MarketGetReserved(ctx context.Context, addr address.Address) (vTypes.BigInt, error)                                       //perm:sign
+	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt vTypes.BigInt) (cid.Cid, error) //perm:sign
+	MarketReleaseFunds(ctx context.Context, addr address.Address, amt vTypes.BigInt) error                                    //perm:sign
+	MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)                     //perm:sign
+
+	NetAddrsListen(context.Context) (peer.AddrInfo, error) //perm:read
+	ID(context.Context) (peer.ID, error)                   //perm:read
 }
 
 type MarketClientNode interface {
-	// MethodGroup: Client
-	// The Client methods all have to do with interacting with the storage and
-	// retrieval markets as a client
 
 	// ClientImport imports file under the specified path into filestore.
 	ClientImport(ctx context.Context, ref client.FileRef) (*client.ImportRes, error) //perm:admin
@@ -144,4 +149,11 @@ type MarketClientNode interface {
 
 	// ClientListImports lists imported files and their root CIDs
 	ClientListImports(ctx context.Context) ([]client.Import, error) //perm:write
+	DefaultAddress(ctx context.Context) (address.Address, error)    //perm:read
+
+	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)
+	MarketGetReserved(ctx context.Context, addr address.Address) (vTypes.BigInt, error)
+	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)
+	MarketReleaseFunds(ctx context.Context, addr address.Address, amt vTypes.BigInt) error
+	MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)
 }

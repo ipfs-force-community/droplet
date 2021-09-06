@@ -22,7 +22,7 @@ import (
 )
 
 type eventsCalledAPI interface {
-	Called(check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error
+	Called(ctx context.Context, check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error
 }
 
 type dealInfoAPI interface {
@@ -65,7 +65,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 	}
 
 	// First check if the deal is already active, and if so, bail out
-	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+	checkFunc := func(ctx context.Context, ts *types.TipSet) (done bool, more bool, err error) {
 		dealInfo, isActive, err := mgr.checkIfDealAlreadyActive(ctx, ts, &proposal, publishCid)
 		if err != nil {
 			// Note: the error returned from here will end up being returned
@@ -161,7 +161,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 		return nil
 	}
 
-	if err := mgr.ev.Called(checkFunc, called, revert, int(constants.MessageConfidence+1), timeoutEpoch, matchEvent); err != nil {
+	if err := mgr.ev.Called(ctx, checkFunc, called, revert, int(constants.MessageConfidence+1), timeoutEpoch, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 
@@ -178,7 +178,7 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 	}
 
 	// First check if the deal is already active, and if so, bail out
-	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+	checkFunc := func(ctx context.Context, ts *types.TipSet) (done bool, more bool, err error) {
 		_, isActive, err := mgr.checkIfDealAlreadyActive(ctx, ts, &proposal, publishCid)
 		if err != nil {
 			// Note: the error returned from here will end up being returned
@@ -253,7 +253,7 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 		return nil
 	}
 
-	if err := mgr.ev.Called(checkFunc, called, revert, int(constants.MessageConfidence+1), timeoutEpoch, matchEvent); err != nil {
+	if err := mgr.ev.Called(ctx, checkFunc, called, revert, int(constants.MessageConfidence+1), timeoutEpoch, matchEvent); err != nil {
 		return xerrors.Errorf("failed to set up called handler: %w", err)
 	}
 

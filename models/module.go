@@ -1,9 +1,11 @@
 package models
 
 import (
+	"context"
 	"github.com/filecoin-project/venus-market/blockstore"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -25,12 +27,31 @@ const (
 	dealClient        = "/deals/client"
 )
 
-func NewMetadataDS(homeDir *config.HomeDir) (MetadataDS, error) {
-	return badger.NewDatastore(path.Join(string(*homeDir), metadata), &badger.DefaultOptions)
+func NewMetadataDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (MetadataDS, error) {
+	db, err := badger.NewDatastore(path.Join(string(*homeDir), metadata), &badger.DefaultOptions)
+	if err != nil {
+		return nil, err
+	}
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return db.Close()
+		},
+	})
+	return db, nil
 }
 
-func NewStagingDS(homeDir *config.HomeDir) (StagingDS, error) {
-	return badger.NewDatastore(path.Join(string(*homeDir), staging), &badger.DefaultOptions)
+func NewStagingDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (StagingDS, error) {
+	db, err := badger.NewDatastore(path.Join(string(*homeDir), staging), &badger.DefaultOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return db.Close()
+		},
+	})
+	return db, nil
 }
 
 func NewStagingBlockStore(lc fx.Lifecycle, stagingDs StagingDS) (StagingBlockstore, error) {

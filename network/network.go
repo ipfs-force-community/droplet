@@ -163,24 +163,22 @@ func listenAddresses(addresses []string) ([]ma.Multiaddr, error) {
 	return listen, nil
 }
 
-func StartListening(cfg *config.Libp2p) func(host host.Host) error {
-	return func(host host.Host) error {
-		listenAddrs, err := listenAddresses(cfg.ListenAddresses)
-		if err != nil {
-			return err
-		}
-
-		// Actually start listening:
-		if err := host.Network().Listen(listenAddrs...); err != nil {
-			return err
-		}
-
-		// list out our addresses
-		addrs, err := host.Network().InterfaceListenAddresses()
-		if err != nil {
-			return err
-		}
-		log.Infof("Swarm listening at: %s", addrs)
-		return nil
+func StartListening(cfg *config.Libp2p, host host.Host) error {
+	listenAddrs, err := listenAddresses(cfg.ListenAddresses)
+	if err != nil {
+		return err
 	}
+
+	// Actually start listening:
+	if err := host.Network().Listen(listenAddrs...); err != nil {
+		return err
+	}
+
+	// list out our addresses
+	addrs, err := host.Network().InterfaceListenAddresses()
+	if err != nil {
+		return err
+	}
+	log.Infof("Swarm listening at: %s", addrs)
+	return nil
 }

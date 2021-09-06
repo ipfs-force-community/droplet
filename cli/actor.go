@@ -8,17 +8,18 @@ import (
 	"github.com/urfave/cli/v2"
 
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/types"
 )
 
-var actorCmd = &cli.Command{
+var ActorCmd = &cli.Command{
 	Name:  "actor",
 	Usage: "manipulate the miner actor",
 	Subcommands: []*cli.Command{
 		actorSetAddrsCmd,
 		actorSetPeeridCmd,
+		actorInfoCmd,
 	},
 }
 
@@ -175,5 +176,47 @@ var actorSetPeeridCmd = &cli.Command{
 		fmt.Printf("Requested peerid change in message %s\n", mid)
 		return nil
 
+	},
+}
+
+var actorInfoCmd = &cli.Command{
+	Name:  "info",
+	Usage: "query info of your miner",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		nodeAPI, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := NewFullNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := ReqContext(cctx)
+
+		maddr, err := nodeAPI.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+		fmt.Println("peers:", minfo.PeerId.String())
+		fmt.Println("addr:")
+		for _, addrBytes := range minfo.Multiaddrs {
+			addr, err := ma.NewMultiaddrBytes(addrBytes)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			fmt.Println("\t", addr.String())
+		}
+		return nil
 	},
 }

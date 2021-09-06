@@ -1,16 +1,35 @@
 package config
 
 import (
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/ipfs/go-cid"
 	"time"
+)
+
+const (
+	DefaultSimultaneousTransfers = uint64(20)
 )
 
 var DefaultMarketConfig = &MarketConfig{
 	Home:         Home{"~/.venusmarket"},
 	MinerAddress: "f01005",
-	Common:       deferCommon,
+	Common: Common{
+		API: API{
+			ListenAddress: "/ip4/127.0.0.1/tcp/41235/http",
+			Timeout:       Duration(30 * time.Second),
+		},
+		Libp2p: Libp2p{
+			ListenAddresses: []string{
+				"/ip4/0.0.0.0/tcp/58418",
+				"/ip6/::/tcp/0",
+			},
+			AnnounceAddresses:   []string{},
+			NoAnnounceAddresses: []string{},
+		},
+	},
 	Node: Node{
-		Url:   "/ip4/192.168.200.12/tcp/3453",
+		Url:   "/ip4/192.168.200.14/tcp/3453",
 		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
 	},
 	Messager: Messager{
@@ -35,21 +54,22 @@ var DefaultMarketConfig = &MarketConfig{
 		Type: "local",
 		Path: "/Users/lijunlong/.venusmarket",
 	},
-	ConsiderOnlineStorageDeals:      false,
-	ConsiderOfflineStorageDeals:     false,
-	ConsiderOnlineRetrievalDeals:    false,
-	ConsiderOfflineRetrievalDeals:   false,
-	ConsiderVerifiedStorageDeals:    false,
-	ConsiderUnverifiedStorageDeals:  false,
-	PieceCidBlocklist:               nil,
-	ExpectedSealDuration:            0,
-	MaxDealStartDelay:               0,
-	PublishMsgPeriod:                0,
-	MaxDealsPerPublishMsg:           0,
-	MaxProviderCollateralMultiplier: 0,
-	SimultaneousTransfers:           0,
-	Filter:                          "",
-	RetrievalFilter:                 "",
+	ConsiderOnlineStorageDeals:     true,
+	ConsiderOfflineStorageDeals:    true,
+	ConsiderOnlineRetrievalDeals:   true,
+	ConsiderOfflineRetrievalDeals:  true,
+	ConsiderVerifiedStorageDeals:   true,
+	ConsiderUnverifiedStorageDeals: true,
+	PieceCidBlocklist:              []cid.Cid{},
+	// TODO: It'd be nice to set this based on sector size
+	MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
+	ExpectedSealDuration:            Duration(time.Hour * 24),
+	PublishMsgPeriod:                Duration(time.Hour),
+	MaxDealsPerPublishMsg:           8,
+	MaxProviderCollateralMultiplier: 2,
+
+	SimultaneousTransfers: DefaultSimultaneousTransfers,
+
 	RetrievalPricing: &RetrievalPricing{
 		Strategy: RetrievalPricingDefaultMode,
 		Default: &RetrievalPricingDefault{
@@ -59,37 +79,32 @@ var DefaultMarketConfig = &MarketConfig{
 			Path: "",
 		},
 	},
+
 	MaxPublishDealsFee:     types.FIL{},
 	MaxMarketBalanceAddFee: types.FIL{},
 }
 
-var deferCommon = Common{
-	API: API{
-		ListenAddress: "/ip4/127.0.0.1/tcp/1234/http",
-		Timeout:       Duration(30 * time.Second),
-	},
-	Libp2p: Libp2p{
-		ListenAddresses: []string{
-			"/ip4/0.0.0.0/tcp/0",
-			"/ip6/::/tcp/0",
-		},
-		AnnounceAddresses:   []string{},
-		NoAnnounceAddresses: []string{},
-	},
-}
-
+var (
+	defaultAddr, _ = address.NewFromString("t3wtmlylzuc7ttbhwppjt7m55p7ywybebdx7kfbwx7ijhthqssptvs746njt22i3xe65zw7hyafutmdoobkcoq")
+)
 var DefaultMarketClientConfig = &MarketClientConfig{
 	Home: Home{"~/.venusclient"},
-	Libp2p: Libp2p{
-		ListenAddresses: []string{
-			"/ip4/0.0.0.0/tcp/0",
-			"/ip6/::/tcp/0",
+	Common: Common{
+		API: API{
+			ListenAddress: "/ip4/127.0.0.1/tcp/41231/http",
+			Timeout:       Duration(30 * time.Second),
 		},
-		AnnounceAddresses:   []string{},
-		NoAnnounceAddresses: []string{},
+		Libp2p: Libp2p{
+			ListenAddresses: []string{
+				"/ip4/0.0.0.0/tcp/34123",
+				"/ip6/::/tcp/0",
+			},
+			AnnounceAddresses:   []string{},
+			NoAnnounceAddresses: []string{},
+		},
 	},
 	Node: Node{
-		Url:   "/ip4/192.168.200.12/tcp/3453",
+		Url:   "/ip4/192.168.200.14/tcp/3453",
 		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
 	},
 	Signer: Signer{
@@ -104,4 +119,5 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		Url:   "/ip4/192.168.200.12/tcp/39812",
 		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
 	},
+	DefaultMarketAddress: defaultAddr,
 }

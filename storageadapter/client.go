@@ -5,6 +5,7 @@ package storageadapter
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -45,22 +46,27 @@ type ClientNodeAdapter struct {
 }
 
 type clientApi struct {
-	apiface.FullNode
+	full          apiface.FullNode
+	singerService clients.ISinger
 }
 
-func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, fundmgr *fundmgr.FundManager) storagemarket.StorageClientNode {
-	capi := &clientApi{fullNode}
+func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, singerService clients.ISinger, fundmgr *fundmgr.FundManager) storagemarket.StorageClientNode {
+	capi := &clientApi{fullNode, singerService}
 	ctx := metrics.LifecycleCtx(mctx, lc)
 
-	ev := events.NewEvents(ctx, capi)
+	ev, err := events.NewEvents(ctx, capi.full)
+	if err != nil {
+		//todo add error return?
+		log.Fatal(err)
+	}
 	a := &ClientNodeAdapter{
 		clientApi: capi,
 
 		fundmgr:   fundmgr,
 		ev:        ev,
-		dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(capi))),
+		dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(capi.full))),
 	}
-	a.scMgr = NewSectorCommittedManager(ev, a, &apiWrapper{api: capi})
+	a.scMgr = NewSectorCommittedManager(ev, a.full, &apiWrapper{api: capi.full})
 	return a
 }
 
@@ -70,7 +76,7 @@ func (c *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 		return nil, err
 	}
 
-	addresses, err := c.StateListMiners(ctx, tsk)
+	addresses, err := c.full.StateListMiners(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +96,7 @@ func (c *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 }
 
 func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
-	addr, err := c.StateAccountKey(ctx, addr, types.EmptyTSK)
+	addr, err := c.full.StateAccountKey(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return false, err
 	}
@@ -102,7 +108,7 @@ func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Sign
 // Adds funds with the StorageMinerActor for a piecestorage participant.  Used by both providers and clients.
 func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
-	smsg, err := c.MpoolPushMessage(ctx, &types.Message{
+	smsg, err := c.full.MpoolPushMessage(ctx, &types.Message{ //todo send to messager service
 		To:     miner2.StorageMarketActorAddr,
 		From:   addr,
 		Value:  amount,
@@ -129,7 +135,7 @@ func (c *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address
 		return storagemarket.Balance{}, err
 	}
 
-	bal, err := c.StateMarketBalance(ctx, addr, tsk)
+	bal, err := c.full.StateMarketBalance(ctx, addr, tsk)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
@@ -143,17 +149,17 @@ func (c *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address
 func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (abi.DealID, error) {
 	log.Infow("DEAL ACCEPTED!")
 
-	pubmsg, err := c.ChainGetMessage(ctx, *deal.PublishMessage)
+	pubmsg, err := c.full.ChainGetMessage(ctx, *deal.PublishMessage)
 	if err != nil {
 		return 0, xerrors.Errorf("getting deal publish message: %w", err)
 	}
 
-	mi, err := c.StateMinerInfo(ctx, deal.Proposal.Provider, types.EmptyTSK)
+	mi, err := c.full.StateMinerInfo(ctx, deal.Proposal.Provider, types.EmptyTSK)
 	if err != nil {
 		return 0, xerrors.Errorf("getting miner worker failed: %w", err)
 	}
 
-	fromid, err := c.StateLookupID(ctx, pubmsg.From, types.EmptyTSK)
+	fromid, err := c.full.StateLookupID(ctx, pubmsg.From, types.EmptyTSK)
 	if err != nil {
 		return 0, xerrors.Errorf("failed to resolve from msg ID addr: %w", err)
 	}
@@ -202,7 +208,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	ret, err := c.StateWaitMsg(ctx, *deal.PublishMessage, constants.MessageConfidence, constants.LookbackNoLimit, true)
+	ret, err := c.full.StateWaitMsg(ctx, *deal.PublishMessage, constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
@@ -227,7 +233,7 @@ var clientOverestimation = struct {
 }
 
 func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
-	bounds, err := c.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
+	bounds, err := c.full.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
 	if err != nil {
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
@@ -249,18 +255,18 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 
 // TODO: Replace dealID parameter with DealProposal
 func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
-	head, err := c.ChainHead(ctx)
+	head, err := c.full.ChainHead(ctx)
 	if err != nil {
 		return xerrors.Errorf("client: failed to get chain head: %w", err)
 	}
 
-	sd, err := c.StateMarketStorageDeal(ctx, dealID, head.Key())
+	sd, err := c.full.StateMarketStorageDeal(ctx, dealID, head.Key())
 	if err != nil {
 		return xerrors.Errorf("client: failed to look up deal %d on chain: %w", dealID, err)
 	}
 
 	// Called immediately to check if the deal has already expired or been slashed
-	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+	checkFunc := func(ctx context.Context, ts *types.TipSet) (done bool, more bool, err error) {
 		if ts == nil {
 			// keep listening for events
 			return false, true, nil
@@ -344,12 +350,12 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	signer, err = c.StateAccountKey(ctx, signer, types.EmptyTSK)
+	signer, err = c.full.StateAccountKey(ctx, signer, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	sig, err := c.WalletSign(ctx, signer, buf, wallet.MsgMeta{
+	sig, err := c.singerService.WalletSign(ctx, signer, buf, wallet.MsgMeta{
 		Type: wallet.MTDealProposal,
 	})
 	if err != nil {
@@ -364,12 +370,12 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 
 func (c *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
 	panic("to impl")
-	addr, err := c.WalletDefaultAddress(ctx)
+	addr, err := c.full.WalletDefaultAddress(ctx)
 	return addr, err
 }
 
 func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	head, err := c.ChainHead(ctx)
+	head, err := c.full.ChainHead(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -378,7 +384,7 @@ func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 }
 
 func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
-	receipt, err := c.StateWaitMsg(ctx, mcid, constants.MessageConfidence, constants.LookbackNoLimit, true)
+	receipt, err := c.full.StateWaitMsg(ctx, mcid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}
@@ -390,7 +396,7 @@ func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Addre
 	if err != nil {
 		return nil, err
 	}
-	mi, err := c.StateMinerInfo(ctx, addr, tsk)
+	mi, err := c.full.StateMinerInfo(ctx, addr, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -400,12 +406,12 @@ func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Addre
 }
 
 func (c *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
-	signer, err := c.StateAccountKey(ctx, signer, types.EmptyTSK)
+	signer, err := c.full.StateAccountKey(ctx, signer, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	localSignature, err := c.WalletSign(ctx, signer, b, wallet.MsgMeta{
+	localSignature, err := c.singerService.WalletSign(ctx, signer, b, wallet.MsgMeta{
 		Type: wallet.MTUnknown, // TODO: pass type here
 	})
 	if err != nil {

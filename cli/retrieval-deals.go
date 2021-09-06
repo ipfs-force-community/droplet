@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
-var retrievalDealsCmd = &cli.Command{
+var RetrievalDealsCmd = &cli.Command{
 	Name:  "retrieval-deals",
 	Usage: "Manage retrieval deals and related configuration",
 	Subcommands: []*cli.Command{

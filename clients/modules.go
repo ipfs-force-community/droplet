@@ -2,12 +2,18 @@ package clients
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-auth/log"
+	"github.com/filecoin-project/venus-market/builder"
 	types2 "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
 	"golang.org/x/xerrors"
 	"time"
+)
+
+const (
+	ReplaceMpoolMethod builder.Invoke = 6
 )
 
 func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error {
@@ -20,6 +26,7 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 		for {
 			msgDetail, err := messager.GetMessageByUid(ctx, uid)
 			if err != nil {
+				log.Errorf("get message detail from messager %w", err)
 				return nil, err
 			}
 			switch msgDetail.State {
@@ -38,3 +45,7 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 	}
 	return nil
 }
+
+var ClientsOpts = builder.Options(
+	builder.Override(ReplaceMpoolMethod, ConvertMpoolToMessager),
+)

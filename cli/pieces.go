@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var piecesCmd = &cli.Command{
+var PiecesCmd = &cli.Command{
 	Name:        "pieces",
 	Usage:       "interact with the piecestore",
 	Description: "The piecestore is a database that tracks and manages data that is made available to the retrieval market",

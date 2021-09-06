@@ -6,8 +6,10 @@ import (
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
+	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/api/impl"
 	"github.com/filecoin-project/venus-market/builder"
+	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dealfilter"
@@ -19,14 +21,18 @@ import (
 	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/piece"
 	"github.com/filecoin-project/venus-market/retrievaladapter"
+	"github.com/filecoin-project/venus-market/rpc"
 	"github.com/filecoin-project/venus-market/sealer"
 	"github.com/filecoin-project/venus-market/storageadapter"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 	"os"
 )
@@ -37,6 +43,7 @@ const (
 	InitJournalKey     builder.Invoke = 3
 	HandleDealsKey     builder.Invoke = 4
 	HandleRetrievalKey builder.Invoke = 5
+	ExtractApiKey      builder.Invoke = 10
 )
 
 func main() {
@@ -57,6 +64,11 @@ func main() {
 				Usage:  "run market daemon",
 				Action: daemon,
 			},
+			cli2.PiecesCmd,
+			cli2.RetrievalDealsCmd,
+			cli2.StorageDealsCmd,
+			cli2.ActorCmd,
+			cli2.NetCmd,
 		},
 	}
 
@@ -92,12 +104,14 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 }
 
 func daemon(cctx *cli.Context) error {
+	utils.SetupLogLevels()
 	ctx := cctx.Context
 	cfg, err := prepare(cctx)
 	if err != nil {
 		return err
 	}
 
+	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
 	_, err = builder.New(ctx,
 		//config
@@ -107,6 +121,7 @@ func daemon(cctx *cli.Context) error {
 		builder.Override(new(clients.IMessager), clients.MessagerClient),
 		builder.Override(new(clients.ISinger), clients.NewWalletClient),
 		builder.Override(new(clients.IStorageMiner), clients.NewStorageMiner),
+		clients.ClientsOpts,
 		//defaults
 		// global system journal.
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
@@ -174,10 +189,17 @@ func daemon(cctx *cli.Context) error {
 		builder.Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(cfg)),
 
 		builder.Override(new(types.ShutdownChan), shutdownChan),
+		func(s *builder.Settings) error {
+			s.Invokes[ExtractApiKey] = builder.InvokeOption{
+				Priority: 10,
+				Option:   fx.Populate(resAPI),
+			}
+			return nil
+		},
 	)
 	if err != nil {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := utils.MonitorShutdown(shutdownChan)
-	return serveRPC(ctx, cfg.MustHomePath(), &cfg.API, &impl.MarketNodeImpl{}, finishCh, 1000, "")
+	return rpc.ServeRPC(ctx, cfg.MustHomePath(), &cfg.API, api.MarketFullNode(resAPI), finishCh, 1000, "")
 }

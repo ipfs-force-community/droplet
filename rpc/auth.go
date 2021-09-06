@@ -1,4 +1,4 @@
-package main
+package rpc
 
 import (
 	"context"
@@ -30,12 +30,11 @@ func (l *localJwtClient) Verify(ctx context.Context, token string) ([]auth.Permi
 
 var _ jwtclient.IJwtAuthClient = (*localJwtClient)(nil)
 
-func MakeToken() ([]byte, error) {
-	const tokenFile = "./token"
+func MakeToken() ([]byte, []byte, error) {
 	var err error
 	var seckey []byte
 	if seckey, err = ioutil.ReadAll(io.LimitReader(rand.Reader, 32)); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var cliToken []byte
 	if cliToken, err = jwt3.Sign(
@@ -43,7 +42,7 @@ func MakeToken() ([]byte, error) {
 			Perm: core.PermAdmin,
 			Name: "GateWayLocalToken",
 		}, jwt3.NewHS256(seckey)); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return seckey, ioutil.WriteFile(tokenFile, cliToken, 0644)
+	return seckey, cliToken, nil
 }

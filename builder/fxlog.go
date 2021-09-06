@@ -6,12 +6,13 @@ import (
 	"go.uber.org/fx"
 )
 
+var l = logging.Logger("fx")
+
 type debugPrinter struct {
-	l logging.StandardLogger
 }
 
 func (p *debugPrinter) Printf(f string, a ...interface{}) {
-	p.l.Debugf(f, a...)
+	l.Infof(f, a...)
 }
 
 var _ fx.Printer = new(debugPrinter)

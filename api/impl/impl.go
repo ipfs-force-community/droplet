@@ -28,6 +28,7 @@ import (
 )
 
 type MarketNodeImpl struct {
+	FundAPI
 	fx.In
 	Cfg               *config.MarketConfig
 	FullNode          apiface.FullNode
@@ -350,4 +351,15 @@ func (m MarketNodeImpl) listDeals(ctx context.Context) ([]types.MarketDeal, erro
 	}
 
 	return out, nil
+}
+
+func (m MarketNodeImpl) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
+	return peer.AddrInfo{
+		ID:    m.Host.ID(),
+		Addrs: m.Host.Addrs(),
+	}, nil
+}
+
+func (m MarketNodeImpl) ID(context.Context) (peer.ID, error) {
+	return m.Host.ID(), nil
 }

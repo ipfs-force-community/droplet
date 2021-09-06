@@ -8,7 +8,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-market/api"
-	impl2 "github.com/filecoin-project/venus-market/api/impl"
 	"github.com/filecoin-project/venus-market/cli/tablewriter"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/types"
@@ -16,29 +15,69 @@ import (
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
 	"sort"
+	"strings"
 	"syscall"
 )
 
 func NewMarketNode(cctx *cli.Context) (api.MarketFullNode, jsonrpc.ClientCloser, error) {
-	cfgPath := path.Join(cctx.String("repo"), "config.toml")
-	marketCfg := &config.MarketConfig{}
-	err := config.LoadConfig(cfgPath, marketCfg)
+	homePath, err := homedir.Expand(cctx.String("repo"))
 	if err != nil {
 		return nil, nil, err
 	}
-	apiInfo := apiinfo.NewAPIInfo(marketCfg.API.ListenAddress, marketCfg.API.Token)
+	fmt.Println(homePath)
+	apiUrl, err := ioutil.ReadFile(path.Join(homePath, "api"))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	token, err := ioutil.ReadFile(path.Join(homePath, "token"))
+	if err != nil {
+		return nil, nil, err
+	}
+	apiInfo := apiinfo.NewAPIInfo(string(apiUrl), string(token))
 	addr, err := apiInfo.DialArgs("v0")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	impl := &impl2.MarketNodeImpl{}
+	impl := &api.MarketFullNodeStruct{}
+	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, "VENUS_MARKET", []interface{}{impl}, apiInfo.AuthHeader())
+	if err != nil {
+		return nil, nil, err
+	}
+	return impl, closer, nil
+}
+
+func NewMarketClientNode(cctx *cli.Context) (api.MarketClientNode, jsonrpc.ClientCloser, error) {
+	homePath, err := homedir.Expand(cctx.String("repo"))
+	if err != nil {
+		return nil, nil, err
+	}
+	fmt.Println(homePath)
+	apiUrl, err := ioutil.ReadFile(path.Join(homePath, "api"))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	token, err := ioutil.ReadFile(path.Join(homePath, "token"))
+	if err != nil {
+		return nil, nil, err
+	}
+	apiInfo := apiinfo.NewAPIInfo(string(apiUrl), string(token))
+	addr, err := apiInfo.DialArgs("v0")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	impl := &api.MarketClientNodeStruct{}
 	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, "VENUS_MARKET", []interface{}{impl}, apiInfo.AuthHeader())
 	if err != nil {
 		return nil, nil, err
@@ -54,17 +93,65 @@ func NewFullNode(cctx *cli.Context) (apiface.FullNode, jsonrpc.ClientCloser, err
 		return nil, nil, err
 	}
 	apiInfo := apiinfo.NewAPIInfo(marketCfg.Node.Url, marketCfg.Node.Token)
-	addr, err := apiInfo.DialArgs("v0")
+	addr, err := apiInfo.DialArgs("v1")
 	if err != nil {
 		return nil, nil, err
 	}
 
 	impl := &client.FullNodeStruct{}
-	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, "VENUS_MARKET", utils.GetInternalStructs(impl), apiInfo.AuthHeader())
+	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, "Filecoin", utils.GetInternalStructs(impl), apiInfo.AuthHeader())
 	if err != nil {
 		return nil, nil, err
 	}
 	return impl, closer, nil
+}
+
+func WithCategory(cat string, cmd *cli.Command) *cli.Command {
+	cmd.Category = strings.ToUpper(cat)
+	return cmd
+}
+
+func DaemonContext(cctx *cli.Context) context.Context {
+	return context.Background()
+}
+
+// ReqContext returns context for cli execution. Calling it for the first time
+// installs SIGTERM handler that will close returned context.
+// Not safe for concurrent execution.
+func ReqContext(cctx *cli.Context) context.Context {
+	tCtx := DaemonContext(cctx)
+
+	ctx, done := context.WithCancel(tCtx)
+	sigChan := make(chan os.Signal, 2)
+	go func() {
+		<-sigChan
+		done()
+	}()
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+
+	return ctx
+}
+
+type PrintHelpErr struct {
+	Err error
+	Ctx *cli.Context
+}
+
+func (e *PrintHelpErr) Error() string {
+	return e.Err.Error()
+}
+
+func (e *PrintHelpErr) Unwrap() error {
+	return e.Err
+}
+
+func (e *PrintHelpErr) Is(o error) bool {
+	_, ok := o.(*PrintHelpErr)
+	return ok
+}
+
+func ShowHelp(cctx *cli.Context, err error) error {
+	return &PrintHelpErr{Err: err, Ctx: cctx}
 }
 
 // OutputDataTransferChannels generates table output for a list of channels
@@ -170,45 +257,34 @@ func channelStatusString(useColor bool, status datatransfer.Status) string {
 	}
 }
 
-func DaemonContext(cctx *cli.Context) context.Context {
-	return context.Background()
+type AppFmt struct {
+	app   *cli.App
+	Stdin io.Reader
 }
 
-// ReqContext returns context for cli execution. Calling it for the first time
-// installs SIGTERM handler that will close returned context.
-// Not safe for concurrent execution.
-func ReqContext(cctx *cli.Context) context.Context {
-	tCtx := DaemonContext(cctx)
-
-	ctx, done := context.WithCancel(tCtx)
-	sigChan := make(chan os.Signal, 2)
-	go func() {
-		<-sigChan
-		done()
-	}()
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
-
-	return ctx
+func NewAppFmt(a *cli.App) *AppFmt {
+	var stdin io.Reader
+	istdin, ok := a.Metadata["stdin"]
+	if ok {
+		stdin = istdin.(io.Reader)
+	} else {
+		stdin = os.Stdin
+	}
+	return &AppFmt{app: a, Stdin: stdin}
 }
 
-type PrintHelpErr struct {
-	Err error
-	Ctx *cli.Context
+func (a *AppFmt) Print(args ...interface{}) {
+	fmt.Fprint(a.app.Writer, args...)
 }
 
-func (e *PrintHelpErr) Error() string {
-	return e.Err.Error()
+func (a *AppFmt) Println(args ...interface{}) {
+	fmt.Fprintln(a.app.Writer, args...)
 }
 
-func (e *PrintHelpErr) Unwrap() error {
-	return e.Err
+func (a *AppFmt) Printf(fmtstr string, args ...interface{}) {
+	fmt.Fprintf(a.app.Writer, fmtstr, args...)
 }
 
-func (e *PrintHelpErr) Is(o error) bool {
-	_, ok := o.(*PrintHelpErr)
-	return ok
-}
-
-func ShowHelp(cctx *cli.Context, err error) error {
-	return &PrintHelpErr{Err: err, Ctx: cctx}
+func (a *AppFmt) Scan(args ...interface{}) (int, error) {
+	return fmt.Fscan(a.Stdin, args...)
 }

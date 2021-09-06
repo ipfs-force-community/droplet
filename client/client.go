@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus-market/clients"
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/imports"
 	types2 "github.com/filecoin-project/venus-market/types"
@@ -91,6 +92,7 @@ type API struct {
 
 	DataTransfer marketNetwork.ClientDataTransfer
 	Host         host.Host
+	Cfg          *config.MarketClientConfig
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -1314,4 +1316,8 @@ func (a *API) dealBlockstore(root cid.Cid) (bstore.Blockstore, func(), error) {
 	default:
 		return nil, nil, xerrors.Errorf("unsupported blockstore accessor type: %T", acc)
 	}
+}
+
+func (a *API) DefaultAddress(ctx context.Context) (address.Address, error) {
+	return a.Cfg.DefaultMarketAddress, nil
 }

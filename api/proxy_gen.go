@@ -78,6 +78,18 @@ type MarketClientNodeStruct struct {
 		ClientStartDeal func(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) `perm:"admin"`
 
 		ClientStatelessDeal func(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) `perm:"write"`
+
+		DefaultAddress func(p0 context.Context) (address.Address, error) `perm:"read"`
+
+		MarketAddBalance func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) ``
+
+		MarketGetReserved func(p0 context.Context, p1 address.Address) (vTypes.BigInt, error) ``
+
+		MarketReleaseFunds func(p0 context.Context, p1 address.Address, p2 vTypes.BigInt) error ``
+
+		MarketReserveFunds func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) ``
+
+		MarketWithdraw func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) ``
 	}
 }
 
@@ -122,6 +134,10 @@ type MarketFullNodeStruct struct {
 
 		DealsSetPieceCidBlocklist func(p0 context.Context, p1 []cid.Cid) error `perm:"admin"`
 
+		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
+
+		MarketAddBalance func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) `perm:"sign"`
+
 		MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
 		MarketDataTransferUpdates func(p0 context.Context) (<-chan types.DataTransferChannel, error) `perm:"write"`
@@ -129,6 +145,8 @@ type MarketFullNodeStruct struct {
 		MarketGetAsk func(p0 context.Context) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
 
 		MarketGetDealUpdates func(p0 context.Context) (<-chan storagemarket.MinerDeal, error) `perm:"read"`
+
+		MarketGetReserved func(p0 context.Context, p1 address.Address) (vTypes.BigInt, error) `perm:"sign"`
 
 		MarketGetRetrievalAsk func(p0 context.Context) (*retrievalmarket.Ask, error) `perm:"read"`
 
@@ -146,17 +164,25 @@ type MarketFullNodeStruct struct {
 
 		MarketPublishPendingDeals func(p0 context.Context) error `perm:"admin"`
 
+		MarketReleaseFunds func(p0 context.Context, p1 address.Address, p2 vTypes.BigInt) error `perm:"sign"`
+
+		MarketReserveFunds func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) `perm:"sign"`
+
 		MarketRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
 		MarketSetAsk func(p0 context.Context, p1 vTypes.BigInt, p2 vTypes.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error `perm:"admin"`
 
 		MarketSetRetrievalAsk func(p0 context.Context, p1 *retrievalmarket.Ask) error `perm:"admin"`
 
+		MarketWithdraw func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) `perm:"sign"`
+
 		MessagerGetMessage func(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) `perm:"read"`
 
 		MessagerPushMessage func(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (uuid.UUID, error) `perm:"write"`
 
 		MessagerWaitMessage func(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) `perm:"read"`
+
+		NetAddrsListen func(p0 context.Context) (peer.AddrInfo, error) `perm:"read"`
 
 		PiecesGetCIDInfo func(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 
@@ -391,6 +417,54 @@ func (s *MarketClientNodeStub) ClientStatelessDeal(p0 context.Context, p1 *clien
 	return nil, xerrors.New("method not supported")
 }
 
+func (s *MarketClientNodeStruct) DefaultAddress(p0 context.Context) (address.Address, error) {
+	return s.Internal.DefaultAddress(p0)
+}
+
+func (s *MarketClientNodeStub) DefaultAddress(p0 context.Context) (address.Address, error) {
+	return *new(address.Address), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) MarketAddBalance(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return s.Internal.MarketAddBalance(p0, p1, p2, p3)
+}
+
+func (s *MarketClientNodeStub) MarketAddBalance(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return *new(cid.Cid), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) MarketGetReserved(p0 context.Context, p1 address.Address) (vTypes.BigInt, error) {
+	return s.Internal.MarketGetReserved(p0, p1)
+}
+
+func (s *MarketClientNodeStub) MarketGetReserved(p0 context.Context, p1 address.Address) (vTypes.BigInt, error) {
+	return *new(vTypes.BigInt), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 vTypes.BigInt) error {
+	return s.Internal.MarketReleaseFunds(p0, p1, p2)
+}
+
+func (s *MarketClientNodeStub) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 vTypes.BigInt) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) MarketReserveFunds(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return s.Internal.MarketReserveFunds(p0, p1, p2, p3)
+}
+
+func (s *MarketClientNodeStub) MarketReserveFunds(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return *new(cid.Cid), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) MarketWithdraw(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return s.Internal.MarketWithdraw(p0, p1, p2, p3)
+}
+
+func (s *MarketClientNodeStub) MarketWithdraw(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return *new(cid.Cid), xerrors.New("method not supported")
+}
+
 func (s *MarketFullNodeStruct) ActorAddress(p0 context.Context) (address.Address, error) {
 	return s.Internal.ActorAddress(p0)
 }
@@ -535,6 +609,22 @@ func (s *MarketFullNodeStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []
 	return xerrors.New("method not supported")
 }
 
+func (s *MarketFullNodeStruct) ID(p0 context.Context) (peer.ID, error) {
+	return s.Internal.ID(p0)
+}
+
+func (s *MarketFullNodeStub) ID(p0 context.Context) (peer.ID, error) {
+	return *new(peer.ID), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketAddBalance(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return s.Internal.MarketAddBalance(p0, p1, p2, p3)
+}
+
+func (s *MarketFullNodeStub) MarketAddBalance(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return *new(cid.Cid), xerrors.New("method not supported")
+}
+
 func (s *MarketFullNodeStruct) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
 	return s.Internal.MarketCancelDataTransfer(p0, p1, p2, p3)
 }
@@ -565,6 +655,14 @@ func (s *MarketFullNodeStruct) MarketGetDealUpdates(p0 context.Context) (<-chan 
 
 func (s *MarketFullNodeStub) MarketGetDealUpdates(p0 context.Context) (<-chan storagemarket.MinerDeal, error) {
 	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketGetReserved(p0 context.Context, p1 address.Address) (vTypes.BigInt, error) {
+	return s.Internal.MarketGetReserved(p0, p1)
+}
+
+func (s *MarketFullNodeStub) MarketGetReserved(p0 context.Context, p1 address.Address) (vTypes.BigInt, error) {
+	return *new(vTypes.BigInt), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
@@ -631,6 +729,22 @@ func (s *MarketFullNodeStub) MarketPublishPendingDeals(p0 context.Context) error
 	return xerrors.New("method not supported")
 }
 
+func (s *MarketFullNodeStruct) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 vTypes.BigInt) error {
+	return s.Internal.MarketReleaseFunds(p0, p1, p2)
+}
+
+func (s *MarketFullNodeStub) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 vTypes.BigInt) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) MarketReserveFunds(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return s.Internal.MarketReserveFunds(p0, p1, p2, p3)
+}
+
+func (s *MarketFullNodeStub) MarketReserveFunds(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return *new(cid.Cid), xerrors.New("method not supported")
+}
+
 func (s *MarketFullNodeStruct) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
 	return s.Internal.MarketRestartDataTransfer(p0, p1, p2, p3)
 }
@@ -655,6 +769,14 @@ func (s *MarketFullNodeStub) MarketSetRetrievalAsk(p0 context.Context, p1 *retri
 	return xerrors.New("method not supported")
 }
 
+func (s *MarketFullNodeStruct) MarketWithdraw(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return s.Internal.MarketWithdraw(p0, p1, p2, p3)
+}
+
+func (s *MarketFullNodeStub) MarketWithdraw(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
+	return *new(cid.Cid), xerrors.New("method not supported")
+}
+
 func (s *MarketFullNodeStruct) MessagerGetMessage(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) {
 	return s.Internal.MessagerGetMessage(p0, p1)
 }
@@ -677,6 +799,14 @@ func (s *MarketFullNodeStruct) MessagerWaitMessage(p0 context.Context, p1 uuid.U
 
 func (s *MarketFullNodeStub) MessagerWaitMessage(p0 context.Context, p1 uuid.UUID) (*mTypes.Message, error) {
 	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
+	return s.Internal.NetAddrsListen(p0)
+}
+
+func (s *MarketFullNodeStub) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
+	return *new(peer.AddrInfo), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {

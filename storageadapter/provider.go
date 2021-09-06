@@ -3,6 +3,7 @@ package storageadapter
 // this file implements storagemarket.StorageProviderNode
 
 import (
+	"bytes"
 	"context"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/constants"
@@ -64,7 +65,11 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, signerService clients.ISinger, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
-		ev := events.NewEvents(ctx, full)
+		ev, err := events.NewEvents(ctx, full)
+		if err != nil {
+			//todo add error return
+			log.Warn(err)
+		}
 		na := &ProviderNodeAdapter{
 			FullNode:        full,
 			ev:              ev,
@@ -214,8 +219,14 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 		return nil, err
 	}
 
+	msg := types.UnsignedMessage{}
+	err = msg.UnmarshalCBOR(bytes.NewReader(b))
+	mType := wallet.MTChainMsg
+	if err != nil {
+		mType = wallet.MTUnknown
+	}
 	localSignature, err := n.signerService.WalletSign(ctx, signer, b, wallet.MsgMeta{
-		Type: wallet.MTStorageAsk,
+		Type: mType,
 	})
 	if err != nil {
 		return nil, err
@@ -379,7 +390,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 	}
 
 	// Called immediately to check if the deal has already expired or been slashed
-	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+	checkFunc := func(ctx context.Context, ts *types.TipSet) (done bool, more bool, err error) {
 		if ts == nil {
 			// keep listening for events
 			return false, true, nil
