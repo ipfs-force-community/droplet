@@ -62,9 +62,10 @@ var DefaultMarketConfig = &MarketConfig{
 	ConsiderUnverifiedStorageDeals: true,
 	PieceCidBlocklist:              []cid.Cid{},
 	// TODO: It'd be nice to set this based on sector size
-	MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
-	ExpectedSealDuration:            Duration(time.Hour * 24),
-	PublishMsgPeriod:                Duration(time.Hour),
+	MaxDealStartDelay:    Duration(time.Hour * 24 * 14),
+	ExpectedSealDuration: Duration(time.Hour * 24),
+	PublishMsgPeriod:     Duration(time.Hour),
+
 	MaxDealsPerPublishMsg:           8,
 	MaxProviderCollateralMultiplier: 2,
 
@@ -80,8 +81,8 @@ var DefaultMarketConfig = &MarketConfig{
 		},
 	},
 
-	MaxPublishDealsFee:     types.FIL{},
-	MaxMarketBalanceAddFee: types.FIL{},
+	MaxPublishDealsFee:     types.FIL(types.NewInt(0)),
+	MaxMarketBalanceAddFee: types.FIL(types.NewInt(0)),
 }
 
 var (
@@ -119,5 +120,6 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		Url:   "/ip4/192.168.200.12/tcp/39812",
 		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
 	},
-	DefaultMarketAddress: defaultAddr,
+	DefaultMarketAddress:  defaultAddr,
+	SimultaneousTransfers: DefaultSimultaneousTransfers,
 }

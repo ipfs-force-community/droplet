@@ -3,9 +3,10 @@ module github.com/filecoin-project/venus-market
 go 1.16
 
 require (
+	github.com/BurntSushi/toml v0.3.1
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
-	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
+	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.10.0
@@ -25,7 +26,7 @@ require (
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
 	github.com/filecoin-project/specs-actors/v5 v5.0.3
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
-	github.com/filecoin-project/venus v1.0.5-0.20210817051858-2ea8ad0498e1
+	github.com/filecoin-project/venus v1.0.5-0.20210907075013-1925e5d6efdd
 	github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578
 	github.com/filecoin-project/venus-messager v1.1.1
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
@@ -74,7 +75,6 @@ require (
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.15
 	github.com/multiformats/go-varint v0.0.6
-	github.com/pelletier/go-toml v1.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/raulk/clock v1.1.0
 	github.com/stretchr/testify v1.7.0
@@ -91,9 +91,11 @@ require (
 )
 
 replace (
-	github.com/filecoin-project/go-fil-markets => /Users/lijunlong/code/go-fil-markets
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
+	github.com/filecoin-project/go-data-transfer => /Users/lijunlong/code/go-data-transfer
+	github.com/filecoin-project/go-fil-markets => /Users/lijunlong/code/go-fil-markets
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21
 	github.com/filecoin-project/venus => /Users/lijunlong/code/venus
+	github.com/ipfs/go-graphsync => /Users/lijunlong/code/go-graphsync
 	github.com/ipfs/go-ipfs-cmds => github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab
 )

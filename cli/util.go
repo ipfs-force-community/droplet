@@ -87,7 +87,7 @@ func NewMarketClientNode(cctx *cli.Context) (api.MarketClientNode, jsonrpc.Clien
 
 func NewFullNode(cctx *cli.Context) (apiface.FullNode, jsonrpc.ClientCloser, error) {
 	cfgPath := path.Join(cctx.String("repo"), "config.toml")
-	marketCfg := &config.MarketConfig{}
+	marketCfg := config.DefaultMarketConfig
 	err := config.LoadConfig(cfgPath, marketCfg)
 	if err != nil {
 		return nil, nil, err

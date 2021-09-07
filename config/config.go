@@ -151,17 +151,17 @@ type DAGStoreConfig struct {
 
 // StorageMiner is a miner config
 type MarketConfig struct {
-	Home
+	Home `toml:"-"`
 
 	Common
-	Node
-	PieceStorage
-	Sealer
-	Messager
-	Signer
-	Journal
-	AddressConfig
-	DAGStore DAGStoreConfig
+	Node          Node
+	PieceStorage  PieceStorage
+	Sealer        Sealer
+	Messager      Messager
+	Signer        Signer
+	Journal       Journal
+	AddressConfig AddressConfig
+	DAGStore      DAGStoreConfig
 
 	MinerAddress string
 	// When enabled, the miner can accept online deals
@@ -211,12 +211,12 @@ type MarketConfig struct {
 }
 
 type MarketClientConfig struct {
-	Home
+	Home `toml:"-"`
 	Common
-	Node
-	Signer
-	Market
-	Messager
+	Node     Node
+	Signer   Signer
+	Market   Market
+	Messager Messager
 
 	// The maximum number of parallel online data transfers (piecestorage+retrieval)
 	SimultaneousTransfers uint64

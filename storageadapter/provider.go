@@ -78,6 +78,7 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 			storage:         storage,
 			extendPieceMeta: extendPieceMeta,
 			signerService:   signerService,
+			fundMgr:         fundMgr,
 		}
 		if fc != nil {
 			na.addBalanceSpec = &types.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
@@ -94,12 +95,21 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 }
 
 func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) (*storagemarket.PackingResult, error) {
-	wLen, err := n.storage.SaveTo(deal.ClientDealProposal.Proposal.PieceCID, pieceData)
+	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
+	has, err := n.storage.Has(pieceCid)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to get piece cid data %w", err)
 	}
-	if wLen != int64(pieceSize) {
-		return nil, xerrors.Errorf("save piece expect len %d but got %d", pieceSize, wLen)
+
+	if !has {
+		wLen, err := n.storage.SaveTo(pieceCid, pieceData)
+		if err != nil {
+			return nil, err
+		}
+		if wLen != int64(pieceSize) {
+			return nil, xerrors.Errorf("save piece expect len %d but got %d", pieceSize, wLen)
+		}
+		log.Infof("success to write file %s to piece storage", pieceCid)
 	}
 
 	/*	storagemarket.MinerDeal{
@@ -115,11 +125,12 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 			deal.Proposal.PieceSize.Unpadded(),
 			paddedReader,*/
 
-	err = n.extendPieceMeta.UpdateDealOnComplete(deal.ClientDealProposal.Proposal.PieceCID, deal.ClientDealProposal, deal.Ref, *deal.PublishCid, deal.DealID, deal.FastRetrieval)
+	err = n.extendPieceMeta.UpdateDealOnComplete(pieceCid, deal.ClientDealProposal, deal.Ref, *deal.PublishCid, deal.DealID, deal.FastRetrieval)
 	if err != nil {
 		return nil, err
 	}
 
+	log.Infof("add deal to piece meta data %s", pieceCid)
 	return &storagemarket.PackingResult{
 		SectorNumber: 0,
 		Offset:       0,
@@ -218,7 +229,7 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 	if err != nil {
 		return nil, err
 	}
-
+	//todo  change func signature to get real sign type
 	msg := types.UnsignedMessage{}
 	err = msg.UnmarshalCBOR(bytes.NewReader(b))
 	mType := wallet.MTChainMsg

@@ -1,15 +1,20 @@
 package config
 
 import (
+	"bytes"
+	"github.com/BurntSushi/toml"
 	"github.com/mitchellh/go-homedir"
-	"github.com/pelletier/go-toml"
 	"io/ioutil"
 	"os"
 	"path"
 )
 
 func SaveConfig(cfg IHome) error {
-	cfgBytes, err := toml.Marshal(cfg)
+	buf := new(bytes.Buffer)
+	_, _ = buf.WriteString("# Default config:\n")
+	e := toml.NewEncoder(buf)
+
+	err := e.Encode(cfg)
 	if err != nil {
 		return err
 	}
@@ -19,7 +24,7 @@ func SaveConfig(cfg IHome) error {
 	}
 
 	_ = os.MkdirAll(path.Dir(cfgPath), os.ModePerm)
-	return ioutil.WriteFile(cfgPath, cfgBytes, 0644)
+	return ioutil.WriteFile(cfgPath, buf.Bytes(), 0644)
 }
 
 func LoadConfig(cfgPath string, cfg IHome) error {

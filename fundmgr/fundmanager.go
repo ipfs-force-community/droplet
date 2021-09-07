@@ -72,6 +72,7 @@ func newFundManager(api fundManagerAPI, ds datastore.Batching) *FundManager {
 		api:         api,
 		str:         newStore(ds),
 		fundedAddrs: make(map[address.Address]*fundedAddress),
+		lk:          sync.Mutex{},
 	}
 }
 

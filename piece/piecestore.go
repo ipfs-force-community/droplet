@@ -110,9 +110,6 @@ func (ps *dsPieceStore) AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.De
 }
 
 func (ps *dsPieceStore) UpdateDealOnComplete(pieceCID cid.Cid, proposal market.ClientDealProposal, dataRef *storagemarket.DataRef, publishCid cid.Cid, dealId abi.DealID, fastRetrieval bool) error {
-	ps.pieceLk.Lock()
-	defer ps.pieceLk.Unlock()
-
 	return ps.mutatePieceInfo(pieceCID, func(pi *PieceInfo) error {
 		for _, di := range pi.Deals {
 			if di.DealID == dealId {
