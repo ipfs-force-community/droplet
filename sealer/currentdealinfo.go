@@ -3,6 +3,7 @@ package sealer
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	"github.com/filecoin-project/go-address"
@@ -45,8 +46,10 @@ func (mgr *CurrentDealInfoManager) GetCurrentDealInfo(ctx context.Context, tok t
 	}
 
 	// Lookup the deal state by deal ID
+
 	marketDeal, err := mgr.CDAPI.StateMarketStorageDeal(ctx, dealID, tok)
 	if err == nil && proposal != nil {
+		fmt.Println("############# success deal", dealID, tok.String())
 		// Make sure the retrieved deal proposal matches the target proposal
 		equal, err := mgr.CheckDealEquality(ctx, tok, *proposal, marketDeal.Proposal)
 		if err != nil {
@@ -55,7 +58,10 @@ func (mgr *CurrentDealInfoManager) GetCurrentDealInfo(ctx context.Context, tok t
 		if !equal {
 			return CurrentDealInfo{}, xerrors.Errorf("Deal proposals for publish message %s did not match", publishCid)
 		}
+	} else {
+		fmt.Println("############### fail deal", dealID, tok.String())
 	}
+
 	return CurrentDealInfo{DealID: dealID, MarketDeal: marketDeal, PublishMsgTipSet: pubMsgTok}, err
 }
 

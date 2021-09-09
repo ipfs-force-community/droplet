@@ -102,7 +102,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	}
 
 	if !has {
-		wLen, err := n.storage.SaveTo(pieceCid, pieceData)
+		wLen, err := n.storage.SaveTo(ctx, pieceCid, pieceData)
 		if err != nil {
 			return nil, err
 		}

@@ -8,10 +8,12 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/piece"
 	storageadapter2 "github.com/filecoin-project/venus-market/storageadapter"
 	"github.com/filecoin-project/venus-market/types"
 	mTypes "github.com/filecoin-project/venus-messager/types"
@@ -27,6 +29,8 @@ import (
 	"time"
 )
 
+var _ api.MarketFullNode = (*MarketNodeImpl)(nil)
+
 type MarketNodeImpl struct {
 	FundAPI
 	fx.In
@@ -37,7 +41,7 @@ type MarketNodeImpl struct {
 	RetrievalProvider retrievalmarket.RetrievalProvider
 	DataTransfer      network.ProviderDataTransfer
 	DealPublisher     *storageadapter2.DealPublisher
-	PieceStore        piecestore.PieceStore
+	PieceStore        piece.ExtendPieceStore
 	Messager          clients.IMessager
 
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
@@ -229,6 +233,18 @@ func (m MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid
 	}
 
 	return &ci, nil
+}
+
+func (m MarketNodeImpl) GetUnPackedDeals(miner address.Address, spec *piece.GetDealSpec) ([]piece.DealInfo, error) {
+	return m.PieceStore.GetUnPackedDeals(spec)
+}
+
+func (m MarketNodeImpl) MarkDealsAsPacking(miner address.Address, deals []abi.DealID) error {
+	return m.PieceStore.MarkDealsAsPacking(deals)
+}
+
+func (m MarketNodeImpl) UpdateDealOnPacking(miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
+	return m.PieceStore.UpdateDealOnPacking(pieceCID, dealId, sectorid, offset)
 }
 
 func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {

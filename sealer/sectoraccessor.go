@@ -14,8 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	specstorage "github.com/filecoin-project/specs-storage/storage"
-	"github.com/filecoin-project/venus/pkg/types"
-
 	"github.com/ipfs/go-cid"
 )
 
@@ -34,11 +32,6 @@ func NewSectorAccessor(maddr types2.MinerAddress, minerapi clients.IStorageMiner
 
 func (sa *sectorAccessor) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	log.Debugf("get sector %d, offset %d, length %d", sectorID, offset, length)
-	si, err := sa.sectorsStatus(ctx, sectorID, false)
-	if err != nil {
-		return nil, err
-	}
-
 	mid, err := address.IDFromAddress(sa.maddr)
 	if err != nil {
 		return nil, err
@@ -49,17 +42,12 @@ func (sa *sectorAccessor) UnsealSector(ctx context.Context, sectorID abi.SectorN
 			Miner:  abi.ActorID(mid),
 			Number: sectorID,
 		},
-		ProofType: si.SealProof,
-	}
-
-	var commD cid.Cid
-	if si.CommD != nil {
-		commD = *si.CommD
+		//	ProofType: si.SealProof,  todo how to determinal seal proof
 	}
 
 	// Get a reader for the piece, unsealing the piece if necessary
 	log.Debugf("read piece in sector %d, offset %d, length %d from miner %d", sectorID, offset, length, mid)
-	r, unsealed, err := sa.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, si.Ticket.Value, commD)
+	r, unsealed, err := sa.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, nil, cid.Undef)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to unseal piece from sector %d: %w", sectorID, err)
 	}
@@ -69,58 +57,18 @@ func (sa *sectorAccessor) UnsealSector(ctx context.Context, sectorID abi.SectorN
 }
 
 func (sa *sectorAccessor) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
-	si, err := sa.sectorsStatus(ctx, sectorID, true)
-	if err != nil {
-		return false, xerrors.Errorf("failed to get sector info: %w", err)
-	}
-
 	mid, err := address.IDFromAddress(sa.maddr)
 	if err != nil {
 		return false, err
 	}
-
 	ref := specstorage.SectorRef{
 		ID: abi.SectorID{
 			Miner:  abi.ActorID(mid),
 			Number: sectorID,
 		},
-		ProofType: si.SealProof,
+		//	ProofType: si.SealProof,  todo how to determinal seal proof
 	}
 
 	log.Debugf("will call IsUnsealed now sector=%+v, offset=%d, size=%d", sectorID, offset, length)
 	return sa.pp.IsUnsealed(ctx, ref, storiface.UnpaddedByteIndex(offset), length)
-}
-
-func (sa *sectorAccessor) sectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (types2.SectorInfo, error) {
-	sInfo, err := sa.minerapi.SectorsStatus(ctx, sid, false)
-	if err != nil {
-		return types2.SectorInfo{}, err
-	}
-
-	if !showOnChainInfo {
-		return sInfo, nil
-	}
-
-	onChainInfo, err := sa.full.StateSectorGetInfo(ctx, sa.maddr, sid, types.EmptyTSK)
-	if err != nil {
-		return sInfo, err
-	}
-	if onChainInfo == nil {
-		return sInfo, nil
-	}
-	sInfo.SealProof = onChainInfo.SealProof
-	sInfo.Activation = onChainInfo.Activation
-	sInfo.Expiration = onChainInfo.Expiration
-	sInfo.DealWeight = onChainInfo.DealWeight
-	sInfo.VerifiedDealWeight = onChainInfo.VerifiedDealWeight
-	sInfo.InitialPledge = onChainInfo.InitialPledge
-
-	ex, err := sa.full.StateSectorExpiration(ctx, sa.maddr, sid, types.EmptyTSK)
-	if err != nil {
-		return sInfo, nil
-	}
-	sInfo.OnTime = ex.OnTime
-	sInfo.Early = ex.Early
-
-	return sInfo, nil
 }

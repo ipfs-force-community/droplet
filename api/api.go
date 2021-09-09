@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/client"
 	"github.com/filecoin-project/venus-market/imports"
+	"github.com/filecoin-project/venus-market/piece"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 	mTypes "github.com/filecoin-project/venus-messager/types"
@@ -85,6 +86,11 @@ type MarketFullNode interface {
 
 	NetAddrsListen(context.Context) (peer.AddrInfo, error) //perm:read
 	ID(context.Context) (peer.ID, error)                   //perm:read
+
+	//todo validate miner identify
+	GetUnPackedDeals(miner address.Address, spec *piece.GetDealSpec) ([]piece.DealInfo, error)                                                   //perm:read
+	MarkDealsAsPacking(miner address.Address, deals []abi.DealID) error                                                                          //perm:write
+	UpdateDealOnPacking(miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error //perm:write
 }
 
 type MarketClientNode interface {

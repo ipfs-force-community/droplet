@@ -1,6 +1,7 @@
 package piece
 
 import (
+	"context"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -10,9 +11,9 @@ import (
 )
 
 type IPieceStorage interface {
-	SaveTo(cid.Cid, io.Reader) (int64, error)
-	Read(cid.Cid) (io.ReadCloser, error)
-	ReadSize(s cid.Cid, offset, size abi.UnpaddedPieceSize) (io.ReadCloser, error)
+	SaveTo(context.Context, cid.Cid, io.Reader) (int64, error)
+	Read(context.Context, cid.Cid) (io.ReadCloser, error)
+	ReadSize(context.Context, cid.Cid, abi.UnpaddedPieceSize, abi.UnpaddedPieceSize) (io.ReadCloser, error)
 	Has(cid.Cid) (bool, error)
 }
 
@@ -34,7 +35,7 @@ func NewPieceFileStorage(piecePath string) (*PieceFileStorage, error) {
 	return &PieceFileStorage{piecePath}, nil
 }
 
-func (p *PieceFileStorage) SaveTo(s cid.Cid, reader io.Reader) (int64, error) {
+func (p *PieceFileStorage) SaveTo(ctx context.Context, s cid.Cid, reader io.Reader) (int64, error) {
 	fs, err := os.OpenFile(path.Join(p.path, s.String()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
 		return 0, err
@@ -43,11 +44,11 @@ func (p *PieceFileStorage) SaveTo(s cid.Cid, reader io.Reader) (int64, error) {
 	return io.Copy(fs, reader)
 }
 
-func (p *PieceFileStorage) Read(s cid.Cid) (io.ReadCloser, error) {
+func (p *PieceFileStorage) Read(ctx context.Context, s cid.Cid) (io.ReadCloser, error) {
 	return os.Open(path.Join(p.path, s.String()))
 }
 
-func (p *PieceFileStorage) ReadSize(s cid.Cid, offset, size abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+func (p *PieceFileStorage) ReadSize(ctx context.Context, s cid.Cid, offset, size abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	fs, err := os.Open(path.Join(p.path, s.String()))
 	if err != nil {
 		return nil, err
