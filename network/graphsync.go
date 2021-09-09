@@ -15,10 +15,9 @@ import (
 func NewGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, r *config.HomeDir, clientBs models.ClientBlockstore, h host.Host) (Graphsync, error) {
 	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, r *config.HomeDir, clientBs models.ClientBlockstore, h host.Host) (Graphsync, error) {
 		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
-		loader := storeutil.LoaderForBlockstore(clientBs)
-		storer := storeutil.StorerForBlockstore(clientBs)
+		lsys := storeutil.LinkSystemForBlockstore(clientBs)
 
-		gs := graphsyncimpl.New(metrics.LifecycleCtx(mctx, lc), graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault(), graphsyncimpl.MaxInProgressRequests(parallelTransfers))
+		gs := graphsyncimpl.New(metrics.LifecycleCtx(mctx, lc), graphsyncNetwork, lsys, graphsyncimpl.RejectAllRequestsByDefault(), graphsyncimpl.MaxInProgressRequests(parallelTransfers))
 		return gs, nil
 	}
 }
@@ -28,9 +27,8 @@ func NewGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx, lc fx.
 func NewStagingGraphsync(parallelTransfers uint64) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs models.StagingBlockstore, h host.Host) StagingGraphsync {
 	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, ibs models.StagingBlockstore, h host.Host) StagingGraphsync {
 		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
-		loader := storeutil.LoaderForBlockstore(ibs)
-		storer := storeutil.StorerForBlockstore(ibs)
-		gs := graphsyncimpl.New(metrics.LifecycleCtx(mctx, lc), graphsyncNetwork, loader, storer, graphsyncimpl.RejectAllRequestsByDefault(), graphsyncimpl.MaxInProgressRequests(parallelTransfers))
+		lsys := storeutil.LinkSystemForBlockstore(ibs)
+		gs := graphsyncimpl.New(metrics.LifecycleCtx(mctx, lc), graphsyncNetwork, lsys, graphsyncimpl.RejectAllRequestsByDefault(), graphsyncimpl.MaxInProgressRequests(parallelTransfers))
 
 		return gs
 	}
