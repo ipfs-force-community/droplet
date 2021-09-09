@@ -96,13 +96,13 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 
 func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) (*storagemarket.PackingResult, error) {
 	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
-	has, err := n.storage.Has(pieceCid)
+	has, err := n.storage.Has(pieceCid.String())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get piece cid data %w", err)
 	}
 
 	if !has {
-		wLen, err := n.storage.SaveTo(ctx, pieceCid, pieceData)
+		wLen, err := n.storage.SaveTo(ctx, pieceCid.String(), pieceData)
 		if err != nil {
 			return nil, err
 		}

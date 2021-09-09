@@ -76,7 +76,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 		return nil, false, err
 	}
 	pieceCid := dealInfo.Proposal.PieceCID
-	has, err := p.pieceStorage.Has(pieceCid)
+	has, err := p.pieceStorage.Has(pieceCid.String())
 	if err != nil {
 		log.Errorf("did not check piece file in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
 		return nil, false, err
@@ -84,7 +84,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 
 	var r io.ReadCloser
 	if has {
-		r, err = p.pieceStorage.Read(ctx, dealInfo.Proposal.PieceCID)
+		r, err = p.pieceStorage.Read(ctx, pieceCid.String())
 		if err != nil {
 			log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
 			return nil, false, err
@@ -117,7 +117,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 		//todo how to store data piece not completed piece
 		log.Debugf("unsealed a sector file to read the piece, sector=%+v, offset=%d, size=%d", sector, offset, size)
 		// move piece to storage
-		r, err = p.pieceStorage.Read(ctx, dealInfo.Proposal.PieceCID)
+		r, err = p.pieceStorage.Read(ctx, pieceCid.String())
 		if err != nil {
 			log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
 			return nil, false, err

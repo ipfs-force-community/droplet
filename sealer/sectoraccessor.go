@@ -5,6 +5,8 @@ import (
 	"github.com/filecoin-project/venus-market/clients"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 	"io"
 
 	"golang.org/x/xerrors"
@@ -37,12 +39,16 @@ func (sa *sectorAccessor) UnsealSector(ctx context.Context, sectorID abi.SectorN
 		return nil, err
 	}
 
+	spt, err := sa.getSealProofType(ctx)
+	if err != nil {
+		return nil, err
+	}
 	ref := specstorage.SectorRef{
 		ID: abi.SectorID{
 			Miner:  abi.ActorID(mid),
 			Number: sectorID,
 		},
-		//	ProofType: si.SealProof,  todo how to determinal seal proof
+		ProofType: spt,
 	}
 
 	// Get a reader for the piece, unsealing the piece if necessary
@@ -61,14 +67,34 @@ func (sa *sectorAccessor) IsUnsealed(ctx context.Context, sectorID abi.SectorNum
 	if err != nil {
 		return false, err
 	}
+
+	spt, err := sa.getSealProofType(ctx)
+	if err != nil {
+		return false, err
+	}
+
 	ref := specstorage.SectorRef{
 		ID: abi.SectorID{
 			Miner:  abi.ActorID(mid),
 			Number: sectorID,
 		},
-		//	ProofType: si.SealProof,  todo how to determinal seal proof
+		ProofType: spt,
 	}
 
 	log.Debugf("will call IsUnsealed now sector=%+v, offset=%d, size=%d", sectorID, offset, length)
 	return sa.pp.IsUnsealed(ctx, ref, storiface.UnpaddedByteIndex(offset), length)
+}
+
+func (sa *sectorAccessor) getSealProofType(ctx context.Context) (abi.RegisteredSealProof, error) {
+	mi, err := sa.full.StateMinerInfo(ctx, sa.maddr, types.EmptyTSK)
+	if err != nil {
+		return 0, err
+	}
+
+	ver, err := sa.full.StateNetworkVersion(ctx, types.EmptyTSK)
+	if err != nil {
+		return 0, err
+	}
+
+	return miner.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
 }
