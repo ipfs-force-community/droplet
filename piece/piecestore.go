@@ -65,7 +65,7 @@ type ExtendPieceStore interface {
 	GetDeals(pageIndex, pageSize int) ([]*DealInfo, error)
 	GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
 	MarkDealsAsPacking(deals []abi.DealID) error
-	UpdateDealStatus(pieceCID cid.Cid, dealId abi.DealID, status string) error
+	UpdateDealStatus(dealId abi.DealID, status string) error
 	GetDealByPosition(ctx context.Context, sid abi.SectorID, offset abi.PaddedPieceSize) (*DealInfo, error)
 	UpdateDealOnComplete(pieceCID cid.Cid, proposal market.ClientDealProposal, dataRef *storagemarket.DataRef, publishCid cid.Cid, dealId abi.DealID, fastRetrieval bool) error
 	UpdateDealOnPacking(pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error
@@ -163,16 +163,13 @@ func (ps *dsPieceStore) UpdateDealOnPacking(pieceCID cid.Cid, dealId abi.DealID,
 }
 
 // Store `dealInfo` in the PieceStore with key `pieceCID`.
-func (ps *dsPieceStore) UpdateDealStatus(pieceCID cid.Cid, dealId abi.DealID, status string) error {
-	return ps.mutatePieceInfo(pieceCID, func(pi *PieceInfo) error {
-		for _, di := range pi.Deals {
-			if di.DealID == dealId {
-				di.Status = status
-				return nil
-			}
+func (ps *dsPieceStore) UpdateDealStatus(dealId abi.DealID, status string) error {
+	return ps.mutateDeal(func(info *DealInfo) (bool, error) {
+		if info.DealID == dealId {
+			info.Status = status
+			return false, nil
 		}
-		//new deal
-		return nil
+		return true, nil
 	})
 }
 
@@ -276,37 +273,6 @@ func (ps *dsPieceStore) eachPackedDeal(f func(info *DealInfo) (bool, error)) err
 	return nil
 }
 
-func (ps *dsPieceStore) eachDeal(f func(info *DealInfo) (bool, error)) error {
-	ps.pieceLk.Lock()
-	defer ps.pieceLk.Unlock()
-
-	qres, err := ps.pieces.Query(query.Query{})
-	if err != nil {
-		return xerrors.Errorf("query error: %w", err)
-	}
-	defer qres.Close() //nolint:errcheck
-
-	for r := range qres.Next() {
-		var pieceInfo PieceInfo
-		err := json.Unmarshal(r.Value, &pieceInfo)
-		if err != nil {
-			return xerrors.Errorf("unable to parser cid: %w", err)
-		}
-
-		for _, deal := range pieceInfo.Deals {
-			isContinue, err := f(deal)
-			if err != nil {
-				return err
-			}
-			if !isContinue {
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 func (ps *dsPieceStore) MarkDealsAsPacking(deals []abi.DealID) error {
 	pieces, err := ps.ListCidInfoKeys()
 	if err != nil {
@@ -372,25 +338,6 @@ func (ps *dsPieceStore) ListPieceInfoKeys() ([]cid.Cid, error) {
 	return out, nil
 }
 
-func (ps *dsPieceStore) ListCidInfoKeys() ([]cid.Cid, error) {
-	qres, err := ps.cidInfos.Query(query.Query{})
-	if err != nil {
-		return nil, xerrors.Errorf("query error: %w", err)
-	}
-	defer qres.Close() //nolint:errcheck
-
-	var out []cid.Cid
-	for r := range qres.Next() {
-		id, err := cid.Decode(r.Key)
-		if err != nil {
-			return nil, xerrors.Errorf("unable to parser cid: %w", err)
-		}
-		out = append(out, id)
-	}
-
-	return out, nil
-}
-
 // Retrieve the PieceInfo associated with `pieceCID` from the piece info store.
 func (ps *dsPieceStore) GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, error) {
 	ps.pieceLk.Lock()
@@ -406,20 +353,6 @@ func (ps *dsPieceStore) GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, er
 		return piecestore.PieceInfo{}, err
 	}
 	return piInfo, nil
-}
-
-// Retrieve the CIDInfo associated with `pieceCID` from the CID info store.
-func (ps *dsPieceStore) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error) {
-	key := datastore.NewKey(payloadCID.String())
-	cidInfoBytes, err := ps.pieces.Get(key)
-	if err != nil {
-		return piecestore.CIDInfo{}, err
-	}
-	cidInfo := piecestore.CIDInfo{}
-	if err = json.Unmarshal(cidInfoBytes, &cidInfo); err != nil {
-		return piecestore.CIDInfo{}, err
-	}
-	return cidInfo, nil
 }
 
 func (ps *dsPieceStore) mutatePieceInfo(pieceCID cid.Cid, mutator func(pi *PieceInfo) error) error {
@@ -448,9 +381,123 @@ func (ps *dsPieceStore) mutatePieceInfo(pieceCID cid.Cid, mutator func(pi *Piece
 	return ps.pieces.Put(key, data)
 }
 
+func (ps *dsPieceStore) eachDeal(f func(info *DealInfo) (bool, error)) error {
+	ps.pieceLk.Lock()
+	defer ps.pieceLk.Unlock()
+
+	qres, err := ps.pieces.Query(query.Query{})
+	if err != nil {
+		return xerrors.Errorf("query error: %w", err)
+	}
+	defer qres.Close() //nolint:errcheck
+
+	for r := range qres.Next() {
+		var pieceInfo PieceInfo
+		err := json.Unmarshal(r.Value, &pieceInfo)
+		if err != nil {
+			return xerrors.Errorf("unable to parser cid: %w", err)
+		}
+
+		for _, deal := range pieceInfo.Deals {
+			isContinue, err := f(deal)
+			if err != nil {
+				return err
+			}
+			if !isContinue {
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+func (ps *dsPieceStore) mutateDeal(f func(info *DealInfo) (bool, error)) error {
+	ps.pieceLk.Lock()
+	defer ps.pieceLk.Unlock()
+
+	qres, err := ps.pieces.Query(query.Query{})
+	if err != nil {
+		return xerrors.Errorf("query error: %w", err)
+	}
+
+	modify := map[cid.Cid]PieceInfo{}
+	for r := range qres.Next() {
+		id, err := cid.Decode(r.Key)
+		if err != nil {
+			_ = qres.Close()
+			return xerrors.Errorf("unable to parser cid: %w", err)
+		}
+		var pieceInfo PieceInfo
+		err = json.Unmarshal(r.Value, &pieceInfo)
+		if err != nil {
+			_ = qres.Close()
+			return xerrors.Errorf("unable to parser pieceinfo: %w", err)
+		}
+
+		for _, deal := range pieceInfo.Deals {
+			isContinue, err := f(deal)
+			if err != nil {
+				_ = qres.Close()
+				return err
+			}
+			if !isContinue {
+				break
+			}
+		}
+		modify[id] = pieceInfo
+		//todo poor performance
+	}
+
+	_ = qres.Close()
+
+	for pieceCid, pieceInfo := range modify {
+		data, err := json.Marshal(pieceInfo)
+		if err != nil {
+			return err
+		}
+		return ps.pieces.Put(datastore.NewKey(pieceCid.String()), data)
+	}
+	return nil
+}
+
+////********CIDINFO*********
+func (ps *dsPieceStore) ListCidInfoKeys() ([]cid.Cid, error) {
+	qres, err := ps.cidInfos.Query(query.Query{})
+	if err != nil {
+		return nil, xerrors.Errorf("query error: %w", err)
+	}
+	defer qres.Close() //nolint:errcheck
+
+	var out []cid.Cid
+	for r := range qres.Next() {
+		id, err := cid.Decode(r.Key)
+		if err != nil {
+			return nil, xerrors.Errorf("unable to parser cid: %w", err)
+		}
+		out = append(out, id)
+	}
+
+	return out, nil
+}
+
+// Retrieve the CIDInfo associated with `pieceCID` from the CID info store.
+func (ps *dsPieceStore) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error) {
+	key := datastore.NewKey(payloadCID.String())
+	cidInfoBytes, err := ps.cidInfos.Get(key)
+	if err != nil {
+		return piecestore.CIDInfo{}, err
+	}
+	cidInfo := piecestore.CIDInfo{}
+	if err = json.Unmarshal(cidInfoBytes, &cidInfo); err != nil {
+		return piecestore.CIDInfo{}, err
+	}
+	return cidInfo, nil
+}
+
 func (ps *dsPieceStore) mutateCIDInfo(c cid.Cid, mutator func(ci *CIDInfo) error) error {
 	key := datastore.NewKey(c.String())
-	cidInfoBytes, err := ps.pieces.Get(key)
+	cidInfoBytes, err := ps.cidInfos.Get(key)
 	if err != nil && datastore.ErrNotFound != err {
 		return err
 	}
@@ -470,5 +517,5 @@ func (ps *dsPieceStore) mutateCIDInfo(c cid.Cid, mutator func(ci *CIDInfo) error
 	if err != nil {
 		return err
 	}
-	return ps.pieces.Put(key, data)
+	return ps.cidInfos.Put(key, data)
 }

@@ -92,7 +92,7 @@ type MarketFullNode interface {
 	GetUnPackedDeals(miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfo, error)                                                  //perm:read
 	MarkDealsAsPacking(miner address.Address, deals []abi.DealID) error                                                                          //perm:write
 	UpdateDealOnPacking(miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error //perm:write
-	UpdateDealStatus(miner address.Address, pieceCID cid.Cid, dealId abi.DealID, status string) error                                            //perm:write
+	UpdateDealStatus(miner address.Address, dealId abi.DealID, status string) error                                                              //perm:write
 }
 
 type MarketClientNode interface {

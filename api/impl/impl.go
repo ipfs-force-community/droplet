@@ -369,8 +369,8 @@ func (m MarketNodeImpl) UpdateDealOnPacking(miner address.Address, pieceCID cid.
 	return m.PieceStore.UpdateDealOnPacking(pieceCID, dealId, sectorid, offset)
 }
 
-func (m MarketNodeImpl) UpdateDealStatus(miner address.Address, pieceCID cid.Cid, dealId abi.DealID, status string) error {
-	return m.PieceStore.UpdateDealStatus(pieceCID, dealId, status)
+func (m MarketNodeImpl) UpdateDealStatus(miner address.Address, dealId abi.DealID, status string) error {
+	return m.PieceStore.UpdateDealStatus(dealId, status)
 }
 
 func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {

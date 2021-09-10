@@ -205,7 +205,7 @@ type MarketFullNodeStruct struct {
 
 		UpdateDealOnPacking func(p0 address.Address, p1 cid.Cid, p2 abi.DealID, p3 abi.SectorNumber, p4 abi.PaddedPieceSize) error `perm:"write"`
 
-		UpdateDealStatus func(p0 address.Address, p1 cid.Cid, p2 abi.DealID, p3 string) error `perm:"write"`
+		UpdateDealStatus func(p0 address.Address, p1 abi.DealID, p2 string) error `perm:"write"`
 	}
 }
 
@@ -900,11 +900,11 @@ func (s *MarketFullNodeStub) UpdateDealOnPacking(p0 address.Address, p1 cid.Cid,
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) UpdateDealStatus(p0 address.Address, p1 cid.Cid, p2 abi.DealID, p3 string) error {
-	return s.Internal.UpdateDealStatus(p0, p1, p2, p3)
+func (s *MarketFullNodeStruct) UpdateDealStatus(p0 address.Address, p1 abi.DealID, p2 string) error {
+	return s.Internal.UpdateDealStatus(p0, p1, p2)
 }
 
-func (s *MarketFullNodeStub) UpdateDealStatus(p0 address.Address, p1 cid.Cid, p2 abi.DealID, p3 string) error {
+func (s *MarketFullNodeStub) UpdateDealStatus(p0 address.Address, p1 abi.DealID, p2 string) error {
 	return xerrors.New("method not supported")
 }
 
