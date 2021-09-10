@@ -135,7 +135,9 @@ type MarketFullNodeStruct struct {
 
 		DealsSetPieceCidBlocklist func(p0 context.Context, p1 []cid.Cid) error `perm:"admin"`
 
-		GetUnPackedDeals func(p0 address.Address, p1 *piece.GetDealSpec) ([]piece.DealInfo, error) `perm:"read"`
+		GetDeals func(p0 address.Address, p1 int, p2 int) ([]*piece.DealInfo, error) `perm:"read"`
+
+		GetUnPackedDeals func(p0 address.Address, p1 *piece.GetDealSpec) ([]*piece.DealInfo, error) `perm:"read"`
 
 		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
 
@@ -202,6 +204,8 @@ type MarketFullNodeStruct struct {
 		SectorSetExpectedSealDuration func(p0 context.Context, p1 time.Duration) error `perm:"write"`
 
 		UpdateDealOnPacking func(p0 address.Address, p1 cid.Cid, p2 abi.DealID, p3 abi.SectorNumber, p4 abi.PaddedPieceSize) error `perm:"write"`
+
+		UpdateDealStatus func(p0 address.Address, p1 cid.Cid, p2 abi.DealID, p3 string) error `perm:"write"`
 	}
 }
 
@@ -616,12 +620,20 @@ func (s *MarketFullNodeStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) GetUnPackedDeals(p0 address.Address, p1 *piece.GetDealSpec) ([]piece.DealInfo, error) {
+func (s *MarketFullNodeStruct) GetDeals(p0 address.Address, p1 int, p2 int) ([]*piece.DealInfo, error) {
+	return s.Internal.GetDeals(p0, p1, p2)
+}
+
+func (s *MarketFullNodeStub) GetDeals(p0 address.Address, p1 int, p2 int) ([]*piece.DealInfo, error) {
+	return *new([]*piece.DealInfo), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) GetUnPackedDeals(p0 address.Address, p1 *piece.GetDealSpec) ([]*piece.DealInfo, error) {
 	return s.Internal.GetUnPackedDeals(p0, p1)
 }
 
-func (s *MarketFullNodeStub) GetUnPackedDeals(p0 address.Address, p1 *piece.GetDealSpec) ([]piece.DealInfo, error) {
-	return *new([]piece.DealInfo), xerrors.New("method not supported")
+func (s *MarketFullNodeStub) GetUnPackedDeals(p0 address.Address, p1 *piece.GetDealSpec) ([]*piece.DealInfo, error) {
+	return *new([]*piece.DealInfo), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) ID(p0 context.Context) (peer.ID, error) {
@@ -885,6 +897,14 @@ func (s *MarketFullNodeStruct) UpdateDealOnPacking(p0 address.Address, p1 cid.Ci
 }
 
 func (s *MarketFullNodeStub) UpdateDealOnPacking(p0 address.Address, p1 cid.Cid, p2 abi.DealID, p3 abi.SectorNumber, p4 abi.PaddedPieceSize) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) UpdateDealStatus(p0 address.Address, p1 cid.Cid, p2 abi.DealID, p3 string) error {
+	return s.Internal.UpdateDealStatus(p0, p1, p2, p3)
+}
+
+func (s *MarketFullNodeStub) UpdateDealStatus(p0 address.Address, p1 cid.Cid, p2 abi.DealID, p3 string) error {
 	return xerrors.New("method not supported")
 }
 

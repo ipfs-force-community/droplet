@@ -234,29 +234,6 @@ func (m MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid
 
 	return &ci, nil
 }
-
-func (m MarketNodeImpl) GetUnPackedDeals(miner address.Address, spec *piece.GetDealSpec) ([]piece.DealInfo, error) {
-	return m.PieceStore.GetUnPackedDeals(spec)
-}
-
-func (m MarketNodeImpl) MarkDealsAsPacking(miner address.Address, deals []abi.DealID) error {
-	return m.PieceStore.MarkDealsAsPacking(deals)
-}
-
-func (m MarketNodeImpl) UpdateDealOnPacking(miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
-	return m.PieceStore.UpdateDealOnPacking(pieceCID, dealId, sectorid, offset)
-}
-
-func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {
-	fi, err := os.Open(fname)
-	if err != nil {
-		return xerrors.Errorf("failed to open given file: %w", err)
-	}
-	defer fi.Close() //nolint:errcheck
-
-	return m.StorageProvider.ImportDataForDeal(ctx, dealPropCid, fi)
-}
-
 func (m MarketNodeImpl) DealsList(ctx context.Context) ([]types.MarketDeal, error) {
 	return m.listDeals(ctx)
 }
@@ -378,4 +355,34 @@ func (m MarketNodeImpl) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 
 func (m MarketNodeImpl) ID(context.Context) (peer.ID, error) {
 	return m.Host.ID(), nil
+}
+
+func (m MarketNodeImpl) GetUnPackedDeals(miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfo, error) {
+	return m.PieceStore.GetUnPackedDeals(spec)
+}
+
+func (m MarketNodeImpl) MarkDealsAsPacking(miner address.Address, deals []abi.DealID) error {
+	return m.PieceStore.MarkDealsAsPacking(deals)
+}
+
+func (m MarketNodeImpl) UpdateDealOnPacking(miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
+	return m.PieceStore.UpdateDealOnPacking(pieceCID, dealId, sectorid, offset)
+}
+
+func (m MarketNodeImpl) UpdateDealStatus(miner address.Address, pieceCID cid.Cid, dealId abi.DealID, status string) error {
+	return m.PieceStore.UpdateDealStatus(pieceCID, dealId, status)
+}
+
+func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {
+	fi, err := os.Open(fname)
+	if err != nil {
+		return xerrors.Errorf("failed to open given file: %w", err)
+	}
+	defer fi.Close() //nolint:errcheck
+
+	return m.StorageProvider.ImportDataForDeal(ctx, dealPropCid, fi)
+}
+
+func (m MarketNodeImpl) GetDeals(miner address.Address, pageIndex, pageSize int) ([]*piece.DealInfo, error) {
+	return m.PieceStore.GetDeals(pageIndex, pageSize)
 }

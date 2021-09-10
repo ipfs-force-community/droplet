@@ -142,5 +142,5 @@ func marketClient(cctx *cli.Context) error {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := utils.MonitorShutdown(shutdownChan)
-	return rpc.ServeRPC(ctx, cfg.MustHomePath(), &cfg.API, (api.MarketClientNode)(resAPI), finishCh, 1000, "")
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, (api.MarketClientNode)(resAPI), finishCh, 1000, "")
 }

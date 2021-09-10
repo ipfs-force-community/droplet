@@ -40,7 +40,7 @@ func MakeToken() ([]byte, []byte, error) {
 	if cliToken, err = jwt3.Sign(
 		auth2.JWTPayload{
 			Perm: core.PermAdmin,
-			Name: "GateWayLocalToken",
+			Name: "MarketLocalToken",
 		}, jwt3.NewHS256(seckey)); err != nil {
 		return nil, nil, err
 	}

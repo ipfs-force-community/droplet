@@ -2,14 +2,19 @@ package rpc
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"github.com/filecoin-project/go-jsonrpc"
+	auth2 "github.com/filecoin-project/venus-auth/auth"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-market/config"
+	jwt3 "github.com/gbrlsnchs/jwt/v3"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
+	"golang.org/x/xerrors"
 	"io/ioutil"
 	"net/http"
 	"path"
@@ -17,15 +22,12 @@ import (
 
 var log = logging.Logger("modules")
 
-func ServeRPC(ctx context.Context, homeDir string, cfg *config.API, api interface{}, shutdownCh <-chan struct{}, maxRequestSize int64, authUrl string) error {
-	seckey, token, err := MakeToken()
+func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, api interface{}, shutdownCh <-chan struct{}, maxRequestSize int64, authUrl string) error {
+	seckey, err := makeSecet(home, cfg)
 	if err != nil {
-		return fmt.Errorf("make token failed:%s", err.Error())
+		return err
+
 	}
-
-	_ = ioutil.WriteFile(path.Join(homeDir, "api"), []byte(cfg.ListenAddress), 0644)
-	_ = ioutil.WriteFile(path.Join(homeDir, "token"), token, 0644)
-
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
@@ -74,4 +76,39 @@ func ServeRPC(ctx context.Context, homeDir string, cfg *config.API, api interfac
 	}
 	log.Infof("start rpc listen %s", addr)
 	return srv.Serve(manet.NetListener(nl))
+}
+
+func makeSecet(cfg config.IHome, api *config.API) ([]byte, error) {
+	var seckey []byte
+	var token []byte
+	var err error
+	if len(api.Secret) == 0 {
+		seckey, token, err = MakeToken()
+		if err != nil {
+			return nil, fmt.Errorf("make token failed:%s", err.Error())
+		}
+		api.Secret = hex.EncodeToString(seckey)
+		config.SaveConfig(cfg)
+	} else {
+		seckey, err = hex.DecodeString(api.Secret)
+		if err != nil {
+			return nil, xerrors.Errorf("unable to decode api security key")
+		}
+	}
+
+	if token, err = jwt3.Sign(
+		auth2.JWTPayload{
+			Perm: core.PermAdmin,
+			Name: "MarketLocalToken",
+		}, jwt3.NewHS256(seckey)); err != nil {
+		return nil, err
+	}
+
+	homePath, err := cfg.HomePath()
+	if err != nil {
+		return nil, xerrors.Errorf("unable to home path to save api/token")
+	}
+	_ = ioutil.WriteFile(path.Join(string(homePath), "api"), []byte(api.ListenAddress), 0644)
+	_ = ioutil.WriteFile(path.Join(string(homePath), "token"), token, 0644)
+	return seckey, nil
 }

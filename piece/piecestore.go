@@ -34,11 +34,12 @@ type CIDInfo struct {
 
 type PieceInfo struct {
 	PieceCID cid.Cid
-	Deals    []DealInfo
+	Deals    []*DealInfo
 }
 
 const (
 	Undefine = "Undefine"
+	Assigned = "Assigned"
 	Packing  = "Packing"
 	Proving  = "Proving"
 )
@@ -61,8 +62,10 @@ type GetDealSpec struct {
 type ExtendPieceStore interface {
 	piecestore.PieceStore
 
-	GetUnPackedDeals(spec *GetDealSpec) ([]DealInfo, error)
+	GetDeals(pageIndex, pageSize int) ([]*DealInfo, error)
+	GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
 	MarkDealsAsPacking(deals []abi.DealID) error
+	UpdateDealStatus(pieceCID cid.Cid, dealId abi.DealID, status string) error
 	GetDealByPosition(ctx context.Context, sid abi.SectorID, offset abi.PaddedPieceSize) (*DealInfo, error)
 	UpdateDealOnComplete(pieceCID cid.Cid, proposal market.ClientDealProposal, dataRef *storagemarket.DataRef, publishCid cid.Cid, dealId abi.DealID, fastRetrieval bool) error
 	UpdateDealOnPacking(pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error
@@ -124,14 +127,14 @@ func (ps *dsPieceStore) UpdateDealOnComplete(pieceCID cid.Cid, proposal market.C
 			}
 		}
 		//new deal
-		pi.Deals = append(pi.Deals, DealInfo{
+		pi.Deals = append(pi.Deals, &DealInfo{
 			DealInfo: piecestore.DealInfo{
 				DealID:   dealId,
 				SectorID: 0,
 				Offset:   0,
 				Length:   proposal.Proposal.PieceSize,
 			},
-			ClientDealProposal: market.ClientDealProposal{},
+			ClientDealProposal: proposal,
 			TransferType:       dataRef.TransferType,
 			Root:               dataRef.Root,
 			PublishCid:         publishCid,
@@ -150,7 +153,7 @@ func (ps *dsPieceStore) UpdateDealOnPacking(pieceCID cid.Cid, dealId abi.DealID,
 			if di.DealID == dealId {
 				di.SectorID = sectorid
 				di.Offset = offset
-				di.Status = Packing
+				di.Status = Assigned
 				return nil
 			}
 		}
@@ -160,7 +163,7 @@ func (ps *dsPieceStore) UpdateDealOnPacking(pieceCID cid.Cid, dealId abi.DealID,
 }
 
 // Store `dealInfo` in the PieceStore with key `pieceCID`.
-func (ps *dsPieceStore) UpdateDealStatus(pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, status string) error {
+func (ps *dsPieceStore) UpdateDealStatus(pieceCID cid.Cid, dealId abi.DealID, status string) error {
 	return ps.mutatePieceInfo(pieceCID, func(pi *PieceInfo) error {
 		for _, di := range pi.Deals {
 			if di.DealID == dealId {
@@ -175,9 +178,9 @@ func (ps *dsPieceStore) UpdateDealStatus(pieceCID cid.Cid, dealId abi.DealID, se
 
 func (ps *dsPieceStore) GetDealByPosition(ctx context.Context, sid abi.SectorID, offset abi.PaddedPieceSize) (*DealInfo, error) {
 	var dinfo *DealInfo
-	err := ps.EachPackedDeal(func(info DealInfo) (bool, error) {
+	err := ps.eachPackedDeal(func(info *DealInfo) (bool, error) {
 		if info.SectorID == sid.Number && info.Offset == offset {
-			dinfo = &info
+			dinfo = info
 			return false, nil
 		}
 		return true, nil
@@ -185,10 +188,34 @@ func (ps *dsPieceStore) GetDealByPosition(ctx context.Context, sid abi.SectorID,
 	if err != nil {
 		return nil, err
 	}
+	if dinfo == nil {
+		return nil, xerrors.Errorf("unable to find deal position, maybe deal not ready")
+	}
 	return dinfo, nil
 }
 
-func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]DealInfo, error) {
+func (ps *dsPieceStore) GetDeals(pageIndex, pageSize int) ([]*DealInfo, error) {
+	var deals []*DealInfo
+	count := 0
+	from := pageIndex * pageSize
+	to := (pageIndex + 1) * pageSize
+	err := ps.eachDeal(func(info *DealInfo) (bool, error) {
+		if count < from {
+			return true, nil
+		} else if count > to {
+			return false, nil
+		} else {
+			deals = append(deals, info)
+			return true, nil
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	return deals, nil
+}
+
+func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error) {
 	ps.pieceLk.Lock()
 	defer ps.pieceLk.Unlock()
 
@@ -198,7 +225,7 @@ func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]DealInfo, error) 
 	}
 	defer qres.Close() //nolint:errcheck
 
-	var result []DealInfo
+	var result []*DealInfo
 	for r := range qres.Next() {
 		var pieceInfo PieceInfo
 		err := json.Unmarshal(r.Value, &pieceInfo)
@@ -216,7 +243,7 @@ func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]DealInfo, error) 
 	return result, nil
 }
 
-func (ps *dsPieceStore) EachPackedDeal(f func(info DealInfo) (bool, error)) error {
+func (ps *dsPieceStore) eachPackedDeal(f func(info *DealInfo) (bool, error)) error {
 	ps.pieceLk.Lock()
 	defer ps.pieceLk.Unlock()
 
@@ -249,6 +276,37 @@ func (ps *dsPieceStore) EachPackedDeal(f func(info DealInfo) (bool, error)) erro
 	return nil
 }
 
+func (ps *dsPieceStore) eachDeal(f func(info *DealInfo) (bool, error)) error {
+	ps.pieceLk.Lock()
+	defer ps.pieceLk.Unlock()
+
+	qres, err := ps.pieces.Query(query.Query{})
+	if err != nil {
+		return xerrors.Errorf("query error: %w", err)
+	}
+	defer qres.Close() //nolint:errcheck
+
+	for r := range qres.Next() {
+		var pieceInfo PieceInfo
+		err := json.Unmarshal(r.Value, &pieceInfo)
+		if err != nil {
+			return xerrors.Errorf("unable to parser cid: %w", err)
+		}
+
+		for _, deal := range pieceInfo.Deals {
+			isContinue, err := f(deal)
+			if err != nil {
+				return err
+			}
+			if !isContinue {
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 func (ps *dsPieceStore) MarkDealsAsPacking(deals []abi.DealID) error {
 	pieces, err := ps.ListCidInfoKeys()
 	if err != nil {
@@ -260,7 +318,7 @@ func (ps *dsPieceStore) MarkDealsAsPacking(deals []abi.DealID) error {
 			for _, deal := range pi.Deals {
 				for _, inDeal := range deals {
 					if deal.DealId == inDeal {
-						deal.Status = Packing
+						deal.Status = Assigned
 					}
 				}
 			}

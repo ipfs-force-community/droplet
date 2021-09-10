@@ -201,5 +201,6 @@ func daemon(cctx *cli.Context) error {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := utils.MonitorShutdown(shutdownChan)
-	return rpc.ServeRPC(ctx, cfg.MustHomePath(), &cfg.API, api.MarketFullNode(resAPI), finishCh, 1000, "")
+
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, api.MarketFullNode(resAPI), finishCh, 1000, "")
 }
