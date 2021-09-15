@@ -8,11 +8,11 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/venus-market/api"
+	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/api/impl"
 	"github.com/filecoin-project/venus-market/builder"
 	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/client"
-	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/fundmgr"
 	"github.com/filecoin-project/venus-market/journal"
@@ -105,10 +105,10 @@ func marketClient(cctx *cli.Context) error {
 			return metrics2.CtxScope(context.Background(), "venus-market")
 		}),
 		config.ConfigClientOpts(cfg),
-		builder.Override(new(apiface.FullNode), clients.NodeClient),
-		builder.Override(new(clients.ISinger), clients.NewWalletClient),
-		builder.Override(new(clients.IMessager), clients.MessagerClient),
-		clients.ClientsOpts,
+		builder.Override(new(apiface.FullNode), clients2.NodeClient),
+		builder.Override(new(clients2.ISinger), clients2.NewWalletClient),
+		builder.Override(new(clients2.IMessager), clients2.MessagerClient),
+		clients2.ClientsOpts,
 		models.DBOptions(false),
 		network.NetworkOpts(false, cfg.SimultaneousTransfers),
 		paychmgr.PaychOpts,

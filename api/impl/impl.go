@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/api"
-	"github.com/filecoin-project/venus-market/clients"
+	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/network"
@@ -42,7 +42,7 @@ type MarketNodeImpl struct {
 	DataTransfer      network.ProviderDataTransfer
 	DealPublisher     *storageadapter2.DealPublisher
 	PieceStore        piece.ExtendPieceStore
-	Messager          clients.IMessager
+	Messager          clients2.IMessager
 
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc

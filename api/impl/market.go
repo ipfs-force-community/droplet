@@ -9,9 +9,9 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
-	marketactor "github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors"
+	marketactor "github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 )
 
 type FundAPI struct {

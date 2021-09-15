@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/clients"
+	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/imports"
@@ -78,7 +78,7 @@ type API struct {
 	fx.In
 
 	Full         apiface.FullNode
-	Signer       clients.ISinger
+	Signer       clients2.ISinger
 	PayChManager *paychmgr.Manager
 
 	SMDealClient storagemarket.StorageClient

@@ -2,7 +2,7 @@ package sealer
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/clients"
+	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
@@ -21,14 +21,14 @@ import (
 
 type sectorAccessor struct {
 	maddr    address.Address
-	minerapi clients.IStorageMiner
+	minerapi clients2.IStorageMiner
 	pp       PieceProvider
 	full     apiface.FullNode
 }
 
 var _ retrievalmarket.SectorAccessor = (*sectorAccessor)(nil)
 
-func NewSectorAccessor(maddr types2.MinerAddress, minerapi clients.IStorageMiner, pp PieceProvider, full apiface.FullNode) retrievalmarket.SectorAccessor {
+func NewSectorAccessor(maddr types2.MinerAddress, minerapi clients2.IStorageMiner, pp PieceProvider, full apiface.FullNode) retrievalmarket.SectorAccessor {
 	return &sectorAccessor{address.Address(maddr), minerapi, pp, full}
 }
 

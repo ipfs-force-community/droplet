@@ -2,7 +2,7 @@ package sealer
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/clients"
+	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/piece"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -26,10 +26,10 @@ var _ PieceProvider = &pieceProvider{}
 type pieceProvider struct {
 	pieceStorage piece.IPieceStorage
 	exPieceStore piece.ExtendPieceStore
-	miner        clients.IStorageMiner
+	miner        clients2.IStorageMiner
 }
 
-func NewPieceProvider(miner clients.IStorageMiner, pieceStorage piece.IPieceStorage, exPieceStore piece.ExtendPieceStore) PieceProvider {
+func NewPieceProvider(miner clients2.IStorageMiner, pieceStorage piece.IPieceStorage, exPieceStore piece.ExtendPieceStore) PieceProvider {
 	return &pieceProvider{
 		miner:        miner,
 		pieceStorage: pieceStorage,

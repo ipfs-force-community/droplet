@@ -5,7 +5,7 @@ package storageadapter
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus-market/clients"
+	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -47,10 +47,10 @@ type ClientNodeAdapter struct {
 
 type clientApi struct {
 	full          apiface.FullNode
-	singerService clients.ISinger
+	singerService clients2.ISinger
 }
 
-func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, singerService clients.ISinger, fundmgr *fundmgr.FundManager) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, singerService clients2.ISinger, fundmgr *fundmgr.FundManager) storagemarket.StorageClientNode {
 	capi := &clientApi{fullNode, singerService}
 	ctx := metrics.LifecycleCtx(mctx, lc)
 

@@ -2,14 +2,14 @@ package paychmgr
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/clients"
+	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	types2 "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/pkg/types"
 	"golang.org/x/xerrors"
 )
 
 type MessagePullAdapter struct {
-	messager clients.IMessager
+	messager clients2.IMessager
 }
 
 func (m MessagePullAdapter) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
