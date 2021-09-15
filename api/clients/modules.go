@@ -59,7 +59,22 @@ func ConvertWalletToISinge(fullNode apiface.FullNode, signer ISinger) error {
 	return nil
 }
 
-var ClientsOpts = builder.Options(
-	builder.Override(ReplaceMpoolMethod, ConvertMpoolToMessager),
-	builder.Override(ReplaceWalletMethod, ConvertWalletToISinge),
-)
+var ClientsOpts = func(server bool) builder.Option {
+	opts := builder.Options(
+		builder.Override(ReplaceMpoolMethod, ConvertMpoolToMessager),
+		builder.Override(ReplaceWalletMethod, ConvertWalletToISinge),
+	)
+	if server {
+		return builder.Options(opts,
+			builder.Override(new(apiface.FullNode), NodeClient),
+			builder.Override(new(IMessager), MessagerClient),
+			builder.Override(new(ISinger), NewWalletClient),
+			builder.Override(new(IStorageMiner), NewStorageMiner),
+		)
+	} else {
+		return builder.Options(opts,
+			builder.Override(new(apiface.FullNode), NodeClient),
+			builder.Override(new(ISinger), NewWalletClient),
+			builder.Override(new(IMessager), MessagerClient))
+	}
+}

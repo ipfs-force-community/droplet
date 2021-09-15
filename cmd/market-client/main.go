@@ -3,10 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-fil-markets/discovery"
-	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/venus-market/api"
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/api/impl"
@@ -21,9 +17,8 @@ import (
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/rpc"
-	"github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
@@ -101,35 +96,24 @@ func marketClient(cctx *cli.Context) error {
 	resAPI := &impl.MarketClientNodeImpl{}
 	shutdownChan := make(chan struct{})
 	_, err = builder.New(ctx,
+		//defaults
+		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
+		builder.Override(new(journal.Journal), journal.OpenFilesystemJournal),
+
 		builder.Override(new(metrics.MetricsCtx), func() context.Context {
 			return metrics2.CtxScope(context.Background(), "venus-market")
 		}),
+		builder.Override(new(types.ShutdownChan), shutdownChan),
+
 		config.ConfigClientOpts(cfg),
-		builder.Override(new(apiface.FullNode), clients2.NodeClient),
-		builder.Override(new(clients2.ISinger), clients2.NewWalletClient),
-		builder.Override(new(clients2.IMessager), clients2.MessagerClient),
-		clients2.ClientsOpts,
+
+		clients2.ClientsOpts(false),
 		models.DBOptions(false),
 		network.NetworkOpts(false, cfg.SimultaneousTransfers),
 		paychmgr.PaychOpts,
 		fundmgr.FundMgrOpts,
 
-		// global system journal.
-		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
-		builder.Override(new(journal.Journal), journal.OpenFilesystemJournal),
-
-		// Markets (common)
-		builder.Override(new(*discoveryimpl.Local), client.NewLocalDiscovery),
-		builder.Override(new(discovery.PeerResolver), client.RetrievalResolver),
-		builder.Override(new(network.ClientDataTransfer), client.NewClientGraphsyncDataTransfer),
-
-		builder.Override(new(client.ClientImportMgr), client.NewClientImportMgr),
-		builder.Override(new(storagemarket.BlockstoreAccessor), client.StorageBlockstoreAccessor),
-
-		builder.Override(new(retrievalmarket.BlockstoreAccessor), client.RetrievalBlockstoreAccessor),
-		builder.Override(new(retrievalmarket.RetrievalClient), client.RetrievalClient),
-		builder.Override(new(storagemarket.StorageClient), client.StorageClient),
-		builder.Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
+		client.MarketClientOpts,
 		func(s *builder.Settings) error {
 			s.Invokes[ExtractApiKey] = builder.InvokeOption{
 				Priority: 10,

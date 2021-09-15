@@ -13,6 +13,13 @@ type Special struct{ ID int }
 
 type Invoke int
 
+var MaxInvoke Invoke
+
+func NextInvoke() Invoke {
+	MaxInvoke++
+	return MaxInvoke
+}
+
 // Option is a functional option which can be used with the New function to
 // change how the node is constructed
 //

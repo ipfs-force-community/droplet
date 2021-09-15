@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/journal"
@@ -221,3 +222,17 @@ func RetrievalClientJournaler(j journal.Journal, evtType journal.EventType) func
 		})
 	}
 }
+
+var MarketClientOpts = builder.Options(
+	// Markets (common)
+	builder.Override(new(*discoveryimpl.Local), NewLocalDiscovery),
+	builder.Override(new(discovery.PeerResolver), RetrievalResolver),
+	builder.Override(new(network.ClientDataTransfer), NewClientGraphsyncDataTransfer),
+
+	builder.Override(new(ClientImportMgr), NewClientImportMgr),
+	builder.Override(new(storagemarket.BlockstoreAccessor), StorageBlockstoreAccessor),
+
+	builder.Override(new(retrievalmarket.BlockstoreAccessor), RetrievalBlockstoreAccessor),
+	builder.Override(new(retrievalmarket.RetrievalClient), RetrievalClient),
+	builder.Override(new(storagemarket.StorageClient), StorageClient),
+)
