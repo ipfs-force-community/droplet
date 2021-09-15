@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -43,6 +44,7 @@ type ClientNodeAdapter struct {
 	ev        *events.Events
 	dsMatcher *dealStateMatcher
 	scMgr     *SectorCommittedManager
+	cfg       *config.MarketClientConfig
 }
 
 type clientApi struct {
@@ -50,7 +52,7 @@ type clientApi struct {
 	singerService clients2.ISinger
 }
 
-func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, singerService clients2.ISinger, fundmgr *fundmgr.FundManager) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, singerService clients2.ISinger, fundmgr *fundmgr.FundManager, cfg *config.MarketClientConfig) storagemarket.StorageClientNode {
 	capi := &clientApi{fullNode, singerService}
 	ctx := metrics.LifecycleCtx(mctx, lc)
 
@@ -64,6 +66,7 @@ func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode api
 
 		fundmgr:   fundmgr,
 		ev:        ev,
+		cfg:       cfg,
 		dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(capi.full))),
 	}
 	a.scMgr = NewSectorCommittedManager(ev, a.full, &apiWrapper{api: capi.full})
@@ -369,9 +372,7 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 }
 
 func (c *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
-	panic("to impl")
-	addr, err := c.full.WalletDefaultAddress(ctx)
-	return addr, err
+	return c.cfg.DefaultMarketAddress, nil
 }
 
 func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
