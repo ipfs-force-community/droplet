@@ -92,7 +92,7 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 	Home: Home{"~/.venusclient"},
 	Common: Common{
 		API: API{
-			ListenAddress: "/ip4/127.0.0.1/tcp/41231/http",
+			ListenAddress: "/ip4/127.0.0.1/tcp/41231/ws",
 			Timeout:       Duration(30 * time.Second),
 		},
 		Libp2p: Libp2p{

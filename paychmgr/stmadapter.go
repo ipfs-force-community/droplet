@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"context"
+	"fmt"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/blockstore"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -30,11 +31,26 @@ func (s StateMgrAdapter) ResolveToKeyAddress(ctx context.Context, addr address.A
 		return address.Undef, xerrors.New("cannot resolve actor address to key address")
 	default:
 	}
+	var err error
+	if ts == nil {
+		ts, err = s.fullNode.ChainHead(ctx)
+		if err != nil {
+			return address.Undef, err
+		}
+	}
 	state := state.NewView(cbor.NewCborStore(s.bsstore), ts.ParentState())
 	return state.ResolveToKeyAddr(ctx, addr)
 }
 
 func (s StateMgrAdapter) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {
+	fmt.Println("xxxxxxxxx,", addr, ts.Key())
+	var err error
+	if ts == nil {
+		ts, err = s.fullNode.ChainHead(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 	state := state.NewView(cbor.NewCborStore(s.bsstore), ts.ParentState())
 	act, err := state.LoadActor(ctx, addr)
 	if err != nil {
@@ -49,10 +65,24 @@ func (s StateMgrAdapter) GetPaychState(ctx context.Context, addr address.Address
 }
 
 func (s StateMgrAdapter) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*types.InvocResult, error) {
+	var err error
+	if ts == nil {
+		ts, err = s.fullNode.ChainHead(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return s.fullNode.StateCall(ctx, msg, ts.Key())
 }
 
 func (s StateMgrAdapter) GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error) {
+	var err error
+	if ts == nil {
+		ts, err = s.fullNode.ChainHead(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
 	state := state.NewView(cbor.NewCborStore(s.bsstore), ts.ParentState())
 	return state.LoadMarketState(ctx)
 }

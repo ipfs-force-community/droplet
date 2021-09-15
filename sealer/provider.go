@@ -1,14 +1,12 @@
 package sealer
 
 import (
-	"bufio"
 	"context"
 	"github.com/filecoin-project/venus-market/clients"
 	"github.com/filecoin-project/venus-market/piece"
-	"io"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+	"io"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -52,6 +50,22 @@ func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef
 	ctxLock, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	dealInfo, err := p.exPieceStore.GetDealByPosition(ctx, sector.ID, abi.PaddedPieceSize(offset.Padded()))
+	if err != nil {
+		log.Errorf("did not get deal info by position;sector=%+v, err:%s", sector.ID, err)
+		return false, err
+	}
+	pieceCid := dealInfo.Proposal.PieceCID
+	has, err := p.pieceStorage.Has(pieceCid.String())
+	if err != nil {
+		log.Errorf("did not check piece file in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
+		return false, err
+	}
+
+	if has {
+		return true, nil
+	}
+
 	return p.miner.IsUnsealed(ctxLock, sector, offset, size)
 }
 
@@ -82,6 +96,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 		return nil, false, err
 	}
 
+	var uns bool
 	var r io.ReadCloser
 	if has {
 		r, err = p.pieceStorage.Read(ctx, pieceCid.String())
@@ -89,20 +104,19 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 			log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
 			return nil, false, err
 		}
-	}
-	//todo check deal status
-	if dealInfo.Status != "Proving" {
-		log.Errorf("try read a unsealed sector ;sector=%+v, piececid=%s state=%s err:%s", sector.ID, pieceCid, dealInfo.Status, err)
-		return nil, false, err
-	}
+		uns = true
+		return r, true, err
+	} else {
 
-	var uns bool
+		//todo check deal status
+		/*	if dealInfo.Status != "Proving" {
+			log.Errorf("try read a unsealed sector ;sector=%+v, piececid=%s state=%s err:%s", sector.ID, pieceCid, dealInfo.Status, err)
+			return nil, false, err
+		}*/
 
-	if r == nil {
 		// a nil reader means that none of the workers has an unsealed sector file
 		// containing the unsealed piece.
 		// we now need to unseal a sealed sector file for the given sector to read the unsealed piece from it.
-		uns = true
 		commd := &unsealed
 		if unsealed == cid.Undef {
 			commd = nil
@@ -122,19 +136,18 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 			log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
 			return nil, false, err
 		}
-	} else {
-		log.Debugf("unsealed piece already exists, no need to unseal, sector=%+v, offset=%d, size=%d", sector, offset, size)
+		uns = false
 	}
 
 	upr, err := fr32.NewUnpadReader(r, size.Padded())
 	if err != nil {
-		return nil, uns, xerrors.Errorf("creating unpadded reader: %w", err)
+		return nil, false, xerrors.Errorf("creating unpadded reader: %w", err)
 	}
 
 	log.Debugf("returning reader to read unsealed piece, sector=%+v, offset=%d, size=%d", sector, offset, size)
 
 	return &funcCloser{
-		Reader: bufio.NewReaderSize(upr, 127),
+		Reader: upr,
 		close: func() error {
 			err = r.Close()
 			return err

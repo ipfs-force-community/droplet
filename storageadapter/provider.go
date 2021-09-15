@@ -334,7 +334,13 @@ func (n *ProviderNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, prov
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
-	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, market.DealProposal(proposal), *publishCid, cb)
+	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, market.DealProposal(proposal), *publishCid, func(err error) {
+		cb(err)
+		_Err := n.extendPieceMeta.UpdateDealStatus(dealID, "Proving")
+		if _Err != nil {
+			log.Errorw("update deal status %w", _Err)
+		}
+	})
 }
 
 func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {

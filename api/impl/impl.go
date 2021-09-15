@@ -357,19 +357,19 @@ func (m MarketNodeImpl) ID(context.Context) (peer.ID, error) {
 	return m.Host.ID(), nil
 }
 
-func (m MarketNodeImpl) GetUnPackedDeals(miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfo, error) {
+func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfo, error) {
 	return m.PieceStore.GetUnPackedDeals(spec)
 }
 
-func (m MarketNodeImpl) MarkDealsAsPacking(miner address.Address, deals []abi.DealID) error {
+func (m MarketNodeImpl) MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error {
 	return m.PieceStore.MarkDealsAsPacking(deals)
 }
 
-func (m MarketNodeImpl) UpdateDealOnPacking(miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
+func (m MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
 	return m.PieceStore.UpdateDealOnPacking(pieceCID, dealId, sectorid, offset)
 }
 
-func (m MarketNodeImpl) UpdateDealStatus(miner address.Address, dealId abi.DealID, status string) error {
+func (m MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status string) error {
 	return m.PieceStore.UpdateDealStatus(dealId, status)
 }
 
@@ -383,6 +383,6 @@ func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid
 	return m.StorageProvider.ImportDataForDeal(ctx, dealPropCid, fi)
 }
 
-func (m MarketNodeImpl) GetDeals(miner address.Address, pageIndex, pageSize int) ([]*piece.DealInfo, error) {
+func (m MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*piece.DealInfo, error) {
 	return m.PieceStore.GetDeals(pageIndex, pageSize)
 }

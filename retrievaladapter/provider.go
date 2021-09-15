@@ -3,6 +3,7 @@ package retrievaladapter
 import (
 	"context"
 	"github.com/filecoin-project/venus/app/client/apiface"
+	paych3 "github.com/filecoin-project/venus/app/submodule/paych"
 
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
@@ -21,15 +22,16 @@ import (
 var log = logging.Logger("retrievaladapter")
 
 type retrievalProviderNode struct {
-	full apiface.FullNode
+	full   apiface.FullNode
+	payAPI *paych3.PaychAPI
 }
 
 var _ retrievalmarket.RetrievalProviderNode = (*retrievalProviderNode)(nil)
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(full apiface.FullNode) retrievalmarket.RetrievalProviderNode {
-	return &retrievalProviderNode{full: full}
+func NewRetrievalProviderNode(full apiface.FullNode, payAPI *paych3.PaychAPI) retrievalmarket.RetrievalProviderNode {
+	return &retrievalProviderNode{full: full, payAPI: payAPI}
 }
 
 func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
@@ -45,7 +47,7 @@ func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, min
 func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount, tok shared.TipSetToken) (abi.TokenAmount, error) {
 	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
 	// querying the chain
-	added, err := rpn.full.PaychVoucherAdd(ctx, paymentChannel, voucher, proof, expectedAmount)
+	added, err := rpn.payAPI.PaychVoucherAdd(ctx, paymentChannel, voucher, proof, expectedAmount)
 	return added, err
 }
 

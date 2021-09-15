@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models"
+	"strings"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/ipfs/go-cid"
@@ -306,6 +307,7 @@ func (ps *dsPieceStore) AddPieceBlockLocations(pieceCID cid.Cid, blockLocations 
 					return nil
 				}
 			}
+			ci.CID = pieceCID
 			ci.PieceBlockLocations = append(ci.PieceBlockLocations, piecestore.PieceBlockLocation{BlockLocation: blockLocation, PieceCID: pieceCID})
 			return nil
 		})
@@ -328,7 +330,7 @@ func (ps *dsPieceStore) ListPieceInfoKeys() ([]cid.Cid, error) {
 
 	var out []cid.Cid
 	for r := range qres.Next() {
-		id, err := cid.Decode(r.Key)
+		id, err := cid.Decode(strings.TrimPrefix(r.Key, "/"))
 		if err != nil {
 			return nil, xerrors.Errorf("unable to parser cid: %w", err)
 		}
@@ -352,6 +354,7 @@ func (ps *dsPieceStore) GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, er
 	if err = json.Unmarshal(pieceBytes, &piInfo); err != nil {
 		return piecestore.PieceInfo{}, err
 	}
+	piInfo.PieceCID = pieceCID
 	return piInfo, nil
 }
 
@@ -423,7 +426,7 @@ func (ps *dsPieceStore) mutateDeal(f func(info *DealInfo) (bool, error)) error {
 
 	modify := map[cid.Cid]PieceInfo{}
 	for r := range qres.Next() {
-		id, err := cid.Decode(r.Key)
+		id, err := cid.Decode(strings.TrimPrefix(r.Key, "/"))
 		if err != nil {
 			_ = qres.Close()
 			return xerrors.Errorf("unable to parser cid: %w", err)
@@ -456,7 +459,11 @@ func (ps *dsPieceStore) mutateDeal(f func(info *DealInfo) (bool, error)) error {
 		if err != nil {
 			return err
 		}
-		return ps.pieces.Put(datastore.NewKey(pieceCid.String()), data)
+
+		err = ps.pieces.Put(datastore.NewKey(pieceCid.String()), data)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -471,7 +478,7 @@ func (ps *dsPieceStore) ListCidInfoKeys() ([]cid.Cid, error) {
 
 	var out []cid.Cid
 	for r := range qres.Next() {
-		id, err := cid.Decode(r.Key)
+		id, err := cid.Decode(strings.TrimPrefix(r.Key, "/"))
 		if err != nil {
 			return nil, xerrors.Errorf("unable to parser cid: %w", err)
 		}
@@ -492,6 +499,7 @@ func (ps *dsPieceStore) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, erro
 	if err = json.Unmarshal(cidInfoBytes, &cidInfo); err != nil {
 		return piecestore.CIDInfo{}, err
 	}
+	cidInfo.CID = payloadCID
 	return cidInfo, nil
 }
 

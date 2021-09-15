@@ -45,7 +45,7 @@ func NewStorageMiner(mctx metrics.MetricsCtx, lc fx.Lifecycle, cfg *config.Seale
 	}
 
 	client := &StorageMinerStruct{}
-	closer, err := jsonrpc.NewMergeClient(mctx, addr, "Sealer", []interface{}{&client.Internal}, apiInfo.AuthHeader())
+	closer, err := jsonrpc.NewMergeClient(mctx, addr, "Filecoin", []interface{}{&client.Internal}, apiInfo.AuthHeader())
 
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {

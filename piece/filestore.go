@@ -35,11 +35,14 @@ func NewPieceFileStorage(piecePath string) (*PieceFileStorage, error) {
 }
 
 func (p *PieceFileStorage) SaveTo(ctx context.Context, s string, reader io.Reader) (int64, error) {
-	fs, err := os.OpenFile(path.Join(p.path, s), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	fs, err := os.Create(path.Join(p.path, s))
 	if err != nil {
 		return 0, err
 	}
-	defer fs.Close()
+
+	defer func() {
+		_ = fs.Close()
+	}()
 	return io.Copy(fs, reader)
 }
 

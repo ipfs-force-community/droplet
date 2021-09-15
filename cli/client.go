@@ -609,6 +609,7 @@ uiLoop:
 				return err
 			}
 
+			fmt.Println("PieceCid: ", ds.PieceCID, " PayLoadSize:", ds.PayloadSize, "PieceSize:", ds.PieceSize)
 			state = "duration"
 		case "duration":
 			afmt.Print("Deal duration (days): ")
