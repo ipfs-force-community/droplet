@@ -575,7 +575,7 @@ var setSealDurationCmd = &cli.Command{
 	},
 }
 
-var dataTransfersCmd = &cli.Command{
+var DataTransfersCmd = &cli.Command{
 	Name:  "data-transfers",
 	Usage: "Manage data transfers",
 	Subcommands: []*cli.Command{
@@ -829,7 +829,7 @@ var dealsPendingPublish = &cli.Command{
 		}
 
 		if len(pending.Deals) > 0 {
-			endsIn := pending.PublishPeriodStart.Add(pending.PublishPeriod).Sub(time.Now())
+			endsIn := time.Until(pending.PublishPeriodStart.Add(pending.PublishPeriod))
 			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 			_, _ = fmt.Fprintf(w, "Publish period:             %s (ends in %s)\n", pending.PublishPeriod, endsIn.Round(time.Second))
 			_, _ = fmt.Fprintf(w, "First deal queued at:       %s\n", pending.PublishPeriodStart)

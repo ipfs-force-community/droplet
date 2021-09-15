@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/rpc"
+	"github.com/filecoin-project/venus-market/storageadapter"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -30,7 +31,7 @@ import (
 	"os"
 )
 
-var ExtractApiKey builder.Invoke = 10
+var ExtractApiKey builder.Invoke = builder.NextInvoke()
 
 func main() {
 	app := &cli.App{
@@ -112,7 +113,7 @@ func marketClient(cctx *cli.Context) error {
 		network.NetworkOpts(false, cfg.SimultaneousTransfers),
 		paychmgr.PaychOpts,
 		fundmgr.FundMgrOpts,
-
+		storageadapter.StorageClientOpts,
 		client.MarketClientOpts,
 		func(s *builder.Settings) error {
 			s.Invokes[ExtractApiKey] = builder.InvokeOption{

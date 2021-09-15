@@ -13,15 +13,12 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
-	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 	"sync"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/shared"
 )
-
-var log = logging.Logger("piecestore")
 
 // DSPiecePrefix is the name space for storing piece infos
 var DSPiecePrefix = "/pieces"

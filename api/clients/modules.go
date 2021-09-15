@@ -15,9 +15,9 @@ import (
 
 var log = logging.Logger("clients")
 
-const (
-	ReplaceMpoolMethod  builder.Invoke = 6
-	ReplaceWalletMethod builder.Invoke = 7
+var (
+	ReplaceMpoolMethod  builder.Invoke = builder.NextInvoke()
+	ReplaceWalletMethod builder.Invoke = builder.NextInvoke()
 )
 
 func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error {

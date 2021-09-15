@@ -9,15 +9,15 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	dagstore2 "github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/types"
-	xerrors "github.com/pkg/errors"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 	"os"
 	"path/filepath"
 	"strconv"
 )
 
 var (
-	DAGStoreKey = builder.Special{1}
+	DAGStoreKey = builder.Special{ID: 1}
 )
 
 func MinerAddress(cfg *config.MarketConfig) (types.MinerAddress, error) {

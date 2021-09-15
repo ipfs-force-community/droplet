@@ -38,7 +38,7 @@ func (ps *Store) save(state *FundedAddressState) error {
 }
 
 // get the state for the given address
-func (ps *Store) get(addr address.Address) (*FundedAddressState, error) {
+func (ps *Store) get(addr address.Address) (*FundedAddressState, error) { //nolint
 	k := dskeyForAddr(addr)
 
 	data, err := ps.ds.Get(k)

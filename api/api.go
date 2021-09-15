@@ -22,7 +22,8 @@ import (
 	"time"
 )
 
-var x = xerrors.New("") //mock for gen
+//mock for gen
+var x = xerrors.New("") // nolint
 
 type MarketFullNode interface {
 	ActorAddress(context.Context) (address.Address, error)                    //perm:read

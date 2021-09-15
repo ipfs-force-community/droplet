@@ -104,7 +104,6 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 			log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
 			return nil, false, err
 		}
-		uns = true
 		return r, true, err
 	} else {
 

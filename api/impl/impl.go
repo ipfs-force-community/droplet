@@ -243,63 +243,63 @@ func (m MarketNodeImpl) DealsConsiderOnlineStorageDeals(ctx context.Context) (bo
 }
 
 func (m MarketNodeImpl) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
-	return m.DealsSetConsiderOnlineStorageDeals(ctx, b)
+	return m.SetConsiderOnlineStorageDealsConfigFunc(b)
 }
 
 func (m MarketNodeImpl) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
-	return m.DealsConsiderOnlineRetrievalDeals(ctx)
+	return m.ConsiderOnlineRetrievalDealsConfigFunc()
 }
 
 func (m MarketNodeImpl) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
-	return m.DealsSetConsiderOnlineRetrievalDeals(ctx, b)
+	return m.SetConsiderOnlineRetrievalDealsConfigFunc(b)
 }
 
 func (m MarketNodeImpl) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
-	return m.DealsPieceCidBlocklist(ctx)
+	return m.StorageDealPieceCidBlocklistConfigFunc()
 }
 
 func (m MarketNodeImpl) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
-	return m.DealsSetPieceCidBlocklist(ctx, cids)
+	return m.SetStorageDealPieceCidBlocklistConfigFunc(cids)
 }
 
 func (m MarketNodeImpl) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {
-	return m.DealsConsiderOfflineStorageDeals(ctx)
+	return m.ConsiderOfflineStorageDealsConfigFunc()
 }
 
 func (m MarketNodeImpl) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {
-	return m.DealsSetConsiderOfflineStorageDeals(ctx, b)
+	return m.SetConsiderOfflineStorageDealsConfigFunc(b)
 }
 
 func (m MarketNodeImpl) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {
-	return m.DealsConsiderOfflineRetrievalDeals(ctx)
+	return m.ConsiderOfflineRetrievalDealsConfigFunc()
 }
 
 func (m MarketNodeImpl) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
-	return m.DealsSetConsiderOfflineRetrievalDeals(ctx, b)
+	return m.SetConsiderOfflineRetrievalDealsConfigFunc(b)
 }
 
 func (m MarketNodeImpl) DealsConsiderVerifiedStorageDeals(ctx context.Context) (bool, error) {
-	return m.DealsConsiderVerifiedStorageDeals(ctx)
+	return m.ConsiderVerifiedStorageDealsConfigFunc()
 }
 
 func (m MarketNodeImpl) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, b bool) error {
-	return m.DealsSetConsiderVerifiedStorageDeals(ctx, b)
+	return m.SetConsiderVerifiedStorageDealsConfigFunc(b)
 }
 
 func (m MarketNodeImpl) DealsConsiderUnverifiedStorageDeals(ctx context.Context) (bool, error) {
-	return m.DealsConsiderUnverifiedStorageDeals(ctx)
+	return m.ConsiderUnverifiedStorageDealsConfigFunc()
 }
 
 func (m MarketNodeImpl) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, b bool) error {
-	return m.DealsSetConsiderUnverifiedStorageDeals(ctx, b)
+	return m.SetConsiderUnverifiedStorageDealsConfigFunc(b)
 }
 
 func (m MarketNodeImpl) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
-	return m.SectorGetSealDelay(ctx)
+	return m.GetExpectedSealDurationFunc()
 }
 
 func (m MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, duration time.Duration) error {
-	return m.SectorSetExpectedSealDuration(ctx, duration)
+	return m.SetExpectedSealDurationFunc(duration)
 }
 
 func (m MarketNodeImpl) MessagerWaitMessage(ctx context.Context, uid uuid.UUID) (*mTypes.Message, error) {

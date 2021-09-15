@@ -230,7 +230,7 @@ func (a *fundedAddress) requestAndWait(ctx context.Context, wallet address.Addre
 }
 
 // Used by the tests
-func (a *fundedAddress) onProcessStart(fn func() bool) {
+func (a *fundedAddress) onProcessStart(fn func() bool) { //nolint
 	a.lk.Lock()
 	defer a.lk.Unlock()
 

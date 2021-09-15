@@ -35,8 +35,8 @@ import (
 	"time"
 )
 
-const (
-	HandleDealsKey builder.Invoke = 4
+var (
+	HandleDealsKey builder.Invoke = builder.NextInvoke()
 )
 
 func NewStorageAsk(ctx metrics.MetricsCtx,
@@ -98,7 +98,7 @@ func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs models.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync, ds models.MetadataDS, cfg *config.MarketConfig) (network.ProviderDataTransfer, error) {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs models.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync) (network.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
 
 	transport := dtgstransport.NewTransport(h.ID(), gs)
@@ -249,3 +249,7 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(storagemarket.StorageProviderNode), NewProviderNodeAdapter(cfg)),
 	)
 }
+
+var StorageClientOpts = builder.Options(
+	builder.Override(new(storagemarket.StorageClientNode), NewClientNodeAdapter),
+)

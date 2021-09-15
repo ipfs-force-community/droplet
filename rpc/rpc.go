@@ -83,12 +83,15 @@ func makeSecet(cfg config.IHome, api *config.API) ([]byte, error) {
 	var token []byte
 	var err error
 	if len(api.Secret) == 0 {
-		seckey, token, err = MakeToken()
+		seckey, _, err = MakeToken()
 		if err != nil {
 			return nil, fmt.Errorf("make token failed:%s", err.Error())
 		}
 		api.Secret = hex.EncodeToString(seckey)
-		config.SaveConfig(cfg)
+		err := config.SaveConfig(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("save config failed:%s", err.Error())
+		}
 	} else {
 		seckey, err = hex.DecodeString(api.Secret)
 		if err != nil {

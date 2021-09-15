@@ -230,8 +230,6 @@ type InvokeOption struct {
 	Option   fx.Option
 }
 
-var emptyInvoke = InvokeOption{}
-
 type Settings struct {
 	// modules is a map of constructors for DI
 	//

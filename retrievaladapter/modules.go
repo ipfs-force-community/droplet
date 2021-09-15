@@ -20,8 +20,8 @@ import (
 	"go.uber.org/fx"
 )
 
-const (
-	HandleRetrievalKey builder.Invoke = 5
+var (
+	HandleRetrievalKey builder.Invoke = builder.NextInvoke()
 )
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore

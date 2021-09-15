@@ -1475,7 +1475,7 @@ var clientDealStatsCmd = &cli.Command{
 		byState := map[storagemarket.StorageDealStatus][]uint64{}
 		for _, deal := range localDeals {
 			if cctx.IsSet("newer-than") {
-				if time.Now().Sub(deal.CreationTime) > cctx.Duration("newer-than") {
+				if time.Since(deal.CreationTime) > cctx.Duration("newer-than") {
 					continue
 				}
 			}
@@ -1695,7 +1695,7 @@ loop:
 				if err != nil {
 					return
 				}
-				pingDuration := time.Now().Sub(rt)
+				pingDuration := time.Since(rt)
 
 				atomic.AddInt64(&got, 1)
 				lk.Lock()

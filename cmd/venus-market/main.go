@@ -34,9 +34,9 @@ import (
 
 // Invokes are called in the order they are defined.
 //nolint:golint
-const (
-	InitJournalKey builder.Invoke = 3
-	ExtractApiKey  builder.Invoke = 10
+var (
+	InitJournalKey builder.Invoke = builder.NextInvoke() //nolint
+	ExtractApiKey  builder.Invoke = builder.NextInvoke()
 )
 
 func main() {
@@ -62,6 +62,7 @@ func main() {
 			cli2.StorageDealsCmd,
 			cli2.ActorCmd,
 			cli2.NetCmd,
+			cli2.DataTransfersCmd,
 		},
 	}
 

@@ -11,17 +11,17 @@ import (
 
 //nolint:golint
 var (
-	DefaultTransportsKey = builder.Special{0} // Libp2p option
-	DiscoveryHandlerKey  = builder.Special{2} // Private type
-	AddrsFactoryKey      = builder.Special{3} // Libp2p option
-	SmuxTransportKey     = builder.Special{4} // Libp2p option
-	RelayKey             = builder.Special{5} // Libp2p option
-	SecurityKey          = builder.Special{6} // Libp2p option
+	DefaultTransportsKey = builder.Special{ID: 0} // Libp2p option
+	DiscoveryHandlerKey  = builder.Special{ID: 2} // Private type
+	AddrsFactoryKey      = builder.Special{ID: 3} // Libp2p option
+	SmuxTransportKey     = builder.Special{ID: 4} // Libp2p option
+	RelayKey             = builder.Special{ID: 5} // Libp2p option
+	SecurityKey          = builder.Special{ID: 6} // Libp2p option
 )
 
-const (
-	PstoreAddSelfKeysKey builder.Invoke = 0
-	StartListeningKey    builder.Invoke = 1
+var (
+	PstoreAddSelfKeysKey builder.Invoke = builder.NextInvoke()
+	StartListeningKey    builder.Invoke = builder.NextInvoke()
 )
 
 var NetworkOpts = func(server bool, simultaneousTransfers uint64) builder.Option {
