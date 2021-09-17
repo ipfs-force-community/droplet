@@ -2,6 +2,9 @@ package impl
 
 import (
 	"context"
+	"fmt"
+	"github.com/filecoin-project/dagstore"
+	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -21,15 +24,18 @@ import (
 	vTypes "github.com/filecoin-project/venus/pkg/types"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 	"os"
+	"sort"
 	"time"
 )
 
 var _ api.MarketFullNode = (*MarketNodeImpl)(nil)
+var log = logging.Logger("market_api")
 
 type MarketNodeImpl struct {
 	FundAPI
@@ -42,7 +48,9 @@ type MarketNodeImpl struct {
 	DataTransfer      network.ProviderDataTransfer
 	DealPublisher     *storageadapter2.DealPublisher
 	PieceStore        piece.ExtendPieceStore
+	SectorAccessor    retrievalmarket.SectorAccessor
 	Messager          clients2.IMessager
+	DAGStore          *dagstore.DAGStore
 
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc
@@ -355,6 +363,253 @@ func (m MarketNodeImpl) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 
 func (m MarketNodeImpl) ID(context.Context) (peer.ID, error) {
 	return m.Host.ID(), nil
+}
+
+func (m MarketNodeImpl) DagstoreListShards(ctx context.Context) ([]types.DagstoreShardInfo, error) {
+	info := m.DAGStore.AllShardsInfo()
+	ret := make([]types.DagstoreShardInfo, 0, len(info))
+	for k, i := range info {
+		ret = append(ret, types.DagstoreShardInfo{
+			Key:   k.String(),
+			State: i.ShardState.String(),
+			Error: func() string {
+				if i.Error == nil {
+					return ""
+				}
+				return i.Error.Error()
+			}(),
+		})
+	}
+
+	// order by key.
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].Key < ret[j].Key
+	})
+
+	return ret, nil
+}
+
+func (m MarketNodeImpl) DagstoreInitializeShard(ctx context.Context, key string) error {
+	k := shard.KeyFromString(key)
+
+	info, err := m.DAGStore.GetShardInfo(k)
+	if err != nil {
+		return fmt.Errorf("failed to get shard info: %w", err)
+	}
+	if st := info.ShardState; st != dagstore.ShardStateNew {
+		return fmt.Errorf("cannot initialize shard; expected state ShardStateNew, was: %s", st.String())
+	}
+
+	ch := make(chan dagstore.ShardResult, 1)
+	if err = m.DAGStore.AcquireShard(ctx, k, ch, dagstore.AcquireOpts{}); err != nil {
+		return fmt.Errorf("failed to acquire shard: %w", err)
+	}
+
+	var res dagstore.ShardResult
+	select {
+	case res = <-ch:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	if err := res.Error; err != nil {
+		return fmt.Errorf("failed to acquire shard: %w", err)
+	}
+
+	if res.Accessor != nil {
+		err = res.Accessor.Close()
+		if err != nil {
+			log.Warnw("failed to close shard accessor; continuing", "shard_key", k, "error", err)
+		}
+	}
+
+	return nil
+}
+
+func (m MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.DagstoreInitializeAllParams) (<-chan types.DagstoreInitializeAllEvent, error) {
+	// prepare the thottler tokens.
+	var throttle chan struct{}
+	if c := params.MaxConcurrency; c > 0 {
+		throttle = make(chan struct{}, c)
+		for i := 0; i < c; i++ {
+			throttle <- struct{}{}
+		}
+	}
+
+	// are we initializing only unsealed pieces?
+	onlyUnsealed := !params.IncludeSealed
+
+	info := m.DAGStore.AllShardsInfo()
+	var toInitialize []string
+	for k, i := range info {
+		if i.ShardState != dagstore.ShardStateNew {
+			continue
+		}
+
+		// if we're initializing only unsealed pieces, check if there's an
+		// unsealed deal for this piece available.
+		if onlyUnsealed {
+			pieceCid, err := cid.Decode(k.String())
+			if err != nil {
+				log.Warnw("DagstoreInitializeAll: failed to decode shard key as piece CID; skipping", "shard_key", k.String(), "error", err)
+				continue
+			}
+
+			pi, err := m.PieceStore.GetPieceInfo(pieceCid)
+			if err != nil {
+				log.Warnw("DagstoreInitializeAll: failed to get piece info; skipping", "piece_cid", pieceCid, "error", err)
+				continue
+			}
+
+			var isUnsealed bool
+			for _, d := range pi.Deals {
+				isUnsealed, err = m.SectorAccessor.IsUnsealed(ctx, d.SectorID, d.Offset.Unpadded(), d.Length.Unpadded())
+				if err != nil {
+					log.Warnw("DagstoreInitializeAll: failed to get unsealed status; skipping deal", "deal_id", d.DealID, "error", err)
+					continue
+				}
+				if isUnsealed {
+					break
+				}
+			}
+
+			if !isUnsealed {
+				log.Infow("DagstoreInitializeAll: skipping piece because it's sealed", "piece_cid", pieceCid, "error", err)
+				continue
+			}
+		}
+
+		// yes, we're initializing this shard.
+		toInitialize = append(toInitialize, k.String())
+	}
+
+	total := len(toInitialize)
+	if total == 0 {
+		out := make(chan types.DagstoreInitializeAllEvent)
+		close(out)
+		return out, nil
+	}
+
+	// response channel must be closed when we're done, or the context is cancelled.
+	// this buffering is necessary to prevent inflight children goroutines from
+	// publishing to a closed channel (res) when the context is cancelled.
+	out := make(chan types.DagstoreInitializeAllEvent, 32) // internal buffer.
+	res := make(chan types.DagstoreInitializeAllEvent, 32) // returned to caller.
+
+	// pump events back to caller.
+	// two events per shard.
+	go func() {
+		defer close(res)
+
+		for i := 0; i < total*2; i++ {
+			select {
+			case res <- <-out:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for i, k := range toInitialize {
+			if throttle != nil {
+				select {
+				case <-throttle:
+					// acquired a throttle token, proceed.
+				case <-ctx.Done():
+					return
+				}
+			}
+
+			go func(k string, i int) {
+				r := types.DagstoreInitializeAllEvent{
+					Key:     k,
+					Event:   "start",
+					Total:   total,
+					Current: i + 1, // start with 1
+				}
+				select {
+				case out <- r:
+				case <-ctx.Done():
+					return
+				}
+
+				err := m.DagstoreInitializeShard(ctx, k)
+
+				if throttle != nil {
+					throttle <- struct{}{}
+				}
+
+				r.Event = "end"
+				if err == nil {
+					r.Success = true
+				} else {
+					r.Success = false
+					r.Error = err.Error()
+				}
+
+				select {
+				case out <- r:
+				case <-ctx.Done():
+				}
+			}(k, i)
+		}
+	}()
+
+	return res, nil
+
+}
+
+func (m MarketNodeImpl) DagstoreRecoverShard(ctx context.Context, key string) error {
+
+	k := shard.KeyFromString(key)
+
+	info, err := m.DAGStore.GetShardInfo(k)
+	if err != nil {
+		return fmt.Errorf("failed to get shard info: %w", err)
+	}
+	if st := info.ShardState; st != dagstore.ShardStateErrored {
+		return fmt.Errorf("cannot recover shard; expected state ShardStateErrored, was: %s", st.String())
+	}
+
+	ch := make(chan dagstore.ShardResult, 1)
+	if err = m.DAGStore.RecoverShard(ctx, k, ch, dagstore.RecoverOpts{}); err != nil {
+		return fmt.Errorf("failed to recover shard: %w", err)
+	}
+
+	var res dagstore.ShardResult
+	select {
+	case res = <-ch:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	return res.Error
+}
+
+func (m MarketNodeImpl) DagstoreGC(ctx context.Context) ([]types.DagstoreShardResult, error) {
+	if m.DAGStore == nil {
+		return nil, fmt.Errorf("dagstore not available on this node")
+	}
+
+	res, err := m.DAGStore.GC(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to gc: %w", err)
+	}
+
+	ret := make([]types.DagstoreShardResult, 0, len(res.Shards))
+	for k, err := range res.Shards {
+		r := types.DagstoreShardResult{Key: k.String()}
+		if err == nil {
+			r.Success = true
+		} else {
+			r.Success = false
+			r.Error = err.Error()
+		}
+		ret = append(ret, r)
+	}
+
+	return ret, nil
 }
 
 func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfo, error) {

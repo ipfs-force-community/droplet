@@ -27,12 +27,16 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 		if err != nil {
 			return nil, err
 		}
-		log.Infof("push message to messager %s", uid)
+		var showLog bool
 		for {
 			msgDetail, err := messager.GetMessageByUid(ctx, uid)
 			if err != nil {
 				log.Errorf("get message detail from messager %w", err)
 				return nil, err
+			}
+			if !showLog {
+				log.Infof("push message to messager uid: %s, cid: %s", uid, msgDetail.Cid())
+				showLog = true
 			}
 			switch msgDetail.State {
 			case types2.UnFillMsg:

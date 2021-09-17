@@ -63,6 +63,7 @@ func main() {
 			cli2.ActorCmd,
 			cli2.NetCmd,
 			cli2.DataTransfersCmd,
+			cli2.DagstoreCmd,
 		},
 	}
 
