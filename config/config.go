@@ -34,32 +34,22 @@ type Libp2p struct {
 	PrivateKey string
 }
 
+type ConnectConfig struct {
+	Url   string
+	Token string
+}
+
+type Node ConnectConfig
+type Messager ConnectConfig
+type Sealer ConnectConfig
+type Market ConnectConfig
+
 type Common struct {
 	API    API
 	Libp2p Libp2p
 }
 
-type Node struct {
-	Url   string
-	Token string
-}
-
-type Sealer struct {
-	Url   string
-	Token string
-}
-
-type Messager struct {
-	Url   string
-	Token string
-}
-
 type Signer struct {
-	Url   string
-	Token string
-}
-
-type Market struct {
 	Url   string
 	Token string
 }
@@ -154,11 +144,12 @@ type MarketConfig struct {
 	Home `toml:"-"`
 
 	Common
-	Node          Node
+	Node     Node
+	Sealer   Sealer
+	Messager Messager
+	Signer   Signer
+
 	PieceStorage  PieceStorage
-	Sealer        Sealer
-	Messager      Messager
-	Signer        Signer
 	Journal       Journal
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
@@ -214,9 +205,10 @@ type MarketClientConfig struct {
 	Home `toml:"-"`
 	Common
 	Node     Node
-	Signer   Signer
-	Market   Market
 	Messager Messager
+	Signer   Signer
+
+	Market Market //reserve
 
 	// The maximum number of parallel online data transfers (piecestorage+retrieval)
 	SimultaneousTransfers uint64

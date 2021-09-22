@@ -39,6 +39,57 @@ var (
 	ExtractApiKey  builder.Invoke = builder.NextInvoke()
 )
 
+var (
+	RepoFlag = &cli.StringFlag{
+		Name:  "repo",
+		Value: "~/.venusmarket",
+	}
+
+	NodeUrl = &cli.StringFlag{
+		Name:  "node-url",
+		Usage: "url to connect to daemon service",
+	}
+
+	MessagerUrl = &cli.StringFlag{
+		Name:  "messager-url",
+		Usage: "url to connect messager service",
+	}
+
+	AuthToken = &cli.StringFlag{
+		Name:  "auth-token",
+		Usage: "token for connect venus componets",
+	}
+
+	SealerUrl = &cli.StringFlag{
+		Name:  "sealer-url",
+		Usage: "used to connect to local sealer component",
+	}
+
+	SealerToken = &cli.StringFlag{
+		Name:  "sealer-token",
+		Usage: "auth token for connect sealer",
+	}
+
+	SignerUrl = &cli.StringFlag{
+		Name:  "signer-url",
+		Usage: "used to connect signer service for sign",
+	}
+	SignerToken = &cli.StringFlag{
+		Name:  "signer-token",
+		Usage: "auth token for connect signer service",
+	}
+
+	PieceStorageType = &cli.StringFlag{
+		Name:  "piecestorage-type",
+		Usage: "specify type of piece storage",
+	}
+
+	PieceStoragePath = &cli.StringFlag{
+		Name:  "piecestorage-path",
+		Usage: "specify path of piece storages",
+	}
+)
+
 func main() {
 	app := &cli.App{
 		Name:                 "venus-market",
@@ -46,15 +97,23 @@ func main() {
 		Version:              constants.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "repo",
-				Value: "~/.venusmarket",
-			},
+			RepoFlag,
 		},
 		Commands: []*cli.Command{
 			{
-				Name:   "run",
-				Usage:  "run market daemon",
+				Name:  "run",
+				Usage: "run market daemon",
+				Flags: []cli.Flag{
+					NodeUrl,
+					MessagerUrl,
+					AuthToken,
+					SealerUrl,
+					SealerToken,
+					SignerUrl,
+					SignerToken,
+					PieceStorageType,
+					PieceStoragePath,
+				},
 				Action: daemon,
 			},
 			cli2.PiecesCmd,
@@ -82,6 +141,11 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 	}
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		//create
+		err = flagData(cctx, cfg)
+		if err != nil {
+			return nil, xerrors.Errorf("parser data from flag %w", err)
+		}
+
 		err = config.SaveConfig(cfg)
 		if err != nil {
 			return nil, xerrors.Errorf("save config to %s %w", cfgPath, err)
@@ -91,6 +155,10 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 		err = config.LoadConfig(cfgPath, cfg)
 		if err != nil {
 			return nil, err
+		}
+		err = flagData(cctx, cfg)
+		if err != nil {
+			return nil, xerrors.Errorf("parser data from flag %w", err)
 		}
 	} else {
 		return nil, err
@@ -146,4 +214,45 @@ func daemon(cctx *cli.Context) error {
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
 	return rpc.ServeRPC(ctx, cfg, &cfg.API, api.MarketFullNode(resAPI), finishCh, 1000, "")
+}
+
+func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
+	if cctx.IsSet("repo") {
+		cfg.HomeDir = cctx.String("repo")
+	}
+	if cctx.IsSet("node-url") {
+		cfg.Node.Url = cctx.String("node-url")
+	}
+	if cctx.IsSet("auth-token") {
+		cfg.Node.Token = cctx.String("auth-token")
+	}
+
+	if cctx.IsSet("messager-url") {
+		cfg.Messager.Url = cctx.String("messager-url")
+	}
+	if cctx.IsSet("auth-token") {
+		cfg.Messager.Token = cctx.String("auth-token")
+	}
+
+	if cctx.IsSet("sealer-url") {
+		cfg.Sealer.Url = cctx.String("sealer-url")
+	}
+	if cctx.IsSet("sealer-token") {
+		cfg.Sealer.Token = cctx.String("sealer-token")
+	}
+
+	if cctx.IsSet("signer-url") {
+		cfg.Signer.Url = cctx.String("signer-url")
+	}
+	if cctx.IsSet("signer-token") {
+		cfg.Signer.Token = cctx.String("signer-token")
+	}
+
+	if cctx.IsSet("piecestorage-type") {
+		cfg.PieceStorage.Type = cctx.String("piecestorage-type")
+	}
+	if cctx.IsSet("piecestorage-path") {
+		cfg.PieceStorage.Path = cctx.String("piecestorage-path")
+	}
+	return nil
 }
