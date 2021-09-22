@@ -1319,5 +1319,5 @@ func (a *API) dealBlockstore(root cid.Cid) (bstore.Blockstore, func(), error) {
 }
 
 func (a *API) DefaultAddress(ctx context.Context) (address.Address, error) {
-	return a.Cfg.DefaultMarketAddress, nil
+	return address.Address(a.Cfg.DefaultMarketAddress), nil
 }

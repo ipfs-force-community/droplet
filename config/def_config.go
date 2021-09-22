@@ -120,6 +120,6 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		Url:   "/ip4/192.168.200.12/tcp/39812",
 		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
 	},
-	DefaultMarketAddress:  defaultAddr,
+	DefaultMarketAddress:  Address(defaultAddr),
 	SimultaneousTransfers: DefaultSimultaneousTransfers,
 }

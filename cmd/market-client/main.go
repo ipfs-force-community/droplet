@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/api"
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
@@ -208,7 +209,8 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 		if err != nil {
 			return err
 		}
-		cfg.DefaultMarketAddress = addr
+		fmt.Println("set default address ", addr.String())
+		cfg.DefaultMarketAddress = config.Address(addr)
 	}
 
 	return nil

@@ -212,7 +212,7 @@ type MarketClientConfig struct {
 
 	// The maximum number of parallel online data transfers (piecestorage+retrieval)
 	SimultaneousTransfers uint64
-	DefaultMarketAddress  address.Address
+	DefaultMarketAddress  Address
 }
 
 var _ encoding.TextMarshaler = (*Duration)(nil)
@@ -235,4 +235,22 @@ func (dur *Duration) UnmarshalText(text []byte) error {
 func (dur Duration) MarshalText() ([]byte, error) {
 	d := time.Duration(dur)
 	return []byte(d.String()), nil
+}
+
+// Address is a wrapper type for Address
+// for decoding and encoding from/to TOML
+type Address address.Address
+
+// UnmarshalText implements interface for TOML decoding
+func (addr *Address) UnmarshalText(text []byte) error {
+	d, err := address.NewFromString(string(text))
+	if err != nil {
+		return err
+	}
+	*addr = Address(d)
+	return err
+}
+
+func (dur Address) MarshalText() ([]byte, error) {
+	return []byte(address.Address(dur).String()), nil
 }

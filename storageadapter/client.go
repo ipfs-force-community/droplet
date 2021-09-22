@@ -372,7 +372,7 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 }
 
 func (c *ClientNodeAdapter) GetDefaultWalletAddress(ctx context.Context) (address.Address, error) {
-	return c.cfg.DefaultMarketAddress, nil
+	return address.Address(c.cfg.DefaultMarketAddress), nil
 }
 
 func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
