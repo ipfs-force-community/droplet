@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	specstorage "github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 )
@@ -53,7 +52,7 @@ func (sa *sectorAccessor) UnsealSector(ctx context.Context, sectorID abi.SectorN
 
 	// Get a reader for the piece, unsealing the piece if necessary
 	log.Debugf("read piece in sector %d, offset %d, length %d from miner %d", sectorID, offset, length, mid)
-	r, unsealed, err := sa.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, nil, cid.Undef)
+	r, unsealed, err := sa.pp.ReadPiece(ctx, ref, types2.UnpaddedByteIndex(offset), length, nil, cid.Undef)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to unseal piece from sector %d: %w", sectorID, err)
 	}
@@ -82,7 +81,7 @@ func (sa *sectorAccessor) IsUnsealed(ctx context.Context, sectorID abi.SectorNum
 	}
 
 	log.Debugf("will call IsUnsealed now sector=%+v, offset=%d, size=%d", sectorID, offset, length)
-	return sa.pp.IsUnsealed(ctx, ref, storiface.UnpaddedByteIndex(offset), length)
+	return sa.pp.IsUnsealed(ctx, ref, types2.UnpaddedByteIndex(offset), length)
 }
 
 func (sa *sectorAccessor) getSealProofType(ctx context.Context) (abi.RegisteredSealProof, error) {

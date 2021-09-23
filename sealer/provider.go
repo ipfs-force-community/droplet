@@ -4,20 +4,19 @@ import (
 	"context"
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/piece"
+	"github.com/filecoin-project/venus-market/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"io"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
-
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type PieceProvider interface {
 	// ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
-	ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error)
-	IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
+	ReadPiece(ctx context.Context, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error)
+	IsUnsealed(ctx context.Context, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
 }
 
 var _ PieceProvider = &pieceProvider{}
@@ -38,7 +37,7 @@ func NewPieceProvider(miner clients2.IStorageMiner, pieceStorage piece.IPieceSto
 
 // IsUnsealed checks if we have the unsealed piece at the given offset in an already
 // existing unsealed file either locally or on any of the workers.
-func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	if err := offset.Valid(); err != nil {
 		return false, xerrors.Errorf("offset is not valid: %w", err)
 	}
@@ -74,7 +73,7 @@ func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef
 // If we do NOT have an existing unsealed file  containing the given piece thus causing us to schedule an Unseal,
 // the returned boolean parameter will be set to true.
 // If we have an existing unsealed file containing the given piece, the returned boolean will be set to false.
-func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error) {
+func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error) {
 	//read directly from local piece store need piece cid
 	if err := offset.Valid(); err != nil {
 		return nil, false, xerrors.Errorf("offset is not valid: %w", err)
@@ -121,7 +120,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 		}
 
 		//todo how to tell sealer to start unseal work and async to check task completed
-		if err := p.miner.SectorsUnsealPiece(ctx, sector, offset, size, ticket, commd); err != nil {
+		if err := p.miner.SectorsUnsealPiece(ctx, sector, offset, size, ticket, commd, ""); err != nil {
 			log.Errorf("failed to SectorsUnsealPiece: %s", err)
 			return nil, false, xerrors.Errorf("unsealing piece: %w", err)
 		}
