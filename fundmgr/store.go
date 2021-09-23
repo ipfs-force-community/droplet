@@ -6,7 +6,6 @@ import (
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	dsq "github.com/ipfs/go-datastore/query"
 
 	"github.com/filecoin-project/go-address"
@@ -18,8 +17,7 @@ type Store struct {
 	ds datastore.Batching
 }
 
-func newStore(ds models.MetadataDS) *Store {
-	ds = namespace.Wrap(ds, datastore.NewKey("/fundmgr/"))
+func newStore(ds models.FundMgrDS) *Store {
 	return &Store{
 		ds: ds,
 	}

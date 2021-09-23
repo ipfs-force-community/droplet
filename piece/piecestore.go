@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
 	"golang.org/x/xerrors"
 	"sync"
@@ -19,16 +18,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/shared"
 )
-
-// DSPiecePrefix is the name space for storing piece infos
-var DSPiecePrefix = "/pieces"
-
-// DSCIDPrefix is the name space for storing CID infos
-var DSCIDPrefix = "/cid-infos"
-
-type CIDInfo struct {
-	piecestore.CIDInfo
-}
 
 type PieceInfo struct {
 	PieceCID cid.Cid
@@ -54,38 +43,48 @@ type DealInfo struct {
 }
 
 type GetDealSpec struct {
-	MaxNumber int
+	MaxPiece     int
+	MaxPieceSize uint64
 }
 
-type ExtendPieceStore interface {
-	piecestore.PieceStore
-
-	GetDeals(pageIndex, pageSize int) ([]*DealInfo, error)
-	GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
-	MarkDealsAsPacking(deals []abi.DealID) error
-	UpdateDealStatus(dealId abi.DealID, status string) error
-	GetDealByPosition(ctx context.Context, sid abi.SectorID, offset abi.PaddedPieceSize) (*DealInfo, error)
+type PieceStore interface {
 	UpdateDealOnComplete(pieceCID cid.Cid, proposal market.ClientDealProposal, dataRef *storagemarket.DataRef, publishCid cid.Cid, dealId abi.DealID, fastRetrieval bool) error
 	UpdateDealOnPacking(pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error
+	UpdateDealStatus(dealId abi.DealID, status string) error
+	GetDealByPosition(ctx context.Context, sid abi.SectorID, offset abi.PaddedPieceSize) (*DealInfo, error)
+	GetDeals(pageIndex, pageSize int) ([]*DealInfo, error)
+	AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
+	GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
+	MarkDealsAsPacking(deals []abi.DealID) error
+	ListPieceInfoKeys() ([]cid.Cid, error)
+	GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, error)
+
+	//jsut mock
+	Start(ctx context.Context) error
+	OnReady(ready shared.ReadyFunc)
+	AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error
 }
 
-var _ ExtendPieceStore = (*dsPieceStore)(nil)
+var _ PieceStore = (*dsPieceStore)(nil)
 
-var _ piecestore.PieceStore = (*dsPieceStore)(nil)
+type ExtendPieceStore interface {
+	PieceStore
+	CIDStore
+}
+
+var _ piecestore.PieceStore = (ExtendPieceStore)(nil)
 
 type dsPieceStore struct {
-	pieces   datastore.Batching
-	cidInfos datastore.Batching
+	pieces datastore.Batching
 
 	pieceLk sync.Mutex
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func NewDsPieceStore(ds models.PieceMetaDs) (ExtendPieceStore, error) {
+func NewDsPieceStore(ds models.PieceInfoDS) (PieceStore, error) {
 	return &dsPieceStore{
-		pieces:   namespace.Wrap(ds, datastore.NewKey(DSPiecePrefix)),
-		cidInfos: namespace.Wrap(ds, datastore.NewKey(DSCIDPrefix)),
-		pieceLk:  sync.Mutex{},
+		pieces:  ds,
+		pieceLk: sync.Mutex{},
 	}, nil
 }
 
@@ -210,17 +209,33 @@ func (ps *dsPieceStore) GetDeals(pageIndex, pageSize int) ([]*DealInfo, error) {
 	return deals, nil
 }
 
-func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error) {
+var defaultMaxPiece = 10
+var defaultGetDealSpec = &GetDealSpec{
+	MaxPiece:     defaultMaxPiece,
+	MaxPieceSize: 0,
+}
+
+func (ps *dsPieceStore) AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error) {
 	ps.pieceLk.Lock()
 	defer ps.pieceLk.Unlock()
+
+	if spec == nil {
+		spec = defaultGetDealSpec
+	}
+	if spec.MaxPiece == 0 {
+		spec.MaxPiece = defaultMaxPiece
+	}
 
 	qres, err := ps.pieces.Query(query.Query{})
 	if err != nil {
 		return nil, xerrors.Errorf("query error: %w", err)
 	}
-	defer qres.Close() //nolint:errcheck
 
 	var result []*DealInfo
+	var curPiece int
+	var curPieceSize uint64
+	var modify map[string]PieceInfo
+LOOP:
 	for r := range qres.Next() {
 		var pieceInfo PieceInfo
 		err := json.Unmarshal(r.Value, &pieceInfo)
@@ -231,6 +246,80 @@ func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
 		for _, deal := range pieceInfo.Deals {
 			if deal.Status == Undefine {
 				result = append(result, deal)
+				deal.Status = Assigned
+
+				curPiece++
+				curPieceSize += uint64(deal.Length)
+				if spec.MaxPiece > 0 && curPiece > spec.MaxPiece {
+					goto LOOP
+				}
+				if spec.MaxPieceSize > 0 && curPieceSize > spec.MaxPieceSize {
+					goto LOOP
+				}
+			}
+		}
+		modify[r.Key] = pieceInfo
+	}
+
+	err = qres.Close()
+	if err != nil {
+		return nil, xerrors.Errorf("close badger close %w", err)
+	}
+
+	for key, val := range modify {
+		vBytes, err := json.Marshal(val)
+		if err != nil {
+			return nil, xerrors.Errorf("marshal piece info %w", err)
+		}
+		err = ps.pieces.Put(datastore.RawKey(key), vBytes)
+		if err != nil {
+			return nil, xerrors.Errorf("update piece info %w", err)
+		}
+	}
+	return result, nil
+}
+
+func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error) {
+	ps.pieceLk.Lock()
+	defer ps.pieceLk.Unlock()
+
+	if spec == nil {
+		spec = defaultGetDealSpec
+	}
+	if spec.MaxPiece == 0 {
+		spec.MaxPiece = defaultMaxPiece
+	}
+
+	qres, err := ps.pieces.Query(query.Query{})
+	if err != nil {
+		return nil, xerrors.Errorf("query error: %w", err)
+	}
+	defer qres.Close() //nolint:errcheck
+
+	var result []*DealInfo
+	var curPiece int
+	var curPieceSize uint64
+LOOP:
+	for r := range qres.Next() {
+		var pieceInfo PieceInfo
+		err := json.Unmarshal(r.Value, &pieceInfo)
+		if err != nil {
+			return nil, xerrors.Errorf("unable to parser cid: %w", err)
+		}
+
+		for _, deal := range pieceInfo.Deals {
+			if deal.Status == Undefine {
+				result = append(result, deal)
+				deal.Status = Assigned
+
+				curPiece++
+				curPieceSize += uint64(deal.Length)
+				if spec.MaxPiece > 0 && curPiece > spec.MaxPiece {
+					goto LOOP
+				}
+				if spec.MaxPieceSize > 0 && curPieceSize > spec.MaxPieceSize {
+					goto LOOP
+				}
 			}
 		}
 	}
@@ -238,41 +327,8 @@ func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
 	return result, nil
 }
 
-func (ps *dsPieceStore) eachPackedDeal(f func(info *DealInfo) (bool, error)) error {
-	ps.pieceLk.Lock()
-	defer ps.pieceLk.Unlock()
-
-	qres, err := ps.pieces.Query(query.Query{})
-	if err != nil {
-		return xerrors.Errorf("query error: %w", err)
-	}
-	defer qres.Close() //nolint:errcheck
-
-	for r := range qres.Next() {
-		var pieceInfo PieceInfo
-		err := json.Unmarshal(r.Value, &pieceInfo)
-		if err != nil {
-			return xerrors.Errorf("unable to parser cid: %w", err)
-		}
-
-		for _, deal := range pieceInfo.Deals {
-			if deal.Status != Undefine {
-				isContinue, err := f(deal)
-				if err != nil {
-					return err
-				}
-				if !isContinue {
-					break
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
 func (ps *dsPieceStore) MarkDealsAsPacking(deals []abi.DealID) error {
-	pieces, err := ps.ListCidInfoKeys()
+	pieces, err := ps.ListPieceInfoKeys()
 	if err != nil {
 		return err
 	}
@@ -286,26 +342,6 @@ func (ps *dsPieceStore) MarkDealsAsPacking(deals []abi.DealID) error {
 					}
 				}
 			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Store the map of blockLocations in the PieceStore's CIDInfo store, with key `pieceCID`
-func (ps *dsPieceStore) AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
-	for c, blockLocation := range blockLocations {
-		err := ps.mutateCIDInfo(c, func(ci *CIDInfo) error {
-			for _, pbl := range ci.PieceBlockLocations {
-				if pbl.PieceCID.Equals(pieceCID) && pbl.BlockLocation == blockLocation {
-					return nil
-				}
-			}
-			ci.CID = pieceCID
-			ci.PieceBlockLocations = append(ci.PieceBlockLocations, piecestore.PieceBlockLocation{BlockLocation: blockLocation, PieceCID: pieceCID})
 			return nil
 		})
 		if err != nil {
@@ -379,6 +415,39 @@ func (ps *dsPieceStore) mutatePieceInfo(pieceCID cid.Cid, mutator func(pi *Piece
 		return err
 	}
 	return ps.pieces.Put(key, data)
+}
+
+func (ps *dsPieceStore) eachPackedDeal(f func(info *DealInfo) (bool, error)) error {
+	ps.pieceLk.Lock()
+	defer ps.pieceLk.Unlock()
+
+	qres, err := ps.pieces.Query(query.Query{})
+	if err != nil {
+		return xerrors.Errorf("query error: %w", err)
+	}
+	defer qres.Close() //nolint:errcheck
+
+	for r := range qres.Next() {
+		var pieceInfo PieceInfo
+		err := json.Unmarshal(r.Value, &pieceInfo)
+		if err != nil {
+			return xerrors.Errorf("unable to parser cid: %w", err)
+		}
+
+		for _, deal := range pieceInfo.Deals {
+			if deal.Status != Undefine {
+				isContinue, err := f(deal)
+				if err != nil {
+					return err
+				}
+				if !isContinue {
+					break
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func (ps *dsPieceStore) eachDeal(f func(info *DealInfo) (bool, error)) error {
@@ -463,64 +532,4 @@ func (ps *dsPieceStore) mutateDeal(f func(info *DealInfo) (bool, error)) error {
 		}
 	}
 	return nil
-}
-
-////********CIDINFO*********
-func (ps *dsPieceStore) ListCidInfoKeys() ([]cid.Cid, error) {
-	qres, err := ps.cidInfos.Query(query.Query{})
-	if err != nil {
-		return nil, xerrors.Errorf("query error: %w", err)
-	}
-	defer qres.Close() //nolint:errcheck
-
-	var out []cid.Cid
-	for r := range qres.Next() {
-		id, err := cid.Decode(strings.TrimPrefix(r.Key, "/"))
-		if err != nil {
-			return nil, xerrors.Errorf("unable to parser cid: %w", err)
-		}
-		out = append(out, id)
-	}
-
-	return out, nil
-}
-
-// Retrieve the CIDInfo associated with `pieceCID` from the CID info store.
-func (ps *dsPieceStore) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error) {
-	key := datastore.NewKey(payloadCID.String())
-	cidInfoBytes, err := ps.cidInfos.Get(key)
-	if err != nil {
-		return piecestore.CIDInfo{}, err
-	}
-	cidInfo := piecestore.CIDInfo{}
-	if err = json.Unmarshal(cidInfoBytes, &cidInfo); err != nil {
-		return piecestore.CIDInfo{}, err
-	}
-	cidInfo.CID = payloadCID
-	return cidInfo, nil
-}
-
-func (ps *dsPieceStore) mutateCIDInfo(c cid.Cid, mutator func(ci *CIDInfo) error) error {
-	key := datastore.NewKey(c.String())
-	cidInfoBytes, err := ps.cidInfos.Get(key)
-	if err != nil && datastore.ErrNotFound != err {
-		return err
-	}
-
-	cidInfo := CIDInfo{}
-	if cidInfoBytes != nil {
-		if err = json.Unmarshal(cidInfoBytes, &cidInfo); err != nil {
-			return err
-		}
-	}
-
-	if err = mutator(&cidInfo); err != nil {
-		return err
-	}
-
-	data, err := json.Marshal(cidInfo)
-	if err != nil {
-		return err
-	}
-	return ps.cidInfos.Put(key, data)
 }

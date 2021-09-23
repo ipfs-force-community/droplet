@@ -25,8 +25,6 @@ import (
 	marketevents "github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	paych3 "github.com/filecoin-project/venus/app/submodule/paych"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -40,8 +38,8 @@ type StorageProviderEvt struct {
 	Deal  storagemarket.MinerDeal
 }
 
-func NewLocalDiscovery(lc fx.Lifecycle, ds models.MetadataDS) (*discoveryimpl.Local, error) {
-	local, err := discoveryimpl.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
+func NewLocalDiscovery(lc fx.Lifecycle, ds models.ClientDealsDS) (*discoveryimpl.Local, error) {
+	local, err := discoveryimpl.NewLocal(ds) //todo need new discoveryimpl base on sql
 	if err != nil {
 		return nil, err
 	}
@@ -58,26 +56,24 @@ func RetrievalResolver(l *discoveryimpl.Local) discovery.PeerResolver {
 	return discoveryimpl.Multi(l)
 }
 
-func NewClientImportMgr(ds models.MetadataDS, r *config.HomeDir) (ClientImportMgr, error) {
+func NewClientImportMgr(ns models.ImportClientDS, r *config.HomeDir) (ClientImportMgr, error) {
 	// store the imports under the repo's `imports` subdirectory.
 	dir := filepath.Join(string(*r), "imports")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, xerrors.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
-	ns := namespace.Wrap(ds, datastore.NewKey("/client"))
 	return imports.NewManager(ns, dir), nil
 }
 
 // NewClientGraphsyncDataTransfer returns a data transfer manager that just
 // uses the clients's Client DAG service for transfers
-func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Graphsync, ds models.MetadataDS, homeDir *config.HomeDir) (network.ClientDataTransfer, error) {
+func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Graphsync, dtDs models.ClientTransferDS, homeDir *config.HomeDir) (network.ClientDataTransfer, error) {
 	// go-data-transfer protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
 	dtRetryParams := dtnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
 	net := dtnet.NewFromLibp2pHost(h, dtRetryParams)
 
-	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/client/transfers"))
 	transport := dtgstransport.NewTransport(h.ID(), gs)
 	err := os.MkdirAll(filepath.Join(string(*homeDir), "data-transfer"), 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
@@ -165,13 +161,12 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientData
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(lc fx.Lifecycle, h host.Host, r *config.HomeDir, dt network.ClientDataTransfer, payAPI *paych3.PaychAPI, resolver discovery.PeerResolver,
-	ds models.MetadataDS, fullApi apiface.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+func RetrievalClient(lc fx.Lifecycle, h host.Host, dt network.ClientDataTransfer, payAPI *paych3.PaychAPI, resolver discovery.PeerResolver,
+	ds models.RetrievalClientDS, fullApi apiface.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 
 	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, fullApi)
-	network := rmnet.NewFromLibp2pHost(h)
-	ds = namespace.Wrap(ds, datastore.NewKey("/retrievals/client"))
-	client, err := retrievalimpl.NewClient(network, dt, adapter, resolver, ds, accessor)
+	libP2pHost := rmnet.NewFromLibp2pHost(h)
+	client, err := retrievalimpl.NewClient(libP2pHost, dt, adapter, resolver, ds, accessor)
 	if err != nil {
 		return nil, err
 	}

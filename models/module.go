@@ -17,14 +17,23 @@ const (
 	metadata = "metadata"
 	staging  = "staging"
 
+	fundmgr           = "/fundmgr/"
 	piecemeta         = "/storagemarket"
+	cidinfo           = "/cid-infos"
+	pieceinfo         = "/pieces"
 	retrievalProvider = "/retrievals/provider"
 	retrievalAsk      = "/retrieval-ask"
 	transfer          = "transfers"
 	dealProvider      = "/deals/provider"
 	storageAsk        = "storage-ask"
 	paych             = "/paych/"
-	dealClient        = "/deals/client"
+
+	//client
+	client          = "/client"
+	dealClient      = "/deals/client"
+	dealLocal       = "/deals/local"
+	retrievalClient = "/retrievals/client"
+	clientTransfer  = "/datatransfer/client/transfers"
 )
 
 func NewMetadataDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (MetadataDS, error) {
@@ -62,6 +71,18 @@ func NewPieceMetaDs(ds MetadataDS) PieceMetaDs {
 	return namespace.Wrap(ds, datastore.NewKey(piecemeta))
 }
 
+func NewFundMgrDS(ds MetadataDS) FundMgrDS {
+	return namespace.Wrap(ds, datastore.NewKey(fundmgr))
+}
+
+func NewCidInfoDs(ds PieceMetaDs) CIDInfoDS {
+	return namespace.Wrap(ds, datastore.NewKey(cidinfo))
+}
+
+func NewPieceInfoDs(ds PieceMetaDs) PieceInfoDS {
+	return namespace.Wrap(ds, datastore.NewKey(pieceinfo))
+}
+
 func NewRetrievalProviderDS(ds MetadataDS) RetrievalProviderDS {
 	return namespace.Wrap(ds, datastore.NewKey(retrievalProvider))
 }
@@ -82,13 +103,30 @@ func NewStorageAskDS(ds ProviderDealDS) StorageAskDS {
 	return namespace.Wrap(ds, datastore.NewKey(storageAsk))
 }
 
-func NewPayChanDS(ds MetadataDS) StorageAskDS {
+func NewPayChanDS(ds MetadataDS) PayChanDS {
 	return namespace.Wrap(ds, datastore.NewKey(paych))
 }
 
 // NewClientDatastore creates a datastore for the client to store its deals
 func NewClientDatastore(ds MetadataDS) ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey(dealClient))
+}
+
+//for discover
+func NewClientDealsDS(ds MetadataDS) ClientDealsDS {
+	return namespace.Wrap(ds, datastore.NewKey(dealLocal))
+}
+
+func NewRetrievalClientDS(ds MetadataDS) RetrievalClientDS {
+	return namespace.Wrap(ds, datastore.NewKey(retrievalClient))
+}
+
+func NewImportClientDS(ds MetadataDS) ImportClientDS {
+	return namespace.Wrap(ds, datastore.NewKey(client))
+}
+
+func NewClientTransferDS(ds MetadataDS) ClientTransferDS {
+	return namespace.Wrap(ds, datastore.NewKey(clientTransfer))
 }
 
 var DBOptions = func(server bool) builder.Option {
@@ -98,6 +136,8 @@ var DBOptions = func(server bool) builder.Option {
 			builder.Override(new(StagingDS), NewStagingDS),
 			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
 			builder.Override(new(PieceMetaDs), NewPieceMetaDs),
+			builder.Override(new(PieceInfoDS), NewPieceInfoDs),
+			builder.Override(new(CIDInfoDS), NewCidInfoDs),
 			builder.Override(new(RetrievalProviderDS), NewRetrievalProviderDS),
 			builder.Override(new(RetrievalAskDS), NewRetrievalAskDS),
 			builder.Override(new(DagTransferDS), NewDagTransferDS),
@@ -105,13 +145,18 @@ var DBOptions = func(server bool) builder.Option {
 			builder.Override(new(StorageAskDS), NewStorageAskDS),
 			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
 			builder.Override(new(PayChanDS), NewPayChanDS),
+			builder.Override(new(FundMgrDS), NewFundMgrDS),
 		)
 	} else {
 		return builder.Options(
 			builder.Override(new(MetadataDS), NewMetadataDS),
 			builder.Override(new(ClientDatastore), NewClientDatastore),
 			builder.Override(new(ClientBlockstore), NewClientBlockstore),
+			builder.Override(new(ClientDealsDS), NewClientDealsDS),
+			builder.Override(new(RetrievalClientDS), NewRetrievalClientDS),
 			builder.Override(new(PayChanDS), NewPayChanDS),
+			builder.Override(new(ImportClientDS), NewImportClientDS),
+			builder.Override(new(ClientTransferDS), NewClientTransferDS),
 		)
 	}
 }

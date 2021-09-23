@@ -103,6 +103,8 @@ type MarketFullNodeStruct struct {
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
+		AssignUnPackedDeals func(p0 *piece.GetDealSpec) ([]*piece.DealInfo, error) `perm:"write"`
+
 		DagstoreGC func(p0 context.Context) ([]types.DagstoreShardResult, error) `perm:"admin"`
 
 		DagstoreInitializeAll func(p0 context.Context, p1 types.DagstoreInitializeAllParams) (<-chan types.DagstoreInitializeAllEvent, error) `perm:"write"`
@@ -500,6 +502,14 @@ func (s *MarketFullNodeStruct) ActorSectorSize(p0 context.Context, p1 address.Ad
 
 func (s *MarketFullNodeStub) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
 	return *new(abi.SectorSize), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) AssignUnPackedDeals(p0 *piece.GetDealSpec) ([]*piece.DealInfo, error) {
+	return s.Internal.AssignUnPackedDeals(p0)
+}
+
+func (s *MarketFullNodeStub) AssignUnPackedDeals(p0 *piece.GetDealSpec) ([]*piece.DealInfo, error) {
+	return *new([]*piece.DealInfo), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) DagstoreGC(p0 context.Context) ([]types.DagstoreShardResult, error) {

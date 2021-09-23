@@ -3,6 +3,7 @@ package imports
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus-market/models"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,10 +13,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-
 	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/ipfs/go-datastore"
 )
 
 var log = logging.Logger("importmgr")
@@ -48,10 +47,7 @@ const (
 	LCAROwner = LabelKey("car_owner") // Owner of the CAR; "importmgr" is us; "user" or empty is them.
 )
 
-func NewManager(ds datastore.Batching, rootDir string) *Manager {
-	ds = namespace.Wrap(ds, datastore.NewKey("/stores"))
-	ds = datastore.NewLogDatastore(ds, "storess")
-
+func NewManager(ds models.ImportClientDS, rootDir string) *Manager {
 	m := &Manager{
 		ds:      ds,
 		rootDir: rootDir,

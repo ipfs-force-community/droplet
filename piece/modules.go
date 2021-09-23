@@ -5,21 +5,18 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/utils"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 )
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
 // shared by the piecestorage and retrieval providers
-func NewProviderPieceStore(lc fx.Lifecycle, ds models.MetadataDS) (piecestore.PieceStore, error) {
-	ps, err := NewDsPieceStore(namespace.Wrap(ds, datastore.NewKey("/storagemarket")))
-	if err != nil {
-		return nil, err
-	}
+func NewProviderPieceStore(lc fx.Lifecycle, piecestore PieceStore, cidStore CIDStore) (ExtendPieceStore, error) {
+	ps := struct {
+		PieceStore
+		CIDStore
+	}{piecestore, cidStore}
 
 	ps.OnReady(utils.ReadyLogger("piecestore"))
 	lc.Append(fx.Hook{
@@ -43,7 +40,9 @@ var PieceOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
 		//piece
 		builder.Override(new(IPieceStorage), NewPieceStorage), //save read peiece data
-		builder.Override(new(ExtendPieceStore), NewDsPieceStore),
+		builder.Override(new(PieceStore), NewDsPieceStore),
+		builder.Override(new(CIDStore), NewDsCidInfoStore),
+		builder.Override(new(ExtendPieceStore), NewProviderPieceStore),
 		builder.Override(new(piecestore.PieceStore), builder.From(new(ExtendPieceStore))), //save piece metadata(location)   save to metadata /storagemarket
 	)
 }

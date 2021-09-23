@@ -5,26 +5,48 @@ import "github.com/ipfs/go-datastore"
 // /metadata
 type MetadataDS datastore.Batching
 
-// /storagemarket
+// /metadata/fundmgr
+type FundMgrDS datastore.Batching
+
+// /metadata/storagemarket
 type PieceMetaDs datastore.Batching
 
-// /retrievals/provider
+//  /metadata/storagemarket/cid-infos
+type CIDInfoDS datastore.Batching
+
+//  /metadata/storagemarket/pieces
+type PieceInfoDS datastore.Batching
+
+// /metadata/retrievals/provider
 type RetrievalProviderDS datastore.Batching
 
-// //retrievals/provider/retrieval-ask
+// /metadata/retrievals/provider/retrieval-ask
 type RetrievalAskDS datastore.Batching //key = latest
 
-// /datatransfer/provider/transfers
+// /metadata/datatransfer/provider/transfers
 type DagTransferDS datastore.Batching
 
-// /deals/provider
+// /metadata/deals/provider
 type ProviderDealDS datastore.Batching
 
-//   /deals/provider/storage-ask
+//   /metadata/deals/provider/storage-ask
 type StorageAskDS datastore.Batching //key = latest
 
-// /paych/
+// /metadata/paych/
 type PayChanDS datastore.Batching
 
-// /deals/client
+//*********************************client
+// /metadata/deals/client
 type ClientDatastore datastore.Batching
+
+// /metadata/deals/local
+type ClientDealsDS datastore.Batching
+
+// /metadata/retrievals/client
+type RetrievalClientDS datastore.Batching
+
+// /metadata/client
+type ImportClientDS datastore.Batching
+
+// /metadata/datatransfer/client/transfers
+type ClientTransferDS datastore.Batching

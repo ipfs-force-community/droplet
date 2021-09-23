@@ -616,6 +616,10 @@ func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Addr
 	return m.PieceStore.GetUnPackedDeals(spec)
 }
 
+func (m MarketNodeImpl) AssignUnPackedDeals(spec *piece.GetDealSpec) ([]*piece.DealInfo, error) {
+	return m.PieceStore.AssignUnPackedDeals(spec)
+}
+
 func (m MarketNodeImpl) MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error {
 	return m.PieceStore.MarkDealsAsPacking(deals)
 }

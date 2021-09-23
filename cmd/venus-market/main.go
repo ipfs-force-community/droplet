@@ -45,46 +45,46 @@ var (
 		Value: "~/.venusmarket",
 	}
 
-	NodeUrl = &cli.StringFlag{
+	NodeUrlFlag = &cli.StringFlag{
 		Name:  "node-url",
 		Usage: "url to connect to daemon service",
 	}
 
-	MessagerUrl = &cli.StringFlag{
+	MessagerUrlFlag = &cli.StringFlag{
 		Name:  "messager-url",
 		Usage: "url to connect messager service",
 	}
 
-	AuthToken = &cli.StringFlag{
+	AuthTokeFlag = &cli.StringFlag{
 		Name:  "auth-token",
 		Usage: "token for connect venus componets",
 	}
 
-	SealerUrl = &cli.StringFlag{
+	SealerUrlFlag = &cli.StringFlag{
 		Name:  "sealer-url",
 		Usage: "used to connect to local sealer component",
 	}
 
-	SealerToken = &cli.StringFlag{
+	SealerTokenFlag = &cli.StringFlag{
 		Name:  "sealer-token",
 		Usage: "auth token for connect sealer",
 	}
 
-	SignerUrl = &cli.StringFlag{
+	SignerUrlFlag = &cli.StringFlag{
 		Name:  "signer-url",
 		Usage: "used to connect signer service for sign",
 	}
-	SignerToken = &cli.StringFlag{
+	SignerTokenFlag = &cli.StringFlag{
 		Name:  "signer-token",
 		Usage: "auth token for connect signer service",
 	}
 
-	PieceStorageType = &cli.StringFlag{
+	PieceStorageTypeFlag = &cli.StringFlag{
 		Name:  "piecestorage-type",
 		Usage: "specify type of piece storage",
 	}
 
-	PieceStoragePath = &cli.StringFlag{
+	PieceStoragePathFlag = &cli.StringFlag{
 		Name:  "piecestorage-path",
 		Usage: "specify path of piece storages",
 	}
@@ -104,15 +104,15 @@ func main() {
 				Name:  "run",
 				Usage: "run market daemon",
 				Flags: []cli.Flag{
-					NodeUrl,
-					MessagerUrl,
-					AuthToken,
-					SealerUrl,
-					SealerToken,
-					SignerUrl,
-					SignerToken,
-					PieceStorageType,
-					PieceStoragePath,
+					NodeUrlFlag,
+					MessagerUrlFlag,
+					AuthTokeFlag,
+					SealerUrlFlag,
+					SealerTokenFlag,
+					SignerUrlFlag,
+					SignerTokenFlag,
+					PieceStorageTypeFlag,
+					PieceStoragePathFlag,
 				},
 				Action: daemon,
 			},
