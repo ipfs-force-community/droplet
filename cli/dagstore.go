@@ -8,7 +8,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/lib/tablewriter"
+	"github.com/filecoin-project/venus-market/cli/tablewriter"
 )
 
 var DagstoreCmd = &cli.Command{

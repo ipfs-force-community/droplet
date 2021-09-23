@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
@@ -137,26 +136,5 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 		}
 		uns = false
 	}
-
-	upr, err := fr32.NewUnpadReader(r, size.Padded())
-	if err != nil {
-		return nil, false, xerrors.Errorf("creating unpadded reader: %w", err)
-	}
-
-	log.Debugf("returning reader to read unsealed piece, sector=%+v, offset=%d, size=%d", sector, offset, size)
-
-	return &funcCloser{
-		Reader: upr,
-		close: func() error {
-			err = r.Close()
-			return err
-		},
-	}, uns, nil
+	return r, uns, nil
 }
-
-type funcCloser struct {
-	io.Reader
-	close func() error
-}
-
-func (fc *funcCloser) Close() error { return fc.close() }
