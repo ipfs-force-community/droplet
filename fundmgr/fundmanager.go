@@ -3,10 +3,10 @@ package fundmgr
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"sync"
 
@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -49,7 +48,7 @@ type FundManager struct {
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.MetadataDS) *FundManager {
+func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS) *FundManager {
 	fm := newFundManager(&api, ds)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -64,7 +63,7 @@ func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.MetadataDS) *
 }
 
 // newFundManager is used by the tests
-func newFundManager(api fundManagerAPI, ds datastore.Batching) *FundManager {
+func newFundManager(api fundManagerAPI, ds models.FundMgrDS) *FundManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
 		ctx:         ctx,

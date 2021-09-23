@@ -3,7 +3,6 @@ package storageadapter
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/sealer"
 	marketTypes "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -221,7 +220,7 @@ func (p *DealPublisher) processNewDeal(pdeal *pendingDeal) {
 func (p *DealPublisher) waitForMoreDeals() {
 	// Check if we're already waiting for deals
 	if !p.publishPeriodStart.IsZero() {
-		elapsed := constants.Clock.Since(p.publishPeriodStart)
+		elapsed := marketTypes.Clock.Since(p.publishPeriodStart)
 		log.Infof("%s elapsed of / %s until publish deals queue is published",
 			elapsed, p.publishPeriod)
 		return
@@ -230,15 +229,15 @@ func (p *DealPublisher) waitForMoreDeals() {
 	// Set a timeout to wait for more deals to arrive
 	log.Infof("waiting publish deals queue period of %s before publishing", p.publishPeriod)
 	ctx, cancel := context.WithCancel(p.ctx)
-	p.publishPeriodStart = constants.Clock.Now()
+	p.publishPeriodStart = marketTypes.Clock.Now()
 	p.cancelWaitForMoreDeals = cancel
 
 	go func() {
-		timer := constants.Clock.Timer(p.publishPeriod)
+		timer := marketTypes.Clock.NewTimer(p.publishPeriod)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-		case <-timer.C:
+		case <-timer.Chan():
 			p.lk.Lock()
 			defer p.lk.Unlock()
 

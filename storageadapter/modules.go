@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/dealfilter"
 	"github.com/filecoin-project/venus-market/journal"
@@ -26,6 +25,7 @@ import (
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -200,7 +200,7 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, "miner error", err
 			}
 
-			sealEpochs := sealDuration / (time.Duration(constants.BlockDelaySecs) * time.Second)
+			sealEpochs := sealDuration / (time.Duration(constants.MainNetBlockDelaySecs) * time.Second)
 			_, ht, err := spn.GetChainHead(ctx)
 			if err != nil {
 				return false, "failed to get chain head", err
@@ -217,8 +217,8 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 			}
 
 			// Reject if it's more than 7 days in the future
-			// TODO: read from cfg
-			maxStartEpoch := earliest + abi.ChainEpoch(uint64(sd.Seconds())/constants.BlockDelaySecs)
+			// TODO: read from cfg how to get block delay
+			maxStartEpoch := earliest + abi.ChainEpoch(uint64(sd.Seconds())/constants.MainNetBlockDelaySecs)
 			if deal.Proposal.StartEpoch > maxStartEpoch {
 				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
 			}

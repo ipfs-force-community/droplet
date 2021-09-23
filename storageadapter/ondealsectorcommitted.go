@@ -3,8 +3,8 @@ package storageadapter
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus-market/constants"
 	"github.com/filecoin-project/venus-market/sealer"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"sync"
 
 	"github.com/ipfs/go-cid"

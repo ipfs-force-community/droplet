@@ -3,7 +3,8 @@ package journal
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus-market/constants"
+	"github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"os"
 	"path/filepath"
 
@@ -67,7 +68,7 @@ func (f *fsJournal) RecordEvent(evtType EventType, supplier func() interface{}) 
 
 	je := &Event{
 		EventType: evtType,
-		Timestamp: constants.Clock.Now(),
+		Timestamp: types.Clock.Now(),
 		Data:      supplier(),
 	}
 	select {
