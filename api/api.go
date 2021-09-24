@@ -16,6 +16,8 @@ import (
 	mTypes "github.com/filecoin-project/venus-messager/types"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
 	"github.com/google/uuid"
+	"github.com/ipfs-force-community/venus-gateway/marketevent"
+	types2 "github.com/ipfs-force-community/venus-gateway/types"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -137,6 +139,9 @@ type MarketFullNode interface {
 	MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                          //perm:write
 	UpdateDealOnPacking(ctx context.Context, miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error //perm:write
 	UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status string) error                                                              //perm:write
+	//market event
+	ResponseMarketEvent(ctx context.Context, resp *types2.ResponseEvent) error
+	ListenMarketEvent(ctx context.Context, policy *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error)
 }
 
 type MarketClientNode interface {
@@ -203,9 +208,9 @@ type MarketClientNode interface {
 	ClientListImports(ctx context.Context) ([]client.Import, error) //perm:write
 	DefaultAddress(ctx context.Context) (address.Address, error)    //perm:read
 
-	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)
-	MarketGetReserved(ctx context.Context, addr address.Address) (vTypes.BigInt, error)
-	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)
-	MarketReleaseFunds(ctx context.Context, addr address.Address, amt vTypes.BigInt) error
-	MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)
+	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)                   //perm:write
+	MarketGetReserved(ctx context.Context, addr address.Address) (vTypes.BigInt, error)                                       //perm:read
+	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt vTypes.BigInt) (cid.Cid, error) //perm:write
+	MarketReleaseFunds(ctx context.Context, addr address.Address, amt vTypes.BigInt) error                                    //perm:write
+	MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)                     //perm:write
 }

@@ -4,10 +4,12 @@ import (
 	"context"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/builder"
+	"github.com/filecoin-project/venus-market/metrics"
 	types2 "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/ipfs-force-community/venus-gateway/marketevent"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 	"time"
@@ -63,6 +65,21 @@ func ConvertWalletToISinge(fullNode apiface.FullNode, signer ISinger) error {
 	return nil
 }
 
+func NewMarketEvent(mctx metrics.MetricsCtx) (*marketevent.MarketEventStream, error) {
+	stream := marketevent.NewMarketEventStream(mctx, func(miner address.Address) (bool, error) {
+		return true, nil
+	}, nil)
+	return stream, nil
+}
+
+func NewMarketEventAPI(stream *marketevent.MarketEventStream) (*marketevent.MarketEventAPI, error) {
+	return marketevent.NewMarketEventAPI(stream), nil
+}
+
+func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent, error) {
+	return stream, nil
+}
+
 var ClientsOpts = func(server bool) builder.Option {
 	opts := builder.Options(
 		builder.Override(ReplaceMpoolMethod, ConvertMpoolToMessager),
@@ -73,7 +90,10 @@ var ClientsOpts = func(server bool) builder.Option {
 			builder.Override(new(apiface.FullNode), NodeClient),
 			builder.Override(new(IMessager), MessagerClient),
 			builder.Override(new(ISinger), NewWalletClient),
-			builder.Override(new(IStorageMiner), NewStorageMiner),
+
+			builder.Override(new(*marketevent.MarketEventStream), NewMarketEvent),
+			builder.Override(new(marketevent.IMarketEventAPI), NewMarketEventAPI),
+			builder.Override(new(MarketRequestEvent), builder.From(new(*marketevent.MarketEventStream))),
 		)
 	} else {
 		return builder.Options(opts,

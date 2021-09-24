@@ -40,17 +40,13 @@ var DefaultMarketConfig = &MarketConfig{
 		Url:   "/ip4/127.0.0.1/tcp/5678/http",
 		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIl19.Y03rbv28jVsXK9t4Ih9a0YmmzGoG2fwa5Ek1VkQByQ0",
 	},
-	Sealer: Sealer{
-		Url:   "/ip4/127.0.0.1/tcp/2345",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIiwiYWRtaW4iXX0.0yOKuJxNwI6wVZybM8jwIvUI_M2oZKAyEpeoTG6qN4M",
-	},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
 		MaxConcurrencyStorageCalls: 100,
 		GCInterval:                 Duration(1 * time.Minute),
 	},
 	Journal:                        Journal{Path: "journal"},
-	PieceStorage:                   "fs:/Users/lijunlong/.venusmarket",
+	PieceStorage:                   "fs:/mnt/piece",
 	ConsiderOnlineStorageDeals:     true,
 	ConsiderOfflineStorageDeals:    true,
 	ConsiderOnlineRetrievalDeals:   true,

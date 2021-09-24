@@ -39,6 +39,7 @@ var log = logging.Logger("market_api")
 
 type MarketNodeImpl struct {
 	FundAPI
+	MarketEventAPI
 	fx.In
 	Cfg               *config.MarketConfig
 	FullNode          apiface.FullNode

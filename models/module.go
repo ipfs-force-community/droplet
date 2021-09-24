@@ -150,11 +150,13 @@ var DBOptions = func(server bool) builder.Option {
 	} else {
 		return builder.Options(
 			builder.Override(new(MetadataDS), NewMetadataDS),
+			builder.Override(new(FundMgrDS), NewFundMgrDS),
+			builder.Override(new(PayChanDS), NewPayChanDS),
+
 			builder.Override(new(ClientDatastore), NewClientDatastore),
 			builder.Override(new(ClientBlockstore), NewClientBlockstore),
 			builder.Override(new(ClientDealsDS), NewClientDealsDS),
 			builder.Override(new(RetrievalClientDS), NewRetrievalClientDS),
-			builder.Override(new(PayChanDS), NewPayChanDS),
 			builder.Override(new(ImportClientDS), NewImportClientDS),
 			builder.Override(new(ClientTransferDS), NewClientTransferDS),
 		)

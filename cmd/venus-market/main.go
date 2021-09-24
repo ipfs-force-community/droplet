@@ -60,16 +60,6 @@ var (
 		Usage: "token for connect venus componets",
 	}
 
-	SealerUrlFlag = &cli.StringFlag{
-		Name:  "sealer-url",
-		Usage: "used to connect to local sealer component",
-	}
-
-	SealerTokenFlag = &cli.StringFlag{
-		Name:  "sealer-token",
-		Usage: "auth token for connect sealer",
-	}
-
 	SignerUrlFlag = &cli.StringFlag{
 		Name:  "signer-url",
 		Usage: "used to connect signer service for sign",
@@ -102,8 +92,6 @@ func main() {
 					NodeUrlFlag,
 					MessagerUrlFlag,
 					AuthTokeFlag,
-					SealerUrlFlag,
-					SealerTokenFlag,
 					SignerUrlFlag,
 					SignerTokenFlag,
 					PieceStorageFlag,
@@ -226,13 +214,6 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	}
 	if cctx.IsSet("auth-token") {
 		cfg.Messager.Token = cctx.String("auth-token")
-	}
-
-	if cctx.IsSet("sealer-url") {
-		cfg.Sealer.Url = cctx.String("sealer-url")
-	}
-	if cctx.IsSet("sealer-token") {
-		cfg.Sealer.Token = cctx.String("sealer-token")
 	}
 
 	if cctx.IsSet("signer-url") {

@@ -131,7 +131,6 @@ var ConfigServerOpts = func(cfg *MarketConfig) builder.Option {
 		builder.Override(new(*Node), &cfg.Node),
 		builder.Override(new(*Messager), &cfg.Messager),
 		builder.Override(new(*Signer), &cfg.Signer),
-		builder.Override(new(*Sealer), &cfg.Sealer),
 		builder.Override(new(*Libp2p), &cfg.Libp2p),
 		builder.Override(new(*PieceStorage), &cfg.PieceStorage),
 		builder.Override(new(*DAGStoreConfig), &cfg.DAGStore),

@@ -34,7 +34,8 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-multierror v1.1.0
-	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210817020216-e774586a8875
+	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210924063144-1d3a5b30de87
+	github.com/ipfs-force-community/venus-gateway v1.1.2-0.20210924075733-15cc9301abf0
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.1.5
 	github.com/ipfs/go-cid v0.1.0

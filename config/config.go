@@ -41,7 +41,6 @@ type ConnectConfig struct {
 
 type Node ConnectConfig
 type Messager ConnectConfig
-type Sealer ConnectConfig
 type Market ConnectConfig
 
 type Common struct {
@@ -142,7 +141,6 @@ type MarketConfig struct {
 
 	Common
 	Node     Node
-	Sealer   Sealer
 	Messager Messager
 	Signer   Signer
 

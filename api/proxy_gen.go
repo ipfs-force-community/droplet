@@ -18,6 +18,8 @@ import (
 	mTypes "github.com/filecoin-project/venus-messager/types"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
 	"github.com/google/uuid"
+	"github.com/ipfs-force-community/venus-gateway/marketevent"
+	types2 "github.com/ipfs-force-community/venus-gateway/types"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -82,15 +84,15 @@ type MarketClientNodeStruct struct {
 
 		DefaultAddress func(p0 context.Context) (address.Address, error) `perm:"read"`
 
-		MarketAddBalance func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) ``
+		MarketAddBalance func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) `perm:"write"`
 
-		MarketGetReserved func(p0 context.Context, p1 address.Address) (vTypes.BigInt, error) ``
+		MarketGetReserved func(p0 context.Context, p1 address.Address) (vTypes.BigInt, error) `perm:"read"`
 
-		MarketReleaseFunds func(p0 context.Context, p1 address.Address, p2 vTypes.BigInt) error ``
+		MarketReleaseFunds func(p0 context.Context, p1 address.Address, p2 vTypes.BigInt) error `perm:"write"`
 
-		MarketReserveFunds func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) ``
+		MarketReserveFunds func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) `perm:"write"`
 
-		MarketWithdraw func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) ``
+		MarketWithdraw func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) `perm:"write"`
 	}
 }
 
@@ -153,6 +155,8 @@ type MarketFullNodeStruct struct {
 
 		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
 
+		ListenMarketEvent func(p0 context.Context, p1 *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) ``
+
 		MarkDealsAsPacking func(p0 context.Context, p1 address.Address, p2 []abi.DealID) error `perm:"write"`
 
 		MarketAddBalance func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) `perm:"sign"`
@@ -210,6 +214,8 @@ type MarketFullNodeStruct struct {
 		PiecesListCidInfos func(p0 context.Context) ([]cid.Cid, error) `perm:"read"`
 
 		PiecesListPieces func(p0 context.Context) ([]cid.Cid, error) `perm:"read"`
+
+		ResponseMarketEvent func(p0 context.Context, p1 *types2.ResponseEvent) error ``
 
 		SectorGetSealDelay func(p0 context.Context) (time.Duration, error) `perm:"read"`
 
@@ -704,6 +710,14 @@ func (s *MarketFullNodeStub) ID(p0 context.Context) (peer.ID, error) {
 	return *new(peer.ID), xerrors.New("method not supported")
 }
 
+func (s *MarketFullNodeStruct) ListenMarketEvent(p0 context.Context, p1 *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) {
+	return s.Internal.ListenMarketEvent(p0, p1)
+}
+
+func (s *MarketFullNodeStub) ListenMarketEvent(p0 context.Context, p1 *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) {
+	return nil, xerrors.New("method not supported")
+}
+
 func (s *MarketFullNodeStruct) MarkDealsAsPacking(p0 context.Context, p1 address.Address, p2 []abi.DealID) error {
 	return s.Internal.MarkDealsAsPacking(p0, p1, p2)
 }
@@ -934,6 +948,14 @@ func (s *MarketFullNodeStruct) PiecesListPieces(p0 context.Context) ([]cid.Cid, 
 
 func (s *MarketFullNodeStub) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {
 	return *new([]cid.Cid), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) ResponseMarketEvent(p0 context.Context, p1 *types2.ResponseEvent) error {
+	return s.Internal.ResponseMarketEvent(p0, p1)
+}
+
+func (s *MarketFullNodeStub) ResponseMarketEvent(p0 context.Context, p1 *types2.ResponseEvent) error {
+	return xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) SectorGetSealDelay(p0 context.Context) (time.Duration, error) {
