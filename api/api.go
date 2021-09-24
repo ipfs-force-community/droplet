@@ -134,8 +134,8 @@ type MarketFullNode interface {
 
 	//todo validate miner identify
 	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*piece.DealInfo, error)                                                          //perm:read
-	AssignUnPackedDeals(spec *piece.GetDealSpec) ([]*piece.DealInfo, error)                                                                                           //perm:write
-	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfo, error)                                                  //perm:read
+	AssignUnPackedDeals(spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error)                                                                                //perm:write
+	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error)                                       //perm:read
 	MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                          //perm:write
 	UpdateDealOnPacking(ctx context.Context, miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error //perm:write
 	UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status string) error                                                              //perm:write

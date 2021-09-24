@@ -613,11 +613,11 @@ func (m MarketNodeImpl) DagstoreGC(ctx context.Context) ([]types.DagstoreShardRe
 	return ret, nil
 }
 
-func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfo, error) {
+func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
 	return m.PieceStore.GetUnPackedDeals(spec)
 }
 
-func (m MarketNodeImpl) AssignUnPackedDeals(spec *piece.GetDealSpec) ([]*piece.DealInfo, error) {
+func (m MarketNodeImpl) AssignUnPackedDeals(spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
 	return m.PieceStore.AssignUnPackedDeals(spec)
 }
 

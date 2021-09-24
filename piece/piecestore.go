@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models"
+	"path"
 	"strings"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
@@ -42,6 +44,11 @@ type DealInfo struct {
 	Status        string
 }
 
+type DealInfoIncludePath struct {
+	DealInfo
+	PieceStorage string
+}
+
 type GetDealSpec struct {
 	MaxPiece     int
 	MaxPieceSize uint64
@@ -53,8 +60,8 @@ type PieceStore interface {
 	UpdateDealStatus(dealId abi.DealID, status string) error
 	GetDealByPosition(ctx context.Context, sid abi.SectorID, offset abi.PaddedPieceSize, length abi.PaddedPieceSize) (*DealInfo, error)
 	GetDeals(pageIndex, pageSize int) ([]*DealInfo, error)
-	AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
-	GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
+	AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfoIncludePath, error)
+	GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfoIncludePath, error)
 	MarkDealsAsPacking(deals []abi.DealID) error
 	ListPieceInfoKeys() ([]cid.Cid, error)
 	GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, error)
@@ -75,16 +82,17 @@ type ExtendPieceStore interface {
 var _ piecestore.PieceStore = (ExtendPieceStore)(nil)
 
 type dsPieceStore struct {
-	pieces datastore.Batching
-
-	pieceLk sync.Mutex
+	pieces       datastore.Batching
+	pieceStorage *config.PieceStorageString
+	pieceLk      sync.Mutex
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func NewDsPieceStore(ds models.PieceInfoDS) (PieceStore, error) {
+func NewDsPieceStore(ds models.PieceInfoDS, pieceStorage *config.PieceStorageString) (PieceStore, error) {
 	return &dsPieceStore{
-		pieces:  ds,
-		pieceLk: sync.Mutex{},
+		pieces:       ds,
+		pieceStorage: pieceStorage,
+		pieceLk:      sync.Mutex{},
 	}, nil
 }
 
@@ -215,7 +223,7 @@ var defaultGetDealSpec = &GetDealSpec{
 	MaxPieceSize: 0,
 }
 
-func (ps *dsPieceStore) AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error) {
+func (ps *dsPieceStore) AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfoIncludePath, error) {
 	ps.pieceLk.Lock()
 	defer ps.pieceLk.Unlock()
 
@@ -231,7 +239,7 @@ func (ps *dsPieceStore) AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, err
 		return nil, xerrors.Errorf("query error: %w", err)
 	}
 
-	var result []*DealInfo
+	var result []*DealInfoIncludePath
 	var curPiece int
 	var curPieceSize uint64
 	var modify map[string]PieceInfo
@@ -245,7 +253,10 @@ LOOP:
 
 		for _, deal := range pieceInfo.Deals {
 			if deal.Status == Undefine {
-				result = append(result, deal)
+				result = append(result, &DealInfoIncludePath{
+					DealInfo:     *deal,
+					PieceStorage: path.Join(string(*ps.pieceStorage), deal.Proposal.PieceCID.String()),
+				})
 				deal.Status = Assigned
 
 				curPiece++
@@ -279,7 +290,7 @@ LOOP:
 	return result, nil
 }
 
-func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error) {
+func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfoIncludePath, error) {
 	ps.pieceLk.Lock()
 	defer ps.pieceLk.Unlock()
 
@@ -296,7 +307,7 @@ func (ps *dsPieceStore) GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
 	}
 	defer qres.Close() //nolint:errcheck
 
-	var result []*DealInfo
+	var result []*DealInfoIncludePath
 	var curPiece int
 	var curPieceSize uint64
 LOOP:
@@ -309,7 +320,10 @@ LOOP:
 
 		for _, deal := range pieceInfo.Deals {
 			if deal.Status == Undefine {
-				result = append(result, deal)
+				result = append(result, &DealInfoIncludePath{
+					DealInfo:     *deal,
+					PieceStorage: path.Join(string(*ps.pieceStorage), deal.Proposal.PieceCID.String()),
+				})
 				deal.Status = Assigned
 
 				curPiece++

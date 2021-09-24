@@ -105,7 +105,7 @@ type MarketFullNodeStruct struct {
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
-		AssignUnPackedDeals func(p0 *piece.GetDealSpec) ([]*piece.DealInfo, error) `perm:"write"`
+		AssignUnPackedDeals func(p0 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) `perm:"write"`
 
 		DagstoreGC func(p0 context.Context) ([]types.DagstoreShardResult, error) `perm:"admin"`
 
@@ -151,7 +151,7 @@ type MarketFullNodeStruct struct {
 
 		GetDeals func(p0 context.Context, p1 address.Address, p2 int, p3 int) ([]*piece.DealInfo, error) `perm:"read"`
 
-		GetUnPackedDeals func(p0 context.Context, p1 address.Address, p2 *piece.GetDealSpec) ([]*piece.DealInfo, error) `perm:"read"`
+		GetUnPackedDeals func(p0 context.Context, p1 address.Address, p2 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) `perm:"read"`
 
 		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
 
@@ -510,12 +510,12 @@ func (s *MarketFullNodeStub) ActorSectorSize(p0 context.Context, p1 address.Addr
 	return *new(abi.SectorSize), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) AssignUnPackedDeals(p0 *piece.GetDealSpec) ([]*piece.DealInfo, error) {
+func (s *MarketFullNodeStruct) AssignUnPackedDeals(p0 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
 	return s.Internal.AssignUnPackedDeals(p0)
 }
 
-func (s *MarketFullNodeStub) AssignUnPackedDeals(p0 *piece.GetDealSpec) ([]*piece.DealInfo, error) {
-	return *new([]*piece.DealInfo), xerrors.New("method not supported")
+func (s *MarketFullNodeStub) AssignUnPackedDeals(p0 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
+	return *new([]*piece.DealInfoIncludePath), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) DagstoreGC(p0 context.Context) ([]types.DagstoreShardResult, error) {
@@ -694,12 +694,12 @@ func (s *MarketFullNodeStub) GetDeals(p0 context.Context, p1 address.Address, p2
 	return *new([]*piece.DealInfo), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) GetUnPackedDeals(p0 context.Context, p1 address.Address, p2 *piece.GetDealSpec) ([]*piece.DealInfo, error) {
+func (s *MarketFullNodeStruct) GetUnPackedDeals(p0 context.Context, p1 address.Address, p2 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
 	return s.Internal.GetUnPackedDeals(p0, p1, p2)
 }
 
-func (s *MarketFullNodeStub) GetUnPackedDeals(p0 context.Context, p1 address.Address, p2 *piece.GetDealSpec) ([]*piece.DealInfo, error) {
-	return *new([]*piece.DealInfo), xerrors.New("method not supported")
+func (s *MarketFullNodeStub) GetUnPackedDeals(p0 context.Context, p1 address.Address, p2 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
+	return *new([]*piece.DealInfoIncludePath), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) ID(p0 context.Context) (peer.ID, error) {
