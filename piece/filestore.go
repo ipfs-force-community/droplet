@@ -12,7 +12,7 @@ import (
 type IPieceStorage interface {
 	SaveTo(context.Context, string, io.Reader) (int64, error)
 	Read(context.Context, string) (io.ReadCloser, error)
-	ReadSize(context.Context, string, abi.UnpaddedPieceSize, abi.UnpaddedPieceSize) (io.ReadCloser, error)
+	ReadOffset(context.Context, string, abi.UnpaddedPieceSize, abi.UnpaddedPieceSize) (io.ReadCloser, error)
 	Has(string) (bool, error)
 }
 
@@ -50,7 +50,7 @@ func (p *PieceFileStorage) Read(ctx context.Context, s string) (io.ReadCloser, e
 	return os.Open(path.Join(p.path, s))
 }
 
-func (p *PieceFileStorage) ReadSize(ctx context.Context, s string, offset, size abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+func (p *PieceFileStorage) ReadOffset(ctx context.Context, s string, offset, size abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	fs, err := os.Open(path.Join(p.path, s))
 	if err != nil {
 		return nil, err
@@ -71,5 +71,4 @@ func (p *PieceFileStorage) Has(s string) (bool, error) {
 		return false, err
 	}
 	return true, nil
-
 }

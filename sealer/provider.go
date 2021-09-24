@@ -103,7 +103,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 	}
 
 	if has {
-		r, err := p.pieceStorage.ReadSize(ctx, pieceCid.String(), pieceOffset, size)
+		r, err := p.pieceStorage.ReadOffset(ctx, pieceCid.String(), pieceOffset, size)
 		if err != nil {
 			log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
 			return nil, false, err
@@ -149,7 +149,7 @@ LOOP:
 	//todo how to store data piece not completed piece
 	log.Debugf("unsealed a sector file to read the piece, sector=%+v, offset=%d, size=%d", sector, offset, size)
 	// move piece to storage
-	r, err := p.pieceStorage.ReadSize(ctx, pieceCid.String(), pieceOffset, size)
+	r, err := p.pieceStorage.ReadOffset(ctx, pieceCid.String(), pieceOffset, size)
 	if err != nil {
 		log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
 		return nil, err
