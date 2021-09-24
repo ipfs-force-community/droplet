@@ -29,10 +29,10 @@ type pieceProvider struct {
 	exPieceStore     piece.ExtendPieceStore
 	miner            clients2.MarketRequestEvent
 	maddr            types.MinerAddress
-	pieceStrorageCfg *config.PieceStorage
+	pieceStrorageCfg *config.PieceStorageString
 }
 
-func NewPieceProvider(miner clients2.MarketRequestEvent, maddr types.MinerAddress, pieceStrorageCfg *config.PieceStorage, pieceStorage piece.IPieceStorage, exPieceStore piece.ExtendPieceStore) PieceProvider {
+func NewPieceProvider(miner clients2.MarketRequestEvent, maddr types.MinerAddress, pieceStrorageCfg *config.PieceStorageString, pieceStorage piece.IPieceStorage, exPieceStore piece.ExtendPieceStore) PieceProvider {
 	return &pieceProvider{
 		miner:            miner,
 		pieceStorage:     pieceStorage,

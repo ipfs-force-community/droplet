@@ -28,7 +28,7 @@ func NewProviderPieceStore(lc fx.Lifecycle, piecestore PieceStore, cidStore CIDS
 	return ps, nil
 }
 
-func NewPieceStorage(pieceStrorageCfg *config.PieceStorage) (IPieceStorage, error) {
+func NewPieceStorage(pieceStrorageCfg *config.PieceStorageString) (IPieceStorage, error) {
 	pieceStorage := strings.Split(string(*pieceStrorageCfg), ":")
 	if len(pieceStorage) != 2 {
 		return nil, xerrors.Errorf("wrong format for piece storage %w", *pieceStrorageCfg)

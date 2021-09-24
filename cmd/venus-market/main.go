@@ -224,7 +224,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	}
 
 	if cctx.IsSet("piecestorage") {
-		cfg.PieceStorage = config.PieceStorage(cctx.String("piecestorage"))
+		cfg.PieceStorage = config.PieceStorageString(cctx.String("piecestorage"))
 	}
 	return nil
 }

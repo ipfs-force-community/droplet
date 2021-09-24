@@ -133,7 +133,7 @@ type DAGStoreConfig struct {
 	GCInterval Duration
 }
 
-type PieceStorage string
+type PieceStorageString string
 
 // StorageMiner is a miner config
 type MarketConfig struct {
@@ -144,7 +144,7 @@ type MarketConfig struct {
 	Messager Messager
 	Signer   Signer
 
-	PieceStorage  PieceStorage
+	PieceStorage  PieceStorageString
 	Journal       Journal
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
