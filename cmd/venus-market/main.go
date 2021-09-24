@@ -79,14 +79,9 @@ var (
 		Usage: "auth token for connect signer service",
 	}
 
-	PieceStorageTypeFlag = &cli.StringFlag{
-		Name:  "piecestorage-type",
-		Usage: "specify type of piece storage",
-	}
-
-	PieceStoragePathFlag = &cli.StringFlag{
-		Name:  "piecestorage-path",
-		Usage: "specify path of piece storages",
+	PieceStorageFlag = &cli.StringFlag{
+		Name:  "piecestorage",
+		Usage: "config storage for piece",
 	}
 )
 
@@ -111,8 +106,7 @@ func main() {
 					SealerTokenFlag,
 					SignerUrlFlag,
 					SignerTokenFlag,
-					PieceStorageTypeFlag,
-					PieceStoragePathFlag,
+					PieceStorageFlag,
 				},
 				Action: daemon,
 			},
@@ -248,11 +242,8 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		cfg.Signer.Token = cctx.String("signer-token")
 	}
 
-	if cctx.IsSet("piecestorage-type") {
-		cfg.PieceStorage.Type = cctx.String("piecestorage-type")
-	}
-	if cctx.IsSet("piecestorage-path") {
-		cfg.PieceStorage.Path = cctx.String("piecestorage-path")
+	if cctx.IsSet("piecestorage") {
+		cfg.PieceStorage = config.PieceStorage(cctx.String("piecestorage"))
 	}
 	return nil
 }

@@ -13,7 +13,7 @@ type IPieceStorage interface {
 	SaveTo(context.Context, string, io.Reader) (int64, error)
 	Read(context.Context, string) (io.ReadCloser, error)
 	ReadSize(context.Context, string, abi.UnpaddedPieceSize, abi.UnpaddedPieceSize) (io.ReadCloser, error)
-	Has(string2 string) (bool, error)
+	Has(string) (bool, error)
 }
 
 var _ IPieceStorage = (*PieceFileStorage)(nil)

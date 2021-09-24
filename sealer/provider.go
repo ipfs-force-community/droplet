@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"io"
+	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -48,7 +49,7 @@ func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef
 	ctxLock, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	dealInfo, err := p.exPieceStore.GetDealByPosition(ctx, sector.ID, abi.PaddedPieceSize(offset.Padded()))
+	dealInfo, err := p.exPieceStore.GetDealByPosition(ctx, sector.ID, abi.PaddedPieceSize(offset.Padded()), size.Padded())
 	if err != nil {
 		log.Errorf("did not get deal info by position;sector=%+v, err:%s", sector.ID, err)
 		return false, err
@@ -64,7 +65,7 @@ func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef
 		return true, nil
 	}
 
-	return p.miner.IsUnsealed(ctxLock, sector, offset, size)
+	return p.miner.IsUnsealed(ctxLock, sector, offset.Padded(), size.Padded())
 }
 
 // ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
@@ -82,58 +83,76 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 		return nil, false, xerrors.Errorf("size is not a valid piece size: %w", err)
 	}
 
-	dealInfo, err := p.exPieceStore.GetDealByPosition(ctx, sector.ID, abi.PaddedPieceSize(offset.Padded()))
+	dealInfo, err := p.exPieceStore.GetDealByPosition(ctx, sector.ID, abi.PaddedPieceSize(offset.Padded()), size.Padded())
 	if err != nil {
 		log.Errorf("did not get deal info by position;sector=%+v, err:%s", sector.ID, err)
 		return nil, false, err
 	}
 	pieceCid := dealInfo.Proposal.PieceCID
+	pieceOffset := abi.UnpaddedPieceSize(offset) - dealInfo.Offset.Unpadded()
 	has, err := p.pieceStorage.Has(pieceCid.String())
 	if err != nil {
 		log.Errorf("did not check piece file in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
 		return nil, false, err
 	}
 
-	var uns bool
-	var r io.ReadCloser
 	if has {
-		r, err = p.pieceStorage.Read(ctx, pieceCid.String())
+		r, err := p.pieceStorage.ReadSize(ctx, pieceCid.String(), pieceOffset, size)
 		if err != nil {
 			log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
 			return nil, false, err
 		}
 		return r, true, err
 	} else {
-
-		//todo check deal status
-		/*	if dealInfo.Status != "Proving" {
-			log.Errorf("try read a unsealed sector ;sector=%+v, piececid=%s state=%s err:%s", sector.ID, pieceCid, dealInfo.Status, err)
-			return nil, false, err
-		}*/
-
-		// a nil reader means that none of the workers has an unsealed sector file
-		// containing the unsealed piece.
-		// we now need to unseal a sealed sector file for the given sector to read the unsealed piece from it.
+		//todo check status
 		commd := &unsealed
 		if unsealed == cid.Undef {
 			commd = nil
 		}
 
-		//todo how to tell sealer to start unseal work and async to check task completed
-		if err := p.miner.SectorsUnsealPiece(ctx, sector, offset, size, ticket, commd, ""); err != nil {
-			log.Errorf("failed to SectorsUnsealPiece: %s", err)
-			return nil, false, xerrors.Errorf("unsealing piece: %w", err)
-		}
-
-		//todo how to store data piece not completed piece
-		log.Debugf("unsealed a sector file to read the piece, sector=%+v, offset=%d, size=%d", sector, offset, size)
-		// move piece to storage
-		r, err = p.pieceStorage.Read(ctx, pieceCid.String())
+		r, err := p.unsealPiece(ctx, dealInfo, sector, offset, size, ticket, commd)
 		if err != nil {
-			log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
-			return nil, false, err
+			return nil, false, xerrors.Errorf("unseal piece %w", err)
 		}
-		uns = false
+		return r, false, nil
 	}
-	return r, uns, nil
+}
+
+func (p *pieceProvider) unsealPiece(ctx context.Context, dealInfo *piece.DealInfo, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, commd *cid.Cid) (io.ReadCloser, error) {
+	//todo how to tell sealer to start unseal work and async to check task completed
+	if err := p.miner.SectorsUnsealPiece(ctx, sector, offset.Padded(), size.Padded(), ticket, commd, ""); err != nil {
+		log.Errorf("failed to SectorsUnsealPiece: %s", err)
+		return nil, xerrors.Errorf("unsealing piece: %w", err)
+	}
+
+	pieceCid := dealInfo.Proposal.PieceCID
+	pieceOffset := abi.UnpaddedPieceSize(offset) - dealInfo.Offset.Unpadded()
+	//todo config
+	ctx, _ = context.WithTimeout(ctx, time.Hour*6)
+	tm := time.NewTimer(time.Second * 30)
+
+	for {
+		select {
+		case <-tm.C:
+			has, err := p.pieceStorage.Has(pieceCid.String())
+			if err != nil {
+				return nil, xerrors.Errorf("unable to check piece in piece stroage %w", err)
+			}
+			if has {
+				goto LOOP
+			}
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+LOOP:
+	//todo how to store data piece not completed piece
+	log.Debugf("unsealed a sector file to read the piece, sector=%+v, offset=%d, size=%d", sector, offset, size)
+	// move piece to storage
+	r, err := p.pieceStorage.ReadSize(ctx, pieceCid.String(), pieceOffset, size)
+	if err != nil {
+		log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
+		return nil, err
+	}
+	return r, err
 }

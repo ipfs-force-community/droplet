@@ -76,7 +76,6 @@ require (
 	github.com/multiformats/go-multihash v0.0.15
 	github.com/multiformats/go-varint v0.0.6
 	github.com/pkg/errors v0.9.1
-	github.com/raulk/clock v1.1.0
 	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.3.0

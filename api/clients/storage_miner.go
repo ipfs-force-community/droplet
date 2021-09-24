@@ -14,26 +14,26 @@ import (
 )
 
 type IStorageMiner interface {
-	IsUnsealed(ctx context.Context, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
+	IsUnsealed(ctx context.Context, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize) (bool, error)
 	// SectorsUnsealPiece will Unseal a Sealed sector file for the given sector.
-	SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid, dest string) error
+	SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid, dest string) error
 }
 
 var _ IStorageMiner = (*StorageMinerStruct)(nil)
 
 type StorageMinerStruct struct {
 	Internal struct {
-		IsUnsealed func(ctx context.Context, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
+		IsUnsealed func(ctx context.Context, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize) (bool, error)
 		// SectorsUnsealPiece will Unseal a Sealed sector file for the given sector.
-		SectorsUnsealPiece func(ctx context.Context, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error
+		SectorsUnsealPiece func(ctx context.Context, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error
 	}
 }
 
-func (s *StorageMinerStruct) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+func (s *StorageMinerStruct) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize) (bool, error) {
 	return s.Internal.IsUnsealed(ctx, sector, offset, size)
 }
 
-func (s *StorageMinerStruct) SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset types.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid, dest string) error {
+func (s *StorageMinerStruct) SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid, dest string) error {
 	return s.Internal.SectorsUnsealPiece(ctx, sector, offset, size, randomness, commd)
 }
 

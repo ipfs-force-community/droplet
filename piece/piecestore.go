@@ -51,7 +51,7 @@ type PieceStore interface {
 	UpdateDealOnComplete(pieceCID cid.Cid, proposal market.ClientDealProposal, dataRef *storagemarket.DataRef, publishCid cid.Cid, dealId abi.DealID, fastRetrieval bool) error
 	UpdateDealOnPacking(pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error
 	UpdateDealStatus(dealId abi.DealID, status string) error
-	GetDealByPosition(ctx context.Context, sid abi.SectorID, offset abi.PaddedPieceSize) (*DealInfo, error)
+	GetDealByPosition(ctx context.Context, sid abi.SectorID, offset abi.PaddedPieceSize, length abi.PaddedPieceSize) (*DealInfo, error)
 	GetDeals(pageIndex, pageSize int) ([]*DealInfo, error)
 	AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
 	GetUnPackedDeals(spec *GetDealSpec) ([]*DealInfo, error)
@@ -170,10 +170,10 @@ func (ps *dsPieceStore) UpdateDealStatus(dealId abi.DealID, status string) error
 	})
 }
 
-func (ps *dsPieceStore) GetDealByPosition(ctx context.Context, sid abi.SectorID, offset abi.PaddedPieceSize) (*DealInfo, error) {
+func (ps *dsPieceStore) GetDealByPosition(ctx context.Context, sid abi.SectorID, offset abi.PaddedPieceSize, length abi.PaddedPieceSize) (*DealInfo, error) {
 	var dinfo *DealInfo
 	err := ps.eachPackedDeal(func(info *DealInfo) (bool, error) {
-		if info.SectorID == sid.Number && info.Offset == offset {
+		if info.SectorID == sid.Number && info.Offset <= offset && info.Offset+info.Length >= offset+length {
 			dinfo = info
 			return false, nil
 		}

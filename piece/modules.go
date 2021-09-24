@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/venus-market/utils"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+	"strings"
 )
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
@@ -28,11 +29,15 @@ func NewProviderPieceStore(lc fx.Lifecycle, piecestore PieceStore, cidStore CIDS
 }
 
 func NewPieceStorage(pieceStrorageCfg *config.PieceStorage) (IPieceStorage, error) {
-	switch pieceStrorageCfg.Type {
-	case "local":
-		return NewPieceFileStorage(pieceStrorageCfg.Path)
+	pieceStorage := strings.Split(string(*pieceStrorageCfg), ":")
+	if len(pieceStorage) != 2 {
+		return nil, xerrors.Errorf("wrong format for piece storage %w", *pieceStrorageCfg)
+	}
+	switch pieceStorage[0] {
+	case "fs":
+		return NewPieceFileStorage(pieceStorage[1])
 	default:
-		return nil, xerrors.Errorf("unsupport piece piecestorage type %s", pieceStrorageCfg.Type)
+		return nil, xerrors.Errorf("unsupport piece piecestorage type %s", *pieceStrorageCfg)
 	}
 }
 

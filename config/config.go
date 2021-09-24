@@ -58,11 +58,6 @@ type Journal struct {
 	Path string
 }
 
-type PieceStorage struct {
-	Type string
-	Path string
-}
-
 const (
 	// RetrievalPricingDefault configures the node to use the default retrieval pricing policy.
 	RetrievalPricingDefaultMode = "default"
@@ -138,6 +133,8 @@ type DAGStoreConfig struct {
 	// Default value: 1 minute.
 	GCInterval Duration
 }
+
+type PieceStorage string
 
 // StorageMiner is a miner config
 type MarketConfig struct {

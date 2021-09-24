@@ -49,11 +49,8 @@ var DefaultMarketConfig = &MarketConfig{
 		MaxConcurrencyStorageCalls: 100,
 		GCInterval:                 Duration(1 * time.Minute),
 	},
-	Journal: Journal{Path: "journal"},
-	PieceStorage: PieceStorage{
-		Type: "local",
-		Path: "/Users/lijunlong/.venusmarket",
-	},
+	Journal:                        Journal{Path: "journal"},
+	PieceStorage:                   "fs:/Users/lijunlong/.venusmarket",
 	ConsiderOnlineStorageDeals:     true,
 	ConsiderOfflineStorageDeals:    true,
 	ConsiderOnlineRetrievalDeals:   true,
