@@ -10,6 +10,7 @@ import (
 	types2 "github.com/ipfs-force-community/venus-common-utils/types"
 	"golang.org/x/xerrors"
 	"io"
+	"path"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -122,7 +123,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 func (p *pieceProvider) unsealPiece(ctx context.Context, dealInfo *piece.DealInfo, sector storage.SectorRef, offset types2.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	pieceCid := dealInfo.Proposal.PieceCID
 	pieceOffset := abi.UnpaddedPieceSize(offset) - dealInfo.Offset.Unpadded()
-	if err := p.miner.SectorsUnsealPiece(ctx, address.Address(p.maddr), pieceCid, sector, offset.Padded(), size.Padded(), string(*p.pieceStrorageCfg)); err != nil {
+	if err := p.miner.SectorsUnsealPiece(ctx, address.Address(p.maddr), pieceCid, sector, offset.Padded(), size.Padded(), path.Join(string(*p.pieceStrorageCfg), pieceCid.String())); err != nil {
 		log.Errorf("failed to SectorsUnsealPiece: %s", err)
 		return nil, xerrors.Errorf("unsealing piece: %w", err)
 	}
