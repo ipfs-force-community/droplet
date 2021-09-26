@@ -14,7 +14,7 @@ func Read(path string) (io.ReadCloser, error) {
 	}
 	switch pieceFile[0] {
 	case "fs":
-		return os.Open(path)
+		return os.Open(pieceFile[1])
 	default:
 		return nil, xerrors.Errorf("unsupport piece piecestorage type %s", path)
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
+	types3 "github.com/ipfs-force-community/venus-gateway/types"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 	"time"
@@ -68,7 +69,10 @@ func ConvertWalletToISinge(fullNode apiface.FullNode, signer ISinger) error {
 func NewMarketEvent(mctx metrics.MetricsCtx) (*marketevent.MarketEventStream, error) {
 	stream := marketevent.NewMarketEventStream(mctx, func(miner address.Address) (bool, error) {
 		return true, nil
-	}, nil)
+	}, &types3.Config{
+		RequestQueueSize: 30,
+		RequestTimeout:   time.Second * 30,
+	})
 	return stream, nil
 }
 
