@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/types"
@@ -53,17 +54,14 @@ type DealInfo struct {
 }
 
 type DealInfoIncludePath struct {
-	PieceCID             cid.Cid
-	PieceSize            abi.PaddedPieceSize
-	Offset               abi.PaddedPieceSize
-	Length               abi.PaddedPieceSize
-	DealID               abi.DealID
-	VerifiedDeal         bool
-	StartEpoch           abi.ChainEpoch
-	EndEpoch             abi.ChainEpoch
-	StoragePricePerEpoch abi.TokenAmount
-	TotalStorageFee      abi.TokenAmount
-	PieceStorage         string
+	Offset          abi.PaddedPieceSize
+	Length          abi.PaddedPieceSize
+	DealID          abi.DealID
+	TotalStorageFee abi.TokenAmount
+	PieceStorage    string
+	market2.DealProposal
+	FastRetrieval bool
+	PublishCid    cid.Cid
 }
 
 type GetDealSpec struct {
@@ -336,8 +334,10 @@ func (ps *dsPieceStore) AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfoInclu
 				// 填充 全0 piece
 				if dealOfFsize == nil {
 					combined.Pieces = append(combined.Pieces, &DealInfoIncludePath{
-						PieceSize: fsize.Padded(),
-						PieceCID:  zerocomm.ZeroPieceCommitment(fsize),
+						DealProposal: market2.DealProposal{
+							PieceSize: fsize.Padded(),
+							PieceCID:  zerocomm.ZeroPieceCommitment(fsize),
+						},
 					})
 					continue
 				}
@@ -418,17 +418,14 @@ LOOP:
 		for _, deal := range pieceInfo.Deals {
 			if deal.Status == Undefine {
 				result = append(result, &DealInfoIncludePath{
-					PieceCID:             deal.Proposal.PieceCID,
-					PieceSize:            deal.Proposal.PieceSize,
-					Offset:               deal.Offset,
-					Length:               deal.Length,
-					DealID:               deal.DealID,
-					VerifiedDeal:         deal.Proposal.VerifiedDeal,
-					StartEpoch:           deal.Proposal.StartEpoch,
-					EndEpoch:             deal.Proposal.EndEpoch,
-					StoragePricePerEpoch: deal.Proposal.StoragePricePerEpoch,
-					TotalStorageFee:      deal.Proposal.TotalStorageFee(),
-					PieceStorage:         path.Join(string(*ps.pieceStorage), deal.Proposal.PieceCID.String()),
+					DealProposal:    deal.Proposal,
+					Offset:          deal.Offset,
+					Length:          deal.Length,
+					DealID:          deal.DealID,
+					TotalStorageFee: deal.Proposal.TotalStorageFee(),
+					PieceStorage:    path.Join(string(*ps.pieceStorage), deal.Proposal.PieceCID.String()),
+					FastRetrieval:   deal.FastRetrieval,
+					PublishCid:      deal.PublishCid,
 				})
 				deal.Status = Assigned
 
