@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/types"
 	logging "github.com/ipfs/go-log/v2"
 	"math"
 	"math/bits"
@@ -101,13 +102,15 @@ type dsPieceStore struct {
 	pieces       datastore.Batching
 	pieceStorage *config.PieceStorageString
 	pieceLk      sync.Mutex
+	ssize        types.SectorSize
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func NewDsPieceStore(ds models.PieceInfoDS, pieceStorage *config.PieceStorageString) (PieceStore, error) {
+func NewDsPieceStore(ds models.PieceInfoDS, ssize types.SectorSize, pieceStorage *config.PieceStorageString) (PieceStore, error) {
 	return &dsPieceStore{
 		pieces:       ds,
 		pieceStorage: pieceStorage,
+		ssize:        ssize,
 		pieceLk:      sync.Mutex{},
 	}, nil
 }
@@ -264,7 +267,7 @@ func (ps *dsPieceStore) AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfoInclu
 
 	dealsBySize := [][]*DealInfoIncludePath{}
 	dealSizeIdxMap := map[abi.UnpaddedPieceSize]int{}
-	sectorCap := abi.UnpaddedPieceSize(1024)
+	sectorCap := abi.PaddedPieceSize(ps.ssize).Unpadded()
 
 	// 按尺寸分组
 	for di, deal := range deals {

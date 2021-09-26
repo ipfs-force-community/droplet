@@ -20,6 +20,7 @@ import (
 // clock.NewMock(). Always use real time for socket/stream deadlines.
 var Clock = clock.NewSystemClock()
 
+type SectorSize abi.SectorSize
 type MinerAddress address.Address
 type MinerID abi.ActorID
 

@@ -9,6 +9,8 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	dagstore2 "github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	types2 "github.com/filecoin-project/venus/pkg/types"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 	"os"
@@ -26,6 +28,14 @@ func MinerAddress(cfg *config.MarketConfig) (types.MinerAddress, error) {
 		return types.MinerAddress{}, err
 	}
 	return types.MinerAddress(addr), nil
+}
+
+func MinerSectorSize(minerAddr types.MinerAddress, node apiface.FullNode) (types.SectorSize, error) {
+	minerInfo, err := node.StateMinerInfo(context.TODO(), address.Address(minerAddr), types2.EmptyTSK)
+	if err != nil {
+		return types.SectorSize(0), err
+	}
+	return types.SectorSize(minerInfo.SectorSize), nil
 }
 
 func NewAddressSelector(cfg *config.MarketConfig) (*AddressSelector, error) {
@@ -71,6 +81,7 @@ func NewDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreC
 var SealerOpts = builder.Options(
 	//sealer service
 	builder.Override(new(types.MinerAddress), MinerAddress), //todo miner single miner todo change to support multiple miner
+	builder.Override(new(types.SectorSize), MinerSectorSize),
 	builder.Override(new(PieceProvider), NewPieceProvider),
 	builder.Override(new(*AddressSelector), NewAddressSelector),
 	builder.Override(new(dagstore2.MinerAPI), NewMinerAPI),
