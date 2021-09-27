@@ -3,14 +3,17 @@ package clients
 import (
 	"context"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/metrics"
 	types2 "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
 	types3 "github.com/ipfs-force-community/venus-gateway/types"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 	"time"
@@ -25,6 +28,7 @@ var (
 
 func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error {
 	fullNodeStruct := fullNode.(*client.FullNodeStruct)
+
 	fullNodeStruct.IMessagePoolStruct.Internal.MpoolPushMessage = func(ctx context.Context, p1 *types.UnsignedMessage, p2 *types.MessageSendSpec) (*types.SignedMessage, error) {
 		uid, err := messager.PushMessage(ctx, p1, nil)
 		if err != nil {
@@ -54,6 +58,66 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 				}, nil
 			}
 		}
+	}
+
+	fullNodeStruct.IChainInfoStruct.Internal.StateWaitMsg = func(ctx context.Context, mCid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+		tm := time.NewTicker(time.Second * 30)
+		defer tm.Stop()
+
+		doneCh := make(chan struct{}, 1)
+		doneCh <- struct{}{}
+
+		for {
+			select {
+			case <-doneCh:
+				msg, err := messager.GetMessageByCid(ctx, mCid)
+				if err != nil {
+					log.Warnw("get message fail while wait %w", err)
+					time.Sleep(time.Second * 5)
+					continue
+				}
+
+				switch msg.State {
+				//OffChain
+				case types2.FillMsg:
+					fallthrough
+				case types2.UnFillMsg:
+					fallthrough
+				case types2.UnKnown:
+					continue
+				//OnChain
+				case types2.ReplacedMsg:
+					fallthrough
+				case types2.OnChainMsg:
+					if msg.Confidence > int64(confidence) {
+						return &apitypes.MsgLookup{
+							Message: mCid,
+							Receipt: types.MessageReceipt{
+								ExitCode:    msg.Receipt.ExitCode,
+								ReturnValue: msg.Receipt.ReturnValue,
+								GasUsed:     msg.Receipt.GasUsed,
+							},
+							TipSet: msg.TipSetKey,
+							Height: abi.ChainEpoch(msg.Height),
+						}, nil
+					}
+					continue
+				//Error
+				case types2.FailedMsg:
+					var reason string
+					if msg.Receipt != nil {
+						reason = string(msg.Receipt.ReturnValue)
+					}
+					return nil, xerrors.Errorf("msg failed due to %s", reason)
+				}
+
+			case <-tm.C:
+				doneCh <- struct{}{}
+			case <-ctx.Done():
+				return nil, xerrors.Errorf("get message fail while wait")
+			}
+		}
+
 	}
 	return nil
 }
