@@ -319,7 +319,7 @@ func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Mes
 	uid := uuid.New()
 	_, err := m.Messager.PushMessageWithId(ctx, uid.String(), msg, meta)
 	if err != nil {
-		return uuid.UUID{}, nil
+		return uuid.UUID{}, err
 	}
 	return uid, nil
 }
