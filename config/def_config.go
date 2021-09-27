@@ -16,7 +16,7 @@ var DefaultMarketConfig = &MarketConfig{
 	MinerAddress: "maddr",
 	Common: Common{
 		API: API{
-			ListenAddress: "/ip4/127.0.0.1/tcp/41235/http",
+			ListenAddress: "/ip4/127.0.0.1/tcp/41235",
 			Timeout:       Duration(30 * time.Second),
 		},
 		Libp2p: Libp2p{
@@ -37,7 +37,7 @@ var DefaultMarketConfig = &MarketConfig{
 		Token: "",
 	},
 	Signer: Signer{
-		Url:   "/ip4/<ip>/tcp/5678/http",
+		Url:   "/ip4/<ip>/tcp/5678",
 		Token: "",
 	},
 	DAGStore: DAGStoreConfig{
@@ -99,7 +99,7 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		Token: "",
 	},
 	Signer: Signer{
-		Url:   "/ip4/<ip>/tcp/5678/http",
+		Url:   "/ip4/<ip>/tcp/5678",
 		Token: "",
 	},
 	Messager: Messager{
