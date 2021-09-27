@@ -353,6 +353,7 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}
+	ctx.Done()
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.ReturnValue, receipt.Message, nil)
 }
 
