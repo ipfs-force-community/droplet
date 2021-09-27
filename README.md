@@ -10,6 +10,8 @@ venus-market will deliver a complete deal making experience as what lotus offers
 * Supports for mainnet, calibration and Nerpa
 * Lightweight client: compatibility with Lotus and support for venus-market unique features including client running seperately as a process and remove dependencies for node; great for bootstraping tests on deal making process
 
+![](https://raw.githubusercontent.com/hunjixin/imgpool/master/market.png)
+
 ## build
 
 ```sh
