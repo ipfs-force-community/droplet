@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/api/impl"
@@ -68,7 +69,10 @@ var (
 		Name:  "signer-token",
 		Usage: "auth token for connect signer service",
 	}
-
+	MinerFlag = &cli.StringFlag{
+		Name:  "miner",
+		Usage: "miner address",
+	}
 	PieceStorageFlag = &cli.StringFlag{
 		Name:  "piecestorage",
 		Usage: "config storage for piece",
@@ -95,6 +99,7 @@ func main() {
 					SignerUrlFlag,
 					SignerTokenFlag,
 					PieceStorageFlag,
+					MinerFlag,
 				},
 				Action: daemon,
 			},
@@ -221,6 +226,14 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	}
 	if cctx.IsSet("signer-token") {
 		cfg.Signer.Token = cctx.String("signer-token")
+	}
+
+	if cctx.IsSet("miner") {
+		addr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return err
+		}
+		cfg.MinerAddress = addr.String()
 	}
 
 	if cctx.IsSet("piecestorage") {

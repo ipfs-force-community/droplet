@@ -13,7 +13,7 @@ const (
 
 var DefaultMarketConfig = &MarketConfig{
 	Home:         Home{"~/.venusmarket"},
-	MinerAddress: "f01005",
+	MinerAddress: "maddr",
 	Common: Common{
 		API: API{
 			ListenAddress: "/ip4/127.0.0.1/tcp/41235/http",
@@ -29,16 +29,16 @@ var DefaultMarketConfig = &MarketConfig{
 		},
 	},
 	Node: Node{
-		Url:   "/ip4/192.168.200.14/tcp/3453",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
+		Url:   "/ip4/<ip>/tcp/3453",
+		Token: "",
 	},
 	Messager: Messager{
-		Url:   "/ip4/192.168.200.12/tcp/39812",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
+		Url:   "/ip4/<ip>/tcp/39812",
+		Token: "",
 	},
 	Signer: Signer{
-		Url:   "/ip4/127.0.0.1/tcp/5678/http",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIl19.Y03rbv28jVsXK9t4Ih9a0YmmzGoG2fwa5Ek1VkQByQ0",
+		Url:   "/ip4/<ip>/tcp/5678/http",
+		Token: "",
 	},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
@@ -78,9 +78,6 @@ var DefaultMarketConfig = &MarketConfig{
 	MaxMarketBalanceAddFee: types.FIL(types.NewInt(0)),
 }
 
-var (
-	defaultAddr, _ = address.NewFromString("t3wtmlylzuc7ttbhwppjt7m55p7ywybebdx7kfbwx7ijhthqssptvs746njt22i3xe65zw7hyafutmdoobkcoq")
-)
 var DefaultMarketClientConfig = &MarketClientConfig{
 	Home: Home{"~/.venusclient"},
 	Common: Common{
@@ -98,21 +95,17 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		},
 	},
 	Node: Node{
-		Url:   "/ip4/192.168.200.14/tcp/3453",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
+		Url:   "/ip4/<ip>/tcp/3453",
+		Token: "",
 	},
 	Signer: Signer{
-		Url:   "/ip4/127.0.0.1/tcp/5678/http",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIl19.Y03rbv28jVsXK9t4Ih9a0YmmzGoG2fwa5Ek1VkQByQ0",
-	},
-	Market: Market{
-		Url:   "/ip4/127.0.0.1/tcp/3453",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
+		Url:   "/ip4/<ip>/tcp/5678/http",
+		Token: "",
 	},
 	Messager: Messager{
-		Url:   "/ip4/192.168.200.12/tcp/39812",
-		Token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoibGkiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.eJBpUoP6leCSkhWHuy8SliHJUfw5XM7M7BndY3YRVvg",
+		Url:   "/ip4/<ip>/tcp/39812",
+		Token: "",
 	},
-	DefaultMarketAddress:  Address(defaultAddr),
+	DefaultMarketAddress:  Address(address.Undef),
 	SimultaneousTransfers: DefaultSimultaneousTransfers,
 }
