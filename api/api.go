@@ -140,8 +140,8 @@ type MarketFullNode interface {
 	UpdateDealOnPacking(ctx context.Context, miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error //perm:write
 	UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status string) error                                                              //perm:write
 	//market event
-	ResponseMarketEvent(ctx context.Context, resp *types2.ResponseEvent) error
-	ListenMarketEvent(ctx context.Context, policy *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error)
+	ResponseMarketEvent(ctx context.Context, resp *types2.ResponseEvent) error                                            //perm:read
+	ListenMarketEvent(ctx context.Context, policy *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) //perm:read
 }
 
 type MarketClientNode interface {
