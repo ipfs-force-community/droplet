@@ -52,6 +52,7 @@ func ReWrite(path string, r io.Reader) (int64, error) {
 		if err != nil {
 			return -1, xerrors.Errorf("unbale to create file %s, %w", pieceFile[1], err)
 		}
+		defer fs.Close()
 		wlen, err := io.Copy(fs, r)
 		if err != nil {
 			return -1, xerrors.Errorf("unable to write file to %s %w", pieceFile[1], err)
