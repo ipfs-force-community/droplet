@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/imports"
 	types2 "github.com/filecoin-project/venus-market/types"
@@ -78,7 +77,6 @@ type API struct {
 	fx.In
 
 	Full         apiface.FullNode
-	Signer       clients2.ISinger
 	PayChManager *paychmgr.Manager
 
 	SMDealClient storagemarket.StorageClient
@@ -148,7 +146,7 @@ func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStatel
 		return nil, xerrors.Errorf("failed resolving params.Wallet addr (%s): %w", params.Wallet, err)
 	}
 
-	exist, err := a.Signer.WalletHas(ctx, walletKey)
+	exist, err := a.Full.WalletHas(ctx, walletKey)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting addr from signer (%s): %w", params.Wallet, err)
 	}
@@ -246,7 +244,7 @@ func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStatel
 		return nil, xerrors.Errorf("failed to serialize deal proposal: %w", err)
 	}
 
-	dealProposalSig, err := a.Signer.WalletSign(ctx, walletKey, dealProposalSerialized, wallet.MsgMeta{
+	dealProposalSig, err := a.Full.WalletSign(ctx, walletKey, dealProposalSerialized, wallet.MsgMeta{
 		Type:  wallet.MTDealProposal,
 		Extra: dealProposalSerialized,
 	})

@@ -5,7 +5,6 @@ package storageadapter
 import (
 	"bytes"
 	"context"
-	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -48,12 +47,11 @@ type ClientNodeAdapter struct {
 }
 
 type clientApi struct {
-	full          apiface.FullNode
-	singerService clients2.ISinger
+	full apiface.FullNode
 }
 
-func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, singerService clients2.ISinger, fundmgr *fundmgr.FundManager, cfg *config.MarketClientConfig) storagemarket.StorageClientNode {
-	capi := &clientApi{fullNode, singerService}
+func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, fundmgr *fundmgr.FundManager, cfg *config.MarketClientConfig) storagemarket.StorageClientNode {
+	capi := &clientApi{fullNode}
 	ctx := metrics.LifecycleCtx(mctx, lc)
 
 	ev, err := events.NewEvents(ctx, capi.full)
@@ -358,7 +356,7 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	sig, err := c.singerService.WalletSign(ctx, signer, buf, wallet.MsgMeta{
+	sig, err := c.full.WalletSign(ctx, signer, buf, wallet.MsgMeta{
 		Type: wallet.MTDealProposal,
 	})
 	if err != nil {
@@ -412,7 +410,7 @@ func (c *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Addres
 		return nil, err
 	}
 
-	localSignature, err := c.singerService.WalletSign(ctx, signer, b, wallet.MsgMeta{
+	localSignature, err := c.full.WalletSign(ctx, signer, b, wallet.MsgMeta{
 		Type: wallet.MTUnknown, // TODO: pass type here
 	})
 	if err != nil {

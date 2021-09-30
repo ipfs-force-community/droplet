@@ -29,6 +29,18 @@ make
 ```
 
 ## start market-client
+
+simple way to use market-client(only need chain message, all data about (market message, paych) store in local, so you can use chain service such powergate)
+
+this is example to use market-client only depend on daemon
+```shell
+./market-client run --node-url <node url> --auth-token <auth token>  
+```
+
+if want use messsager to trick message, use messager-url and messager-token
+if want use remote wallet to sign message, use signer-url and signer-token
+
+this is the example for using venus-market in venus pool
 ```shell
 ./market-client run --node-url <node url> --messager-url <messager-url> --auth-token <auth token>  --signer-url <wallet url> --signer-token  <wallet token> --addr <client default address>
 ```
