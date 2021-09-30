@@ -30,13 +30,22 @@ make
 
 ## start market-client
 
-simple way to use market-client(only need chain message, all data about (market message, paych) store in local, so you can use chain service such powergate)
+### full node
 
-this is example to use market-client only depend on daemon
+this is example to use market-client only depend on full daemon
 ```shell
 ./market-client run --node-url <node url> --auth-token <auth token>  
 ```
 
+### use remote wallet and daemon service
+
+use wallet for sign, use daemon for chain information,  all data about fund (market message, paych) store in local, so you can use chain service such powergate as daemon
+
+```shell
+./market-client run --node-url <node url> --auth-token <auth token> --signer-url <remote wallet url> --signer-token <remote wallet token> 
+```
+
+### venus pool
 if want use messsager to trick message, use messager-url and messager-token
 if want use remote wallet to sign message, use signer-url and signer-token
 
