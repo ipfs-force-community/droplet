@@ -5,7 +5,6 @@ package storageadapter
 import (
 	"bytes"
 	"context"
-	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/fundmgr"
 	"github.com/filecoin-project/venus-market/piece"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -47,7 +46,6 @@ type ProviderNodeAdapter struct {
 	ev      *events.Events
 
 	dealPublisher *DealPublisher
-	signerService clients2.ISinger
 
 	storage                     piece.IPieceStorage
 	extendPieceMeta             piece.ExtendPieceStore
@@ -57,8 +55,8 @@ type ProviderNodeAdapter struct {
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, signerService clients2.ISinger, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, signerService clients2.ISinger, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev, err := events.NewEvents(ctx, full)
@@ -73,7 +71,6 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 			dsMatcher:       newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
 			storage:         storage,
 			extendPieceMeta: extendPieceMeta,
-			signerService:   signerService,
 			fundMgr:         fundMgr,
 		}
 		if fc != nil {
@@ -232,7 +229,7 @@ func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Addr
 	if err != nil {
 		mType = wallet.MTUnknown
 	}
-	localSignature, err := n.signerService.WalletSign(ctx, signer, b, wallet.MsgMeta{
+	localSignature, err := n.FullNode.WalletSign(ctx, signer, b, wallet.MsgMeta{
 		Type: mType,
 	})
 	if err != nil {

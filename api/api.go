@@ -14,8 +14,8 @@ import (
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 	mTypes "github.com/filecoin-project/venus-messager/types"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
-	"github.com/google/uuid"
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
 	types2 "github.com/ipfs-force-community/venus-gateway/types"
 	"github.com/ipfs/go-cid"
@@ -77,9 +77,9 @@ type MarketFullNode interface {
 	SectorSetExpectedSealDuration(context.Context, time.Duration) error //perm:write
 
 	//messager
-	MessagerWaitMessage(ctx context.Context, uuid uuid.UUID) (*mTypes.Message, error)                      //perm:read
-	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (uuid.UUID, error) //perm:write
-	MessagerGetMessage(ctx context.Context, uuid uuid.UUID) (*mTypes.Message, error)                       //perm:read
+	MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*apitypes.MsgLookup, error)                                 //perm:read
+	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (*vTypes.SignedMessage, error) //perm:write
+	MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error)                                      //perm:read
 
 	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)                   //perm:sign
 	MarketGetReserved(ctx context.Context, addr address.Address) (vTypes.BigInt, error)                                       //perm:sign

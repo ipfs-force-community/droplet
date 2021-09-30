@@ -51,7 +51,12 @@ var (
 
 	AuthTokenFlag = &cli.StringFlag{
 		Name:  "auth-token",
-		Usage: "token for connect venus componets",
+		Usage: "token for connect venus componets, this flag can set token for messager and node",
+	}
+
+	MessagerTokenFlag = &cli.StringFlag{
+		Name:  "messager-token",
+		Usage: "token for connect venus messager， if specify this flag ,override token set by venus-auth flag ",
 	}
 
 	SignerUrlFlag = &cli.StringFlag{
@@ -154,7 +159,7 @@ func marketClient(cctx *cli.Context) error {
 
 		config.ConfigClientOpts(cfg),
 
-		clients2.ClientsOpts(false),
+		clients2.ClientsOpts(false, &cfg.Messager, &cfg.Signer),
 		models.DBOptions(false),
 		network.NetworkOpts(false, cfg.SimultaneousTransfers),
 		paychmgr.PaychOpts,
@@ -192,6 +197,9 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 	}
 	if cctx.IsSet("auth-token") {
 		cfg.Messager.Token = cctx.String("auth-token")
+	}
+	if cctx.IsSet("messager-token") {
+		cfg.Messager.Token = cctx.String("messager-token")
 	}
 
 	if cctx.IsSet("signer-url") {

@@ -20,9 +20,9 @@ import (
 	"github.com/filecoin-project/venus-market/types"
 	mTypes "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
-	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -50,7 +50,7 @@ type MarketNodeImpl struct {
 	DealPublisher     *storageadapter2.DealPublisher
 	PieceStore        piece.ExtendPieceStore
 	SectorAccessor    retrievalmarket.SectorAccessor
-	Messager          clients2.IMessager
+	Messager          clients2.IMessager `optional:"true"`
 	DAGStore          *dagstore.DAGStore
 
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
@@ -311,21 +311,22 @@ func (m MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, durat
 	return m.SetExpectedSealDurationFunc(duration)
 }
 
-func (m MarketNodeImpl) MessagerWaitMessage(ctx context.Context, uid uuid.UUID) (*mTypes.Message, error) {
-	return m.Messager.WaitMessage(ctx, uid.String(), constants.MessageConfidence)
+func (m MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*apitypes.MsgLookup, error) {
+	//StateWaitMsg method has been replace in messager mode
+	return m.FullNode.StateWaitMsg(ctx, mid, constants.MessageConfidence, constants.LookbackNoLimit, false)
 }
 
-func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (uuid.UUID, error) {
-	uid := uuid.New()
-	_, err := m.Messager.PushMessageWithId(ctx, uid.String(), msg, meta)
-	if err != nil {
-		return uuid.UUID{}, err
-	}
-	return uid, nil
+func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (*vTypes.SignedMessage, error) {
+	//MpoolPushMessage method has been replace in messager mode
+	return m.FullNode.MpoolPushMessage(ctx, msg, &vTypes.MessageSendSpec{
+		MaxFee:            meta.MaxFee,
+		GasOverEstimation: meta.GasOverEstimation,
+	})
 }
 
-func (m MarketNodeImpl) MessagerGetMessage(ctx context.Context, uid uuid.UUID) (*mTypes.Message, error) {
-	return m.Messager.GetMessageByUid(ctx, uid.String())
+func (m MarketNodeImpl) MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error) {
+	//ChainGetMessage method has been replace in messager mode
+	return m.FullNode.ChainGetMessage(ctx, mid)
 }
 
 func (m MarketNodeImpl) listDeals(ctx context.Context) ([]types.MarketDeal, error) {

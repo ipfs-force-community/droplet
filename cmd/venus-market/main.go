@@ -175,7 +175,7 @@ func daemon(cctx *cli.Context) error {
 		//config
 		config.ConfigServerOpts(cfg),
 		//clients
-		clients.ClientsOpts(true),
+		clients.ClientsOpts(false, &cfg.Messager, &cfg.Signer),
 
 		models.DBOptions(true),
 		network.NetworkOpts(true, cfg.SimultaneousTransfers),

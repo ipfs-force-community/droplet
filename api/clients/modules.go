@@ -5,12 +5,15 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/builder"
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/metrics"
 	types2 "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
 	types3 "github.com/ipfs-force-community/venus-gateway/types"
 	"github.com/ipfs/go-cid"
@@ -30,6 +33,9 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 	fullNodeStruct := fullNode.(*client.FullNodeStruct)
 
 	fullNodeStruct.IMessagePoolStruct.Internal.MpoolPushMessage = func(ctx context.Context, p1 *types.UnsignedMessage, p2 *types.MessageSendSpec) (*types.SignedMessage, error) {
+		//todo use MpoolPushSignedMessage to replace MpoolPushMessage.
+		// but due to louts mpool, cannt repub messager not in local, so may stuck in daemon pool
+		// if this issue was fixed, should changed it
 		uid, err := messager.PushMessage(ctx, p1, nil)
 		if err != nil {
 			return nil, err
@@ -162,6 +168,13 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 		}
 	}
 
+	fullNodeStruct.IChainInfoStruct.Internal.ChainGetMessage = func(ctx context.Context, mid cid.Cid) (*types.UnsignedMessage, error) {
+		msg, err := messager.GetMessageByCid(ctx, mid)
+		if err != nil {
+			return fullNodeStruct.ChainGetMessage(ctx, mid)
+		}
+		return msg.VMMessage(), nil
+	}
 	return nil
 }
 
@@ -169,6 +182,9 @@ func ConvertWalletToISinge(fullNode apiface.FullNode, signer ISinger) error {
 	fullNodeStruct := fullNode.(*client.FullNodeStruct)
 	fullNodeStruct.IWalletStruct.Internal.WalletHas = func(p0 context.Context, p1 address.Address) (bool, error) {
 		return signer.WalletHas(p0, p1)
+	}
+	fullNodeStruct.IWalletStruct.Internal.WalletSign = func(p0 context.Context, p1 address.Address, p2 []byte, p3 wallet.MsgMeta) (*vCrypto.Signature, error) {
+		return signer.WalletSign(p0, p1, p2, p3)
 	}
 	return nil
 }
@@ -191,16 +207,19 @@ func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent,
 	return stream, nil
 }
 
-var ClientsOpts = func(server bool) builder.Option {
+var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Signer) builder.Option {
 	opts := builder.Options(
-		builder.Override(ReplaceMpoolMethod, ConvertMpoolToMessager),
-		builder.Override(ReplaceWalletMethod, ConvertWalletToISinge),
+		builder.ApplyIf(func(s *builder.Settings) bool {
+			return len(mCfg.Url) > 0
+		}, builder.Override(new(IMessager), MessagerClient), builder.Override(ReplaceMpoolMethod, ConvertMpoolToMessager)),
+
+		builder.ApplyIf(func(s *builder.Settings) bool {
+			return len(signerCfg.Url) > 0
+		}, builder.Override(new(ISinger), NewWalletClient), builder.Override(ReplaceWalletMethod, ConvertWalletToISinge)),
 	)
 	if server {
 		return builder.Options(opts,
 			builder.Override(new(apiface.FullNode), NodeClient),
-			builder.Override(new(IMessager), MessagerClient),
-			builder.Override(new(ISinger), NewWalletClient),
 
 			builder.Override(new(*marketevent.MarketEventStream), NewMarketEvent),
 			builder.Override(new(marketevent.IMarketEventAPI), NewMarketEventAPI),
@@ -209,7 +228,6 @@ var ClientsOpts = func(server bool) builder.Option {
 	} else {
 		return builder.Options(opts,
 			builder.Override(new(apiface.FullNode), NodeClient),
-			builder.Override(new(ISinger), NewWalletClient),
-			builder.Override(new(IMessager), MessagerClient))
+		)
 	}
 }
