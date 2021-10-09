@@ -18,7 +18,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.12.0
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-padreader v0.0.0-20210723183308-812a16dc01b1
-	github.com/filecoin-project/go-state-types v0.1.1-0.20210810190654-139e0e79e69e
+	github.com/filecoin-project/go-state-types v0.1.1-0.20210915140513-d354ccf10379
 	github.com/filecoin-project/go-statemachine v1.0.1
 	github.com/filecoin-project/lotus v1.11.3-0.20210908053314-d1d8845ab2d0
 	github.com/filecoin-project/specs-actors v0.9.14
@@ -26,12 +26,11 @@ require (
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
 	github.com/filecoin-project/specs-actors/v5 v5.0.4
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
-	github.com/filecoin-project/venus v1.0.5-0.20210917074359-37359d1aa9f7
+	github.com/filecoin-project/venus v1.0.5-0.20211009083717-720619268d19
 	github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578
 	github.com/filecoin-project/venus-messager v1.1.1
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/golang/mock v1.6.0
-	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210924063144-1d3a5b30de87

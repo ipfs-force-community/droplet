@@ -3,6 +3,7 @@ package sealer
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	"github.com/filecoin-project/go-address"
@@ -21,6 +22,7 @@ type CurrentDealInfoAPI interface {
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*apitypes.MarketDeal, error)
 	StateSearchMsg(context.Context, cid.Cid) (*apitypes.MsgLookup, error)
+	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
 }
 
 type CurrentDealInfo struct {
@@ -69,49 +71,60 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	// Get the return value of the publish deals message
 	lookup, err := mgr.CDAPI.StateSearchMsg(ctx, publishCid)
 	if err != nil {
-		return dealID, types.EmptyTSK, xerrors.Errorf("looking for publish deal message %s: search msg failed: %w", publishCid, err)
+		return dealID, types.TipSetKey{}, xerrors.Errorf("looking for publish deal message %s: search msg failed: %w", publishCid, err)
 	}
 
 	if lookup == nil {
-		return dealID, types.EmptyTSK, xerrors.Errorf("looking for publish deal message %s: not found", publishCid)
+		return dealID, types.TipSetKey{}, xerrors.Errorf("looking for publish deal message %s: not found", publishCid)
 	}
 
 	if lookup.Receipt.ExitCode != exitcode.Ok {
-		return dealID, types.EmptyTSK, xerrors.Errorf("looking for publish deal message %s: non-ok exit code: %s", publishCid, lookup.Receipt.ExitCode)
+		return dealID, types.TipSetKey{}, xerrors.Errorf("looking for publish deal message %s: non-ok exit code: %s", publishCid, lookup.Receipt.ExitCode)
 	}
 
-	var retval market.PublishStorageDealsReturn
-	if err := retval.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.ReturnValue)); err != nil {
-		return dealID, types.EmptyTSK, xerrors.Errorf("looking for publish deal message %s: unmarshalling message return: %w", publishCid, err)
+	nv, err := mgr.CDAPI.StateNetworkVersion(ctx, lookup.TipSet)
+	if err != nil {
+		return dealID, types.TipSetKey{}, xerrors.Errorf("getting network version: %w", err)
 	}
 
+	retval, err := market.DecodePublishStorageDealsReturn(lookup.Receipt.ReturnValue, nv)
+	if err != nil {
+		return dealID, types.TipSetKey{}, xerrors.Errorf("looking for publish deal message %s: decoding message return: %w", publishCid, err)
+	}
+
+	dealIDs, err := retval.DealIDs()
+	if err != nil {
+		return dealID, types.TipSetKey{}, xerrors.Errorf("looking for publish deal message %s: getting dealIDs: %w", publishCid, err)
+	}
+
+	// TODO: Can we delete this? We're well past the point when we first introduced the proposals into sealing deal info
 	// Previously, publish deals messages contained a single deal, and the
 	// deal proposal was not included in the sealing deal info.
 	// So check if the proposal is nil and check the number of deals published
 	// in the message.
 	if proposal == nil {
-		if len(retval.IDs) > 1 {
-			return dealID, types.EmptyTSK, xerrors.Errorf(
+		if len(dealIDs) > 1 {
+			return dealID, types.TipSetKey{}, xerrors.Errorf(
 				"getting deal ID from publish deal message %s: "+
 					"no deal proposal supplied but message return value has more than one deal (%d deals)",
-				publishCid, len(retval.IDs))
+				publishCid, len(dealIDs))
 		}
 
 		// There is a single deal in this publish message and no deal proposal
 		// was supplied, so we have nothing to compare against. Just assume
-		// the deal ID is correct.
-		return retval.IDs[0], lookup.TipSet, nil
+		// the deal ID is correct and that it was valid
+		return dealIDs[0], lookup.TipSet, nil
 	}
 
 	// Get the parameters to the publish deals message
 	pubmsg, err := mgr.CDAPI.ChainGetMessage(ctx, publishCid)
 	if err != nil {
-		return dealID, types.EmptyTSK, xerrors.Errorf("getting publish deal message %s: %w", publishCid, err)
+		return dealID, types.TipSetKey{}, xerrors.Errorf("getting publish deal message %s: %w", publishCid, err)
 	}
 
 	var pubDealsParams market2.PublishStorageDealsParams
 	if err := pubDealsParams.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
-		return dealID, types.EmptyTSK, xerrors.Errorf("unmarshalling publish deal message params for message %s: %w", publishCid, err)
+		return dealID, types.TipSetKey{}, xerrors.Errorf("unmarshalling publish deal message params for message %s: %w", publishCid, err)
 	}
 
 	// Scan through the deal proposals in the message parameters to find the
@@ -120,7 +133,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	for i, paramDeal := range pubDealsParams.Deals {
 		eq, err := mgr.CheckDealEquality(ctx, tok, *proposal, market.DealProposal(paramDeal.Proposal))
 		if err != nil {
-			return dealID, types.EmptyTSK, xerrors.Errorf("comparing publish deal message %s proposal to deal proposal: %w", publishCid, err)
+			return dealID, types.TipSetKey{}, xerrors.Errorf("comparing publish deal message %s proposal to deal proposal: %w", publishCid, err)
 		}
 		if eq {
 			dealIdx = i
@@ -129,16 +142,25 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	}
 
 	if dealIdx == -1 {
-		return dealID, types.EmptyTSK, xerrors.Errorf("could not find deal in publish deals message %s", publishCid)
+		return dealID, types.TipSetKey{}, xerrors.Errorf("could not find deal in publish deals message %s", publishCid)
 	}
 
-	if dealIdx >= len(retval.IDs) {
-		return dealID, types.EmptyTSK, xerrors.Errorf(
+	if dealIdx >= len(dealIDs) {
+		return dealID, types.TipSetKey{}, xerrors.Errorf(
 			"deal index %d out of bounds of deals (len %d) in publish deals message %s",
-			dealIdx, len(retval.IDs), publishCid)
+			dealIdx, len(dealIDs), publishCid)
 	}
 
-	return retval.IDs[dealIdx], lookup.TipSet, nil
+	valid, err := retval.IsDealValid(uint64(dealIdx))
+	if err != nil {
+		return dealID, types.TipSetKey{}, xerrors.Errorf("determining deal validity: %w", err)
+	}
+
+	if !valid {
+		return dealID, types.TipSetKey{}, xerrors.New("deal was invalid at publication")
+	}
+
+	return dealIDs[dealIdx], lookup.TipSet, nil
 }
 
 func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok types.TipSetKey, p1, p2 market.DealProposal) (bool, error) {
@@ -166,12 +188,17 @@ func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok ty
 type CurrentDealInfoTskAPI interface {
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*apitypes.MarketDeal, error)
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
 type CurrentDealInfoAPIAdapter struct {
 	CurrentDealInfoTskAPI
+}
+
+func (c *CurrentDealInfoAPIAdapter) StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error) {
+	return c.CurrentDealInfoTskAPI.StateNetworkVersion(ctx, tok)
 }
 
 func (c *CurrentDealInfoAPIAdapter) StateLookupID(ctx context.Context, a address.Address, tsk types.TipSetKey) (address.Address, error) {

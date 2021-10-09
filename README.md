@@ -47,6 +47,7 @@ use wallet for sign, use daemon for chain information,  all data about fund (mar
 
 ### venus pool
 if want use messsager to trick message, use messager-url and messager-token
+
 if want use remote wallet to sign message, use signer-url and signer-token
 
 this is the example for using venus-market in venus pool
