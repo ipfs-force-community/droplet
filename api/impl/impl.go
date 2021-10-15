@@ -318,10 +318,14 @@ func (m MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*
 
 func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (*vTypes.SignedMessage, error) {
 	//MpoolPushMessage method has been replace in messager mode
-	return m.FullNode.MpoolPushMessage(ctx, msg, &vTypes.MessageSendSpec{
-		MaxFee:            meta.MaxFee,
-		GasOverEstimation: meta.GasOverEstimation,
-	})
+	var spec *vTypes.MessageSendSpec
+	if meta != nil {
+		spec = &vTypes.MessageSendSpec{
+			MaxFee:            meta.MaxFee,
+			GasOverEstimation: meta.GasOverEstimation,
+		}
+	}
+	return m.FullNode.MpoolPushMessage(ctx, msg, spec)
 }
 
 func (m MarketNodeImpl) MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error) {
