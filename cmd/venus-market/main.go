@@ -43,6 +43,7 @@ var (
 var (
 	RepoFlag = &cli.StringFlag{
 		Name:  "repo",
+		EnvVars: []string{"VENUS_MARKET_PATH"},
 		Value: "~/.venusmarket",
 	}
 
