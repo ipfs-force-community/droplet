@@ -37,6 +37,7 @@ var ExtractApiKey builder.Invoke = builder.NextInvoke()
 var (
 	RepoFlag = &cli.StringFlag{
 		Name:  "repo",
+		EnvVars: []string{"VENUS_MARKET_CLIENT_PATH"},
 		Value: "~/.marketclient",
 	}
 	NodeUrlFlag = &cli.StringFlag{
