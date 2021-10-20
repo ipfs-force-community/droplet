@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/api"
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
@@ -28,17 +31,15 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-	"log"
-	"os"
 )
 
 var ExtractApiKey builder.Invoke = builder.NextInvoke()
 
 var (
 	RepoFlag = &cli.StringFlag{
-		Name:  "repo",
+		Name:    "repo",
 		EnvVars: []string{"VENUS_MARKET_CLIENT_PATH"},
-		Value: "~/.marketclient",
+		Value:   "~/.marketclient",
 	}
 	NodeUrlFlag = &cli.StringFlag{
 		Name:  "node-url",
@@ -160,7 +161,7 @@ func marketClient(cctx *cli.Context) error {
 
 		config.ConfigClientOpts(cfg),
 
-		clients2.ClientsOpts(false, &cfg.Messager, &cfg.Signer),
+		clients2.ClientsOpts(false, &cfg.Messager, &cfg.Signer, &cfg.Mysql),
 		models.DBOptions(false),
 		network.NetworkOpts(false, cfg.SimultaneousTransfers),
 		paychmgr.PaychOpts,

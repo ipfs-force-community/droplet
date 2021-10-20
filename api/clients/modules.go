@@ -2,11 +2,14 @@ package clients
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/storagemysql"
 	types2 "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -19,7 +22,6 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
-	"time"
 )
 
 var log = logging.Logger("clients")
@@ -207,7 +209,7 @@ func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent,
 	return stream, nil
 }
 
-var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Signer) builder.Option {
+var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Signer, mysqlCfg *config.Mysql) builder.Option {
 	opts := builder.Options(
 		builder.ApplyIf(func(s *builder.Settings) bool {
 			return len(mCfg.Url) > 0
@@ -216,6 +218,9 @@ var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Sig
 		builder.ApplyIf(func(s *builder.Settings) bool {
 			return len(signerCfg.Url) > 0
 		}, builder.Override(new(ISinger), NewWalletClient), builder.Override(ReplaceWalletMethod, ConvertWalletToISinge)),
+		builder.ApplyIf(func(s *builder.Settings) bool {
+			return len(mysqlCfg.ConnectionString) > 0
+		}, builder.Override(new(storagemysql.Repo), storagemysql.InitMysql)),
 	)
 	if server {
 		return builder.Options(opts,

@@ -1,10 +1,11 @@
 package config
 
 import (
+	"time"
+
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/models/StorageAsk"
 	"github.com/ipfs/go-cid"
-	"time"
 )
 
 func NewConsiderOnlineStorageDealsConfigFunc(cfg *MarketConfig) (ConsiderOnlineStorageDealsConfigFunc, error) {
@@ -133,6 +134,7 @@ var ConfigServerOpts = func(cfg *MarketConfig) builder.Option {
 		builder.Override(new(*Node), &cfg.Node),
 		builder.Override(new(*Messager), &cfg.Messager),
 		builder.Override(new(*Signer), &cfg.Signer),
+		builder.Override(new(*Mysql), &cfg.Mysql),
 		builder.Override(new(*Libp2p), &cfg.Libp2p),
 		builder.Override(new(*PieceStorageString), &cfg.PieceStorage),
 		builder.Override(new(*DAGStoreConfig), &cfg.DAGStore),
@@ -168,5 +170,6 @@ var ConfigClientOpts = func(cfg *MarketClientConfig) builder.Option {
 		builder.Override(new(*Libp2p), &cfg.Libp2p),
 		builder.Override(new(*Signer), &cfg.Signer),
 		builder.Override(new(*Messager), &cfg.Messager),
+		builder.Override(new(*Mysql), &cfg.Mysql),
 	)
 }
