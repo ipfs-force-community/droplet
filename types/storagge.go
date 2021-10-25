@@ -1,10 +1,12 @@
 package types
 
 import (
+	"time"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/ipfs/go-cid"
-	"time"
 )
 
 //todo  move to sealer
@@ -111,3 +113,5 @@ const (
 
 	TerminateSectorsAddr
 )
+
+type MinerDeal storagemarket.MinerDeal

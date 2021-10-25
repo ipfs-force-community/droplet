@@ -2,10 +2,11 @@ package storageadapter
 
 import (
 	"context"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
+	"golang.org/x/xerrors"
 )
 
 var _ TransferProcess = (*DataTransferProcess)(nil)
@@ -36,7 +37,7 @@ func (d *DataTransferProcess) HandleCancelForDeal(proposalid cid.Cid) error {
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
 	}
-	return d.dealProcess.HandleError(deal, xerrors.Errorf("proposal %d data transfer cancelled", proposalid))
+	return d.dealProcess.HandleError(deal, xerrors.Errorf("proposal %v data transfer cancelled", proposalid))
 }
 
 func (d *DataTransferProcess) HandleRestartForDeal(proposalid cid.Cid, channelId datatransfer.ChannelID) error {

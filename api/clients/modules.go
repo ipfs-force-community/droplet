@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/storagemysql"
+	"github.com/filecoin-project/venus-market/models/storagemysql"
 	types2 "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -166,7 +166,7 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 			}
 			return nil, xerrors.Errorf("msg failed due to %s", reason)
 		default:
-			return nil, xerrors.Errorf("unexpect status for %s", msg.State)
+			return nil, xerrors.Errorf("unexpect status for %v", msg.State)
 		}
 	}
 
@@ -218,9 +218,6 @@ var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Sig
 		builder.ApplyIf(func(s *builder.Settings) bool {
 			return len(signerCfg.Url) > 0
 		}, builder.Override(new(ISinger), NewWalletClient), builder.Override(ReplaceWalletMethod, ConvertWalletToISinge)),
-		builder.ApplyIf(func(s *builder.Settings) bool {
-			return len(mysqlCfg.ConnectionString) > 0
-		}, builder.Override(new(storagemysql.Repo), storagemysql.InitMysql)),
 	)
 	if server {
 		return builder.Options(opts,
@@ -229,10 +226,15 @@ var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Sig
 			builder.Override(new(*marketevent.MarketEventStream), NewMarketEvent),
 			builder.Override(new(marketevent.IMarketEventAPI), NewMarketEventAPI),
 			builder.Override(new(MarketRequestEvent), builder.From(new(*marketevent.MarketEventStream))),
+
+			builder.Override(new(storagemysql.Repo), storagemysql.InitMysql),
 		)
 	} else {
 		return builder.Options(opts,
 			builder.Override(new(apiface.FullNode), NodeClient),
+			builder.Override(new(storagemysql.Repo), func() storagemysql.Repo {
+				return nil
+			}),
 		)
 	}
 }

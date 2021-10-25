@@ -161,7 +161,7 @@ func marketClient(cctx *cli.Context) error {
 
 		config.ConfigClientOpts(cfg),
 
-		clients2.ClientsOpts(false, &cfg.Messager, &cfg.Signer, &cfg.Mysql),
+		clients2.ClientsOpts(false, &cfg.Messager, &cfg.Signer, &config.Mysql{}),
 		models.DBOptions(false),
 		network.NetworkOpts(false, cfg.SimultaneousTransfers),
 		paychmgr.PaychOpts,

@@ -215,7 +215,6 @@ type MarketClientConfig struct {
 	Node     Node
 	Messager Messager
 	Signer   Signer
-	Mysql    Mysql
 
 	Market Market // reserve
 

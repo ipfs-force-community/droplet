@@ -2,7 +2,9 @@ package fundmgr
 
 import (
 	"bytes"
+
 	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/types"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
@@ -17,14 +19,20 @@ type Store struct {
 	ds datastore.Batching
 }
 
-func newStore(ds models.FundMgrDS) *Store {
+type IStore interface {
+	GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error)
+	SaveFundedAddressState(state *types.FundedAddressState) error
+	ListFundedAddressState() ([]*types.FundedAddressState, error)
+}
+
+func newStore(ds models.FundMgrDS) IStore {
 	return &Store{
 		ds: ds,
 	}
 }
 
-// save the state to the datastore
-func (ps *Store) save(state *FundedAddressState) error {
+// SaveFundedAddressState save the state to the datastore
+func (ps *Store) SaveFundedAddressState(state *types.FundedAddressState) error {
 	k := dskeyForAddr(state.Addr)
 
 	b, err := cborrpc.Dump(state)
@@ -35,8 +43,8 @@ func (ps *Store) save(state *FundedAddressState) error {
 	return ps.ds.Put(k, b)
 }
 
-// get the state for the given address
-func (ps *Store) get(addr address.Address) (*FundedAddressState, error) { //nolint
+// GetFundedAddressState get the state for the given address
+func (ps *Store) GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error) { //nolint
 	k := dskeyForAddr(addr)
 
 	data, err := ps.ds.Get(k)
@@ -44,7 +52,7 @@ func (ps *Store) get(addr address.Address) (*FundedAddressState, error) { //noli
 		return nil, err
 	}
 
-	var state FundedAddressState
+	var state types.FundedAddressState
 	err = cborrpc.ReadCborRPC(bytes.NewReader(data), &state)
 	if err != nil {
 		return nil, err
@@ -52,14 +60,15 @@ func (ps *Store) get(addr address.Address) (*FundedAddressState, error) { //noli
 	return &state, nil
 }
 
-// forEach calls iter with each address in the datastore
-func (ps *Store) forEach(iter func(*FundedAddressState)) error {
+// ListFundedAddressState get all states in the datastore
+func (ps *Store) ListFundedAddressState() ([]*types.FundedAddressState, error) {
 	res, err := ps.ds.Query(dsq.Query{Prefix: dsKeyAddr})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer res.Close() //nolint:errcheck
 
+	fas := make([]*types.FundedAddressState, 0)
 	for {
 		res, ok := res.NextSync()
 		if !ok {
@@ -67,18 +76,17 @@ func (ps *Store) forEach(iter func(*FundedAddressState)) error {
 		}
 
 		if res.Error != nil {
-			return err
+			return nil, err
 		}
 
-		var stored FundedAddressState
+		var stored types.FundedAddressState
 		if err := stored.UnmarshalCBOR(bytes.NewReader(res.Value)); err != nil {
-			return err
+			return nil, err
 		}
-
-		iter(&stored)
+		fas = append(fas, &stored)
 	}
 
-	return nil
+	return fas, nil
 }
 
 // The datastore key used to identify the address state

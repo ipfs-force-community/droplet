@@ -51,7 +51,7 @@ var DefaultMarketConfig = &MarketConfig{
 		Debug:  false,
 	},
 	Mysql: Mysql{
-		ConnectionString: "root:password@(127.0.0.1:3306)/venus-market?parseTime=true&loc=Local",
+		ConnectionString: "root:password@(127.0.0.1:3306)/venus_market?parseTime=true&loc=Local",
 		MaxOpenConn:      100,
 		MaxIdleConn:      100,
 		ConnMaxLifeTime:  "1m",
@@ -122,13 +122,6 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 	Messager: Messager{
 		Url:   "/ip4/<ip>/tcp/39812",
 		Token: "",
-	},
-	Mysql: Mysql{
-		ConnectionString: "root:password@(127.0.0.1:3306)/venus-market?parseTime=true&loc=Local",
-		MaxOpenConn:      100,
-		MaxIdleConn:      100,
-		ConnMaxLifeTime:  "1m",
-		Debug:            false,
 	},
 	DefaultMarketAddress:  Address(address.Undef),
 	SimultaneousTransfers: DefaultSimultaneousTransfers,
