@@ -2,17 +2,21 @@ package config
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus-market/models/StorageAsk"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
+	"path"
 	"time"
 )
 
 const (
 	DefaultSimultaneousTransfers = uint64(20)
+
+	HomePath = "~/.venusmarket"
 )
 
 var DefaultMarketConfig = &MarketConfig{
-	Home:         Home{"~/.venusmarket"},
+	Home:         Home{HomePath},
 	MinerAddress: "maddr",
 	Common: Common{
 		API: API{
@@ -39,6 +43,11 @@ var DefaultMarketConfig = &MarketConfig{
 	Signer: Signer{
 		Url:   "/ip4/<ip>/tcp/5678",
 		Token: "",
+	},
+	StAsk: StorageAsk.StorageAskCfg{
+		DbType: "badger",
+		URI:    path.Join(HomePath, "StAsk"),
+		Debug:  false,
 	},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
