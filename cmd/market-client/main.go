@@ -80,19 +80,22 @@ func main() {
 		Flags: []cli.Flag{
 			RepoFlag,
 		},
-		Commands: append(cli2.ClientCmds, &cli.Command{
-			Name:  "run",
-			Usage: "run market daemon",
-			Flags: []cli.Flag{
-				NodeUrlFlag,
-				MessagerUrlFlag,
-				AuthTokenFlag,
-				SignerUrlFlag,
-				SignerTokenFlag,
-				DefaultAddressFlag,
-			},
-			Action: marketClient,
-		}),
+		Commands: append(
+			cli2.ClientCmds,
+			&cli.Command{
+				Name:  "run",
+				Usage: "run market daemon",
+				Flags: []cli.Flag{
+					NodeUrlFlag,
+					MessagerUrlFlag,
+					MessagerTokenFlag,
+					AuthTokenFlag,
+					SignerUrlFlag,
+					SignerTokenFlag,
+					DefaultAddressFlag,
+				},
+				Action: marketClient,
+			}),
 	}
 
 	app.Setup()

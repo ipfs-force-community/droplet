@@ -16,7 +16,6 @@ const (
 
 var DefaultMarketConfig = &MarketConfig{
 	Home:         Home{HomePath},
-	MinerAddress: "maddr",
 	Common: Common{
 		API: API{
 			ListenAddress: "/ip4/127.0.0.1/tcp/41235",
@@ -50,6 +49,15 @@ var DefaultMarketConfig = &MarketConfig{
 	//	ConnMaxLifeTime:  "1m",
 	//	Debug:            false,
 	//},
+	AuthNode: AuthNode{
+		Url:   "http://<ip>:8989",
+		Token: "",
+	},
+	StAsk: StorageAsk.StorageAskCfg{
+		DbType: "badger",
+		URI:    path.Join(HomePath, "StAsk"),
+		Debug:  false,
+	},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
 		MaxConcurrencyStorageCalls: 100,

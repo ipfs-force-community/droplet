@@ -5,8 +5,11 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/types"
+
 	"github.com/ipfs/go-cid"
+
+
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 // API contains configs for API endpoint
@@ -43,6 +46,7 @@ type ConnectConfig struct {
 type Node ConnectConfig
 type Messager ConnectConfig
 type Market ConnectConfig
+type AuthNode ConnectConfig
 
 type Common struct {
 	API    API
@@ -149,10 +153,13 @@ type MarketConfig struct {
 	Home `toml:"-"`
 
 	Common
+
 	Node     Node
 	Messager Messager
 	Signer   Signer
-	Mysql    Mysql
+	AuthNode AuthNode
+
+	Mysql Mysql
 
 	PieceStorage  PieceStorageString
 	Journal       Journal
@@ -209,6 +216,7 @@ type MarketConfig struct {
 type MarketClientConfig struct {
 	Home `toml:"-"`
 	Common
+
 	Node     Node
 	Messager Messager
 	Signer   Signer

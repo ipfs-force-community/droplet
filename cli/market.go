@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/go-address"
 	"io"
 	"log"
 	"os"
@@ -26,6 +26,8 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -178,8 +180,12 @@ var setAskCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:        "max-piece-size",
-			Usage:       "Set maximum piece size (w/bit-padding, in bytes) in ask to `SIZE`",
+			Usage:       "Set maximum piece size (w/bit-padding, in bytes) in ask to `SIZE`, eg. KiB, MiB, GiB, TiB, PiB",
 			DefaultText: "miner sector size",
+		},
+		&cli.StringFlag{
+			Name:     "miner",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -222,9 +228,9 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("cannot parse max-piece-size to quantity of bytes: %w", err)
 		}
 
-		maddr, err := api.ActorAddress(ctx)
+		maddr, err := address.NewFromString(cctx.String("miner"))
 		if err != nil {
-			return err
+			return nil
 		}
 
 		ssize, err := api.ActorSectorSize(ctx, maddr)

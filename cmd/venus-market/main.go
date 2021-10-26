@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/models/minermgr"
 	"log"
 	"os"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/api/impl"
@@ -53,14 +53,18 @@ var (
 		Usage: "url to connect to daemon service",
 	}
 
-	MessagerUrlFlag = &cli.StringFlag{
-		Name:  "messager-url",
-		Usage: "url to connect messager service",
+	AuthUrlFlag = &cli.StringFlag{
+		Name:  "auth-url",
+		Usage: "url to connect to auth service",
 	}
-
 	AuthTokeFlag = &cli.StringFlag{
 		Name:  "auth-token",
 		Usage: "token for connect venus componets",
+	}
+
+	MessagerUrlFlag = &cli.StringFlag{
+		Name:  "messager-url",
+		Usage: "url to connect messager service",
 	}
 
 	SignerUrlFlag = &cli.StringFlag{
@@ -70,10 +74,6 @@ var (
 	SignerTokenFlag = &cli.StringFlag{
 		Name:  "signer-token",
 		Usage: "auth token for connect signer service",
-	}
-	MinerFlag = &cli.StringFlag{
-		Name:  "miner",
-		Usage: "miner address",
 	}
 	PieceStorageFlag = &cli.StringFlag{
 		Name:  "piecestorage",
@@ -100,12 +100,12 @@ func main() {
 				Usage: "run market daemon",
 				Flags: []cli.Flag{
 					NodeUrlFlag,
-					MessagerUrlFlag,
+					AuthUrlFlag,
 					AuthTokeFlag,
+					MessagerUrlFlag,
 					SignerUrlFlag,
 					SignerTokenFlag,
 					PieceStorageFlag,
-					MinerFlag,
 					MysqlDsnFlag,
 				},
 				Action: daemon,
@@ -181,6 +181,10 @@ func daemon(cctx *cli.Context) error {
 		builder.Override(new(types.ShutdownChan), shutdownChan),
 		//config
 		config.ConfigServerOpts(cfg),
+
+		// miner manager
+		minermgr.MinerMgrOpts(cfg),
+
 		//clients
 		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, &cfg.Mysql),
 		models.DBOptions(true, &cfg.Mysql),
@@ -216,6 +220,10 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	if cctx.IsSet("node-url") {
 		cfg.Node.Url = cctx.String("node-url")
 	}
+
+	if cctx.IsSet("auth-url") {
+		cfg.Node.Url = cctx.String("auth-url")
+	}
 	if cctx.IsSet("auth-token") {
 		cfg.Node.Token = cctx.String("auth-token")
 	}
@@ -232,14 +240,6 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	}
 	if cctx.IsSet("signer-token") {
 		cfg.Signer.Token = cctx.String("signer-token")
-	}
-
-	if cctx.IsSet("miner") {
-		addr, err := address.NewFromString(cctx.String("miner"))
-		if err != nil {
-			return err
-		}
-		cfg.MinerAddress = addr.String()
 	}
 
 	if cctx.IsSet("piecestorage") {

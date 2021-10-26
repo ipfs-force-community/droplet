@@ -3,8 +3,9 @@ package config
 import (
 	"time"
 
-	"github.com/filecoin-project/venus-market/builder"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/venus-market/builder"
 )
 
 func NewConsiderOnlineStorageDealsConfigFunc(cfg *MarketConfig) (ConsiderOnlineStorageDealsConfigFunc, error) {

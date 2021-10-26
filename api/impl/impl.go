@@ -3,6 +3,17 @@ package impl
 import (
 	"context"
 	"fmt"
+	"os"
+	"sort"
+	"time"
+
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/go-address"
@@ -11,27 +22,22 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/venus-market/api"
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/models/minermgr"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piece"
 	storageadapter2 "github.com/filecoin-project/venus-market/storageadapter"
 	"github.com/filecoin-project/venus-market/types"
+
 	mTypes "github.com/filecoin-project/venus-messager/types"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
-	"os"
-	"sort"
-	"time"
 )
 
 var _ api.MarketFullNode = (*MarketNodeImpl)(nil)
@@ -41,7 +47,7 @@ type MarketNodeImpl struct {
 	FundAPI
 	MarketEventAPI
 	fx.In
-	Cfg               *config.MarketConfig
+
 	FullNode          apiface.FullNode
 	Host              host.Host
 	StorageProvider   storagemarket.StorageProvider
@@ -52,6 +58,8 @@ type MarketNodeImpl struct {
 	SectorAccessor    retrievalmarket.SectorAccessor
 	Messager          clients2.IMessager `optional:"true"`
 	DAGStore          *dagstore.DAGStore
+
+	MinerMgr minermgr.IMinerMgr
 
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc
@@ -73,20 +81,25 @@ type MarketNodeImpl struct {
 	SetExpectedSealDurationFunc config.SetExpectedSealDurationFunc
 }
 
-func (m MarketNodeImpl) ActorAddress(ctx context.Context) (address.Address, error) {
-	return address.NewFromString(m.Cfg.MinerAddress)
+func (m MarketNodeImpl) ActorAddress(ctx context.Context) ([]address.Address, error) {
+	return m.MinerMgr.ActorAddress(ctx)
+}
+
+func (m MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error)  {
+	return m.MinerMgr.Has(ctx, addr), nil
 }
 
 func (m MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
-	mAddr, err := address.NewFromString(m.Cfg.MinerAddress)
-	if err != nil {
-		return 0, err
+	if bHas := m.MinerMgr.Has(ctx, addr); bHas {
+		minerInfo, err := m.FullNode.StateMinerInfo(ctx, addr, vTypes.EmptyTSK)
+		if err != nil {
+			return 0, err
+		}
+
+		return minerInfo.SectorSize, nil
 	}
-	minerInfo, err := m.FullNode.StateMinerInfo(ctx, mAddr, vTypes.EmptyTSK)
-	if err != nil {
-		return 0, err
-	}
-	return minerInfo.SectorSize, nil
+
+	return 0, xerrors.New("not found")
 }
 
 func (m MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
@@ -99,8 +112,8 @@ func (m MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.Ci
 	return m.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
 }
 
-func (m MarketNodeImpl) MarketListDeals(ctx context.Context) ([]types.MarketDeal, error) {
-	return m.listDeals(ctx)
+func (m MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error) {
+	return m.listDeals(ctx, addrs)
 }
 
 func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {
@@ -243,9 +256,6 @@ func (m MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid
 
 	return &ci, nil
 }
-func (m MarketNodeImpl) DealsList(ctx context.Context) ([]types.MarketDeal, error) {
-	return m.listDeals(ctx)
-}
 
 func (m MarketNodeImpl) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
 	return m.ConsiderOnlineStorageDealsConfigFunc()
@@ -333,26 +343,31 @@ func (m MarketNodeImpl) MessagerGetMessage(ctx context.Context, mid cid.Cid) (*v
 	return m.FullNode.ChainGetMessage(ctx, mid)
 }
 
-func (m MarketNodeImpl) listDeals(ctx context.Context) ([]types.MarketDeal, error) {
+func (m MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error) {
 	ts, err := m.FullNode.ChainHead(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tsk := ts.Key()
-	allDeals, err := m.FullNode.StateMarketDeals(ctx, tsk)
+
+	allDeals, err := m.FullNode.StateMarketDeals(ctx, ts.Key())
 	if err != nil {
 		return nil, err
 	}
 
 	var out []types.MarketDeal
 
-	addr, err := m.ActorAddress(ctx)
-	if err != nil {
-		return nil, err
+	has := func(addr address.Address) bool {
+		for _, a := range addrs {
+			if a == addr {
+				return true
+			}
+		}
+
+		return false
 	}
 
 	for _, deal := range allDeals {
-		if deal.Proposal.Provider == addr {
+		if m.MinerMgr.Has(ctx, deal.Proposal.Provider) && has(deal.Proposal.Provider) {
 			out = append(out, deal)
 		}
 	}

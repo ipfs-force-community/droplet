@@ -101,7 +101,9 @@ type MarketClientNodeStub struct {
 
 type MarketFullNodeStruct struct {
 	Internal struct {
-		ActorAddress func(p0 context.Context) (address.Address, error) `perm:"read"`
+		ActorAddress func(p0 context.Context) ([]address.Address, error) `perm:"read"`
+
+		ActorExist func(p0 context.Context, p1 address.Address) (bool, error)  `perm:"read"`
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
@@ -130,8 +132,6 @@ type MarketFullNodeStruct struct {
 		DealsConsiderVerifiedStorageDeals func(p0 context.Context) (bool, error) `perm:"admin"`
 
 		DealsImportData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"admin"`
-
-		DealsList func(p0 context.Context) ([]types.MarketDeal, error) `perm:"admin"`
 
 		DealsPieceCidBlocklist func(p0 context.Context) ([]cid.Cid, error) `perm:"admin"`
 
@@ -177,7 +177,7 @@ type MarketFullNodeStruct struct {
 
 		MarketListDataTransfers func(p0 context.Context) ([]types.DataTransferChannel, error) `perm:"write"`
 
-		MarketListDeals func(p0 context.Context) ([]types.MarketDeal, error) `perm:"read"`
+		MarketListDeals func(p0 context.Context, p1 []address.Address) ([]types.MarketDeal, error) `perm:"read"`
 
 		MarketListIncompleteDeals func(p0 context.Context) ([]storagemarket.MinerDeal, error) `perm:"read"`
 
@@ -494,12 +494,20 @@ func (s *MarketClientNodeStub) MarketWithdraw(p0 context.Context, p1 address.Add
 	return *new(cid.Cid), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) ActorAddress(p0 context.Context) (address.Address, error) {
+func (s *MarketFullNodeStruct) ActorAddress(p0 context.Context) ([]address.Address, error) {
 	return s.Internal.ActorAddress(p0)
 }
 
-func (s *MarketFullNodeStub) ActorAddress(p0 context.Context) (address.Address, error) {
+func (s *MarketFullNodeStub) ActorAddress(p0 context.Context) ([]address.Address, error) {
 	return *new(address.Address), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) ActorExist(p0 context.Context, p1 address.Address) (bool, error)  {
+	return s.Internal.ActorExist(p0, p1)
+}
+
+func (s *MarketFullNodeStub) ActorExist(p0 context.Context, p1 address.Address) (bool, error)  {
+	return false, xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
@@ -612,14 +620,6 @@ func (s *MarketFullNodeStruct) DealsImportData(p0 context.Context, p1 cid.Cid, p
 
 func (s *MarketFullNodeStub) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
 	return xerrors.New("method not supported")
-}
-
-func (s *MarketFullNodeStruct) DealsList(p0 context.Context) ([]types.MarketDeal, error) {
-	return s.Internal.DealsList(p0)
-}
-
-func (s *MarketFullNodeStub) DealsList(p0 context.Context) ([]types.MarketDeal, error) {
-	return *new([]types.MarketDeal), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {
@@ -798,11 +798,11 @@ func (s *MarketFullNodeStub) MarketListDataTransfers(p0 context.Context) ([]type
 	return *new([]types.DataTransferChannel), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MarketListDeals(p0 context.Context) ([]types.MarketDeal, error) {
-	return s.Internal.MarketListDeals(p0)
+func (s *MarketFullNodeStruct) MarketListDeals(p0 context.Context, p1 []address.Address) ([]types.MarketDeal, error) {
+	return s.Internal.MarketListDeals(p0, p1)
 }
 
-func (s *MarketFullNodeStub) MarketListDeals(p0 context.Context) ([]types.MarketDeal, error) {
+func (s *MarketFullNodeStub) MarketListDeals(p0 context.Context, p1 []address.Address) ([]types.MarketDeal, error) {
 	return *new([]types.MarketDeal), xerrors.New("method not supported")
 }
 
