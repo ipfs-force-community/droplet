@@ -1,4 +1,4 @@
-package storagemysql
+package mysql
 
 import (
 	"github.com/filecoin-project/go-address"
@@ -104,8 +104,33 @@ type channelInfoRepo struct {
 	*gorm.DB
 }
 
-func newChannelInfoRepo(db *gorm.DB) *channelInfoRepo {
+func NewChannelInfoRepo(db *gorm.DB) *channelInfoRepo {
 	return &channelInfoRepo{db}
+}
+
+func (c *channelInfoRepo) CreateChannel(from address.Address, to address.Address, createMsgCid cid.Cid, amt fbig.Int) (*types.ChannelInfo, error) {
+	ci := &types.ChannelInfo{
+		Direction:     types.DirOutbound,
+		NextLane:      0,
+		Control:       from,
+		Target:        to,
+		CreateMsg:     &createMsgCid,
+		PendingAmount: amt,
+	}
+
+	// Save the new channel
+	err := c.SaveChannel(ci)
+	if err != nil {
+		return nil, err
+	}
+
+	// Save a reference to the create message
+	err = c.DB.Create(fromMsgInfo(&types.MsgInfo{ChannelID: ci.ChannelID, MsgCid: createMsgCid})).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return ci, err
 }
 
 func (c *channelInfoRepo) GetChannelByAddress(channel address.Address) (*types.ChannelInfo, error) {
@@ -129,28 +154,57 @@ func (c *channelInfoRepo) GetChannelByChannelID(channelID string) (*types.Channe
 }
 
 func (c *channelInfoRepo) GetChannelByMessageCid(mcid cid.Cid) (*types.ChannelInfo, error) {
-	var info channelInfo
-	err := c.DB.Take(&info, "create_msg = ? and is_deleted = -1", mcid.String()).Error
-	if err != nil {
+	var msgInfo msgInfo
+	if err := c.DB.Take(&msgInfo, "msg_cid = ?", mcid).Error; err != nil {
 		return nil, err
 	}
 
-	return toChannelInfo(&info)
+	return c.GetChannelByChannelID(msgInfo.ChannelID)
 }
 
-func (c *channelInfoRepo) ListChannel() ([]*types.ChannelInfo, error) {
+func (c *channelInfoRepo) OutboundActiveByFromTo(from address.Address, to address.Address) (*types.ChannelInfo, error) {
+	var ci channelInfo
+	if err := c.DB.Take(&ci, "direction = ? and settling = ? and control = ? and target = ?", types.DirOutbound, false, from.String(), to.String()).Error; err != nil {
+		return nil, err
+	}
+
+	return toChannelInfo(&ci)
+}
+
+func (c *channelInfoRepo) WithPendingAddFunds() ([]*types.ChannelInfo, error) {
+	var cis []channelInfo
+	if err := c.DB.Find(&cis, "direction = ?", types.DirOutbound).Error; err != nil {
+		return nil, err
+	}
+	list := make([]*types.ChannelInfo, 0, len(cis))
+	for _, ci := range cis {
+		if len(ci.CreateMsg) != 0 || len(ci.AddFundsMsg) != 0 {
+			ciTmp, err := toChannelInfo(&ci)
+			if err != nil {
+				return nil, err
+			}
+			list = append(list, ciTmp)
+		}
+	}
+	return list, nil
+}
+
+func (c *channelInfoRepo) ListChannel() ([]address.Address, error) {
 	var infos []*channelInfo
 	err := c.DB.Find(&infos, "is_deleted = -1").Error
 	if err != nil {
 		return nil, err
 	}
-	list := make([]*types.ChannelInfo, 0, len(infos))
+	list := make([]address.Address, 0, len(infos))
 	for _, info := range infos {
-		tmpInfo, err := toChannelInfo(info)
+		if len(info.Channel) == 0 {
+			continue
+		}
+		addr, err := address.NewFromString(info.Channel)
 		if err != nil {
 			return nil, err
 		}
-		list = append(list, tmpInfo)
+		list = append(list, addr)
 	}
 	return list, nil
 }
@@ -210,7 +264,7 @@ type msgInfoRepo struct {
 	*gorm.DB
 }
 
-func newMsgInfoRepo(db *gorm.DB) *msgInfoRepo {
+func NewMsgInfoRepo(db *gorm.DB) *msgInfoRepo {
 	return &msgInfoRepo{db}
 }
 

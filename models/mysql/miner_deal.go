@@ -1,4 +1,4 @@
-package storagemysql
+package mysql
 
 import (
 	"database/sql/driver"
@@ -245,15 +245,15 @@ type minerDealRepo struct {
 	*gorm.DB
 }
 
-func newMinerDealRepo(db *gorm.DB) *minerDealRepo {
+func NewMinerDealRepo(db *gorm.DB) *minerDealRepo {
 	return &minerDealRepo{db}
 }
 
-func (m *minerDealRepo) CreateMinerDeal(minerDeal *types.MinerDeal) error {
+func (m *minerDealRepo) SaveMinerDeal(minerDeal *types.MinerDeal) error {
 	return m.DB.Create(fromMinerDeal(minerDeal)).Error
 }
 
-func (m *minerDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
+func (m *minerDealRepo) GetMinerDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
 	var md minerDeal
 	err := m.DB.Take(md, "proposal_cid = ?", proposalCid.String()).Error
 	if err != nil {
@@ -263,7 +263,7 @@ func (m *minerDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
 	return toMinerDeal(&md)
 }
 
-func (m *minerDealRepo) UpdateDeal(proposalCid cid.Cid, updateCols map[string]interface{}) error {
+func (m *minerDealRepo) UpdateMinerDeal(proposalCid cid.Cid, updateCols map[string]interface{}) error {
 	return m.DB.Model(&minerDeal{}).Where("proposal_cid = ?", proposalCid.String()).UpdateColumns(updateCols).Error
 }
 
@@ -285,4 +285,4 @@ func (m *minerDealRepo) ListMinerDeal() ([]*types.MinerDeal, error) {
 	return list, nil
 }
 
-var _ MinerDealRepo = (*minerDealRepo)(nil)
+//var _ repo.MinerDealRepo = (*minerDealRepo)(nil)

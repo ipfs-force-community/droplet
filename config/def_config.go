@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/models/StorageAsk"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 )
@@ -45,7 +44,7 @@ var DefaultMarketConfig = &MarketConfig{
 		Url:   "/ip4/<ip>/tcp/5678",
 		Token: "",
 	},
-	StAsk: StorageAsk.StorageAskCfg{
+	StAsk: StorageAskConfig{
 		DbType: "badger",
 		URI:    path.Join(HomePath, "StAsk"),
 		Debug:  false,

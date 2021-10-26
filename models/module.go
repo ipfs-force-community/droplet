@@ -2,16 +2,20 @@ package models
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/models/itf"
+	"path"
+
+	"github.com/filecoin-project/venus-market/models/mysql"
+
 	"github.com/filecoin-project/venus-market/blockstore"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/models/StorageAsk"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
 	"go.uber.org/fx"
-	"path"
+	"golang.org/x/xerrors"
 )
 
 const (
@@ -37,7 +41,7 @@ const (
 	clientTransfer  = "/datatransfer/client/transfers"
 )
 
-func NewMetadataDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (MetadataDS, error) {
+func NewMetadataDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (itf.MetadataDS, error) {
 	db, err := badger.NewDatastore(path.Join(string(*homeDir), metadata), &badger.DefaultOptions)
 	if err != nil {
 		return nil, err
@@ -68,100 +72,110 @@ func NewStagingBlockStore(lc fx.Lifecycle, stagingDs StagingDS) (StagingBlocksto
 	return blockstore.FromDatastore(stagingDs), nil
 }
 
-func NewPieceMetaDs(ds MetadataDS) PieceMetaDs {
+func NewPieceMetaDs(ds itf.MetadataDS) itf.PieceMetaDs {
 	return namespace.Wrap(ds, datastore.NewKey(piecemeta))
 }
 
-func NewFundMgrDS(ds MetadataDS) FundMgrDS {
+func NewFundMgrDS(ds itf.MetadataDS) itf.FundMgrDS {
 	return namespace.Wrap(ds, datastore.NewKey(fundmgr))
 }
 
-func NewCidInfoDs(ds PieceMetaDs) CIDInfoDS {
+func NewCidInfoDs(ds itf.PieceMetaDs) itf.CIDInfoDS {
 	return namespace.Wrap(ds, datastore.NewKey(cidinfo))
 }
 
-func NewPieceInfoDs(ds PieceMetaDs) PieceInfoDS {
+func NewPieceInfoDs(ds itf.PieceMetaDs) itf.PieceInfoDS {
 	return namespace.Wrap(ds, datastore.NewKey(pieceinfo))
 }
 
-func NewRetrievalProviderDS(ds MetadataDS) RetrievalProviderDS {
+func NewRetrievalProviderDS(ds itf.MetadataDS) itf.RetrievalProviderDS {
 	return namespace.Wrap(ds, datastore.NewKey(retrievalProvider))
 }
 
-func NewRetrievalAskDS(ds RetrievalProviderDS) RetrievalAskDS {
+func NewRetrievalAskDS(ds itf.RetrievalProviderDS) itf.RetrievalAskDS {
 	return namespace.Wrap(ds, datastore.NewKey(retrievalAsk))
 }
 
-func NewDagTransferDS(ds MetadataDS) DagTransferDS {
+func NewDagTransferDS(ds itf.MetadataDS) itf.DagTransferDS {
 	return namespace.Wrap(ds, datastore.NewKey(transfer))
 }
 
-func NewProviderDealDS(ds MetadataDS) ProviderDealDS {
+func NewProviderDealDS(ds itf.MetadataDS) itf.ProviderDealDS {
 	return namespace.Wrap(ds, datastore.NewKey(dealProvider))
 }
 
-func NewStorageAskDS(ds ProviderDealDS) StorageAskDS {
+func NewStorageAskDS(ds itf.ProviderDealDS) itf.StorageAskDS {
 	return namespace.Wrap(ds, datastore.NewKey(storageAsk))
 }
 
-func NewPayChanDS(ds MetadataDS) PayChanDS {
+func NewPayChanDS(ds itf.MetadataDS) itf.PayChanDS {
 	return namespace.Wrap(ds, datastore.NewKey(paych))
 }
 
 // NewClientDatastore creates a datastore for the client to store its deals
-func NewClientDatastore(ds MetadataDS) ClientDatastore {
+func NewClientDatastore(ds itf.MetadataDS) itf.ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey(dealClient))
 }
 
 // for discover
-func NewClientDealsDS(ds MetadataDS) ClientDealsDS {
+func NewClientDealsDS(ds itf.MetadataDS) itf.ClientDealsDS {
 	return namespace.Wrap(ds, datastore.NewKey(dealLocal))
 }
 
-func NewRetrievalClientDS(ds MetadataDS) RetrievalClientDS {
+func NewRetrievalClientDS(ds itf.MetadataDS) itf.RetrievalClientDS {
 	return namespace.Wrap(ds, datastore.NewKey(retrievalClient))
 }
 
-func NewImportClientDS(ds MetadataDS) ImportClientDS {
+func NewImportClientDS(ds itf.MetadataDS) itf.ImportClientDS {
 	return namespace.Wrap(ds, datastore.NewKey(client))
 }
 
-func NewClientTransferDS(ds MetadataDS) ClientTransferDS {
+func NewClientTransferDS(ds itf.MetadataDS) itf.ClientTransferDS {
 	return namespace.Wrap(ds, datastore.NewKey(clientTransfer))
 }
 
 var DBOptions = func(server bool) builder.Option {
 	if server {
 		return builder.Options(
-			builder.Override(new(MetadataDS), NewMetadataDS),
+			builder.Override(new(itf.MetadataDS), NewMetadataDS),
 			builder.Override(new(StagingDS), NewStagingDS),
 			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
-			builder.Override(new(PieceMetaDs), NewPieceMetaDs),
-			builder.Override(new(PieceInfoDS), NewPieceInfoDs),
-			builder.Override(new(CIDInfoDS), NewCidInfoDs),
-			builder.Override(new(RetrievalProviderDS), NewRetrievalProviderDS),
-			builder.Override(new(RetrievalAskDS), NewRetrievalAskDS),
-			builder.Override(new(DagTransferDS), NewDagTransferDS),
-			builder.Override(new(ProviderDealDS), NewProviderDealDS),
-			builder.Override(new(StorageAskDS), NewStorageAskDS),
+			builder.Override(new(itf.PieceMetaDs), NewPieceMetaDs),
+			builder.Override(new(itf.PieceInfoDS), NewPieceInfoDs),
+			builder.Override(new(itf.CIDInfoDS), NewCidInfoDs),
+			builder.Override(new(itf.RetrievalProviderDS), NewRetrievalProviderDS),
+			builder.Override(new(itf.RetrievalAskDS), NewRetrievalAskDS),
+			builder.Override(new(itf.DagTransferDS), NewDagTransferDS),
+			builder.Override(new(itf.ProviderDealDS), NewProviderDealDS),
+			builder.Override(new(itf.StorageAskDS), NewStorageAskDS),
 			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
-			builder.Override(new(PayChanDS), NewPayChanDS),
-			builder.Override(new(FundMgrDS), NewFundMgrDS),
+			builder.Override(new(itf.PayChanDS), NewPayChanDS),
+			builder.Override(new(itf.FundMgrDS), NewFundMgrDS),
 
-			builder.Override(new(StorageAsk.StorageAskRepo), StorageAsk.NewStorageAsk),
+			builder.Override(new(StorageAskRepo), NewStorageAsk),
+			builder.Override(new(itf.Repo), func(cfg *config.Mysql) (itf.Repo, error) {
+				if len(cfg.ConnectionString) == 0 {
+					return nil, xerrors.Errorf("implement me")
+				} else {
+					return mysql.InitMysql(cfg)
+				}
+			}),
 		)
 	} else {
 		return builder.Options(
-			builder.Override(new(MetadataDS), NewMetadataDS),
-			builder.Override(new(FundMgrDS), NewFundMgrDS),
-			builder.Override(new(PayChanDS), NewPayChanDS),
+			builder.Override(new(itf.MetadataDS), NewMetadataDS),
+			builder.Override(new(itf.FundMgrDS), NewFundMgrDS),
+			builder.Override(new(itf.PayChanDS), NewPayChanDS),
 
-			builder.Override(new(ClientDatastore), NewClientDatastore),
+			builder.Override(new(itf.ClientDatastore), NewClientDatastore),
 			builder.Override(new(ClientBlockstore), NewClientBlockstore),
-			builder.Override(new(ClientDealsDS), NewClientDealsDS),
-			builder.Override(new(RetrievalClientDS), NewRetrievalClientDS),
-			builder.Override(new(ImportClientDS), NewImportClientDS),
-			builder.Override(new(ClientTransferDS), NewClientTransferDS),
+			builder.Override(new(itf.ClientDealsDS), NewClientDealsDS),
+			builder.Override(new(itf.RetrievalClientDS), NewRetrievalClientDS),
+			builder.Override(new(itf.ImportClientDS), NewImportClientDS),
+			builder.Override(new(itf.ClientTransferDS), NewClientTransferDS),
+			builder.Override(new(itf.Repo), func() itf.Repo {
+				return nil
+			}),
 		)
 	}
 }

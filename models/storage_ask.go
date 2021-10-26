@@ -1,4 +1,4 @@
-package StorageAsk
+package models
 
 import (
 	"context"
@@ -9,26 +9,15 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/models/badger"
+	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/mysql"
 	"golang.org/x/xerrors"
 )
 
-type StorageAskCfg struct {
-	DbType string
-	// to mysql: uri is a connection string,example:
-	//  "user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s"
-	// to badger: uri is a path
-	URI   string
-	Debug bool
-}
-
-type istorageAskRepo interface {
-	GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error)
-	SetAsk(miner address.Address, ask *storagemarket.SignedStorageAsk) error
-	Close() error
-}
-
 type StorageAskRepo struct {
-	repo     istorageAskRepo
+	repo     itf.StorageAskRepo
 	provider storagemarket.StorageProviderNode
 }
 
@@ -84,17 +73,17 @@ func (repo *StorageAskRepo) SetAsk(miner address.Address, price abi.TokenAmount,
 	return repo.repo.SetAsk(miner, &storagemarket.SignedStorageAsk{Ask: ask, Signature: sig})
 }
 
-func NewStorageAsk(cfg *StorageAskCfg, provider storagemarket.StorageProviderNode) (*StorageAskRepo, error) {
-	var iRepo istorageAskRepo
+func NewStorageAsk(cfg *config.StorageAskConfig, provider storagemarket.StorageProviderNode) (*StorageAskRepo, error) {
+	var iRepo itf.StorageAskRepo
 	var err error
 	switch cfg.DbType {
 	case "mysql":
-		if iRepo, err = newMysqlStorageAskRepo(cfg); err != nil {
+		if iRepo, err = mysql.NewMysqlStorageAskRepo(cfg); err != nil {
 			return nil, err
 		}
 		return &StorageAskRepo{repo: iRepo, provider: provider}, nil
 	case "badger":
-		if iRepo, err = newBadgerStorageAskRepo(cfg); err != nil {
+		if iRepo, err = badger.NewBadgerStorageAskRepo(cfg); err != nil {
 			return nil, err
 		}
 		return &StorageAskRepo{repo: iRepo, provider: provider}, nil

@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/models/storagemysql"
 	types2 "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -226,15 +225,10 @@ var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Sig
 			builder.Override(new(*marketevent.MarketEventStream), NewMarketEvent),
 			builder.Override(new(marketevent.IMarketEventAPI), NewMarketEventAPI),
 			builder.Override(new(MarketRequestEvent), builder.From(new(*marketevent.MarketEventStream))),
-
-			builder.Override(new(storagemysql.Repo), storagemysql.InitMysql),
 		)
 	} else {
 		return builder.Options(opts,
 			builder.Override(new(apiface.FullNode), NodeClient),
-			builder.Override(new(storagemysql.Repo), func() storagemysql.Repo {
-				return nil
-			}),
 		)
 	}
 }

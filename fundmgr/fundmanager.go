@@ -3,11 +3,8 @@ package fundmgr
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"sync"
-
-	"github.com/filecoin-project/venus-market/models"
-
-	"github.com/filecoin-project/venus-market/models/storagemysql"
 
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -42,24 +39,26 @@ type fundManagerAPI interface {
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
+type StateStore interface {
+	GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error)
+	SaveFundedAddressState(state *types.FundedAddressState) error
+	ListFundedAddressState() ([]*types.FundedAddressState, error)
+}
+
 // FundManager keeps track of funds in a set of addresses
 type FundManager struct {
 	ctx      context.Context
 	shutdown context.CancelFunc
 	api      fundManagerAPI
-	str      IStore
+	str      StateStore
 
 	lk          sync.Mutex
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, repo storagemysql.Repo) *FundManager {
-	store := newStore(ds)
-	if repo != nil {
-		store = repo.FundRepo()
-	}
-
-	fm := newFundManager(&api, store)
+// func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, repo repo.Repo) *FundManager {
+func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, repo itf.Repo) *FundManager {
+	fm := newFundManager(&api, repo.FundRepo())
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return fm.Start()
@@ -73,7 +72,7 @@ func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, re
 }
 
 // newFundManager is used by the tests
-func newFundManager(api fundManagerAPI, store IStore) *FundManager {
+func newFundManager(api fundManagerAPI, store StateStore) *FundManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
 		ctx:         ctx,
@@ -151,21 +150,21 @@ func (fm *FundManager) GetReserved(addr address.Address) abi.TokenAmount {
 
 // FundedAddressState keeps track of the state of an address with funds in the
 // datastore
-//type FundedAddressState struct {
+// type FundedAddressState struct {
 //	Addr address.Address
 //	// AmtReserved is the amount that must be kept in the address (cannot be
 //	// withdrawn)
 //	AmtReserved abi.TokenAmount
 //	// MsgCid is the cid of an in-progress on-chain message
 //	MsgCid *cid.Cid
-//}
+// }
 
 // fundedAddress keeps track of the state and request queues for a
 // particular address
 type fundedAddress struct {
 	ctx context.Context
 	env *fundManagerEnvironment
-	str IStore
+	str StateStore
 
 	lk    sync.RWMutex
 	state *types.FundedAddressState
@@ -244,7 +243,7 @@ func (a *fundedAddress) requestAndWait(ctx context.Context, wallet address.Addre
 }
 
 // Used by the tests
-func (a *fundedAddress) onProcessStart(fn func() bool) { //nolint
+func (a *fundedAddress) onProcessStart(fn func() bool) { // nolint
 	a.lk.Lock()
 	defer a.lk.Unlock()
 

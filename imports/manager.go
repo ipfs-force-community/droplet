@@ -3,7 +3,7 @@ package imports
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -47,7 +47,7 @@ const (
 	LCAROwner = LabelKey("car_owner") // Owner of the CAR; "importmgr" is us; "user" or empty is them.
 )
 
-func NewManager(ds models.ImportClientDS, rootDir string) *Manager {
+func NewManager(ds itf.ImportClientDS, rootDir string) *Manager {
 	m := &Manager{
 		ds:      ds,
 		rootDir: rootDir,

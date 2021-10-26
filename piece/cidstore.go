@@ -3,7 +3,7 @@ package piece
 import (
 	"encoding/json"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -28,7 +28,7 @@ type dsCidInfoStore struct {
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func NewDsCidInfoStore(ds models.CIDInfoDS) (CIDStore, error) {
+func NewDsCidInfoStore(ds itf.CIDInfoDS) (CIDStore, error) {
 	return &dsCidInfoStore{
 		cidInfos: ds,
 		pieceLk:  sync.Mutex{},

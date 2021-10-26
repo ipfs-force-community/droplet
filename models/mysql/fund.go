@@ -1,4 +1,4 @@
-package storagemysql
+package mysql
 
 import (
 	"github.com/filecoin-project/go-address"
@@ -54,7 +54,7 @@ type fundedAddressStateRepo struct {
 	*gorm.DB
 }
 
-func newFundedAddressStateRepo(db *gorm.DB) *fundedAddressStateRepo {
+func NewFundedAddressStateRepo(db *gorm.DB) *fundedAddressStateRepo {
 	return &fundedAddressStateRepo{db}
 }
 
@@ -90,4 +90,4 @@ func (f *fundedAddressStateRepo) ListFundedAddressState() ([]*types.FundedAddres
 	return list, nil
 }
 
-var _ FundRepo = (*fundedAddressStateRepo)(nil)
+//var _ repo.FundRepo = (*fundedAddressStateRepo)(nil)

@@ -1,4 +1,4 @@
-package StorageAsk
+package models
 
 import (
 	"os"
@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils/test_helper"
 	"github.com/stretchr/testify/require"
 )
@@ -51,7 +52,7 @@ func testRepo(t *testing.T, repo *StorageAskRepo) {
 
 func TestMysqlRepo(t *testing.T) {
 	mysql := test_helper.Mysql(t)
-	mysqlCfg := &StorageAskCfg{
+	mysqlCfg := &config.StorageAskConfig{
 		DbType: "mysql",
 		// "root:ko2005@tcp(127.0.0.1:3306)/storage_market?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s",
 		URI:   mysql,
@@ -67,7 +68,7 @@ func TestBadgerRepo(t *testing.T) {
 	repoPath, _ := os.Getwd()
 	repoPath = path.Join(repoPath, "./.badgerStAskDb")
 
-	badgerCfg := &StorageAskCfg{DbType: "badger", URI: repoPath}
+	badgerCfg := &config.StorageAskConfig{DbType: "badger", URI: repoPath}
 
 	askRepo, err := NewStorageAsk(badgerCfg, mockProvider{})
 	require.NoError(t, err)

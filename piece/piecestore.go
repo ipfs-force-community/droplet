@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"github.com/filecoin-project/venus-market/types"
 	logging "github.com/ipfs/go-log/v2"
 	"math"
@@ -104,7 +104,7 @@ type dsPieceStore struct {
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func NewDsPieceStore(ds models.PieceInfoDS, ssize types.SectorSize, pieceStorage *config.PieceStorageString) (PieceStore, error) {
+func NewDsPieceStore(ds itf.PieceInfoDS, ssize types.SectorSize, pieceStorage *config.PieceStorageString) (PieceStore, error) {
 	return &dsPieceStore{
 		pieces:       ds,
 		pieceStorage: pieceStorage,
