@@ -44,16 +44,6 @@ type Node ConnectConfig
 type Messager ConnectConfig
 type Market ConnectConfig
 
-type StorageAskConfig struct {
-	DbType string
-	/* field 'DbTypes' can be 'mysql' or 'badger',
-	to 'mysql': uri is a mysql connection string, example:
-	      "user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s"
-	to 'badger': uri is a path */
-	URI   string
-	Debug bool
-}
-
 type Common struct {
 	API    API
 	Libp2p Libp2p
@@ -168,8 +158,6 @@ type MarketConfig struct {
 	Journal       Journal
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
-
-	StAsk StorageAskConfig
 
 	MinerAddress string
 	// When enabled, the miner can accept online deals

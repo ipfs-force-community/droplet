@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
-	"github.com/filecoin-project/venus-market/types"
 	mtypes "github.com/filecoin-project/venus-messager/types"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -40,7 +39,7 @@ type minerDeal struct {
 	AvailableForRetrieval bool                            `gorm:"column:available_for_retrieval;"`
 
 	DealID       abi.DealID `gorm:"column:deal_id;type:bigint unsigned;"`
-	CreationTime uint64     `gorm:"column:creation_time;type:bigint unsigned;"`
+	CreationTime int64      `gorm:"column:creation_time;type:bigint;"`
 
 	TransferChannelId datatransfer.ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
 	SectorNumber      abi.SectorNumber       `gorm:"column:sector_number;type:bigint unsigned;"`
@@ -56,7 +55,7 @@ type ClientDealProposal struct {
 	Provider     string              `gorm:"column:provider;type:varchar(256);"`
 
 	// Label is an arbitrary client chosen label to apply to the deal
-	Label string `gorm:"column:addr;type:varchar(256);"`
+	Label string `gorm:"column:label;type:varchar(256);"`
 
 	// Nominal start epoch. Deal payment is linear between StartEpoch and EndEpoch,
 	// with total amount StoragePricePerEpoch * (EndEpoch - StartEpoch).
@@ -75,19 +74,18 @@ type ClientDealProposal struct {
 type Signature acrypto.Signature
 
 func (s *Signature) Scan(value interface{}) error {
-	sqlBin, isok := value.([]byte)
-	if !isok {
+	b, ok := value.([]byte)
+	if !ok {
 		return fmt.Errorf("value must be []byte")
 	}
-	return json.Unmarshal(sqlBin, s)
+	return json.Unmarshal(b, s)
 }
 
-func (s *Signature) Value() (driver.Value, error) {
-	if s == nil {
-		return nil, nil
-	}
+func (s Signature) Value() (driver.Value, error) {
 	return json.Marshal(s)
 }
+
+type ChannelID datatransfer.ChannelID
 
 type DataRef struct {
 	TransferType string `gorm:"column:transfer_type;type:varchar(128);"`
@@ -102,12 +100,28 @@ func (m *minerDeal) TableName() string {
 	return "miner_deals"
 }
 
-func fromMinerDeal(src *types.MinerDeal) *minerDeal {
+func fromMinerDeal(src *storagemarket.MinerDeal) *minerDeal {
 	md := &minerDeal{
-		ClientDealProposal:    ClientDealProposal{},
-		ProposalCid:           src.ProposalCid.String(),
-		AddFundsCid:           src.AddFundsCid.String(),
-		PublishCid:            src.PublishCid.String(),
+		ClientDealProposal: ClientDealProposal{
+			PieceCID:             decodeCid(src.ClientDealProposal.Proposal.PieceCID),
+			PieceSize:            src.ClientDealProposal.Proposal.PieceSize,
+			VerifiedDeal:         src.ClientDealProposal.Proposal.VerifiedDeal,
+			Client:               src.ClientDealProposal.Proposal.Client.String(),
+			Provider:             src.ClientDealProposal.Proposal.Provider.String(),
+			Label:                src.ClientDealProposal.Proposal.Label,
+			StartEpoch:           src.ClientDealProposal.Proposal.StartEpoch,
+			EndEpoch:             src.ClientDealProposal.Proposal.EndEpoch,
+			StoragePricePerEpoch: convertBigInt(src.ClientDealProposal.Proposal.StoragePricePerEpoch),
+			ProviderCollateral:   convertBigInt(src.ClientDealProposal.Proposal.ProviderCollateral),
+			ClientCollateral:     convertBigInt(src.ClientDealProposal.Proposal.ClientCollateral),
+			ClientSignature: Signature{
+				Type: src.ClientSignature.Type,
+				Data: src.ClientSignature.Data,
+			},
+		},
+		ProposalCid:           decodeCid(src.ProposalCid),
+		AddFundsCid:           decodeCidPtr(src.AddFundsCid),
+		PublishCid:            decodeCidPtr(src.PublishCid),
 		Miner:                 src.Miner,
 		Client:                src.Client,
 		State:                 src.State,
@@ -116,41 +130,32 @@ func fromMinerDeal(src *types.MinerDeal) *minerDeal {
 		SlashEpoch:            src.SlashEpoch,
 		FastRetrieval:         src.FastRetrieval,
 		Message:               src.Message,
+		FundsReserved:         convertBigInt(src.FundsReserved),
 		AvailableForRetrieval: src.AvailableForRetrieval,
 		DealID:                src.DealID,
-		CreationTime:          uint64(src.CreationTime.Time().Unix()),
+		CreationTime:          src.CreationTime.Time().UnixNano(),
 		SectorNumber:          src.SectorNumber,
 		InboundCAR:            src.InboundCAR,
 	}
-	if !src.FundsReserved.Nil() {
-		md.FundsReserved = mtypes.NewFromGo(src.FundsReserved.Int)
-	} else {
-		md.FundsReserved = mtypes.Zero()
-	}
+
 	if src.Ref != nil {
 		md.Ref = DataRef{
 			TransferType: src.Ref.TransferType,
-			Root:         src.Ref.Root.String(),
+			Root:         decodeCid(src.Ref.Root),
+			PieceCid:     decodeCidPtr(src.Ref.PieceCid),
 			PieceSize:    src.Ref.PieceSize,
 			RawBlockSize: src.Ref.RawBlockSize,
 		}
-		if src.Ref.PieceCid != nil {
-			md.Ref.PieceCid = src.Ref.PieceCid.String()
-		}
 	}
 	if src.TransferChannelId != nil {
-		md.TransferChannelId = datatransfer.ChannelID{
-			Initiator: src.TransferChannelId.Initiator,
-			Responder: src.TransferChannelId.Responder,
-			ID:        src.TransferChannelId.ID,
-		}
+		md.TransferChannelId = *src.TransferChannelId
 	}
 
 	return md
 }
 
-func toMinerDeal(src *minerDeal) (*types.MinerDeal, error) {
-	md := &types.MinerDeal{
+func toMinerDeal(src *minerDeal) (*storagemarket.MinerDeal, error) {
+	md := &storagemarket.MinerDeal{
 		ClientDealProposal: market.ClientDealProposal{
 			Proposal: market.DealProposal{
 				PieceSize:            src.PieceSize,
@@ -183,7 +188,7 @@ func toMinerDeal(src *minerDeal) (*types.MinerDeal, error) {
 		},
 		AvailableForRetrieval: src.AvailableForRetrieval,
 		DealID:                src.DealID,
-		CreationTime:          typegen.CborTime(time.Unix(int64(src.CreationTime), 0)),
+		CreationTime:          typegen.CborTime(time.Unix(0, src.CreationTime).UTC()),
 		TransferChannelId: &datatransfer.ChannelID{
 			Initiator: src.TransferChannelId.Initiator,
 			Responder: src.TransferChannelId.Responder,
@@ -209,36 +214,24 @@ func toMinerDeal(src *minerDeal) (*types.MinerDeal, error) {
 	if err != nil {
 		return nil, err
 	}
-	addFundsCid, err := parseCid(src.AddFundsCid)
+	md.AddFundsCid, err = parseCidPtr(src.AddFundsCid)
 	if err != nil {
 		return nil, err
 	}
-	md.AddFundsCid = &addFundsCid
-	publishCid, err := parseCid(src.PublishCid)
+	md.PublishCid, err = parseCidPtr(src.PublishCid)
 	if err != nil {
 		return nil, err
 	}
-	md.PublishCid = &publishCid
-	root, err := parseCid(src.Ref.Root)
+	md.Ref.Root, err = parseCid(src.Ref.Root)
 	if err != nil {
 		return nil, err
 	}
-	md.Ref.Root = root
-	pieceCid, err := parseCid(src.Ref.PieceCid)
+	md.Ref.PieceCid, err = parseCidPtr(src.Ref.PieceCid)
 	if err != nil {
 		return nil, err
 	}
-	md.Ref.PieceCid = &pieceCid
 
 	return md, nil
-}
-
-func parseCid(str string) (cid.Cid, error) {
-	if len(str) == 0 {
-		return cid.Undef, nil
-	}
-
-	return cid.Parse(str)
 }
 
 type minerDealRepo struct {
@@ -249,13 +242,13 @@ func NewMinerDealRepo(db *gorm.DB) *minerDealRepo {
 	return &minerDealRepo{db}
 }
 
-func (m *minerDealRepo) SaveMinerDeal(minerDeal *types.MinerDeal) error {
+func (m *minerDealRepo) SaveMinerDeal(minerDeal *storagemarket.MinerDeal) error {
 	return m.DB.Create(fromMinerDeal(minerDeal)).Error
 }
 
-func (m *minerDealRepo) GetMinerDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
+func (m *minerDealRepo) GetMinerDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error) {
 	var md minerDeal
-	err := m.DB.Take(md, "proposal_cid = ?", proposalCid.String()).Error
+	err := m.DB.Take(&md, "proposal_cid = ?", proposalCid.String()).Error
 	if err != nil {
 		return nil, err
 	}
@@ -263,17 +256,13 @@ func (m *minerDealRepo) GetMinerDeal(proposalCid cid.Cid) (*types.MinerDeal, err
 	return toMinerDeal(&md)
 }
 
-func (m *minerDealRepo) UpdateMinerDeal(proposalCid cid.Cid, updateCols map[string]interface{}) error {
-	return m.DB.Model(&minerDeal{}).Where("proposal_cid = ?", proposalCid.String()).UpdateColumns(updateCols).Error
-}
-
-func (m *minerDealRepo) ListMinerDeal() ([]*types.MinerDeal, error) {
+func (m *minerDealRepo) ListMinerDeal() ([]*storagemarket.MinerDeal, error) {
 	var mds []*minerDeal
 	err := m.DB.Find(&mds).Error
 	if err != nil {
 		return nil, err
 	}
-	list := make([]*types.MinerDeal, 0, len(mds))
+	list := make([]*storagemarket.MinerDeal, 0, len(mds))
 	for _, md := range mds {
 		deal, err := toMinerDeal(md)
 		if err != nil {
@@ -284,5 +273,3 @@ func (m *minerDealRepo) ListMinerDeal() ([]*types.MinerDeal, error) {
 
 	return list, nil
 }
-
-//var _ repo.MinerDealRepo = (*minerDealRepo)(nil)

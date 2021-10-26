@@ -5,7 +5,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/types"
 	mtypes "github.com/filecoin-project/venus-messager/types"
-	"github.com/ipfs/go-cid"
 	"gorm.io/gorm"
 )
 
@@ -22,30 +21,28 @@ func (fas *fundedAddressState) TableName() string {
 func fromFundedAddressState(src *types.FundedAddressState) *fundedAddressState {
 	fds := &fundedAddressState{
 		Addr:        src.Addr.String(),
-		AmtReserved: mtypes.NewFromGo(src.AmtReserved.Int),
-		MsgCid:      src.MsgCid.String(),
+		MsgCid:      decodeCidPtr(src.MsgCid),
+		AmtReserved: convertBigInt(src.AmtReserved),
 	}
 
 	return fds
 }
 
 func toFundedAddressState(src *fundedAddressState) (*types.FundedAddressState, error) {
-	fds := &types.FundedAddressState{}
-	if !src.AmtReserved.Nil() {
-		fds.AmtReserved = abi.TokenAmount{Int: src.AmtReserved.Int}
-	} else {
-		fds.AmtReserved = abi.NewTokenAmount(0)
+	fds := &types.FundedAddressState{
+		AmtReserved: abi.TokenAmount{Int: src.AmtReserved.Int},
 	}
-	addr, err := address.NewFromString(src.Addr)
+
+	var err error
+	fds.Addr, err = address.NewFromString(src.Addr)
 	if err != nil {
 		return nil, err
 	}
-	msgCid, err := cid.Parse(src.MsgCid)
+
+	fds.MsgCid, err = parseCidPtr(src.MsgCid)
 	if err != nil {
 		return nil, err
 	}
-	fds.Addr = addr
-	fds.MsgCid = &msgCid
 
 	return fds, nil
 }
@@ -58,18 +55,18 @@ func NewFundedAddressStateRepo(db *gorm.DB) *fundedAddressStateRepo {
 	return &fundedAddressStateRepo{db}
 }
 
+func (f *fundedAddressStateRepo) SaveFundedAddressState(fds *types.FundedAddressState) error {
+	return f.DB.Save(fromFundedAddressState(fds)).Error
+}
+
 func (f *fundedAddressStateRepo) GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error) {
 	var fas fundedAddressState
-	err := f.DB.Take(fas, "addr = ?", addr.String()).Error
+	err := f.DB.Take(&fas, "addr = ?", addr.String()).Error
 	if err != nil {
 		return nil, err
 	}
 
 	return toFundedAddressState(&fas)
-}
-
-func (f *fundedAddressStateRepo) SaveFundedAddressState(fds *types.FundedAddressState) error {
-	return f.DB.Save(fromFundedAddressState(fds)).Error
 }
 
 func (f *fundedAddressStateRepo) ListFundedAddressState() ([]*types.FundedAddressState, error) {
@@ -89,5 +86,3 @@ func (f *fundedAddressStateRepo) ListFundedAddressState() ([]*types.FundedAddres
 
 	return list, nil
 }
-
-//var _ repo.FundRepo = (*fundedAddressStateRepo)(nil)

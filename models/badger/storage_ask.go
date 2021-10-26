@@ -2,64 +2,48 @@ package badger
 
 import (
 	"bytes"
+	"github.com/filecoin-project/venus-market/models/itf"
 
-	"github.com/dgraph-io/badger/v2"
+	cborrpc "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-statestore"
+	"github.com/ipfs/go-datastore"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/itf"
 	"golang.org/x/xerrors"
 )
 
-type badgerStorageAsk struct {
-	ds *badger.DB
+type askStore struct {
+	ds datastore.Batching
 }
 
-var _ itf.StorageAskRepo = (*badgerStorageAsk)(nil)
+func NewAskStore(ds itf.StorageAskDS) *askStore {
+	return &askStore{ds: ds}
+}
 
-func (b *badgerStorageAsk) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {
-	var data []byte
-
-	if err := b.ds.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(miner.Bytes())
-		if err != nil {
-			return err
-		}
-		data, err = item.ValueCopy(nil)
-		return err
-	}); err != nil {
-		return nil, xerrors.Errorf("badger get Miner(%s) storageask failed:%w", miner.String(), err)
+func (s *askStore) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {
+	key := statestore.ToKey(miner)
+	b, err := s.ds.Get(key)
+	if err != nil {
+		return nil, err
 	}
 
-	var ask = &storagemarket.SignedStorageAsk{}
-	if err := ask.UnmarshalCBOR(bytes.NewBuffer(data)); err != nil {
+	ask := storagemarket.SignedStorageAsk{}
+	if err := ask.UnmarshalCBOR(bytes.NewBuffer(b)); err != nil {
 		return nil, xerrors.Errorf("bader Miner(%s) unmarshal storageask failed:%w", miner.String(), err)
 	}
-	return ask, nil
+	return &ask, nil
 }
 
-func (b *badgerStorageAsk) SetAsk(miner address.Address, ask *storagemarket.SignedStorageAsk) error {
-	buf := bytes.NewBuffer(nil)
-	if err := ask.MarshalCBOR(buf); err != nil {
-		return xerrors.Errorf("bader set Miner(%s) ask, marshal SignedAsk failed:%w", err)
+func (s *askStore) SetAsk(ask *storagemarket.SignedStorageAsk) error {
+	if ask == nil || ask.Ask == nil {
+		return xerrors.Errorf("param is nil")
 	}
-
-	if err := b.ds.Update(func(txn *badger.Txn) error {
-		return txn.Set(miner.Bytes(), buf.Bytes())
-	}); err != nil {
-		return xerrors.Errorf("badger set ask, update failed:%w", err)
-	}
-	return nil
-}
-
-func (b *badgerStorageAsk) Close() error {
-	return b.ds.Close()
-}
-
-func NewBadgerStorageAskRepo(cfg *config.StorageAskConfig) (*badgerStorageAsk, error) {
-	ds, err := badger.Open(badger.DefaultOptions(cfg.URI))
+	key := statestore.ToKey(ask.Ask.Miner)
+	b, err := cborrpc.Dump(ask)
 	if err != nil {
-		return nil, xerrors.Errorf("open badger(%s) failed:%w", cfg.URI, err)
+		return err
 	}
-	return &badgerStorageAsk{ds: ds}, nil
+
+	return s.ds.Put(key, b)
 }

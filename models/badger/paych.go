@@ -145,7 +145,6 @@ func (s *store) findChans(filter func(*types.ChannelInfo) bool, max int) ([]*typ
 	}
 	defer res.Close() //nolint:errcheck
 
-	var stored types.ChannelInfo
 	var matches []*types.ChannelInfo
 
 	for {
@@ -158,6 +157,7 @@ func (s *store) findChans(filter func(*types.ChannelInfo) bool, max int) ([]*typ
 			return nil, err
 		}
 
+		var stored types.ChannelInfo
 		ci, err := unmarshallChannelInfo(&stored, res.Value)
 		if err != nil {
 			return nil, err
@@ -239,8 +239,6 @@ func unmarshallChannelInfo(stored *types.ChannelInfo, value []byte) (*types.Chan
 	return stored, nil
 }
 
-// var _ repo.PaychChannelInfoRepo = (*store)(nil)
-
 // ///// msg info ////////
 
 // GetMessage gets the message info for a given message CID
@@ -264,7 +262,7 @@ func (s *store) GetMessage(mcid cid.Cid) (*types.MsgInfo, error) {
 func (s *store) SaveMessage(info *types.MsgInfo) error {
 	k := dskeyForMsg(info.MsgCid)
 
-	b, err := cborutil.Dump(&info)
+	b, err := cborutil.Dump(info)
 	if err != nil {
 		return err
 	}
@@ -297,5 +295,3 @@ func (s *store) SaveMessageResult(mcid cid.Cid, msgErr error) error {
 func dskeyForMsg(mcid cid.Cid) datastore.Key {
 	return datastore.KeyWithNamespaces([]string{dsKeyMsgCid, mcid.String()})
 }
-
-// var _ repo.PaychMsgInfoRepo = (*store)(nil)
