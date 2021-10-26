@@ -7,8 +7,6 @@ import (
 
 	"github.com/filecoin-project/venus-market/models"
 
-	"github.com/filecoin-project/venus-market/models/storagemysql"
-
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
@@ -42,24 +40,26 @@ type fundManagerAPI interface {
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
+type StateStore interface {
+	GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error)
+	SaveFundedAddressState(state *types.FundedAddressState) error
+	ListFundedAddressState() ([]*types.FundedAddressState, error)
+}
+
 // FundManager keeps track of funds in a set of addresses
 type FundManager struct {
 	ctx      context.Context
 	shutdown context.CancelFunc
 	api      fundManagerAPI
-	str      IStore
+	str      StateStore
 
 	lk          sync.Mutex
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, repo storagemysql.Repo) *FundManager {
-	store := newStore(ds)
-	if repo != nil {
-		store = repo.FundRepo()
-	}
-
-	fm := newFundManager(&api, store)
+//func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, repo repo.Repo) *FundManager {
+func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, repo models.Repo) *FundManager {
+	fm := newFundManager(&api, repo.FundRepo())
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return fm.Start()
@@ -73,7 +73,7 @@ func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, re
 }
 
 // newFundManager is used by the tests
-func newFundManager(api fundManagerAPI, store IStore) *FundManager {
+func newFundManager(api fundManagerAPI, store StateStore) *FundManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
 		ctx:         ctx,
@@ -165,7 +165,7 @@ func (fm *FundManager) GetReserved(addr address.Address) abi.TokenAmount {
 type fundedAddress struct {
 	ctx context.Context
 	env *fundManagerEnvironment
-	str IStore
+	str StateStore
 
 	lk    sync.RWMutex
 	state *types.FundedAddressState

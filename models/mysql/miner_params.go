@@ -1,4 +1,4 @@
-package storagemysql
+package mysql
 
 import (
 	"time"
@@ -77,7 +77,7 @@ type minerParamsRepo struct {
 	*gorm.DB
 }
 
-func newMinerParamsRepo(db *gorm.DB) *minerParamsRepo {
+func NewMinerParamsRepo(db *gorm.DB) *minerParamsRepo {
 	return &minerParamsRepo{db}
 }
 
@@ -119,4 +119,4 @@ func (m *minerParamsRepo) ListMinerParams() ([]*types.MinerParams, error) {
 	return minerParams, nil
 }
 
-var _ MinerParamsRepo = (*minerParamsRepo)(nil)
+//var _ repo.MinerParamsRepo = (*minerParamsRepo)(nil)

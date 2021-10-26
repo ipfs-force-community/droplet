@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
@@ -79,3 +81,10 @@ type MsgInfo struct {
 	// Err is the error received in the response
 	Err string
 }
+
+const (
+	DirInbound  = 1
+	DirOutbound = 2
+)
+
+var ErrChannelNotTracked = xerrors.New("channel not tracked")
