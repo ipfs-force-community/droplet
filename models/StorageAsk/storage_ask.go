@@ -3,6 +3,7 @@ package StorageAsk
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
@@ -23,11 +24,16 @@ type StorageAskCfg struct {
 type istorageAskRepo interface {
 	GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error)
 	SetAsk(miner address.Address, ask *storagemarket.SignedStorageAsk) error
+	Close() error
 }
 
 type StorageAskRepo struct {
 	repo     istorageAskRepo
 	provider storagemarket.StorageProviderNode
+}
+
+func (repo *StorageAskRepo) Close() error {
+	return repo.repo.Close()
 }
 
 func (repo *StorageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {

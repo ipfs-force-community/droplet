@@ -2,6 +2,7 @@ package StorageAsk
 
 import (
 	"bytes"
+
 	"github.com/dgraph-io/badger/v2"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -35,7 +36,7 @@ func (b *badgerStorageAsk) GetAsk(miner address.Address) (*storagemarket.SignedS
 	return ask, nil
 }
 
-func (b badgerStorageAsk) SetAsk(miner address.Address, ask *storagemarket.SignedStorageAsk) error {
+func (b *badgerStorageAsk) SetAsk(miner address.Address, ask *storagemarket.SignedStorageAsk) error {
 	buf := bytes.NewBuffer(nil)
 	if err := ask.MarshalCBOR(buf); err != nil {
 		return xerrors.Errorf("bader set Miner(%s) ask, marshal SignedAsk failed:%w", err)
@@ -47,6 +48,10 @@ func (b badgerStorageAsk) SetAsk(miner address.Address, ask *storagemarket.Signe
 		return xerrors.Errorf("badger set ask, update failed:%w", err)
 	}
 	return nil
+}
+
+func (b *badgerStorageAsk) Close() error {
+	return b.ds.Close()
 }
 
 func newBadgerStorageAskRepo(cfg *StorageAskCfg) (*badgerStorageAsk, error) {

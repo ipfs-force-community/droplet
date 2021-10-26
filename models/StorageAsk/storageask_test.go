@@ -1,13 +1,17 @@
 package StorageAsk
 
 import (
+	"os"
+	"os/exec"
+	"path"
+	"testing"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/utils/test_helper"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func testRepo(t *testing.T, repo *StorageAskRepo) {
@@ -46,22 +50,32 @@ func testRepo(t *testing.T, repo *StorageAskRepo) {
 }
 
 func TestMysqlRepo(t *testing.T) {
+	mysql := test_helper.Mysql(t)
 	mysqlCfg := &StorageAskCfg{
 		DbType: "mysql",
-		URI:    "root:ko2005@tcp(127.0.0.1:3306)/storage_market?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s",
-		Debug:  true,
+		// "root:ko2005@tcp(127.0.0.1:3306)/storage_market?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s",
+		URI:   mysql,
+		Debug: true,
 	}
 	askRepo, err := NewStorageAsk(mysqlCfg, mockProvider{})
 	require.NoError(t, err)
+	defer askRepo.Close()
 	testRepo(t, askRepo)
 }
 
 func TestBadgerRepo(t *testing.T) {
-	repoPath, _ := config.DefaultMarketConfig.HomeJoin("test_storage_ask_repo")
+	repoPath, _ := os.Getwd()
+	repoPath = path.Join(repoPath, "./.badgerStAskDb")
 
 	badgerCfg := &StorageAskCfg{DbType: "badger", URI: repoPath}
 
 	askRepo, err := NewStorageAsk(badgerCfg, mockProvider{})
 	require.NoError(t, err)
+	defer func() {
+		_ = askRepo.Close()
+		if err := exec.Command("rm", "-rf", repoPath).Run(); err != nil {
+			t.Logf("remove %s failed:%s", repoPath, err.Error())
+		}
+	}()
 	testRepo(t, askRepo)
 }
