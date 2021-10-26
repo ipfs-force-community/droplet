@@ -4,10 +4,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-
 	"github.com/filecoin-project/venus-market/types"
+	"github.com/ipfs/go-cid"
 )
 
 type FundRepo interface {
@@ -61,51 +59,3 @@ type StorageAskRepo interface {
 	Close() error
 }
 
-// /metadata
-type MetadataDS datastore.Batching
-
-// /metadata/fundmgr
-type FundMgrDS datastore.Batching
-
-// /metadata/storagemarket
-type PieceMetaDs datastore.Batching
-
-//  /metadata/storagemarket/cid-infos
-type CIDInfoDS datastore.Batching
-
-//  /metadata/storagemarket/pieces
-type PieceInfoDS datastore.Batching
-
-// /metadata/retrievals/provider
-type RetrievalProviderDS datastore.Batching
-
-// /metadata/retrievals/provider/retrieval-ask
-type RetrievalAskDS datastore.Batching //key = latest
-
-// /metadata/datatransfer/provider/transfers
-type DagTransferDS datastore.Batching
-
-// /metadata/deals/provider
-type ProviderDealDS datastore.Batching
-
-//   /metadata/deals/provider/storage-ask
-type StorageAskDS datastore.Batching //key = latest
-
-// /metadata/paych/
-type PayChanDS datastore.Batching
-
-//*********************************client
-// /metadata/deals/client
-type ClientDatastore datastore.Batching
-
-// /metadata/deals/local
-type ClientDealsDS datastore.Batching
-
-// /metadata/retrievals/client
-type RetrievalClientDS datastore.Batching
-
-// /metadata/client
-type ImportClientDS datastore.Batching
-
-// /metadata/datatransfer/client/transfers
-type ClientTransferDS datastore.Batching
