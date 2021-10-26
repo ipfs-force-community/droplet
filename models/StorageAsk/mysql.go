@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"golang.org/x/xerrors"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
 type mysqlStorageAsk struct {
@@ -105,7 +106,7 @@ func (b *mysqlStorageAsk) GetAsk(miner address.Address) (*storagemarket.SignedSt
 	return stAsk.SignedAsk(), nil
 }
 
-func (b mysqlStorageAsk) SetAsk(miner address.Address, ask *storagemarket.SignedStorageAsk) error {
+func (b *mysqlStorageAsk) SetAsk(miner address.Address, ask *storagemarket.SignedStorageAsk) error {
 	buf := bytes.NewBuffer(nil)
 	if err := ask.MarshalCBOR(buf); err != nil {
 		return xerrors.Errorf("bader set Miner(%s) ask, marshal SignedAsk failed:%w",
@@ -114,4 +115,12 @@ func (b mysqlStorageAsk) SetAsk(miner address.Address, ask *storagemarket.Signed
 	stAsk := &StAsk{Miner: mysqlAddress(miner), MysqlSignedAsk: (*mysqlSignedAsk)(ask)}
 
 	return b.ds.Model(stAsk).Clauses(clause.OnConflict{UpdateAll: true}).Create(stAsk).Error
+}
+
+func (b *mysqlStorageAsk) Close() error {
+	mysqlDb, err := b.ds.DB()
+	if err != nil {
+		return err
+	}
+	return mysqlDb.Close()
 }

@@ -9,7 +9,6 @@ badgerStAskDb/
 market-client
 venus-market
 sequence_chart.md
-.idea
 
 # Test binary, built with `go test -c`
 *.test
