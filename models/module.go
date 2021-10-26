@@ -16,6 +16,7 @@ import (
 const (
 	metadata = "metadata"
 	staging  = "staging"
+	transfer = "transfers"
 
 	fundmgr           = "/fundmgr/"
 	piecemeta         = "/storagemarket"
@@ -23,7 +24,6 @@ const (
 	pieceinfo         = "/pieces"
 	retrievalProvider = "/retrievals/provider"
 	retrievalAsk      = "/retrieval-ask"
-	transfer          = "transfers"
 	dealProvider      = "/deals/provider"
 	storageAsk        = "storage-ask"
 	paych             = "/paych/"

@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/clock"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -109,4 +110,10 @@ type DagstoreInitializeAllEvent struct {
 	Error   string
 	Total   int
 	Current int
+}
+
+type SignInfo struct {
+	Data interface{}
+	Type wallet.MsgType
+	Addr address.Address
 }

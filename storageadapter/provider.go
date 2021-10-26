@@ -3,10 +3,11 @@ package storageadapter
 // this file implements storagemarket.StorageProviderNode
 
 import (
-	"bytes"
 	"context"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/venus-market/fundmgr"
 	"github.com/filecoin-project/venus-market/piece"
+	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -22,18 +23,17 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/utils"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/state"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/utils"
 )
 
 var defaultMaxProviderCollateralMultiplier = uint64(2)
@@ -55,8 +55,8 @@ type ProviderNodeAdapter struct {
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev, err := events.NewEvents(ctx, full)
@@ -216,21 +216,28 @@ func (n *ProviderNodeAdapter) GetProofType(ctx context.Context, maddr address.Ad
 	return miner.PreferredSealProofTypeFromWindowPoStType(nver, mi.WindowPoStProofType)
 }
 
-//todo need to know which type of message change signature
-func (n *ProviderNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
-	signer, err := n.StateAccountKey(ctx, signer, types.EmptyTSK)
+func (n *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*crypto.Signature, error) {
+	tok, _, err := n.GetChainHead(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("couldn't get chain head: %w", err)
+	}
+	info := data.(*types2.SignInfo)
+	msgBytes, err := cborutil.Dump(info.Data)
+	if err != nil {
+		return nil, xerrors.Errorf("serializing: %w", err)
+	}
+
+	worker, err := n.GetMinerWorkerAddress(ctx, info.Addr, tok)
 	if err != nil {
 		return nil, err
 	}
-	//todo  change func signature to get real sign type
-	msg := types.UnsignedMessage{}
-	err = msg.UnmarshalCBOR(bytes.NewReader(b))
-	mType := wallet.MTChainMsg
+
+	signer, err := n.StateAccountKey(ctx, worker, types.EmptyTSK)
 	if err != nil {
-		mType = wallet.MTUnknown
+		return nil, err
 	}
-	localSignature, err := n.FullNode.WalletSign(ctx, signer, b, wallet.MsgMeta{
-		Type: mType,
+	localSignature, err := n.WalletSign(ctx, signer, msgBytes, wallet.MsgMeta{
+		Type: info.Type,
 	})
 	if err != nil {
 		return nil, err
@@ -478,4 +485,61 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 	return nil
 }
 
-var _ storagemarket.StorageProviderNode = &ProviderNodeAdapter{}
+// StorageProviderNode are common interfaces provided by a filecoin Node to both StorageClient and StorageProvider
+type StorageProviderNode interface {
+	// SignsBytes signs the given data with the given address's private key
+	Sign(ctx context.Context, data interface{}) (*crypto.Signature, error)
+
+	// GetChainHead returns a tipset token for the current chain head
+	GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error)
+
+	// Adds funds with the StorageMinerActor for a storage participant.  Used by both providers and clients.
+	AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error)
+
+	// ReserveFunds reserves the given amount of funds is ensures it is available for the deal
+	ReserveFunds(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error)
+
+	// ReleaseFunds releases funds reserved with ReserveFunds
+	ReleaseFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error
+
+	// GetBalance returns locked/unlocked for a storage participant.  Used by both providers and clients.
+	GetBalance(ctx context.Context, addr address.Address, tok shared.TipSetToken) (storagemarket.Balance, error)
+
+	// VerifySignature verifies a given set of data was signed properly by a given address's private key
+	VerifySignature(ctx context.Context, signature crypto.Signature, signer address.Address, plaintext []byte, tok shared.TipSetToken) (bool, error)
+
+	// WaitForMessage waits until a message appears on chain. If it is already on chain, the callback is called immediately
+	WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, cid.Cid, error) error) error
+
+	// DealProviderCollateralBounds returns the min and max collateral a storage provider can issue.
+	DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error)
+
+	// OnDealSectorPreCommitted waits for a deal's sector to be pre-committed
+	OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error
+
+	// OnDealSectorCommitted waits for a deal's sector to be sealed and proved, indicating the deal is active
+	OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error
+
+	// OnDealExpiredOrSlashed registers callbacks to be called when the deal expires or is slashed
+	OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error
+
+	// PublishDeals publishes a deal on chain, returns the message cid, but does not wait for message to appear
+	PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (cid.Cid, error)
+
+	// WaitForPublishDeals waits for a deal publish message to land on chain.
+	WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error)
+
+	// OnDealComplete is called when a deal is complete and on chain, and data has been transferred and is ready to be added to a sector
+	OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) (*storagemarket.PackingResult, error)
+
+	// GetMinerWorkerAddress returns the worker address associated with a miner
+	GetMinerWorkerAddress(ctx context.Context, addr address.Address, tok shared.TipSetToken) (address.Address, error)
+
+	// GetDataCap gets the current data cap for addr
+	GetDataCap(ctx context.Context, addr address.Address, tok shared.TipSetToken) (*abi.StoragePower, error)
+
+	// GetProofType gets the current seal proof type for the given miner.
+	GetProofType(ctx context.Context, addr address.Address, tok shared.TipSetToken) (abi.RegisteredSealProof, error)
+}
+
+var _ StorageProviderNode = &ProviderNodeAdapter{}
