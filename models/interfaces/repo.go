@@ -1,4 +1,4 @@
-package models
+package interfaces
 
 import (
 	"github.com/filecoin-project/go-address"

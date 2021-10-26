@@ -3,9 +3,8 @@ package fundmgr
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/models/interfaces"
 	"sync"
-
-	"github.com/filecoin-project/venus-market/models"
 
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -57,8 +56,8 @@ type FundManager struct {
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-//func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, repo repo.Repo) *FundManager {
-func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, repo models.Repo) *FundManager {
+// func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, repo repo.Repo) *FundManager {
+func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, repo interfaces.Repo) *FundManager {
 	fm := newFundManager(&api, repo.FundRepo())
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -151,14 +150,14 @@ func (fm *FundManager) GetReserved(addr address.Address) abi.TokenAmount {
 
 // FundedAddressState keeps track of the state of an address with funds in the
 // datastore
-//type FundedAddressState struct {
+// type FundedAddressState struct {
 //	Addr address.Address
 //	// AmtReserved is the amount that must be kept in the address (cannot be
 //	// withdrawn)
 //	AmtReserved abi.TokenAmount
 //	// MsgCid is the cid of an in-progress on-chain message
 //	MsgCid *cid.Cid
-//}
+// }
 
 // fundedAddress keeps track of the state and request queues for a
 // particular address
@@ -244,7 +243,7 @@ func (a *fundedAddress) requestAndWait(ctx context.Context, wallet address.Addre
 }
 
 // Used by the tests
-func (a *fundedAddress) onProcessStart(fn func() bool) { //nolint
+func (a *fundedAddress) onProcessStart(fn func() bool) { // nolint
 	a.lk.Lock()
 	defer a.lk.Unlock()
 

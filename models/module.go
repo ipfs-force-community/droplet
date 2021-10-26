@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/models/interfaces"
 	"path"
 
 	"github.com/filecoin-project/venus-market/models/mysql"
@@ -11,8 +12,6 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models/StorageAsk"
-
-	//"github.com/filecoin-project/venus-market/models/mysql"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -155,7 +154,7 @@ var DBOptions = func(server bool) builder.Option {
 			builder.Override(new(FundMgrDS), NewFundMgrDS),
 
 			builder.Override(new(StorageAsk.StorageAskRepo), StorageAsk.NewStorageAsk),
-			builder.Override(new(Repo), func(cfg *config.Mysql) (Repo, error) {
+			builder.Override(new(interfaces.Repo), func(cfg *config.Mysql) (interfaces.Repo, error) {
 				if len(cfg.ConnectionString) == 0 {
 					return nil, xerrors.Errorf("implement me")
 				} else {
@@ -175,7 +174,7 @@ var DBOptions = func(server bool) builder.Option {
 			builder.Override(new(RetrievalClientDS), NewRetrievalClientDS),
 			builder.Override(new(ImportClientDS), NewImportClientDS),
 			builder.Override(new(ClientTransferDS), NewClientTransferDS),
-			builder.Override(new(Repo), func() Repo {
+			builder.Override(new(interfaces.Repo), func() interfaces.Repo {
 				return nil
 			}),
 		)
