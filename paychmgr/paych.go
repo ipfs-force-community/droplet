@@ -2,12 +2,12 @@ package paychmgr
 
 import (
 	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/models"
+	itf "github.com/filecoin-project/venus-market/models/itf"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 )
 
-func NewManager(ctx metrics.MetricsCtx, ds models.PayChanDS, fullNode apiface.FullNode) (*paychmgr.Manager, error) {
+func NewManager(ctx metrics.MetricsCtx, ds itf.PayChanDS, fullNode apiface.FullNode) (*paychmgr.Manager, error) {
 	//todo  to use really messager?
 	return paychmgr.NewManager(ctx, ds, &paychmgr.ManagerParams{
 		MPoolAPI:     fullNode,

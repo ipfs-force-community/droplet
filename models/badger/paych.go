@@ -2,18 +2,15 @@ package badger
 
 import (
 	"bytes"
-
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/types"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-
-	"github.com/filecoin-project/venus-market/models"
-	//"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/types"
 )
 
 const (
@@ -25,7 +22,7 @@ type store struct {
 	ds datastore.Batching
 }
 
-func NewPaychStore(ds models.PayChanDS) *store {
+func NewPaychStore(ds itf.PayChanDS) *store {
 	return &store{ds}
 }
 
@@ -242,9 +239,9 @@ func unmarshallChannelInfo(stored *types.ChannelInfo, value []byte) (*types.Chan
 	return stored, nil
 }
 
-//var _ repo.PaychChannelInfoRepo = (*store)(nil)
+// var _ repo.PaychChannelInfoRepo = (*store)(nil)
 
-/////// msg info ////////
+// ///// msg info ////////
 
 // GetMessage gets the message info for a given message CID
 func (s *store) GetMessage(mcid cid.Cid) (*types.MsgInfo, error) {
@@ -301,4 +298,4 @@ func dskeyForMsg(mcid cid.Cid) datastore.Key {
 	return datastore.KeyWithNamespaces([]string{dsKeyMsgCid, mcid.String()})
 }
 
-//var _ repo.PaychMsgInfoRepo = (*store)(nil)
+// var _ repo.PaychMsgInfoRepo = (*store)(nil)

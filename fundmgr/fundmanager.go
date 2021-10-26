@@ -3,7 +3,7 @@ package fundmgr
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/models/interfaces"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"sync"
 
 	"github.com/filecoin-project/venus-market/types"
@@ -57,7 +57,7 @@ type FundManager struct {
 }
 
 // func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, repo repo.Repo) *FundManager {
-func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, repo interfaces.Repo) *FundManager {
+func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, repo itf.Repo) *FundManager {
 	fm := newFundManager(&api, repo.FundRepo())
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

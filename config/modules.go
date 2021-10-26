@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus-market/builder"
-	"github.com/filecoin-project/venus-market/models/StorageAsk"
 	"github.com/ipfs/go-cid"
 )
 
@@ -127,7 +126,7 @@ func NewGetMaxDealStartDelayFunc(cfg *MarketConfig) (GetMaxDealStartDelayFunc, e
 
 var ConfigServerOpts = func(cfg *MarketConfig) builder.Option {
 	return builder.Options(
-		builder.Override(new(*StorageAsk.StorageAskCfg), cfg.StAsk),
+		builder.Override(new(*StorageAskConfig), cfg.StAsk),
 		builder.Override(new(*MarketConfig), cfg),
 		builder.Override(new(*HomeDir), cfg.HomePath),
 		builder.Override(new(IHome), cfg),

@@ -1,4 +1,4 @@
-package StorageAsk
+package badger
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"golang.org/x/xerrors"
 )
 
@@ -13,7 +15,7 @@ type badgerStorageAsk struct {
 	ds *badger.DB
 }
 
-var _ istorageAskRepo = (*badgerStorageAsk)(nil)
+var _ itf.StorageAskRepo = (*badgerStorageAsk)(nil)
 
 func (b *badgerStorageAsk) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {
 	var data []byte
@@ -54,7 +56,7 @@ func (b *badgerStorageAsk) Close() error {
 	return b.ds.Close()
 }
 
-func newBadgerStorageAskRepo(cfg *StorageAskCfg) (*badgerStorageAsk, error) {
+func NewBadgerStorageAskRepo(cfg *config.StorageAskConfig) (*badgerStorageAsk, error) {
 	ds, err := badger.Open(badger.DefaultOptions(cfg.URI))
 	if err != nil {
 		return nil, xerrors.Errorf("open badger(%s) failed:%w", cfg.URI, err)

@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/journal"
-	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/retrievaladapter"
 	"github.com/filecoin-project/venus-market/storageadapter"
@@ -38,7 +38,7 @@ type StorageProviderEvt struct {
 	Deal  storagemarket.MinerDeal
 }
 
-func NewLocalDiscovery(lc fx.Lifecycle, ds models.ClientDealsDS) (*discoveryimpl.Local, error) {
+func NewLocalDiscovery(lc fx.Lifecycle, ds itf.ClientDealsDS) (*discoveryimpl.Local, error) {
 	local, err := discoveryimpl.NewLocal(ds) //todo need new discoveryimpl base on sql
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func RetrievalResolver(l *discoveryimpl.Local) discovery.PeerResolver {
 	return discoveryimpl.Multi(l)
 }
 
-func NewClientImportMgr(ns models.ImportClientDS, r *config.HomeDir) (ClientImportMgr, error) {
+func NewClientImportMgr(ns itf.ImportClientDS, r *config.HomeDir) (ClientImportMgr, error) {
 	// store the imports under the repo's `imports` subdirectory.
 	dir := filepath.Join(string(*r), "imports")
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -68,7 +68,7 @@ func NewClientImportMgr(ns models.ImportClientDS, r *config.HomeDir) (ClientImpo
 
 // NewClientGraphsyncDataTransfer returns a data transfer manager that just
 // uses the clients's Client DAG service for transfers
-func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Graphsync, dtDs models.ClientTransferDS, homeDir *config.HomeDir) (network.ClientDataTransfer, error) {
+func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Graphsync, dtDs itf.ClientTransferDS, homeDir *config.HomeDir) (network.ClientDataTransfer, error) {
 	// go-data-transfer protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
 	dtRetryParams := dtnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
@@ -133,7 +133,7 @@ func RetrievalBlockstoreAccessor(r *config.HomeDir) (retrievalmarket.BlockstoreA
 }
 
 func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientDataTransfer, discovery *discoveryimpl.Local,
-	deals models.ClientDatastore, scn storagemarket.StorageClientNode, accessor storagemarket.BlockstoreAccessor, j journal.Journal) (storagemarket.StorageClient, error) {
+	deals itf.ClientDatastore, scn storagemarket.StorageClientNode, accessor storagemarket.BlockstoreAccessor, j journal.Journal) (storagemarket.StorageClient, error) {
 	// go-fil-markets protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
 	marketsRetryParams := smnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
@@ -162,7 +162,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientData
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
 func RetrievalClient(lc fx.Lifecycle, h host.Host, dt network.ClientDataTransfer, payAPI *paych3.PaychAPI, resolver discovery.PeerResolver,
-	ds models.RetrievalClientDS, fullApi apiface.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+	ds itf.RetrievalClientDS, fullApi apiface.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 
 	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, fullApi)
 	libP2pHost := rmnet.NewFromLibp2pHost(h)

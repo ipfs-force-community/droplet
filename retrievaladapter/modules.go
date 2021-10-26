@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/dealfilter"
 	"github.com/filecoin-project/venus-market/journal"
-	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"github.com/filecoin-project/venus-market/network"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
@@ -29,7 +29,7 @@ func RetrievalProvider(
 	maddr types2.MinerAddress,
 	adapter retrievalmarket.RetrievalProviderNode,
 	netwk rmnet.RetrievalMarketNetwork,
-	retrievalProviderDs models.RetrievalProviderDS,
+	retrievalProviderDs itf.RetrievalProviderDS,
 	sa retrievalmarket.SectorAccessor,
 	pieceStore piecestore.PieceStore,
 	dagStore *dagstore.Wrapper,

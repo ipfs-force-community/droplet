@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/interfaces"
+	"github.com/filecoin-project/venus-market/models/itf"
 )
 
 type MysqlRepo struct {
@@ -19,27 +19,27 @@ func (r MysqlRepo) GetDb() *gorm.DB {
 	return r.DB
 }
 
-func (r MysqlRepo) FundRepo() interfaces.FundRepo {
+func (r MysqlRepo) FundRepo() itf.FundRepo {
 	return NewFundedAddressStateRepo(r.GetDb())
 }
 
-func (r MysqlRepo) MinerParamsRepo() interfaces.MinerParamsRepo {
+func (r MysqlRepo) MinerParamsRepo() itf.MinerParamsRepo {
 	return NewMinerParamsRepo(r.GetDb())
 }
 
-func (r MysqlRepo) MinerDealRepo() interfaces.MinerDealRepo {
+func (r MysqlRepo) MinerDealRepo() itf.MinerDealRepo {
 	return NewMinerDealRepo(r.GetDb())
 }
 
-func (r MysqlRepo) PaychMsgInfoRepo() interfaces.PaychMsgInfoRepo {
+func (r MysqlRepo) PaychMsgInfoRepo() itf.PaychMsgInfoRepo {
 	return NewMsgInfoRepo(r.GetDb())
 }
 
-func (r MysqlRepo) PaychChannelInfo() interfaces.PaychChannelInfoRepo {
+func (r MysqlRepo) PaychChannelInfo() itf.PaychChannelInfoRepo {
 	return NewChannelInfoRepo(r.GetDb())
 }
 
-func InitMysql(cfg *config.Mysql) (interfaces.Repo, error) {
+func InitMysql(cfg *config.Mysql) (itf.Repo, error) {
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 
 	if err != nil {

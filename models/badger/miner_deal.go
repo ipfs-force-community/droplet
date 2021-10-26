@@ -5,7 +5,7 @@ import (
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -16,7 +16,7 @@ type minerDealStore struct {
 	ds datastore.Batching
 }
 
-func NewMinerDealStore(ds models.ProviderDealDS) *minerDealStore {
+func NewMinerDealStore(ds itf.ProviderDealDS) *minerDealStore {
 	return &minerDealStore{ds}
 }
 

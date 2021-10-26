@@ -1,4 +1,4 @@
-package StorageAsk
+package mysql
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"golang.org/x/xerrors"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -19,6 +21,8 @@ import (
 type mysqlStorageAsk struct {
 	ds *gorm.DB
 }
+
+var _ itf.StorageAskRepo = (*mysqlStorageAsk)(nil)
 
 func init() {
 	address.CurrentNetwork = address.Mainnet
@@ -72,7 +76,7 @@ func (sa *StAsk) SignedAsk() *storagemarket.SignedStorageAsk {
 	return (*storagemarket.SignedStorageAsk)(sa.MysqlSignedAsk)
 }
 
-func newMysqlStorageAskRepo(cfg *StorageAskCfg) (*mysqlStorageAsk, error) {
+func NewMysqlStorageAskRepo(cfg *config.StorageAskConfig) (*mysqlStorageAsk, error) {
 	db, err := gorm.Open(mysql.Open(cfg.URI), &gorm.Config{})
 	if err != nil {
 		return nil, xerrors.Errorf("new mysql storageask repo failed, open connection failed:%w", err)

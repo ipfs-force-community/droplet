@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/venus-market/dealfilter"
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"github.com/filecoin-project/venus-market/network"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
@@ -41,7 +41,7 @@ var (
 
 func NewStorageAsk(ctx metrics.MetricsCtx,
 	fapi apiface.FullNode,
-	askDs models.StorageAskDS,
+	askDs itf.StorageAskDS,
 	minerAddress types2.MinerAddress,
 	spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
 
@@ -60,7 +60,7 @@ func StorageProvider(
 	minerAddress types2.MinerAddress,
 	storedAsk *storedask.StoredAsk,
 	h host.Host,
-	providerDealsDs models.ProviderDealDS,
+	providerDealsDs itf.ProviderDealDS,
 	dagStore *dagstore.Wrapper,
 	pieceStore piecestore.PieceStore,
 	dataTransfer network.ProviderDataTransfer,
@@ -98,7 +98,7 @@ func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs models.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync) (network.ProviderDataTransfer, error) {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs itf.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync) (network.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
 
 	transport := dtgstransport.NewTransport(h.ID(), gs)
