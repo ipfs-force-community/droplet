@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/models/StorageAsk"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -28,7 +29,7 @@ const (
 	storageAsk        = "storage-ask"
 	paych             = "/paych/"
 
-	//client
+	// client
 	client          = "/client"
 	dealClient      = "/deals/client"
 	dealLocal       = "/deals/local"
@@ -112,7 +113,7 @@ func NewClientDatastore(ds MetadataDS) ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey(dealClient))
 }
 
-//for discover
+// for discover
 func NewClientDealsDS(ds MetadataDS) ClientDealsDS {
 	return namespace.Wrap(ds, datastore.NewKey(dealLocal))
 }
@@ -146,6 +147,8 @@ var DBOptions = func(server bool) builder.Option {
 			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
 			builder.Override(new(PayChanDS), NewPayChanDS),
 			builder.Override(new(FundMgrDS), NewFundMgrDS),
+
+			builder.Override(new(StorageAsk.StorageAskRepo), StorageAsk.NewStorageAsk),
 		)
 	} else {
 		return builder.Options(

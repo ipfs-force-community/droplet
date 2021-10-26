@@ -3,6 +3,7 @@ package config
 import (
 	"encoding"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus-market/models/StorageAsk"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 	"time"
@@ -149,6 +150,8 @@ type MarketConfig struct {
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
 
+	StAsk StorageAsk.StorageAskCfg
+
 	MinerAddress string
 	// When enabled, the miner can accept online deals
 	ConsiderOnlineStorageDeals bool
@@ -203,7 +206,7 @@ type MarketClientConfig struct {
 	Messager Messager
 	Signer   Signer
 
-	Market Market //reserve
+	Market Market // reserve
 
 	// The maximum number of parallel online data transfers (piecestorage+retrieval)
 	SimultaneousTransfers uint64
