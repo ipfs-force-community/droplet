@@ -2,11 +2,12 @@ package config
 
 import (
 	"encoding"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/models/StorageAsk"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
-	"time"
 )
 
 // API contains configs for API endpoint
@@ -52,6 +53,14 @@ type Common struct {
 type Signer struct {
 	Url   string
 	Token string
+}
+
+type Mysql struct {
+	ConnectionString string
+	MaxOpenConn      int
+	MaxIdleConn      int
+	ConnMaxLifeTime  string
+	Debug            bool
 }
 
 type Journal struct {
@@ -144,6 +153,7 @@ type MarketConfig struct {
 	Node     Node
 	Messager Messager
 	Signer   Signer
+	Mysql    Mysql
 
 	PieceStorage  PieceStorageString
 	Journal       Journal

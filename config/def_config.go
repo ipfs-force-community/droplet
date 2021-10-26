@@ -1,12 +1,13 @@
 package config
 
 import (
+	"path"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/models/StorageAsk"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
-	"path"
-	"time"
 )
 
 const (
@@ -48,6 +49,13 @@ var DefaultMarketConfig = &MarketConfig{
 		DbType: "badger",
 		URI:    path.Join(HomePath, "StAsk"),
 		Debug:  false,
+	},
+	Mysql: Mysql{
+		ConnectionString: "root:password@(127.0.0.1:3306)/venus_market?parseTime=true&loc=Local",
+		MaxOpenConn:      100,
+		MaxIdleConn:      100,
+		ConnMaxLifeTime:  "1m",
+		Debug:            false,
 	},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,

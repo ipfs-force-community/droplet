@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	xerrors "github.com/pkg/errors"
+	"golang.org/x/xerrors"
 )
 
 type providerStoreGetter struct {

@@ -2,11 +2,14 @@ package clients
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/models/storagemysql"
 	types2 "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -19,7 +22,6 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
-	"time"
 )
 
 var log = logging.Logger("clients")
@@ -164,7 +166,7 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 			}
 			return nil, xerrors.Errorf("msg failed due to %s", reason)
 		default:
-			return nil, xerrors.Errorf("unexpect status for %s", msg.State)
+			return nil, xerrors.Errorf("unexpect status for %v", msg.State)
 		}
 	}
 
@@ -207,7 +209,7 @@ func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent,
 	return stream, nil
 }
 
-var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Signer) builder.Option {
+var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Signer, mysqlCfg *config.Mysql) builder.Option {
 	opts := builder.Options(
 		builder.ApplyIf(func(s *builder.Settings) bool {
 			return len(mCfg.Url) > 0
@@ -224,10 +226,15 @@ var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Sig
 			builder.Override(new(*marketevent.MarketEventStream), NewMarketEvent),
 			builder.Override(new(marketevent.IMarketEventAPI), NewMarketEventAPI),
 			builder.Override(new(MarketRequestEvent), builder.From(new(*marketevent.MarketEventStream))),
+
+			builder.Override(new(storagemysql.Repo), storagemysql.InitMysql),
 		)
 	} else {
 		return builder.Options(opts,
 			builder.Override(new(apiface.FullNode), NodeClient),
+			builder.Override(new(storagemysql.Repo), func() storagemysql.Repo {
+				return nil
+			}),
 		)
 	}
 }

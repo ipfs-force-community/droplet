@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"log"
+	"os"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/api/clients"
@@ -29,8 +32,6 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-	"log"
-	"os"
 )
 
 // Invokes are called in the order they are defined.
@@ -42,9 +43,9 @@ var (
 
 var (
 	RepoFlag = &cli.StringFlag{
-		Name:  "repo",
+		Name:    "repo",
 		EnvVars: []string{"VENUS_MARKET_PATH"},
-		Value: "~/.venusmarket",
+		Value:   "~/.venusmarket",
 	}
 
 	NodeUrlFlag = &cli.StringFlag{
@@ -78,6 +79,10 @@ var (
 		Name:  "piecestorage",
 		Usage: "config storage for piece",
 	}
+	MysqlDsnFlag = &cli.StringFlag{
+		Name:  "mysql-dsn",
+		Usage: "mysql connection string",
+	}
 )
 
 func main() {
@@ -101,6 +106,7 @@ func main() {
 					SignerTokenFlag,
 					PieceStorageFlag,
 					MinerFlag,
+					MysqlDsnFlag,
 				},
 				Action: daemon,
 			},
@@ -176,7 +182,7 @@ func daemon(cctx *cli.Context) error {
 		//config
 		config.ConfigServerOpts(cfg),
 		//clients
-		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer),
+		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, &cfg.Mysql),
 
 		models.DBOptions(true),
 		network.NetworkOpts(true, cfg.SimultaneousTransfers),
@@ -239,6 +245,10 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 
 	if cctx.IsSet("piecestorage") {
 		cfg.PieceStorage = config.PieceStorageString(cctx.String("piecestorage"))
+	}
+
+	if cctx.IsSet("mysql-dsn") {
+		cfg.Mysql.ConnectionString = cctx.String("mysql-dsn")
 	}
 	return nil
 }

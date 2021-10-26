@@ -3,16 +3,21 @@ package fundmgr
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/filecoin-project/venus-market/models"
+
+	"github.com/filecoin-project/venus-market/models/storagemysql"
+
+	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/types"
+	types2 "github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -32,8 +37,8 @@ type FundManagerAPI struct {
 // fundManagerAPI is the specific methods called by the FundManager
 // (used by the tests)
 type fundManagerAPI interface {
-	MpoolPushMessage(context.Context, *types.Message, *types.MessageSendSpec) (*types.SignedMessage, error)
-	StateMarketBalance(context.Context, address.Address, types.TipSetKey) (apitypes.MarketBalance, error)
+	MpoolPushMessage(context.Context, *types2.Message, *types2.MessageSendSpec) (*types2.SignedMessage, error)
+	StateMarketBalance(context.Context, address.Address, types2.TipSetKey) (apitypes.MarketBalance, error)
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
@@ -42,14 +47,19 @@ type FundManager struct {
 	ctx      context.Context
 	shutdown context.CancelFunc
 	api      fundManagerAPI
-	str      *Store
+	str      IStore
 
 	lk          sync.Mutex
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS) *FundManager {
-	fm := newFundManager(&api, ds)
+func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, repo storagemysql.Repo) *FundManager {
+	store := newStore(ds)
+	if repo != nil {
+		store = repo.FundRepo()
+	}
+
+	fm := newFundManager(&api, store)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return fm.Start()
@@ -63,13 +73,13 @@ func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS) *F
 }
 
 // newFundManager is used by the tests
-func newFundManager(api fundManagerAPI, ds models.FundMgrDS) *FundManager {
+func newFundManager(api fundManagerAPI, store IStore) *FundManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
 		ctx:         ctx,
 		shutdown:    cancel,
 		api:         api,
-		str:         newStore(ds),
+		str:         store,
 		fundedAddrs: make(map[address.Address]*fundedAddress),
 		lk:          sync.Mutex{},
 	}
@@ -88,12 +98,17 @@ func (fm *FundManager) Start() error {
 	// - in State() only load addresses with in-progress messages
 	// - load the others just-in-time from getFundedAddress
 	// - delete(fm.fundedAddrs, addr) when the queue has been processed
-	return fm.str.forEach(func(state *FundedAddressState) {
+	states, err := fm.str.ListFundedAddressState()
+	if err != nil {
+		return err
+	}
+	for _, state := range states {
 		fa := newFundedAddress(fm, state.Addr)
 		fa.state = state
 		fm.fundedAddrs[fa.state.Addr] = fa
 		fa.start()
-	})
+	}
+	return nil
 }
 
 // Creates a fundedAddress if it doesn't already exist, and returns it
@@ -136,24 +151,24 @@ func (fm *FundManager) GetReserved(addr address.Address) abi.TokenAmount {
 
 // FundedAddressState keeps track of the state of an address with funds in the
 // datastore
-type FundedAddressState struct {
-	Addr address.Address
-	// AmtReserved is the amount that must be kept in the address (cannot be
-	// withdrawn)
-	AmtReserved abi.TokenAmount
-	// MsgCid is the cid of an in-progress on-chain message
-	MsgCid *cid.Cid
-}
+//type FundedAddressState struct {
+//	Addr address.Address
+//	// AmtReserved is the amount that must be kept in the address (cannot be
+//	// withdrawn)
+//	AmtReserved abi.TokenAmount
+//	// MsgCid is the cid of an in-progress on-chain message
+//	MsgCid *cid.Cid
+//}
 
 // fundedAddress keeps track of the state and request queues for a
 // particular address
 type fundedAddress struct {
 	ctx context.Context
 	env *fundManagerEnvironment
-	str *Store
+	str IStore
 
 	lk    sync.RWMutex
-	state *FundedAddressState
+	state *types.FundedAddressState
 
 	// Note: These request queues are ephemeral, they are not saved to store
 	reservations []*fundRequest
@@ -169,7 +184,7 @@ func newFundedAddress(fm *FundManager, addr address.Address) *fundedAddress {
 		ctx: fm.ctx,
 		env: &fundManagerEnvironment{api: fm.api},
 		str: fm.str,
-		state: &FundedAddressState{
+		state: &types.FundedAddressState{
 			Addr:        addr,
 			AmtReserved: abi.NewTokenAmount(0),
 		},
@@ -277,7 +292,7 @@ func (a *fundedAddress) process() {
 	if haveWithdrawals && a.state.MsgCid == nil && len(a.reservations) == 0 {
 		withdrawalCid, err := a.processWithdrawals(a.withdrawals)
 		if err == nil && withdrawalCid != cid.Undef {
-			a.applyStateChange(&withdrawalCid, types.EmptyInt)
+			a.applyStateChange(&withdrawalCid, types2.EmptyInt)
 		}
 		a.withdrawals = filterOutProcessedReqs(a.withdrawals)
 	}
@@ -321,7 +336,7 @@ func (a *fundedAddress) clearWaitState() {
 // Save state to datastore
 func (a *fundedAddress) saveState() {
 	// Not much we can do if saving to the datastore fails, just log
-	err := a.str.save(a.state)
+	err := a.str.SaveFundedAddressState(a.state)
 	if err != nil {
 		log.Errorf("saving state to store for addr %s: %v", a.state.Addr, err)
 	}
@@ -380,7 +395,7 @@ func (a *fundedAddress) processReservations(reservations []*fundRequest, release
 	toCancel, toAdd, reservedDelta := splitReservations(reservations, releases)
 
 	// Apply the reserved delta to the reserved amount
-	reserved := types.BigAdd(a.state.AmtReserved, reservedDelta)
+	reserved := types2.BigAdd(a.state.AmtReserved, reservedDelta)
 	if reserved.LessThan(abi.NewTokenAmount(0)) {
 		reserved = abi.NewTokenAmount(0)
 	}
@@ -399,7 +414,7 @@ func (a *fundedAddress) processReservations(reservations []*fundRequest, release
 		}
 
 		// amount to add = new reserved amount - available
-		amtToAdd = types.BigSub(reserved, avail)
+		amtToAdd = types2.BigSub(reserved, avail)
 		a.debugf("reserved %d - avail %d = to add %d", reserved, avail, amtToAdd)
 	}
 
@@ -437,7 +452,7 @@ func splitReservations(reservations []*fundRequest, releases []*fundRequest) ([]
 	// Sum release amounts
 	releaseAmt := abi.NewTokenAmount(0)
 	for _, req := range releases {
-		releaseAmt = types.BigAdd(releaseAmt, req.Amount())
+		releaseAmt = types2.BigAdd(releaseAmt, req.Amount())
 	}
 
 	// We only want to combine requests that come from the same wallet
@@ -448,7 +463,7 @@ func splitReservations(reservations []*fundRequest, releases []*fundRequest) ([]
 		// If the amount to add to the reserve is cancelled out by a release
 		if amt.LessThanEqual(releaseAmt) {
 			// Cancel the request and update the release total
-			releaseAmt = types.BigSub(releaseAmt, amt)
+			releaseAmt = types2.BigSub(releaseAmt, amt)
 			toCancel = append(toCancel, req)
 			continue
 		}
@@ -463,15 +478,15 @@ func splitReservations(reservations []*fundRequest, releases []*fundRequest) ([]
 		// If this request's wallet is the same as the batch wallet,
 		// the requests will be combined
 		if batchWallet == req.Wallet {
-			delta := types.BigSub(amt, releaseAmt)
-			toAddAmt = types.BigAdd(toAddAmt, delta)
+			delta := types2.BigSub(amt, releaseAmt)
+			toAddAmt = types2.BigAdd(toAddAmt, delta)
 			releaseAmt = abi.NewTokenAmount(0)
 			toAdd = append(toAdd, req)
 		}
 	}
 
 	// The change in the reserved amount is "amount to add" - "amount to release"
-	reservedDelta := types.BigSub(toAddAmt, releaseAmt)
+	reservedDelta := types2.BigSub(toAddAmt, releaseAmt)
 
 	return toCancel, toAdd, reservedDelta
 }
@@ -493,7 +508,7 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 		return cid.Undef, err
 	}
 
-	netAvail := types.BigSub(avail, a.state.AmtReserved)
+	netAvail := types2.BigSub(avail, a.state.AmtReserved)
 
 	// Fit as many withdrawals as possible into the available balance, and fail
 	// the rest
@@ -511,13 +526,13 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 
 		// If the amount would exceed the available amount, complete the
 		// request with an error
-		newWithdrawalAmt := types.BigAdd(withdrawalAmt, amt)
+		newWithdrawalAmt := types2.BigAdd(withdrawalAmt, amt)
 		if newWithdrawalAmt.GreaterThan(netAvail) {
-			msg := fmt.Sprintf("insufficient funds for withdrawal of %s: ", types.FIL(amt))
+			msg := fmt.Sprintf("insufficient funds for withdrawal of %s: ", types2.FIL(amt))
 			msg += fmt.Sprintf("net available (%s) = available (%s) - reserved (%s)",
-				types.FIL(types.BigSub(netAvail, withdrawalAmt)), types.FIL(avail), types.FIL(a.state.AmtReserved))
+				types2.FIL(types2.BigSub(netAvail, withdrawalAmt)), types2.FIL(avail), types2.FIL(a.state.AmtReserved))
 			if !withdrawalAmt.IsZero() {
-				msg += fmt.Sprintf(" - queued withdrawals (%s)", types.FIL(withdrawalAmt))
+				msg += fmt.Sprintf(" - queued withdrawals (%s)", types2.FIL(withdrawalAmt))
 			}
 			err := xerrors.Errorf(msg)
 			a.debugf("%s", err)
@@ -541,7 +556,7 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 		withdrawalAmt = newWithdrawalAmt
 		a.debugf("withdraw %d", amt)
 		allowed = append(allowed, req)
-		allowedAmt = types.BigAdd(allowedAmt, amt)
+		allowedAmt = types2.BigAdd(allowedAmt, amt)
 	}
 
 	// Check if there is anything to withdraw.
@@ -656,12 +671,12 @@ type fundManagerEnvironment struct {
 }
 
 func (env *fundManagerEnvironment) AvailableFunds(ctx context.Context, addr address.Address) (abi.TokenAmount, error) {
-	bal, err := env.api.StateMarketBalance(ctx, addr, types.EmptyTSK)
+	bal, err := env.api.StateMarketBalance(ctx, addr, types2.EmptyTSK)
 	if err != nil {
 		return abi.NewTokenAmount(0), err
 	}
 
-	return types.BigSub(bal.Escrow, bal.Locked), nil
+	return types2.BigSub(bal.Escrow, bal.Locked), nil
 }
 
 func (env *fundManagerEnvironment) AddFunds(
@@ -675,7 +690,7 @@ func (env *fundManagerEnvironment) AddFunds(
 		return cid.Undef, err
 	}
 
-	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
+	smsg, aerr := env.api.MpoolPushMessage(ctx, &types2.Message{
 		To:     market.Address,
 		From:   wallet,
 		Value:  amt,
@@ -704,10 +719,10 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 		return cid.Undef, xerrors.Errorf("serializing params: %w", err)
 	}
 
-	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
+	smsg, aerr := env.api.MpoolPushMessage(ctx, &types2.Message{
 		To:     market.Address,
 		From:   wallet,
-		Value:  types.NewInt(0),
+		Value:  types2.NewInt(0),
 		Method: market.Methods.WithdrawBalance,
 		Params: params,
 	}, nil)
