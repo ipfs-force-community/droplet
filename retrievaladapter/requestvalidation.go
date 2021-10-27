@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/storageadapter"
 	"time"
 
@@ -134,12 +135,14 @@ func (rv *ProviderRequestValidator) validatePull(ctx context.Context, isRestart 
 		return &response, err
 	}
 
-	//todo change status here
-	/*if pds.UnsealPrice.GreaterThan(big.Zero()) {
-		return pve.p.stateMachines.Send(pds.Identifier(), retrievalmarket.ProviderEventPaymentRequested, uint64(0))
-	}
+	if pds.UnsealPrice.GreaterThan(big.Zero()) {
+		pds.Status = retrievalmarket.DealStatusFundsNeededUnseal
+		pds.TotalSent = 0
 
-	return pve.p.stateMachines.Send(pds.Identifier(), retrievalmarket.ProviderEventOpen)*/
+	} else {
+		pds.TotalSent = 0
+		pds.FundsReceived = abi.NewTokenAmount(0)
+	}
 
 	err = rv.retrievalDeal.SaveDeal(&pds)
 	if err != nil {

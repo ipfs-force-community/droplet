@@ -7,7 +7,7 @@ import (
 )
 
 // EventReceiver is any thing that can receive FSM events
-type TransferProcess interface {
+type IDatatransferHandler interface {
 	//have many receiver function
 	HandleCompleteFor(context.Context, rm.ProviderDealIdentifier) error
 	HandleAcceptFor(context.Context, rm.ProviderDealIdentifier, datatransfer.ChannelID) error
@@ -17,14 +17,14 @@ type TransferProcess interface {
 	HandleErrorForDeal(context.Context, rm.ProviderDealIdentifier, error) error
 }
 
-var _ TransferProcess = (*DataTransferHandler)(nil)
+var _ IDatatransferHandler = (*DataTransferHandler)(nil)
 
 type DataTransferHandler struct {
-	retrievalDealHandler *RetrievalDealHandler
+	retrievalDealHandler IRetrievalHandler
 	retrievalDealStore   RetrievalDealStore
 }
 
-func NewDataTransferHandler(retrievalDealHandler *RetrievalDealHandler, retrievalDealStore RetrievalDealStore) *DataTransferHandler {
+func NewDataTransferHandler(retrievalDealHandler IRetrievalHandler, retrievalDealStore RetrievalDealStore) *DataTransferHandler {
 	return &DataTransferHandler{retrievalDealHandler: retrievalDealHandler, retrievalDealStore: retrievalDealStore}
 }
 

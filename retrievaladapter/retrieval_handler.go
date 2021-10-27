@@ -9,6 +9,11 @@ import (
 )
 
 type IRetrievalHandler interface {
+	UnsealData(ctx context.Context, deal *rm.ProviderDealState) error
+	TrackTransfer(ctx context.Context, deal *rm.ProviderDealState) error
+	CancelDeal(ctx context.Context, deal *rm.ProviderDealState) error
+	CleanupDeal(ctx context.Context, deal *rm.ProviderDealState) error
+	Error(ctx context.Context, deal *rm.ProviderDealState, err error) error
 }
 
 var _ IRetrievalHandler = (*RetrievalDealHandler)(nil)
@@ -18,33 +23,31 @@ type RetrievalDealHandler struct {
 	retrievalDealStore RetrievalDealStore
 }
 
-func NewRetrievalDealHandler(env providerstates.ProviderDealEnvironment, retrievalDealStore RetrievalDealStore) *RetrievalDealHandler {
+func NewRetrievalDealHandler(env providerstates.ProviderDealEnvironment, retrievalDealStore RetrievalDealStore) IRetrievalHandler {
 	return &RetrievalDealHandler{env: env, retrievalDealStore: retrievalDealStore}
 }
 
 func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *rm.ProviderDealState) error {
-	if deal.Status == rm.DealStatusNew {
-		deal.Status = rm.DealStatusUnsealing
-		err := p.retrievalDealStore.SaveDeal(deal)
-		if err != nil {
-			return err
-		}
+	deal.Status = rm.DealStatusUnsealing
+	err := p.retrievalDealStore.SaveDeal(deal)
+	if err != nil {
+		return err
+	}
 
-		if err := p.env.PrepareBlockstore(ctx, deal.ID, deal.PieceInfo.PieceCID); err != nil {
-			return p.CancelDeal(ctx, deal)
-		}
-		log.Debugf("blockstore prepared successfully, firing unseal complete for deal %d", deal.ID)
-		deal.Status = rm.DealStatusUnsealed
-		err = p.retrievalDealStore.SaveDeal(deal)
-		if err != nil {
-			return err
-		}
+	if err := p.env.PrepareBlockstore(ctx, deal.ID, deal.PieceInfo.PieceCID); err != nil {
+		return p.CancelDeal(ctx, deal)
+	}
+	log.Debugf("blockstore prepared successfully, firing unseal complete for deal %d", deal.ID)
+	deal.Status = rm.DealStatusUnsealed
+	err = p.retrievalDealStore.SaveDeal(deal)
+	if err != nil {
+		return err
 	}
 
 	log.Debugf("unpausing data transfer for deal %d", deal.ID)
-	err := p.env.TrackTransfer(*deal)
+	err = p.env.TrackTransfer(*deal)
 	if err != nil {
-		return p.CancelDeal(ctx, deal)
+		return p.Error(ctx, deal, nil)
 	}
 	if deal.ChannelID != nil {
 		log.Debugf("resuming data transfer for deal %d", deal.ID)
@@ -69,19 +72,16 @@ func (p *RetrievalDealHandler) CancelDeal(ctx context.Context, deal *rm.Provider
 	// Read next response (or fail)
 	err := p.env.UntrackTransfer(*deal)
 	if err != nil {
-		deal.Status = rm.DealStatusErrored
-		return p.retrievalDealStore.SaveDeal(deal)
+		return p.Error(ctx, deal, nil)
 	}
 	err = p.env.DeleteStore(deal.ID)
 	if err != nil {
-		deal.Status = rm.DealStatusErrored
-		return p.retrievalDealStore.SaveDeal(deal)
+		return p.Error(ctx, deal, nil)
 	}
 	if deal.ChannelID != nil {
 		err = p.env.CloseDataTransfer(ctx, *deal.ChannelID)
 		if err != nil && !errors.Is(err, statemachine.ErrTerminated) {
-			deal.Status = rm.DealStatusErrored
-			return p.retrievalDealStore.SaveDeal(deal)
+			return p.Error(ctx, deal, nil)
 		}
 	}
 	deal.Status = rm.DealStatusCancelled
@@ -92,14 +92,12 @@ func (p *RetrievalDealHandler) CancelDeal(ctx context.Context, deal *rm.Provider
 func (p *RetrievalDealHandler) CleanupDeal(ctx context.Context, deal *rm.ProviderDealState) error {
 	err := p.env.UntrackTransfer(*deal)
 	if err != nil {
-		deal.Status = rm.DealStatusErrored
-		return p.retrievalDealStore.SaveDeal(deal)
+		return p.Error(ctx, deal, nil)
 	}
 
 	err = p.env.DeleteStore(deal.ID)
 	if err != nil {
-		deal.Status = rm.DealStatusErrored
-		return p.retrievalDealStore.SaveDeal(deal)
+		return p.Error(ctx, deal, nil)
 	}
 	deal.Status = rm.DealStatusCompleted
 	return p.retrievalDealStore.SaveDeal(deal)
@@ -107,6 +105,8 @@ func (p *RetrievalDealHandler) CleanupDeal(ctx context.Context, deal *rm.Provide
 
 func (p *RetrievalDealHandler) Error(ctx context.Context, deal *rm.ProviderDealState, err error) error {
 	deal.Status = rm.DealStatusErrored
-	deal.Message = err.Error()
+	if err != nil {
+		deal.Message = err.Error()
+	}
 	return p.retrievalDealStore.SaveDeal(deal)
 }

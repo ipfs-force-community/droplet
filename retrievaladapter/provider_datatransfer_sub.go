@@ -13,7 +13,7 @@ import (
 // in a storage market deal, then, based on the data transfer event that occurred, it generates
 // and update message for the deal -- either moving to staged for a completion
 // event or moving to error if a data transfer error occurs
-func ProviderDataTransferSubscriber(deals TransferProcess) datatransfer.Subscriber {
+func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Subscriber {
 	return func(event datatransfer.Event, channelState datatransfer.ChannelState) {
 		ctx := context.TODO()
 		dealProposal, ok := dealProposalFromVoucher(channelState.Voucher())

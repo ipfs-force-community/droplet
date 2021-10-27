@@ -76,8 +76,8 @@ func NewProvider(node retrievalmarket.RetrievalProviderNode,
 	askStore RetrievalAsk,
 	retrievalPricingFunc retrievalimpl.RetrievalPricingFunc,
 
-	storageDeals storageadapter.StorageDealStore,
-	reterivalDeal RetrievalDealStore,
+	storageDealsStore storageadapter.StorageDealStore,
+	reterivalDealStore RetrievalDealStore,
 ) (*RetrievalProviderV2, error) {
 	if retrievalPricingFunc == nil {
 		return nil, xerrors.New("retrievalPricingFunc is nil")
@@ -95,12 +95,12 @@ func NewProvider(node retrievalmarket.RetrievalProviderNode,
 		dagStore:               dagStore,
 		askHandler:             askHandler,
 		stores:                 stores.NewReadOnlyBlockstores(),
-		retrievalStreamHandler: NewRetrievalStreamHandler(askHandler, reterivalDeal, storageDeals),
+		retrievalStreamHandler: NewRetrievalStreamHandler(askHandler, reterivalDealStore, storageDealsStore),
 	}
-	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, reterivalDeal)
-	p.requestValidator = NewProviderRequestValidator(storageDeals, reterivalDeal, askHandler)
-	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{reterivalDeal, p.stores})
-	p.revalidator = NewProviderRevalidator(p.node, reterivalDeal, retrievalHandler)
+	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, reterivalDealStore)
+	p.requestValidator = NewProviderRequestValidator(storageDealsStore, reterivalDealStore, askHandler)
+	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{reterivalDealStore, p.stores})
+	p.revalidator = NewProviderRevalidator(p.node, reterivalDealStore, retrievalHandler)
 
 	var err error
 	if p.disableNewDeals {
@@ -149,7 +149,7 @@ func NewProvider(node retrievalmarket.RetrievalProviderNode,
 	if err != nil {
 		return nil, err
 	}
-	datatransferProcess := NewDataTransferHandler(retrievalHandler, reterivalDeal)
+	datatransferProcess := NewDataTransferHandler(retrievalHandler, reterivalDealStore)
 	dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(datatransferProcess))
 	return p, nil
 }
