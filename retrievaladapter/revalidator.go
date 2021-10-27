@@ -29,13 +29,13 @@ type channelData struct {
 type ProviderRevalidator struct {
 	node                 rm.RetrievalProviderNode
 	deals                RetrievalDealStore
-	retrievalDealHandler *RetrievalDealHandler
+	retrievalDealHandler IRetrievalHandler
 	trackedChannelsLk    sync.RWMutex
 	trackedChannels      map[datatransfer.ChannelID]*channelData
 }
 
 // NewProviderRevalidator returns a new instance of a ProviderRevalidator
-func NewProviderRevalidator(node rm.RetrievalProviderNode, deals RetrievalDealStore, retrievalDealHandler *RetrievalDealHandler) *ProviderRevalidator {
+func NewProviderRevalidator(node rm.RetrievalProviderNode, deals RetrievalDealStore, retrievalDealHandler IRetrievalHandler) *ProviderRevalidator {
 	return &ProviderRevalidator{
 		node:                 node,
 		deals:                deals,
