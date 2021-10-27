@@ -152,7 +152,6 @@ var DBOptions = func(server bool) builder.Option {
 			builder.Override(new(itf.PayChanDS), NewPayChanDS),
 			builder.Override(new(itf.FundMgrDS), NewFundMgrDS),
 
-			builder.Override(new(StorageAskRepo), NewStorageAsk),
 			builder.Override(new(itf.Repo), func(cfg *config.Mysql) (itf.Repo, error) {
 				if len(cfg.ConnectionString) == 0 {
 					return nil, xerrors.Errorf("implement me")

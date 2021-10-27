@@ -1,8 +1,12 @@
 package mysql
 
 import (
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 	"time"
 
+	mtypes "github.com/filecoin-project/venus-messager/types"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -23,10 +27,6 @@ func (r MysqlRepo) FundRepo() itf.FundRepo {
 	return NewFundedAddressStateRepo(r.GetDb())
 }
 
-func (r MysqlRepo) MinerParamsRepo() itf.MinerParamsRepo {
-	return NewMinerParamsRepo(r.GetDb())
-}
-
 func (r MysqlRepo) MinerDealRepo() itf.MinerDealRepo {
 	return NewMinerDealRepo(r.GetDb())
 }
@@ -35,8 +35,12 @@ func (r MysqlRepo) PaychMsgInfoRepo() itf.PaychMsgInfoRepo {
 	return NewMsgInfoRepo(r.GetDb())
 }
 
-func (r MysqlRepo) PaychChannelInfo() itf.PaychChannelInfoRepo {
+func (r MysqlRepo) PaychChannelInfoRepo() itf.PaychChannelInfoRepo {
 	return NewChannelInfoRepo(r.GetDb())
+}
+
+func (r MysqlRepo) StorageAskRepo() itf.StorageAskRepo {
+	return NewStorageAskRepo(r.GetDb())
 }
 
 func InitMysql(cfg *config.Mysql) (itf.Repo, error) {
@@ -66,5 +70,65 @@ func InitMysql(cfg *config.Mysql) (itf.Repo, error) {
 
 	r := &MysqlRepo{DB: db}
 
-	return r, r.AutoMigrate(minerParams{}, fundedAddressState{}, minerDeal{}, channelInfo{}, msgInfo{})
+	return r, r.AutoMigrate(fundedAddressState{}, minerDeal{}, channelInfo{}, msgInfo{}, storageAsk{})
+}
+
+func parseCid(str string) (cid.Cid, error) {
+	if len(str) == 0 {
+		return cid.Undef, nil
+	}
+
+	return cid.Parse(str)
+}
+
+func decodeCid(c cid.Cid) string {
+	if c == cid.Undef {
+		return ""
+	}
+	return c.String()
+}
+
+func parseCidPtr(str string) (*cid.Cid, error) {
+	if len(str) == 0 {
+		return nil, nil
+	}
+	c, err := cid.Parse(str)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func decodeCidPtr(c *cid.Cid) string {
+	if c == nil {
+		return ""
+	}
+	return c.String()
+}
+
+var undefAddrStr = address.Undef.String()
+
+func parseAddrPtr(str string) (*address.Address, error) {
+	if str == undefAddrStr {
+		return nil, nil
+	}
+	addr, err := address.NewFromString(str)
+	if err != nil {
+		return nil, err
+	}
+	return &addr, nil
+}
+
+func decodeAddrPtr(addr *address.Address) string {
+	if addr == nil {
+		return address.Undef.String()
+	}
+	return addr.String()
+}
+
+func convertBigInt(v big.Int) mtypes.Int {
+	if v.Nil() {
+		return mtypes.Zero()
+	}
+	return mtypes.NewFromGo(v.Int)
 }

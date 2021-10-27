@@ -5,6 +5,7 @@ import (
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/types"
 	mtypes "github.com/filecoin-project/venus-messager/types"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"gorm.io/gorm"
 )
@@ -22,7 +23,7 @@ type channelInfo struct {
 	AddFundsMsg   string     `gorm:"column:add_funds_msg;type:varchar(256);"`
 	Settling      bool       `gorm:"column:settling;"`
 
-	VoucherInfo []*types.VoucherInfo `gorm:"column:voucher_info;type:blob;"`
+	VoucherInfo types.VoucherInfos `gorm:"column:voucher_info;type:blob;"`
 
 	IsDeleted int `gorm:"column:is_deleted;index;default:-1;NOT NULL"`
 }
@@ -33,51 +34,39 @@ func (c *channelInfo) TableName() string {
 
 func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 	info := &channelInfo{
-		ChannelID:   src.ChannelID,
-		Channel:     src.Channel.String(),
-		Control:     src.Control.String(),
-		Target:      src.Target.String(),
-		Direction:   src.Direction,
-		NextLane:    src.NextLane,
-		CreateMsg:   src.CreateMsg.String(),
-		AddFundsMsg: src.AddFundsMsg.String(),
-		Settling:    src.Settling,
-		VoucherInfo: src.Vouchers,
+		ChannelID:     src.ChannelID,
+		Channel:       decodeAddrPtr(src.Channel),
+		Control:       src.Control.String(),
+		Target:        src.Target.String(),
+		Direction:     src.Direction,
+		NextLane:      src.NextLane,
+		Amount:        convertBigInt(src.Amount),
+		PendingAmount: convertBigInt(src.PendingAmount),
+		CreateMsg:     decodeCidPtr(src.CreateMsg),
+		AddFundsMsg:   decodeCidPtr(src.AddFundsMsg),
+		Settling:      src.Settling,
+		VoucherInfo:   src.Vouchers,
 	}
-	if !src.Amount.Nil() {
-		info.Amount = mtypes.NewFromGo(src.Amount.Int)
-	} else {
-		info.Amount = mtypes.Zero()
-	}
-	if !src.PendingAmount.Nil() {
-		info.PendingAmount = mtypes.NewFromGo(src.PendingAmount.Int)
-	} else {
-		info.PendingAmount = mtypes.Zero()
-	}
+
 	return info
 }
 
 func toChannelInfo(src *channelInfo) (*types.ChannelInfo, error) {
 	info := &types.ChannelInfo{
 		ChannelID:     src.ChannelID,
-		Channel:       nil,
-		Control:       address.Address{},
-		Target:        address.Address{},
 		Direction:     src.Direction,
 		Vouchers:      src.VoucherInfo,
 		NextLane:      src.NextLane,
 		Amount:        fbig.Int{Int: src.Amount.Int},
 		PendingAmount: fbig.Int{Int: src.PendingAmount.Int},
-		CreateMsg:     nil,
-		AddFundsMsg:   nil,
 		Settling:      src.Settling,
 	}
 	var err error
-	channel, err := address.NewFromString(src.Channel)
+	info.Channel, err = parseAddrPtr(src.Channel)
 	if err != nil {
 		return nil, err
 	}
-	info.Channel = &channel
+
 	info.Control, err = address.NewFromString(src.Control)
 	if err != nil {
 		return nil, err
@@ -86,16 +75,16 @@ func toChannelInfo(src *channelInfo) (*types.ChannelInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	createMsg, err := parseCid(src.CreateMsg)
+
+	info.CreateMsg, err = parseCidPtr(src.CreateMsg)
 	if err != nil {
 		return nil, err
 	}
-	info.CreateMsg = &createMsg
-	addFundsMsg, err := parseCid(src.AddFundsMsg)
+
+	info.AddFundsMsg, err = parseCidPtr(src.AddFundsMsg)
 	if err != nil {
 		return nil, err
 	}
-	info.AddFundsMsg = &addFundsMsg
 
 	return info, nil
 }
@@ -155,7 +144,7 @@ func (c *channelInfoRepo) GetChannelByChannelID(channelID string) (*types.Channe
 
 func (c *channelInfoRepo) GetChannelByMessageCid(mcid cid.Cid) (*types.ChannelInfo, error) {
 	var msgInfo msgInfo
-	if err := c.DB.Take(&msgInfo, "msg_cid = ?", mcid).Error; err != nil {
+	if err := c.DB.Take(&msgInfo, "msg_cid = ?", mcid.String()).Error; err != nil {
 		return nil, err
 	}
 
@@ -210,6 +199,9 @@ func (c *channelInfoRepo) ListChannel() ([]address.Address, error) {
 }
 
 func (c *channelInfoRepo) SaveChannel(ci *types.ChannelInfo) error {
+	if len(ci.ChannelID) == 0 {
+		ci.ChannelID = uuid.NewString()
+	}
 	return c.DB.Create(fromChannelInfo(ci)).Error
 }
 
@@ -238,7 +230,7 @@ func (m *msgInfo) TableName() string {
 func fromMsgInfo(src *types.MsgInfo) *msgInfo {
 	return &msgInfo{
 		ChannelID: src.ChannelID,
-		MsgCid:    src.MsgCid.String(),
+		MsgCid:    decodeCid(src.MsgCid),
 		Received:  src.Received,
 		Err:       src.Err,
 	}
@@ -247,7 +239,6 @@ func fromMsgInfo(src *types.MsgInfo) *msgInfo {
 func toMsgInfo(src *msgInfo) (*types.MsgInfo, error) {
 	info := &types.MsgInfo{
 		ChannelID: src.ChannelID,
-		MsgCid:    cid.Cid{},
 		Received:  src.Received,
 		Err:       src.Err,
 	}
@@ -282,5 +273,5 @@ func (m *msgInfoRepo) SaveMessage(info *types.MsgInfo) error {
 }
 
 func (m *msgInfoRepo) SaveMessageResult(mcid cid.Cid, msgErr error) error {
-	return m.DB.Model(&msgInfo{}).Where("msg_cid = ?", mcid.String()).Update("err", msgErr).Error
+	return m.DB.Model(&msgInfo{}).Where("msg_cid = ?", mcid.String()).Update("err", msgErr.Error()).Error
 }

@@ -21,7 +21,9 @@ type VoucherInfo struct {
 	Submitted bool
 }
 
-func (info *VoucherInfo) Scan(value interface{}) error {
+type VoucherInfos []*VoucherInfo
+
+func (info *VoucherInfos) Scan(value interface{}) error {
 	data, ok := value.([]byte)
 	if !ok {
 		return fmt.Errorf("value must be []byte")
@@ -29,10 +31,7 @@ func (info *VoucherInfo) Scan(value interface{}) error {
 	return json.Unmarshal(data, info)
 }
 
-func (info *VoucherInfo) Value() (driver.Value, error) {
-	if info == nil {
-		return nil, nil
-	}
+func (info VoucherInfos) Value() (driver.Value, error) {
 	return json.Marshal(info)
 }
 

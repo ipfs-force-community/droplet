@@ -1,7 +1,6 @@
 package config
 
 import (
-	"path"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -44,18 +43,13 @@ var DefaultMarketConfig = &MarketConfig{
 		Url:   "/ip4/<ip>/tcp/5678",
 		Token: "",
 	},
-	StAsk: StorageAskConfig{
-		DbType: "badger",
-		URI:    path.Join(HomePath, "StAsk"),
-		Debug:  false,
-	},
-	Mysql: Mysql{
-		ConnectionString: "root:password@(127.0.0.1:3306)/venus_market?parseTime=true&loc=Local",
-		MaxOpenConn:      100,
-		MaxIdleConn:      100,
-		ConnMaxLifeTime:  "1m",
-		Debug:            false,
-	},
+	//Mysql: Mysql{
+	//	ConnectionString: "root:password@(127.0.0.1:3306)/venus_market?parseTime=true&loc=Local",
+	//	MaxOpenConn:      100,
+	//	MaxIdleConn:      100,
+	//	ConnMaxLifeTime:  "1m",
+	//	Debug:            false,
+	//},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
 		MaxConcurrencyStorageCalls: 100,
