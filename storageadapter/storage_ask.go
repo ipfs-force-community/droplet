@@ -2,24 +2,22 @@ package storageadapter
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus/app/client/apiface"
-
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"golang.org/x/xerrors"
 )
 
 func NewStorageAsk(ctx metrics.MetricsCtx,
-	ds itf.IStorageAskRepo, fullnode apiface.FullNode) (*StorageAsk, error) {
-	return &StorageAsk{repo: ds, fullNode: fullnode}, nil
+	repo itf.Repo, fullnode apiface.FullNode) (*StorageAsk, error) {
+	return &StorageAsk{repo: repo.StorageAskRepo(), fullNode: fullnode}, nil
 }
-
 
 type StorageAsk struct {
 	repo     itf.IStorageAskRepo
