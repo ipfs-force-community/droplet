@@ -19,7 +19,7 @@ type StorageDealStore interface {
 
 var RecordNotFound = fmt.Errorf("unable to find record")
 
-type StorageAsk interface {
+type IStorageAsk interface {
 	GetAsk(mAddr address.Address) (*storagemarket.SignedStorageAsk, error)
 	SetAsk(mAddr address.Address, price abi.TokenAmount, verifiedPrice abi.TokenAmount, duration abi.ChainEpoch) error
 }

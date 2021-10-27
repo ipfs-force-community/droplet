@@ -102,3 +102,11 @@ func (a *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 
 	return a.DB.Save(fromStorageAsk(ask)).Error
 }
+
+func (a *storageAskRepo) Close() error {
+	db, err := a.DB.DB()
+	if err != nil {
+		return err
+	}
+	return db.Close()
+}

@@ -47,3 +47,7 @@ func (s *askStore) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 
 	return s.ds.Put(key, b)
 }
+
+func (s *askStore) Close() error {
+	return s.ds.Close()
+}

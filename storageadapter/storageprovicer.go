@@ -22,7 +22,7 @@ type StorageProviderV2 struct {
 
 	pieceStore   piecestore.PieceStore
 	conns        *connmanager.ConnManager
-	storedAsk    StorageAsk
+	storedAsk    IStorageAsk
 	dataTransfer datatransfer.Manager
 
 	deals StorageDealStore
@@ -41,7 +41,7 @@ func NewProvider(net network.StorageMarketNetwork,
 	pieceStore piecestore.PieceStore,
 	dataTransfer datatransfer.Manager,
 	spn StorageProviderNode,
-	storedAsk StorageAsk,
+	storedAsk IStorageAsk,
 ) (*StorageProviderV2, error) {
 	h := &StorageProviderV2{
 		net:          net,

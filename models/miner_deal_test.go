@@ -18,12 +18,12 @@ import (
 
 func TestMinerDeal(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
-		testFund(t, mysqlDB(t).FundRepo())
+		testFund(t, MysqlDB(t).FundRepo())
 	})
 
 	t.Run("badger", func(t *testing.T) {
 		path := "./badger_miner_deal_db"
-		db := badgerDB(t, path)
+		db := BadgerDB(t, path)
 		defer func() {
 			assert.Nil(t, db.Close())
 			assert.Nil(t, os.RemoveAll(path))

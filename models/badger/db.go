@@ -9,7 +9,7 @@ type BadgerRepo struct {
 	minerDealRepo   itf.MinerDealRepo
 	channelInfoRepo itf.PaychChannelInfoRepo
 	msgInfoRepo     itf.PaychMsgInfoRepo
-	storageAskRepo  itf.StorageAskRepo
+	storageAskRepo  itf.IStorageAskRepo
 }
 
 func NewBadgerRepo(fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS, paychDS itf.PayChanDS, askDS itf.StorageAskDS) itf.Repo {
@@ -40,6 +40,6 @@ func (b *BadgerRepo) PaychChannelInfoRepo() itf.PaychChannelInfoRepo {
 	return b.channelInfoRepo
 }
 
-func (b *BadgerRepo) StorageAskRepo() itf.StorageAskRepo {
+func (b *BadgerRepo) StorageAskRepo() itf.IStorageAskRepo {
 	return b.storageAskRepo
 }

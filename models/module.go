@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/venus-market/models/itf"
 	"path"
 
+	badger_models "github.com/filecoin-project/venus-market/models/badger"
 	"github.com/filecoin-project/venus-market/models/mysql"
 
 	"github.com/filecoin-project/venus-market/blockstore"
@@ -15,7 +16,6 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -152,12 +152,15 @@ var DBOptions = func(server bool) builder.Option {
 			builder.Override(new(itf.PayChanDS), NewPayChanDS),
 			builder.Override(new(itf.FundMgrDS), NewFundMgrDS),
 
-			builder.Override(new(itf.Repo), func(cfg *config.Mysql) (itf.Repo, error) {
+			// if there is a mysql connection string exist,
+			// use mysql storage_ask_ds, otherwise use a badger
+			builder.Override(new(itf.Repo), func(cfg *config.Mysql,
+				fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS,
+				paychDS itf.PayChanDS, askDS itf.StorageAskDS) (itf.Repo, error) {
 				if len(cfg.ConnectionString) == 0 {
-					return nil, xerrors.Errorf("implement me")
-				} else {
-					return mysql.InitMysql(cfg)
+					return badger_models.NewBadgerRepo(fundDS, dealDS, paychDS, askDS), nil
 				}
+				return mysql.InitMysql(cfg)
 			}),
 		)
 	} else {

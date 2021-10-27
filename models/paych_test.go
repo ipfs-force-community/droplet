@@ -17,13 +17,13 @@ import (
 
 func TestPaych(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
-		testChannelInfo(t, mysqlDB(t).PaychChannelInfoRepo(), mysqlDB(t).PaychMsgInfoRepo())
-		testMsgInfo(t, mysqlDB(t).PaychMsgInfoRepo())
+		testChannelInfo(t, MysqlDB(t).PaychChannelInfoRepo(), MysqlDB(t).PaychMsgInfoRepo())
+		testMsgInfo(t, MysqlDB(t).PaychMsgInfoRepo())
 	})
 
 	t.Run("badger", func(t *testing.T) {
 		path := "./badger_paych_db"
-		db := badgerDB(t, path)
+		db := BadgerDB(t, path)
 		defer func() {
 			assert.Nil(t, db.Close())
 			assert.Nil(t, os.RemoveAll(path))

@@ -39,7 +39,7 @@ func (r MysqlRepo) PaychChannelInfoRepo() itf.PaychChannelInfoRepo {
 	return NewChannelInfoRepo(r.GetDb())
 }
 
-func (r MysqlRepo) StorageAskRepo() itf.StorageAskRepo {
+func (r MysqlRepo) StorageAskRepo() itf.IStorageAskRepo {
 	return NewStorageAskRepo(r.GetDb())
 }
 

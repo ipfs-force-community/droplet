@@ -2,6 +2,9 @@ package models
 
 import (
 	"bytes"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus-market/utils/test_helper"
 	"math/rand"
 	"testing"
 
@@ -16,9 +19,10 @@ import (
 	"github.com/filecoin-project/venus-market/models/itf"
 )
 
-func mysqlDB(t *testing.T) itf.Repo {
+func MysqlDB(t *testing.T) itf.Repo {
+	connSql := test_helper.Mysql(t)
 	repo, err := mysql.InitMysql(&config.Mysql{
-		ConnectionString: "root:Root1234@(127.0.0.1:3306)/venus_market_test?parseTime=true&loc=Local",
+		ConnectionString: connSql,
 		MaxOpenConn:      10,
 		MaxIdleConn:      10,
 		ConnMaxLifeTime:  "1m",
@@ -30,7 +34,10 @@ func mysqlDB(t *testing.T) itf.Repo {
 	return repo
 }
 
-func badgerDB(t *testing.T, path string) *badger.Datastore {
+func BadgerDB(t *testing.T, path string) *badger.Datastore {
+	if len(path) == 0 {
+		t.Skipf("badger path is nil")
+	}
 	db, err := badger.NewDatastore(path, &badger.DefaultOptions)
 	assert.Nil(t, err)
 	return db
@@ -41,7 +48,6 @@ func randAddress(t *testing.T) address.Address {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	return addr
 }
 
@@ -58,4 +64,17 @@ func randCid(t *testing.T) cid.Cid {
 	id, err := cid.Decode(b.String())
 	assert.Nil(t, err)
 	return id
+}
+
+func RandStorageAsk(t *testing.T) *storagemarket.StorageAsk {
+	return &storagemarket.StorageAsk{
+		Price:         abi.NewTokenAmount(10),
+		VerifiedPrice: abi.NewTokenAmount(100),
+		MinPieceSize:  1024,
+		MaxPieceSize:  1024,
+		Miner:         randAddress(t),
+		Timestamp:     abi.ChainEpoch(10),
+		Expiry:        abi.ChainEpoch(10),
+		SeqNo:         0,
+	}
 }

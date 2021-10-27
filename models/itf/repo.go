@@ -38,9 +38,10 @@ type PaychChannelInfoRepo interface {
 	RemoveChannel(channelID string) error
 }
 
-type StorageAskRepo interface {
+type IStorageAskRepo interface {
 	GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error)
 	SetAsk(ask *storagemarket.SignedStorageAsk) error
+	Close() error
 }
 
 type Repo interface {
@@ -48,5 +49,5 @@ type Repo interface {
 	MinerDealRepo() MinerDealRepo
 	PaychMsgInfoRepo() PaychMsgInfoRepo
 	PaychChannelInfoRepo() PaychChannelInfoRepo
-	StorageAskRepo() StorageAskRepo
+	StorageAskRepo() IStorageAskRepo
 }

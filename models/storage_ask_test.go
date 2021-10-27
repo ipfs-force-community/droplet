@@ -13,22 +13,21 @@ import (
 
 func TestStorageAsk(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
-		testStorageAsk(t, mysqlDB(t).StorageAskRepo())
+		testStorageAsk(t, MysqlDB(t).StorageAskRepo())
 	})
 
 	t.Run("badger", func(t *testing.T) {
 		path := "./badger_stoarage_ask_db"
-		db := badgerDB(t, path)
+		db := BadgerDB(t, path)
 		defer func() {
 			assert.Nil(t, db.Close())
 			assert.Nil(t, os.RemoveAll(path))
 
 		}()
-		testStorageAsk(t, itf.StorageAskRepo(badger.NewAskStore(db)))
+		testStorageAsk(t, itf.IStorageAskRepo(badger.NewAskStore(db)))
 	})
 }
-
-func testStorageAsk(t *testing.T, askRepo itf.StorageAskRepo) {
+func testStorageAsk(t *testing.T, askRepo itf.IStorageAskRepo) {
 	ask := &storagemarket.SignedStorageAsk{
 		Ask: &storagemarket.StorageAsk{
 			Price:         abi.NewTokenAmount(10),
@@ -65,13 +64,13 @@ func testStorageAsk(t *testing.T, askRepo itf.StorageAskRepo) {
 
 	res, err := askRepo.GetAsk(ask.Ask.Miner)
 	assert.Nil(t, err)
-	compareAsk(t, res, ask)
+	CompareAsk(t, res, ask)
 	res2, err := askRepo.GetAsk(ask2.Ask.Miner)
 	assert.Nil(t, err)
-	compareAsk(t, res2, ask2)
+	CompareAsk(t, res2, ask2)
 }
 
-func compareAsk(t *testing.T, actual, expected *storagemarket.SignedStorageAsk) {
+func CompareAsk(t *testing.T, actual, expected *storagemarket.SignedStorageAsk) {
 	assert.Equal(t, expected.Ask, actual.Ask)
 	assert.Equal(t, expected.Signature, actual.Signature)
 }

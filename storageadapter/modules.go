@@ -24,10 +24,7 @@ import (
 	"github.com/filecoin-project/venus-market/network"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
 	"os"
@@ -38,22 +35,6 @@ import (
 var (
 	HandleDealsKey builder.Invoke = builder.NextInvoke()
 )
-
-func NewStorageAsk(ctx metrics.MetricsCtx,
-	fapi apiface.FullNode,
-	askDs itf.StorageAskDS,
-	minerAddress types2.MinerAddress,
-	spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
-
-	fmt.Println(address.Address(minerAddress).String())
-	mi, err := fapi.StateMinerInfo(ctx, address.Address(minerAddress), types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
-	return storedask.NewStoredAsk(askDs, datastore.NewKey("latest"), spn, address.Address(minerAddress),
-		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
-}
 
 func StorageProvider(
 	homeDir *config.HomeDir,
@@ -102,7 +83,7 @@ func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs itf.DagTransferDS,
 	net := dtnet.NewFromLibp2pHost(h)
 
 	transport := dtgstransport.NewTransport(h.ID(), gs)
-	err := os.MkdirAll(filepath.Join(string(*homeDir), "data-transfer"), 0755) //nolint: gosec
+	err := os.MkdirAll(filepath.Join(string(*homeDir), "data-transfer"), 0755) // nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
@@ -234,8 +215,8 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 
 var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
-		builder.Override(new(*storedask.StoredAsk), NewStorageAsk),
-		builder.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), //save to metadata /datatransfer/provider/transfers
+		builder.Override(new(*StorageAsk), NewStorageAsk),
+		builder.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), // save to metadata /datatransfer/provider/transfers
 		//   save to metadata /deals/provider/piecestorage-ask/latest
 		builder.Override(new(config.StorageDealFilter), BasicDealFilter(nil)),
 		builder.Override(new(storagemarket.StorageProvider), StorageProvider),
