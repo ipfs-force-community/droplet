@@ -38,6 +38,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
+	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210924063144-1d3a5b30de87
 	github.com/ipfs-force-community/venus-gateway v1.1.2-0.20210924083450-c55d3300dfc9
@@ -64,7 +65,7 @@ require (
 	github.com/ipfs/go-unixfs v0.2.6
 	github.com/ipld/go-car v0.3.1-0.20210601190600-f512dac51e8e
 	github.com/ipld/go-car/v2 v2.0.3-0.20210811121346-c514a30114d7
-	github.com/ipld/go-ipld-prime v0.12.0
+	github.com/ipld/go-ipld-prime v0.12.3
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-libp2p v0.14.2
 	github.com/libp2p/go-libp2p-core v0.8.6
@@ -76,6 +77,7 @@ require (
 	github.com/libp2p/go-libp2p-yamux v0.5.4
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/modern-go/reflect2 v1.0.1
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.3.3
 	github.com/multiformats/go-multibase v0.0.3
