@@ -64,13 +64,13 @@ func testStorageAsk(t *testing.T, askRepo itf.IStorageAskRepo) {
 
 	res, err := askRepo.GetAsk(ask.Ask.Miner)
 	assert.Nil(t, err)
-	CompareAsk(t, res, ask)
+	compareStorageAsk(t, res, ask)
 	res2, err := askRepo.GetAsk(ask2.Ask.Miner)
 	assert.Nil(t, err)
-	CompareAsk(t, res2, ask2)
+	compareStorageAsk(t, res2, ask2)
 }
 
-func CompareAsk(t *testing.T, actual, expected *storagemarket.SignedStorageAsk) {
+func compareStorageAsk(t *testing.T, actual, expected *storagemarket.SignedStorageAsk) {
 	assert.Equal(t, expected.Ask, actual.Ask)
 	assert.Equal(t, expected.Signature, actual.Signature)
 }

@@ -5,22 +5,23 @@ import (
 )
 
 type BadgerRepo struct {
-	fundRepo        itf.FundRepo
-	minerDealRepo   itf.MinerDealRepo
-	channelInfoRepo itf.PaychChannelInfoRepo
-	msgInfoRepo     itf.PaychMsgInfoRepo
-	storageAskRepo  itf.IStorageAskRepo
+	fundRepo         itf.FundRepo
+	minerDealRepo    itf.MinerDealRepo
+	channelInfoRepo  itf.PaychChannelInfoRepo
+	msgInfoRepo      itf.PaychMsgInfoRepo
+	storageAskRepo   itf.IStorageAskRepo
+	retrievalAskRepo itf.IRetrievalAskRepo
 }
 
-func NewBadgerRepo(fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS, paychDS itf.PayChanDS, askDS itf.StorageAskDS) itf.Repo {
+func NewBadgerRepo(fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS, paychDS itf.PayChanDS, askDS itf.StorageAskDS, retrAskDs itf.RetrievalAskDS) itf.Repo {
 	pst := NewPaychStore(paychDS)
 
-	return &BadgerRepo{
-		fundRepo:        NewFundStore(fundDS),
-		minerDealRepo:   NewMinerDealStore(dealDS),
-		msgInfoRepo:     pst,
-		channelInfoRepo: pst,
-		storageAskRepo:  NewAskStore(askDS),
+	return &BadgerRepo{fundRepo: NewFundStore(fundDS),
+		minerDealRepo:    NewMinerDealStore(dealDS),
+		msgInfoRepo:      pst,
+		channelInfoRepo:  pst,
+		storageAskRepo:   NewAskStore(askDS),
+		retrievalAskRepo: NewRetrievalAskRepo(retrAskDs),
 	}
 }
 
@@ -42,4 +43,8 @@ func (b *BadgerRepo) PaychChannelInfoRepo() itf.PaychChannelInfoRepo {
 
 func (b *BadgerRepo) StorageAskRepo() itf.IStorageAskRepo {
 	return b.storageAskRepo
+}
+
+func (r *BadgerRepo) RetrievalAskRepo() itf.IRetrievalAskRepo {
+	return r.retrievalAskRepo
 }

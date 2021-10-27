@@ -1,7 +1,9 @@
 package itf
 
 import (
+	"errors"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/types"
@@ -44,10 +46,19 @@ type IStorageAskRepo interface {
 	Close() error
 }
 
+type IRetrievalAskRepo interface {
+	GetAsk(addr address.Address) (*retrievalmarket.Ask, error)
+	SetAsk(addr address.Address, ask *retrievalmarket.Ask) error
+	Close() error
+}
+
 type Repo interface {
 	FundRepo() FundRepo
 	MinerDealRepo() MinerDealRepo
 	PaychMsgInfoRepo() PaychMsgInfoRepo
 	PaychChannelInfoRepo() PaychChannelInfoRepo
 	StorageAskRepo() IStorageAskRepo
+	RetrievalAskRepo() IRetrievalAskRepo
 }
+
+var ErrNotFound = errors.New("not found")

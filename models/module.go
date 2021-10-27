@@ -156,9 +156,11 @@ var DBOptions = func(server bool) builder.Option {
 			// use mysql storage_ask_ds, otherwise use a badger
 			builder.Override(new(itf.Repo), func(cfg *config.Mysql,
 				fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS,
-				paychDS itf.PayChanDS, askDS itf.StorageAskDS) (itf.Repo, error) {
+				paychDS itf.PayChanDS, askDS itf.StorageAskDS,
+				retrAskDs itf.RetrievalAskDS) (itf.Repo, error) {
 				if len(cfg.ConnectionString) == 0 {
-					return badger_models.NewBadgerRepo(fundDS, dealDS, paychDS, askDS), nil
+					return badger_models.NewBadgerRepo(fundDS,
+						dealDS, paychDS, askDS, retrAskDs), nil
 				}
 				return mysql.InitMysql(cfg)
 			}),

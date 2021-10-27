@@ -19,6 +19,8 @@ type MysqlRepo struct {
 	*gorm.DB
 }
 
+var _ itf.Repo = MysqlRepo{}
+
 func (r MysqlRepo) GetDb() *gorm.DB {
 	return r.DB
 }
@@ -41,6 +43,10 @@ func (r MysqlRepo) PaychChannelInfoRepo() itf.PaychChannelInfoRepo {
 
 func (r MysqlRepo) StorageAskRepo() itf.IStorageAskRepo {
 	return NewStorageAskRepo(r.GetDb())
+}
+
+func (r MysqlRepo) RetrievalAskRepo() itf.IRetrievalAskRepo {
+	return NewRetrievalAskRepo(r.GetDb())
 }
 
 func InitMysql(cfg *config.Mysql) (itf.Repo, error) {
@@ -70,7 +76,10 @@ func InitMysql(cfg *config.Mysql) (itf.Repo, error) {
 
 	r := &MysqlRepo{DB: db}
 
-	return r, r.AutoMigrate(fundedAddressState{}, minerDeal{}, channelInfo{}, msgInfo{}, storageAsk{})
+	// TODO: unexpected error with following message:(msyql:5.6.47)
+	//   Error 1071: Specified key was too long; max key length is 767 bytes
+	//   primary_key over-sized: fundedAddressState, minerDeal, channelInfo, msgInfo
+	return r, r.AutoMigrate(modelRetrievalAsk{}, storageAsk{}, fundedAddressState{}, minerDeal{}, channelInfo{}, msgInfo{})
 }
 
 func parseCid(str string) (cid.Cid, error) {
