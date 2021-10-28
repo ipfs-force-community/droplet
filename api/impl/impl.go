@@ -50,7 +50,7 @@ type MarketNodeImpl struct {
 
 	FullNode          apiface.FullNode
 	Host              host.Host
-	StorageProvider   storagemarket.StorageProvider
+	StorageProvider   storageadapter2.StorageProviderV2
 	RetrievalProvider retrievalmarket.RetrievalProvider
 	DataTransfer      network.ProviderDataTransfer
 	DealPublisher     *storageadapter2.DealPublisher
@@ -148,21 +148,21 @@ func (m MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan storag
 	return results, nil
 }
 
-func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error) {
-	return m.StorageProvider.ListLocalDeals()
+func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]storagemarket.MinerDeal, error) {
+	return m.StorageProvider.ListLocalDeals(mAddr)
 }
 
-func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
+func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
 	options := []storagemarket.StorageAskOption{
 		storagemarket.MinPieceSize(minPieceSize),
 		storagemarket.MaxPieceSize(maxPieceSize),
 	}
 
-	return m.StorageProvider.SetAsk(price, verifiedPrice, duration, options...)
+	return m.StorageProvider.SetAsk(mAddr, price, verifiedPrice, duration, options...)
 }
 
-func (m MarketNodeImpl) MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error) {
-	return m.StorageProvider.GetAsk(), nil
+func (m MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*storagemarket.SignedStorageAsk, error) {
+	return m.StorageProvider.GetAsk(mAddr)
 }
 
 func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error {

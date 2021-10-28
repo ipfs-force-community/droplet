@@ -233,6 +233,8 @@ var setAskCmd = &cli.Command{
 			return nil
 		}
 
+		// TODO: 判断miner在矿池中是否存在
+
 		ssize, err := api.ActorSectorSize(ctx, maddr)
 		if err != nil {
 			return err
@@ -248,14 +250,19 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
-		return api.MarketSetAsk(ctx, types.BigInt(pri), types.BigInt(vpri), abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
+		return api.MarketSetAsk(ctx, maddr, types.BigInt(pri), types.BigInt(vpri), abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
 	},
 }
 
 var getAskCmd = &cli.Command{
 	Name:  "get-ask",
 	Usage: "Print the miner's ask",
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "miner",
+			Required: true,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		ctx := DaemonContext(cctx)
 
@@ -271,7 +278,14 @@ var getAskCmd = &cli.Command{
 		}
 		defer closer()
 
-		sask, err := smapi.MarketGetAsk(ctx)
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return nil
+		}
+
+		// TODO: 判断miner在矿池中是否存在
+
+		sask, err := smapi.MarketGetAsk(ctx, maddr)
 		if err != nil {
 			return err
 		}
@@ -363,6 +377,10 @@ var dealsListCmd = &cli.Command{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
+		&cli.StringFlag{
+			Name:     "miner",
+			Required: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
@@ -371,9 +389,16 @@ var dealsListCmd = &cli.Command{
 		}
 		defer closer()
 
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return nil
+		}
+
+		// TODO: 判断miner在矿池中是否存在
+
 		ctx := DaemonContext(cctx)
 
-		deals, err := api.MarketListIncompleteDeals(ctx)
+		deals, err := api.MarketListIncompleteDeals(ctx, maddr)
 		if err != nil {
 			return err
 		}

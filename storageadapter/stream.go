@@ -2,17 +2,22 @@ package storageadapter
 
 import (
 	"context"
+	"os"
+
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
+
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
+
 	types2 "github.com/filecoin-project/venus-market/types"
+
 	"github.com/filecoin-project/venus/pkg/wallet"
-	"golang.org/x/xerrors"
-	"os"
 )
 
 var _ network.StorageReceiver = (*StorageDealStream)(nil)
@@ -21,10 +26,32 @@ type StorageDealStream struct {
 	conns       *connmanager.ConnManager
 	storedAsk   IStorageAsk
 	spn         StorageProviderNode
-	deals       StorageDealStore
+	deals       MinerDealStore
 	net         network.StorageMarketNetwork
 	fs          filestore.FileStore
 	dealProcess StorageDealProcess
+}
+
+// NewStorageReceiver returns a new StorageReceiver implements functions for receiving incoming data on storage protocols
+func NewStorageDealStream(
+	conns *connmanager.ConnManager,
+	storedAsk StorageAsk,
+	spn StorageProviderNode,
+	deals MinerDealStore,
+	net network.StorageMarketNetwork,
+	fs filestore.FileStore,
+	dealProcess StorageDealProcess,
+) (network.StorageReceiver, error) {
+
+	return &StorageDealStream{
+		conns:       conns,
+		storedAsk:   storedAsk,
+		spn:         spn,
+		deals:       deals,
+		net:         net,
+		fs:          fs,
+		dealProcess: dealProcess,
+	}, nil
 }
 
 //********* Network *******//
@@ -71,7 +98,7 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 	}
 
 	// Check if we are already tracking this deal
-	md, err := storageDealStream.deals.GetDeal(proposalNd.Cid())
+	md, err := storageDealStream.deals.Get(proposalNd.Cid())
 	if err == nil {
 		// We are already tracking this deal, for some reason it was re-proposed, perhaps because of a client restart
 		// this is ok, just send a response back.
@@ -110,7 +137,7 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		InboundCAR:         path,
 	}
 
-	err = storageDealStream.deals.SaveDeal(deal)
+	err = storageDealStream.deals.Save(deal)
 	if err != nil {
 		log.Errorf("save miner deal to database %w", err)
 		return
@@ -187,7 +214,7 @@ func (storageDealStream *StorageDealStream) resendProposalResponse(s network.Sto
 
 func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context.Context, request *network.DealStatusRequest) (*storagemarket.ProviderDealState, address.Address, error) {
 	// fetch deal state
-	md, err := storageDealStream.deals.GetDeal(request.Proposal)
+	md, err := storageDealStream.deals.Get(request.Proposal)
 	if err != nil {
 		log.Errorf("proposal doesn't exist in state store: %s", err)
 		return nil, address.Undef, xerrors.Errorf("no such proposal")

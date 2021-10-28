@@ -165,7 +165,7 @@ type MarketFullNodeStruct struct {
 
 		MarketDataTransferUpdates func(p0 context.Context) (<-chan types.DataTransferChannel, error) `perm:"write"`
 
-		MarketGetAsk func(p0 context.Context) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
+		MarketGetAsk func(p0 context.Context, p1 address.Address) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
 
 		MarketGetDealUpdates func(p0 context.Context) (<-chan storagemarket.MinerDeal, error) `perm:"read"`
 
@@ -179,7 +179,7 @@ type MarketFullNodeStruct struct {
 
 		MarketListDeals func(p0 context.Context, p1 []address.Address) ([]types.MarketDeal, error) `perm:"read"`
 
-		MarketListIncompleteDeals func(p0 context.Context) ([]storagemarket.MinerDeal, error) `perm:"read"`
+		MarketListIncompleteDeals func(p0 context.Context, p1 address.Address) ([]storagemarket.MinerDeal, error) `perm:"read"`
 
 		MarketListRetrievalDeals func(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) `perm:"read"`
 
@@ -193,7 +193,7 @@ type MarketFullNodeStruct struct {
 
 		MarketRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
-		MarketSetAsk func(p0 context.Context, p1 vTypes.BigInt, p2 vTypes.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error `perm:"admin"`
+		MarketSetAsk func(p0 context.Context, p1 address.Address, p2 vTypes.BigInt, p3 vTypes.BigInt, p4 abi.ChainEpoch, p5 abi.PaddedPieceSize, p6 abi.PaddedPieceSize) error `perm:"admin"`
 
 		MarketSetRetrievalAsk func(p0 context.Context, p1 *retrievalmarket.Ask) error `perm:"admin"`
 
@@ -499,7 +499,7 @@ func (s *MarketFullNodeStruct) ActorAddress(p0 context.Context) ([]address.Addre
 }
 
 func (s *MarketFullNodeStub) ActorAddress(p0 context.Context) ([]address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new([]address.Address), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) ActorExist(p0 context.Context, p1 address.Address) (bool, error)  {
@@ -750,11 +750,11 @@ func (s *MarketFullNodeStub) MarketDataTransferUpdates(p0 context.Context) (<-ch
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
-	return s.Internal.MarketGetAsk(p0)
+func (s *MarketFullNodeStruct) MarketGetAsk(p0 context.Context, p1 address.Address) (*storagemarket.SignedStorageAsk, error) {
+	return s.Internal.MarketGetAsk(p0, p1)
 }
 
-func (s *MarketFullNodeStub) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
+func (s *MarketFullNodeStub) MarketGetAsk(p0 context.Context, p1 address.Address) (*storagemarket.SignedStorageAsk, error) {
 	return nil, xerrors.New("method not supported")
 }
 
@@ -806,11 +806,11 @@ func (s *MarketFullNodeStub) MarketListDeals(p0 context.Context, p1 []address.Ad
 	return *new([]types.MarketDeal), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
-	return s.Internal.MarketListIncompleteDeals(p0)
+func (s *MarketFullNodeStruct) MarketListIncompleteDeals(p0 context.Context, p1 address.Address) ([]storagemarket.MinerDeal, error) {
+	return s.Internal.MarketListIncompleteDeals(p0, p1)
 }
 
-func (s *MarketFullNodeStub) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
+func (s *MarketFullNodeStub) MarketListIncompleteDeals(p0 context.Context, p1 address.Address) ([]storagemarket.MinerDeal, error) {
 	return *new([]storagemarket.MinerDeal), xerrors.New("method not supported")
 }
 
@@ -862,11 +862,11 @@ func (s *MarketFullNodeStub) MarketRestartDataTransfer(p0 context.Context, p1 da
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MarketSetAsk(p0 context.Context, p1 vTypes.BigInt, p2 vTypes.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
-	return s.Internal.MarketSetAsk(p0, p1, p2, p3, p4, p5)
+func (s *MarketFullNodeStruct) MarketSetAsk(p0 context.Context, p1 address.Address, p2 vTypes.BigInt, p3 vTypes.BigInt, p4 abi.ChainEpoch, p5 abi.PaddedPieceSize, p6 abi.PaddedPieceSize) error {
+	return s.Internal.MarketSetAsk(p0, p1, p2, p3, p4, p5, p6)
 }
 
-func (s *MarketFullNodeStub) MarketSetAsk(p0 context.Context, p1 vTypes.BigInt, p2 vTypes.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
+func (s *MarketFullNodeStub) MarketSetAsk(p0 context.Context, p1 address.Address, p2 vTypes.BigInt, p3 vTypes.BigInt, p4 abi.ChainEpoch, p5 abi.PaddedPieceSize, p6 abi.PaddedPieceSize) error {
 	return xerrors.New("method not supported")
 }
 

@@ -3,6 +3,14 @@ package storageadapter
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p-core/host"
+	"go.uber.org/fx"
+
 	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
@@ -14,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dagstore"
@@ -24,18 +33,33 @@ import (
 	"github.com/filecoin-project/venus-market/network"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/libp2p/go-libp2p-core/host"
-	"go.uber.org/fx"
-	"os"
-	"path/filepath"
-	"time"
+	"github.com/filecoin-project/venus/pkg/types"
 )
 
 var (
 	HandleDealsKey builder.Invoke = builder.NextInvoke()
 )
 
+func NewStorageAsk(ctx metrics.MetricsCtx,
+	fapi apiface.FullNode,
+	askDs models.StorageAskDS,
+	minerAddress types2.MinerAddress,
+	spn storagemarket.StorageProviderNode) (*storedask.StoredAsk, error) {
+
+	fmt.Println(address.Address(minerAddress).String())
+	mi, err := fapi.StateMinerInfo(ctx, address.Address(minerAddress), types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	return storedask.NewStoredAsk(askDs, datastore.NewKey("latest"), spn, address.Address(minerAddress),
+		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
+}
+
+// TODO: Call the version implemented by go-fil-markets, deprecated
 func StorageProvider(
 	homeDir *config.HomeDir,
 	minerAddress types2.MinerAddress,
@@ -59,15 +83,15 @@ func StorageProvider(
 	return storageimpl.NewProvider(net, providerDealsDs, store, dagStore, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
-func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider, j journal.Journal) {
+func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h StorageProviderV2, j journal.Journal) {
 	ctx := metrics.LifecycleCtx(mctx, lc)
-	h.OnReady(utils.ReadyLogger("piecestorage provider"))
+	//h.OnReady(utils.ReadyLogger("piecestorage provider"))
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			h.SubscribeToEvents(utils.StorageProviderLogger)
-
-			evtType := j.RegisterEventType("markets/piecestorage/provider", "state_change")
-			h.SubscribeToEvents(utils.StorageProviderJournaler(j, evtType))
+			//h.SubscribeToEvents(utils.StorageProviderLogger)
+			//
+			//evtType := j.RegisterEventType("markets/piecestorage/provider", "state_change")
+			//h.SubscribeToEvents(utils.StorageProviderJournaler(j, evtType))
 
 			return h.Start(ctx)
 		},
@@ -219,15 +243,14 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), // save to metadata /datatransfer/provider/transfers
 		//   save to metadata /deals/provider/piecestorage-ask/latest
 		builder.Override(new(config.StorageDealFilter), BasicDealFilter(nil)),
-		builder.Override(new(storagemarket.StorageProvider), StorageProvider),
+		builder.Override(new(StorageProviderV2), NewStorageProviderV2),
 		builder.Override(new(*DealPublisher), NewDealPublisher(cfg)),
 		builder.Override(HandleDealsKey, HandleDeals),
-		builder.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer),
 		builder.If(cfg.Filter != "",
 			builder.Override(new(config.StorageDealFilter), BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Filter))),
 		),
 		builder.Override(new(*DealPublisher), NewDealPublisher(cfg)),
-		builder.Override(new(storagemarket.StorageProviderNode), NewProviderNodeAdapter(cfg)),
+		builder.Override(new(StorageProviderNode), NewProviderNodeAdapter(cfg)),
 	)
 }
 

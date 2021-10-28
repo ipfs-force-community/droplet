@@ -2,9 +2,11 @@ package storageadapter
 
 import (
 	"fmt"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
+
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 )
 
 // EventReceiver is any thing that can receive FSM events

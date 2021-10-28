@@ -1,19 +1,20 @@
 package storageadapter
 
 import (
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/stores"
 )
 
 type providerStoreGetter struct {
 	stores *stores.ReadWriteBlockstores
-	deals  StorageDealStore
+	deals  MinerDealStore
 }
 
-func newProviderStoreGetter(deals StorageDealStore) *providerStoreGetter {
+func newProviderStoreGetter(deals MinerDealStore) *providerStoreGetter {
 	return &providerStoreGetter{
 		deals:  deals,
 		stores: stores.NewReadWriteBlockstores(),
@@ -21,7 +22,7 @@ func newProviderStoreGetter(deals StorageDealStore) *providerStoreGetter {
 }
 
 func (psg *providerStoreGetter) Get(proposalCid cid.Cid) (bstore.Blockstore, error) {
-	deal, err := psg.deals.GetDeal(proposalCid)
+	deal, err := psg.deals.Get(proposalCid)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get deal state: %w", err)
 	}
@@ -29,11 +30,11 @@ func (psg *providerStoreGetter) Get(proposalCid cid.Cid) (bstore.Blockstore, err
 }
 
 type providerPushDeals struct {
-	deals StorageDealStore
+	deals MinerDealStore
 }
 
 func (ppd *providerPushDeals) Get(proposalCid cid.Cid) (storagemarket.MinerDeal, error) {
-	deal, err := ppd.deals.GetDeal(proposalCid)
+	deal, err := ppd.deals.Get(proposalCid)
 	if err != nil {
 		return storagemarket.MinerDeal{}, err
 	}
