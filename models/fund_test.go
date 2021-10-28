@@ -24,7 +24,7 @@ func TestFund(t *testing.T) {
 			assert.Nil(t, os.RemoveAll(path))
 
 		}()
-		testFund(t, itf.FundRepo(badger.NewFundStore(db)))
+		testFund(t, itf.FundRepo(badger.NewFundRepo(db)))
 	})
 }
 
@@ -46,10 +46,10 @@ func testFund(t *testing.T, fundRepo itf.FundRepo) {
 
 	res, err := fundRepo.GetFundedAddressState(state.Addr)
 	assert.Nil(t, err)
-	compareState(t, res, state)
+	assert.Equal(t, res, state)
 	res2, err := fundRepo.GetFundedAddressState(state2.Addr)
 	assert.Nil(t, err)
-	compareState(t, res2, state2)
+	assert.Equal(t, res2, state2)
 
 	res.AmtReserved = abi.NewTokenAmount(101)
 	newCid := randCid(t)
@@ -57,15 +57,9 @@ func testFund(t *testing.T, fundRepo itf.FundRepo) {
 	assert.Nil(t, fundRepo.SaveFundedAddressState(res))
 	res3, err := fundRepo.GetFundedAddressState(res.Addr)
 	assert.Nil(t, err)
-	compareState(t, res, res3)
+	assert.Equal(t, res, res3)
 
 	list, err := fundRepo.ListFundedAddressState()
 	assert.Nil(t, err)
 	assert.GreaterOrEqual(t, len(list), 2)
-}
-
-func compareState(t *testing.T, actual, expected *types.FundedAddressState) {
-	assert.Equal(t, expected.Addr, actual.Addr)
-	assert.Equal(t, expected.AmtReserved, actual.AmtReserved)
-	assert.Equal(t, expected.MsgCid, actual.MsgCid)
 }

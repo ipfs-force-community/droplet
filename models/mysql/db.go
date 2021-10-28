@@ -1,9 +1,10 @@
 package mysql
 
 import (
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"time"
 
 	mtypes "github.com/filecoin-project/venus-messager/types"
 	"github.com/ipfs/go-cid"
@@ -29,8 +30,8 @@ func (r MysqlRepo) FundRepo() itf.FundRepo {
 	return NewFundedAddressStateRepo(r.GetDb())
 }
 
-func (r MysqlRepo) MinerDealRepo() itf.MinerDealRepo {
-	return NewMinerDealRepo(r.GetDb())
+func (r MysqlRepo) StorageDealRepo() itf.StorageDealRepo {
+	return NewStorageDealRepo(r.GetDb())
 }
 
 func (r MysqlRepo) PaychMsgInfoRepo() itf.PaychMsgInfoRepo {
@@ -78,8 +79,8 @@ func InitMysql(cfg *config.Mysql) (itf.Repo, error) {
 
 	// TODO: unexpected error with following message:(msyql:5.6.47)
 	//   Error 1071: Specified key was too long; max key length is 767 bytes
-	//   primary_key over-sized: fundedAddressState, minerDeal, channelInfo, msgInfo
-	return r, r.AutoMigrate(modelRetrievalAsk{}, storageAsk{}, fundedAddressState{}, minerDeal{}, channelInfo{}, msgInfo{})
+	//   primary_key over-sized: fundedAddressState, storageDeal, channelInfo, msgInfo
+	return r, r.AutoMigrate(modelRetrievalAsk{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{})
 }
 
 func parseCid(str string) (cid.Cid, error) {

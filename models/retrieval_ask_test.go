@@ -1,14 +1,15 @@
 package models
 
 import (
+	"os"
+	"testing"
+
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models/badger"
 	"github.com/filecoin-project/venus-market/models/itf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 // go test -v ./models -test.run TestRetrievalAsk -mysql='root:ko2005@tcp(127.0.0.1:3306)/storage_market?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s'
@@ -47,7 +48,7 @@ func testRetrievalAsk(t *testing.T, rtAskRepo itf.IRetrievalAskRepo) {
 	ask2, err = rtAskRepo.GetAsk(addr)
 
 	require.NoError(t, err)
-	cmpRetrievalAsk(t, ask1, ask2)
+	assert.Equal(t, ask1, ask2)
 
 	newPricePerByte := abi.NewTokenAmount(3045)
 	newPaymentInterval := uint64(4000)
@@ -57,14 +58,6 @@ func testRetrievalAsk(t *testing.T, rtAskRepo itf.IRetrievalAskRepo) {
 
 	require.NoError(t, rtAskRepo.SetAsk(addr, ask1))
 	ask2, err = rtAskRepo.GetAsk(addr)
-
-	cmpRetrievalAsk(t, ask1, ask2)
-
-}
-
-func cmpRetrievalAsk(t *testing.T, ask1, ask2 *retrievalmarket.Ask) {
-	require.Equal(t, ask1.PricePerByte.String(), ask2.PricePerByte.String())
-	require.Equal(t, ask1.UnsealPrice.String(), ask2.UnsealPrice.String())
-	require.Equal(t, ask1.PaymentIntervalIncrease, ask2.PaymentIntervalIncrease)
-	require.Equal(t, ask1.PaymentInterval, ask2.PaymentInterval)
+	assert.Nil(t, err)
+	assert.Equal(t, ask1, ask2)
 }
