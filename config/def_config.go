@@ -53,11 +53,6 @@ var DefaultMarketConfig = &MarketConfig{
 		Url:   "http://<ip>:8989",
 		Token: "",
 	},
-	StAsk: StorageAsk.StorageAskCfg{
-		DbType: "badger",
-		URI:    path.Join(HomePath, "StAsk"),
-		Debug:  false,
-	},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
 		MaxConcurrencyStorageCalls: 100,

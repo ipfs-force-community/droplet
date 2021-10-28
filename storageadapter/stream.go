@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 
-	types2 "github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
@@ -26,7 +26,7 @@ type StorageDealStream struct {
 	conns       *connmanager.ConnManager
 	storedAsk   IStorageAsk
 	spn         StorageProviderNode
-	deals       MinerDealStore
+	deals       StorageDealStore
 	net         network.StorageMarketNetwork
 	fs          filestore.FileStore
 	dealProcess StorageDealProcess
@@ -35,9 +35,9 @@ type StorageDealStream struct {
 // NewStorageReceiver returns a new StorageReceiver implements functions for receiving incoming data on storage protocols
 func NewStorageDealStream(
 	conns *connmanager.ConnManager,
-	storedAsk StorageAsk,
+	storedAsk IStorageAsk,
 	spn StorageProviderNode,
-	deals MinerDealStore,
+	deals StorageDealStore,
 	net network.StorageMarketNetwork,
 	fs filestore.FileStore,
 	dealProcess StorageDealProcess,
@@ -54,7 +54,17 @@ func NewStorageDealStream(
 	}, nil
 }
 
-//********* Network *******//
+/*
+HandleAskStream is called by the network implementation whenever a new message is received on the ask protocol
+
+A Provider handling a `AskRequest` does the following:
+
+1. Reads the current signed storage ask from storage
+
+2. Wraps the signed ask in an AskResponse and writes it on the StorageAskStream
+
+The connection is kept open only as long as the request-response exchange.
+*/
 func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAskStream) {
 	defer s.Close()
 	ar, err := s.ReadAskRequest()
@@ -68,7 +78,7 @@ func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAsk
 		if xerrors.Is(err, RecordNotFound) {
 			log.Warnf(" receive ask for miner with address %s", ar.Miner)
 		} else {
-			//write error?
+			log.Errorf("failed to get ask for [%s]: %s", ar.Miner, err)
 		}
 	}
 
@@ -84,7 +94,13 @@ func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAsk
 
 func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDealStream) {
 	ctx := context.TODO()
-	defer s.Close()
+	defer func() {
+		if closeErr := s.Close(); closeErr != nil {
+			log.Warnf("closing connection: %v", closeErr)
+		}
+	}()
+
+	// 1. Calculates the CID for the received ClientDealProposal.
 	proposal, err := s.ReadDealProposal()
 	if err != nil {
 		log.Errorf("failed to read proposal message: %w", err)
@@ -93,22 +109,23 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 
 	proposalNd, err := cborutil.AsIpld(proposal.DealProposal)
 	if err != nil {
-		log.Errorf("unable to market deal proposal %w", err)
+		log.Errorf("deal proposal cbor failed: %w", err)
 		return
 	}
 
 	// Check if we are already tracking this deal
-	md, err := storageDealStream.deals.Get(proposalNd.Cid())
+	md, err := storageDealStream.deals.GetDeal(proposalNd.Cid())
 	if err == nil {
 		// We are already tracking this deal, for some reason it was re-proposed, perhaps because of a client restart
 		// this is ok, just send a response back.
-		err := storageDealStream.resendProposalResponse(s, md)
+		err = storageDealStream.resendProposalResponse(s, md)
 		if err != nil {
 			log.Errorf("unable to market deal proposal %w", err)
-			return
 		}
+		return
 	}
 
+	// 2. Constructs a MinerDeal to track the state of this deal.
 	var path string
 	// create an empty CARv2 file at a temp location that Graphysnc will write the incoming blocks to via a CARv2 ReadWrite blockstore wrapper.
 	if proposal.Piece.TransferType != storagemarket.TTManual {
@@ -137,11 +154,23 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		InboundCAR:         path,
 	}
 
-	err = storageDealStream.deals.Save(deal)
+	// 3. 判断deal是否存在
+	md, err = storageDealStream.deals.GetDeal(deal.ProposalCid)
+	if err != nil {
+		log.Errorf("failed to check if state for %v exists: %w", deal.ProposalCid, err)
+		return
+	}
+	if md != nil {
+		log.Errorf("deal `%v` that already exists", deal.ProposalCid)
+		return
+	}
+
+	err = storageDealStream.deals.SaveDeal(deal)
 	if err != nil {
 		log.Errorf("save miner deal to database %w", err)
 		return
 	}
+
 	err = storageDealStream.conns.AddStream(proposalNd.Cid(), s)
 	if err != nil {
 		log.Errorf("add stream to connection %s %w", proposalNd.Cid(), err)
@@ -153,9 +182,32 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 	}
 }
 
+/*
+HandleDealStatusStream is called by the network implementation whenever a new message is received on the deal status protocol
+
+A Provider handling a `DealStatuRequest` does the following:
+
+1. Lots the deal state from the StorageDealStore
+
+2. Verifies the signature on the DealStatusRequest matches the Client for this deal
+
+3. Constructs a ProviderDealState from the deal state
+
+4. Signs the ProviderDealState with its private key
+
+5. Writes a DealStatusResponse with the ProviderDealState and signature onto the DealStatusStream
+
+The connection is kept open only as long as the request-response exchange.
+*/
 func (storageDealStream *StorageDealStream) HandleDealStatusStream(s network.DealStatusStream) {
 	ctx := context.TODO()
-	defer s.Close()
+	defer func() {
+		if closeErr := s.Close(); closeErr != nil {
+			log.Warnf("closing connection: %v", closeErr)
+		}
+	}()
+
+	// 1. Lots the deal state from the StorageDealStore
 	request, err := s.ReadDealStatusRequest()
 	if err != nil {
 		log.Errorf("failed to read DealStatusRequest from incoming stream: %s", err)
@@ -171,7 +223,7 @@ func (storageDealStream *StorageDealStream) HandleDealStatusStream(s network.Dea
 		}
 	}
 
-	signature, err := storageDealStream.spn.Sign(ctx, &types2.SignInfo{
+	signature, err := storageDealStream.spn.Sign(ctx, &types.SignInfo{
 		Data: dealState,
 		Type: wallet.MTUnknown,
 		Addr: mAddr,
@@ -194,27 +246,21 @@ func (storageDealStream *StorageDealStream) HandleDealStatusStream(s network.Dea
 
 func (storageDealStream *StorageDealStream) resendProposalResponse(s network.StorageDealStream, md *storagemarket.MinerDeal) error {
 	resp := &network.Response{State: md.State, Message: md.Message, Proposal: md.ProposalCid}
-	sig, err := storageDealStream.spn.Sign(context.TODO(), &types2.SignInfo{
+	sig, err := storageDealStream.spn.Sign(context.TODO(), &types.SignInfo{
 		Data: resp,
-		Type: wallet.MTUnknown, // todo
+		Type: wallet.MTUnknown,
 		Addr: address.Address{},
 	})
 	if err != nil {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}
-	// todo use resign
-	err = s.WriteDealResponse(network.SignedResponse{Response: *resp, Signature: sig}, storageDealStream.spn.Sign)
 
-	if closeErr := s.Close(); closeErr != nil {
-		log.Warnf("closing connection: %v", err)
-	}
-
-	return err
+	return s.WriteDealResponse(network.SignedResponse{Response: *resp, Signature: sig}, storageDealStream.spn.Sign)
 }
 
 func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context.Context, request *network.DealStatusRequest) (*storagemarket.ProviderDealState, address.Address, error) {
 	// fetch deal state
-	md, err := storageDealStream.deals.Get(request.Proposal)
+	md, err := storageDealStream.deals.GetDeal(request.Proposal)
 	if err != nil {
 		log.Errorf("proposal doesn't exist in state store: %s", err)
 		return nil, address.Undef, xerrors.Errorf("no such proposal")

@@ -88,7 +88,6 @@ func main() {
 				Flags: []cli.Flag{
 					NodeUrlFlag,
 					MessagerUrlFlag,
-					MessagerTokenFlag,
 					AuthTokenFlag,
 					SignerUrlFlag,
 					SignerTokenFlag,
@@ -197,9 +196,6 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 	}
 	if cctx.IsSet("auth-token") {
 		cfg.Messager.Token = cctx.String("auth-token")
-	}
-	if cctx.IsSet("messager-token") {
-		cfg.Messager.Token = cctx.String("messager-token")
 	}
 
 	if cctx.IsSet("signer-url") {

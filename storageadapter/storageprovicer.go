@@ -24,16 +24,14 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/dtutils"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dagstore"
+	"github.com/filecoin-project/venus-market/models/minermgr"
 	"github.com/filecoin-project/venus-market/network"
-
-	"github.com/filecoin-project/venus/app/client/apiface"
 )
 
 // StorageProviderV2 provides an interface to the storage market for a single
@@ -72,23 +70,20 @@ type StorageProviderV2 interface {
 }
 
 type StorageProviderV2Impl struct {
-	apiFull apiface.FullNode
-	net     smnet.StorageMarketNetwork
+	net smnet.StorageMarketNetwork
 
 	spn          StorageProviderNode
 	fs           filestore.FileStore
-	pieceStore   piecestore.PieceStore
 	conns        *connmanager.ConnManager
 	storedAsk    IStorageAsk
 	dataTransfer datatransfer.Manager
 
-	pubSub       *pubsub.PubSub
+	pubSub *pubsub.PubSub
 
 	unsubDataTransfer datatransfer.Unsubscribe
 
-	dagStore stores.DAGStoreWrapper
-
-	deals           MinerDealStore
+	deals           StorageDealStore
+	dealProcess StorageDealProcess
 	transferProcess TransferProcess
 	storageReceiver smnet.StorageReceiver
 }
@@ -113,14 +108,15 @@ func providerDispatcher(evt pubsub.Event, fn pubsub.SubscriberFn) error {
 
 // NewStorageProviderV2 returns a new storage provider
 func NewStorageProviderV2(
-	storedAsk StorageAsk,
+	storedAsk IStorageAsk,
 	h host.Host,
 	homeDir *config.HomeDir,
 	pieceStore piecestore.PieceStore,
 	dataTransfer network.ProviderDataTransfer,
 	spn StorageProviderNode,
 	dagStore *dagstore.Wrapper,
-
+	deals StorageDealStore,
+	minerMgr minermgr.IMinerMgr,
 ) (StorageProviderV2, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -134,23 +130,24 @@ func NewStorageProviderV2(
 
 		spn:          spn,
 		fs:           store,
-		pieceStore:   pieceStore,
 		conns:        connmanager.NewConnManager(),
 		storedAsk:    storedAsk,
 		dataTransfer: dataTransfer,
 
 		pubSub: pubsub.New(providerDispatcher),
 
-		dagStore: dagStore,
+		deals: deals,
 	}
 
-	// register a data transfer event handler -- this will send events to the state machines based on DT events
-	spV2.unsubDataTransfer = dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(spV2.transferProcess)) // fsm.Group
-
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.deals, spV2.storedAsk, stores.NewReadWriteBlockstores())
+	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.deals, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, dagStore)
 	if err != nil {
 		return nil, err
 	}
+	spV2.dealProcess = dealProcess
+
+	spV2.transferProcess = NewDataTransferProcess(dealProcess, spV2.deals)
+	// register a data transfer event handler -- this will send events to the state machines based on DT events
+	spV2.unsubDataTransfer = dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(spV2.transferProcess)) // fsm.Group
 
 	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.deals, spV2.net, spV2.fs, dealProcess)
 	if err != nil {
@@ -195,7 +192,7 @@ func (p *StorageProviderV2Impl) Stop() error {
 // cid for the given deal or it will error
 func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error {
 	// TODO: be able to check if we have enough disk space
-	d, err := p.deals.Get(propCid)
+	d, err := p.deals.GetDeal(propCid)
 	if err != nil {
 		return xerrors.Errorf("failed getting deal %s: %w", propCid, err)
 	}
@@ -265,12 +262,13 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 
 	log.Debugw("will fire ProviderEventVerifiedData for imported file", "propCid", propCid)
 
+	// TODO: 实现 ProviderEventVerifiedData 后的状态机逻辑
 	d.PiecePath = filestore.Path("")
 	d.MetadataPath = tempfi.Path()
 
-	// TODO: 实现 ProviderEventVerifiedData 后的状态机逻辑
+	d.State = storagemarket.StorageDealReserveProviderFunds
 
-	return nil
+	return p.dealProcess.HandleOff(ctx, d)
 }
 
 func generatePieceCommitment(rt abi.RegisteredSealProof, rd io.Reader, pieceSize uint64) (cid.Cid, error) {

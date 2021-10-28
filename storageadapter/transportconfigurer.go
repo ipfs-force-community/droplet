@@ -11,10 +11,10 @@ import (
 
 type providerStoreGetter struct {
 	stores *stores.ReadWriteBlockstores
-	deals  MinerDealStore
+	deals  StorageDealStore
 }
 
-func newProviderStoreGetter(deals MinerDealStore) *providerStoreGetter {
+func newProviderStoreGetter(deals StorageDealStore) *providerStoreGetter {
 	return &providerStoreGetter{
 		deals:  deals,
 		stores: stores.NewReadWriteBlockstores(),
@@ -22,7 +22,7 @@ func newProviderStoreGetter(deals MinerDealStore) *providerStoreGetter {
 }
 
 func (psg *providerStoreGetter) Get(proposalCid cid.Cid) (bstore.Blockstore, error) {
-	deal, err := psg.deals.Get(proposalCid)
+	deal, err := psg.deals.GetDeal(proposalCid)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get deal state: %w", err)
 	}
@@ -30,11 +30,11 @@ func (psg *providerStoreGetter) Get(proposalCid cid.Cid) (bstore.Blockstore, err
 }
 
 type providerPushDeals struct {
-	deals MinerDealStore
+	deals StorageDealStore
 }
 
 func (ppd *providerPushDeals) Get(proposalCid cid.Cid) (storagemarket.MinerDeal, error) {
-	deal, err := ppd.deals.Get(proposalCid)
+	deal, err := ppd.deals.GetDeal(proposalCid)
 	if err != nil {
 		return storagemarket.MinerDeal{}, err
 	}
