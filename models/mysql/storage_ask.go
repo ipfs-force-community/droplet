@@ -32,6 +32,8 @@ func (a *storageAsk) TableName() string {
 func fromStorageAsk(src *storagemarket.SignedStorageAsk) *storageAsk {
 	ask := &storageAsk{}
 	if src.Ask != nil {
+		// todo: how to deal,
+		//  if address.CurrentNetwork are different at saving and querying time.
 		ask.Miner = src.Ask.Miner.String()
 		ask.Price = convertBigInt(src.Ask.Price)
 		ask.VerifiedPrice = convertBigInt(src.Ask.VerifiedPrice)
@@ -103,6 +105,7 @@ func (a *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 	return a.DB.Save(fromStorageAsk(ask)).Error
 }
 
+// TODO:may casuse reduplicative closing?
 func (a *storageAskRepo) Close() error {
 	db, err := a.DB.DB()
 	if err != nil {

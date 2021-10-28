@@ -5,20 +5,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus-market/models/badger"
-	"github.com/filecoin-project/venus-market/models/itf"
-
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/venus-market/models/badger"
+	"github.com/filecoin-project/venus-market/models/itf"
 	"github.com/stretchr/testify/assert"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
 func TestMinerDeal(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
-		testFund(t, MysqlDB(t).FundRepo())
+		testMinerDeal(t, MysqlDB(t).StorageDealRepo())
 	})
 
 	t.Run("badger", func(t *testing.T) {
@@ -29,11 +29,11 @@ func TestMinerDeal(t *testing.T) {
 			assert.Nil(t, os.RemoveAll(path))
 
 		}()
-		testMinerDeal(t, itf.MinerDealRepo(badger.NewMinerDealStore(db)))
+		testMinerDeal(t, itf.StorageDealRepo(badger.NewStorageDealRepo(db)))
 	})
 }
 
-func testMinerDeal(t *testing.T, dealRepo itf.MinerDealRepo) {
+func testMinerDeal(t *testing.T, dealRepo itf.StorageDealRepo) {
 	c := randCid(t)
 	deal := &storagemarket.MinerDeal{
 		ClientDealProposal: market.ClientDealProposal{
@@ -81,14 +81,26 @@ func testMinerDeal(t *testing.T, dealRepo itf.MinerDealRepo) {
 		SectorNumber:          10,
 		InboundCAR:            "InboundCAR",
 	}
+	assert.Nil(t, dealRepo.SaveStorageDeal(deal))
 
-	assert.Nil(t, dealRepo.SaveMinerDeal(deal))
+	deal2 := &storagemarket.MinerDeal{}
+	*deal2 = *deal
+	deal2.ProposalCid = randCid(t)
+	deal2.TransferChannelId = &datatransfer.ChannelID{
+		Initiator: "Initiator",
+		Responder: "Responder",
+		ID:        10,
+	}
+	assert.Nil(t, dealRepo.SaveStorageDeal(deal2))
 
-	res, err := dealRepo.GetMinerDeal(deal.ProposalCid)
+	res, err := dealRepo.GetStorageDeal(deal.ProposalCid)
 	assert.Nil(t, err)
 	compareDeal(t, res, deal)
+	res2, err := dealRepo.GetStorageDeal(deal2.ProposalCid)
+	assert.Nil(t, err)
+	compareDeal(t, res2, deal2)
 
-	list, err := dealRepo.ListMinerDeal()
+	list, err := dealRepo.ListStorageDeal()
 	assert.Nil(t, err)
 	assert.GreaterOrEqual(t, len(list), 1)
 }
@@ -110,7 +122,7 @@ func compareDeal(t *testing.T, actual, excepted *storagemarket.MinerDeal) {
 	assert.Equal(t, excepted.AvailableForRetrieval, actual.AvailableForRetrieval)
 	assert.Equal(t, excepted.DealID, actual.DealID)
 	assert.Equal(t, excepted.CreationTime.Time().UTC(), actual.CreationTime.Time().UTC())
-	//assert.Equal(t, actual.TransferChannelId, excepted.TransferChannelId)
+	assert.Equal(t, actual.TransferChannelId, excepted.TransferChannelId)
 	assert.Equal(t, excepted.SectorNumber, actual.SectorNumber)
 	assert.Equal(t, excepted.InboundCAR, actual.InboundCAR)
 }

@@ -14,18 +14,18 @@ import (
 
 const dsKeyAddr = "Addr"
 
-type fundStore struct {
+type fundRepo struct {
 	ds datastore.Batching
 }
 
-func NewFundStore(ds itf.FundMgrDS) *fundStore {
-	return &fundStore{
+func NewFundRepo(ds itf.FundMgrDS) *fundRepo {
+	return &fundRepo{
 		ds: ds,
 	}
 }
 
 // SaveFundedAddressState save the state to the datastore
-func (ps *fundStore) SaveFundedAddressState(state *types.FundedAddressState) error {
+func (fr *fundRepo) SaveFundedAddressState(state *types.FundedAddressState) error {
 	k := dskeyForAddr(state.Addr)
 
 	b, err := cborrpc.Dump(state)
@@ -33,14 +33,14 @@ func (ps *fundStore) SaveFundedAddressState(state *types.FundedAddressState) err
 		return err
 	}
 
-	return ps.ds.Put(k, b)
+	return fr.ds.Put(k, b)
 }
 
 // GetFundedAddressState get the state for the given address
-func (ps *fundStore) GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error) { //nolint
+func (fr *fundRepo) GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error) { //nolint
 	k := dskeyForAddr(addr)
 
-	data, err := ps.ds.Get(k)
+	data, err := fr.ds.Get(k)
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +54,8 @@ func (ps *fundStore) GetFundedAddressState(addr address.Address) (*types.FundedA
 }
 
 // ListFundedAddressState get all states in the datastore
-func (ps *fundStore) ListFundedAddressState() ([]*types.FundedAddressState, error) {
-	res, err := ps.ds.Query(dsq.Query{Prefix: dsKeyAddr})
+func (fr *fundRepo) ListFundedAddressState() ([]*types.FundedAddressState, error) {
+	res, err := fr.ds.Query(dsq.Query{Prefix: dsKeyAddr})
 	if err != nil {
 		return nil, err
 	}

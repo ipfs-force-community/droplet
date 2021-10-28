@@ -56,11 +56,6 @@ var (
 		Usage: "token for connect venus componets, this flag can set token for messager and node",
 	}
 
-	MessagerTokenFlag = &cli.StringFlag{
-		Name:  "messager-token",
-		Usage: "token for connect venus messager， if specify this flag ,override token set by venus-auth flag ",
-	}
-
 	SignerUrlFlag = &cli.StringFlag{
 		Name:  "signer-url",
 		Usage: "used to connect signer service for sign",

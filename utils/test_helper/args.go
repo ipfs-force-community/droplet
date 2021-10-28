@@ -2,10 +2,11 @@ package test_helper
 
 import (
 	"flag"
+	"testing"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/types"
-	"testing"
 )
 
 // use "go test ..." with suffix '-local=true' to set 'local' args

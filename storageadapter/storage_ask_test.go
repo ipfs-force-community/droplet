@@ -1,6 +1,9 @@
 package storageadapter
 
 import (
+	"os"
+	"testing"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -10,21 +13,19 @@ import (
 	"github.com/filecoin-project/venus-market/utils/test_helper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
- // go test -v ./storageadapter -test.run TestStorageAsk -mysql='root:ko2005@tcp(127.0.0.1:3306)/storage_market?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s'
+// go test -v ./storageadapter -test.run TestStorageAsk -mysql='root:ko2005@tcp(127.0.0.1:3306)/storage_market?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s'
 func TestStorageAsk(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
 		mysqlAsk := &StorageAsk{repo: models.MysqlDB(t).StorageAskRepo(),
-			fullNode: test_helper.MockFullnode{t}}
+			fullNode: test_helper.MockFullnode{T: t}}
 		testStorageAsk(t, mysqlAsk)
 	})
 	t.Run("badger", func(t *testing.T) {
 		path := "./badger_stoarage_ask_db"
 		badgerAsk := &StorageAsk{repo: badger.NewAskStore(models.BadgerDB(t, path)),
-			fullNode: test_helper.MockFullnode{t}}
+			fullNode: test_helper.MockFullnode{T: t}}
 		defer func() {
 			assert.Nil(t, badgerAsk.Close())
 			assert.Nil(t, os.RemoveAll(path))

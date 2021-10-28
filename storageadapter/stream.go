@@ -18,9 +18,9 @@ import (
 var _ network.StorageReceiver = (*StorageDealStream)(nil)
 
 type StorageDealStream struct {
-	conns     *connmanager.ConnManager
-	storedAsk IStorageAsk
-	spn       StorageProviderNode
+	conns       *connmanager.ConnManager
+	storedAsk   IStorageAsk
+	spn         StorageProviderNode
 	deals       StorageDealStore
 	net         network.StorageMarketNetwork
 	fs          filestore.FileStore
