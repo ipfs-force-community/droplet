@@ -49,6 +49,10 @@ func (r MysqlRepo) RetrievalAskRepo() itf.IRetrievalAskRepo {
 	return NewRetrievalAskRepo(r.GetDb())
 }
 
+func (r MysqlRepo) PieceRepo() itf.IPieceRepo {
+	return NewMysqlPieceRepo(r.GetDb())
+}
+
 func InitMysql(cfg *config.Mysql) (itf.Repo, error) {
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 
@@ -79,7 +83,7 @@ func InitMysql(cfg *config.Mysql) (itf.Repo, error) {
 	// TODO: unexpected error with following message:(msyql:5.6.47)
 	//   Error 1071: Specified key was too long; max key length is 767 bytes
 	//   primary_key over-sized: fundedAddressState, minerDeal, channelInfo, msgInfo
-	return r, r.AutoMigrate(modelRetrievalAsk{}, storageAsk{}, fundedAddressState{}, minerDeal{}, channelInfo{}, msgInfo{})
+	return r, r.AutoMigrate(modelRetrievalAsk{}, storageAsk{}) // , fundedAddressState{}, minerDeal{}, channelInfo{}, msgInfo{})
 }
 
 func parseCid(str string) (cid.Cid, error) {

@@ -134,7 +134,7 @@ func NewClientTransferDS(ds itf.MetadataDS) itf.ClientTransferDS {
 	return namespace.Wrap(ds, datastore.NewKey(clientTransfer))
 }
 
-var DBOptions = func(server bool) builder.Option {
+var DBOptions = func(server bool, mysql2 *config.Mysql) builder.Option {
 	if server {
 		return builder.Options(
 			builder.Override(new(itf.MetadataDS), NewMetadataDS),
@@ -151,26 +151,19 @@ var DBOptions = func(server bool) builder.Option {
 			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
 			builder.Override(new(itf.PayChanDS), NewPayChanDS),
 			builder.Override(new(itf.FundMgrDS), NewFundMgrDS),
-
+			builder.Override(new(itf.Repo), badger_models.NewBadgerRepo),
 			// if there is a mysql connection string exist,
 			// use mysql storage_ask_ds, otherwise use a badger
-			builder.Override(new(itf.Repo), func(cfg *config.Mysql,
-				fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS,
-				paychDS itf.PayChanDS, askDS itf.StorageAskDS,
-				retrAskDs itf.RetrievalAskDS) (itf.Repo, error) {
-				if len(cfg.ConnectionString) == 0 {
-					return badger_models.NewBadgerRepo(fundDS,
-						dealDS, paychDS, askDS, retrAskDs), nil
-				}
-				return mysql.InitMysql(cfg)
-			}),
+			builder.ApplyIf(func(s *builder.Settings) bool { return len(mysql2.ConnectionString) > 0 },
+				builder.Override(new(itf.Repo), func(cfg *config.Mysql) (itf.Repo, error) {
+					return mysql.InitMysql(cfg)
+				})),
 		)
 	} else {
 		return builder.Options(
 			builder.Override(new(itf.MetadataDS), NewMetadataDS),
 			builder.Override(new(itf.FundMgrDS), NewFundMgrDS),
 			builder.Override(new(itf.PayChanDS), NewPayChanDS),
-
 			builder.Override(new(itf.ClientDatastore), NewClientDatastore),
 			builder.Override(new(ClientBlockstore), NewClientBlockstore),
 			builder.Override(new(itf.ClientDealsDS), NewClientDealsDS),

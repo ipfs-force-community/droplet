@@ -14,6 +14,13 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type TimeStampOrm struct {
+	ID        uint   `gorm:"primarykey"`
+	CreatedAt uint64 `gorm:"type:bigint"`
+	UpdatedAt uint64 `gorm:"type:bigint"`
+	DeleteAt  uint64 `gorm:"type:bigint;index;default:null"`
+}
+
 type retrievalAskRepo struct {
 	ds *gorm.DB
 }
@@ -68,7 +75,7 @@ type modelRetrievalAsk struct {
 	UIdx    string             `gorm:"column:uidx;uniqueIndex;type:varchar(128)"`
 	Address mysqlAddress       `gorm:"column:address;uniqueIndex;type:varchar(128)"`
 	Ask     *mysqlRetrievalAsk `gorm:"column:retrieval_ask;type:blob;size:2048"`
-	gorm.Model
+	TimeStampOrm
 }
 
 func (a *modelRetrievalAsk) TableName() string {

@@ -7,15 +7,17 @@ import (
 	"github.com/filecoin-project/venus-market/models/badger"
 	"github.com/filecoin-project/venus-market/models/itf"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 )
 
 func TestStorageAsk(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
-		testStorageAsk(t, MysqlDB(t).StorageAskRepo())
+		repo := MysqlDB(t).StorageAskRepo()
+		defer func() { require.NoError(t, repo.Close()) }()
+		testStorageAsk(t, repo)
 	})
-
 	t.Run("badger", func(t *testing.T) {
 		path := "./badger_stoarage_ask_db"
 		db := BadgerDB(t, path)
@@ -27,6 +29,7 @@ func TestStorageAsk(t *testing.T) {
 		testStorageAsk(t, itf.IStorageAskRepo(badger.NewAskStore(db)))
 	})
 }
+
 func testStorageAsk(t *testing.T, askRepo itf.IStorageAskRepo) {
 	ask := &storagemarket.SignedStorageAsk{
 		Ask: &storagemarket.StorageAsk{

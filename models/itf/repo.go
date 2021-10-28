@@ -3,6 +3,7 @@ package itf
 import (
 	"errors"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	fbig "github.com/filecoin-project/go-state-types/big"
@@ -52,6 +53,15 @@ type IRetrievalAskRepo interface {
 	Close() error
 }
 
+type IPieceRepo interface {
+	AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error
+	AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error
+	GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, error)
+	GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error)
+	ListCidInfoKeys() ([]cid.Cid, error)
+	ListPieceInfoKeys() ([]cid.Cid, error)
+}
+
 type Repo interface {
 	FundRepo() FundRepo
 	MinerDealRepo() MinerDealRepo
@@ -59,6 +69,7 @@ type Repo interface {
 	PaychChannelInfoRepo() PaychChannelInfoRepo
 	StorageAskRepo() IStorageAskRepo
 	RetrievalAskRepo() IRetrievalAskRepo
+	PieceRepo() IPieceRepo
 }
 
 var ErrNotFound = errors.New("not found")

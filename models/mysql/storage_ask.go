@@ -11,18 +11,16 @@ import (
 )
 
 type storageAsk struct {
-	Miner string `gorm:"column:miner;type:varchar(128);primary_key"`
-
+	Miner         string     `gorm:"column:miner;type:varchar(128);uniqueIndex"`
 	Price         mtypes.Int `gorm:"column:price;type:varchar(256);"`
 	VerifiedPrice mtypes.Int `gorm:"column:verified_price;type:varchar(256);"`
 	MinPieceSize  int64      `gorm:"column:min_piece_size;type:bigint;"`
 	MaxPieceSize  int64      `gorm:"column:max_piece_size;type:bigint;"`
-
-	Timestamp int64  `gorm:"column:timestamp;type:bigint;"`
-	Expiry    int64  `gorm:"column:expiry;type:bigint;"`
-	SeqNo     uint64 `gorm:"column:seq_no;type:bigint unsigned;"`
-
-	Signature Signature `gorm:"column:signature;type:blob;"`
+	Timestamp     int64      `gorm:"column:timestamp;type:bigint;"`
+	Expiry        int64      `gorm:"column:expiry;type:bigint;"`
+	SeqNo         uint64     `gorm:"column:seq_no;type:bigint unsigned;"`
+	Signature     Signature  `gorm:"column:signature;type:blob;"`
+	TimeStampOrm
 }
 
 func (a *storageAsk) TableName() string {
@@ -101,7 +99,6 @@ func (a *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 	if ask == nil || ask.Ask == nil {
 		return xerrors.Errorf("param is nil")
 	}
-
 	return a.DB.Save(fromStorageAsk(ask)).Error
 }
 

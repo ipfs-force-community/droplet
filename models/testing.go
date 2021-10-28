@@ -26,7 +26,7 @@ func MysqlDB(t *testing.T) itf.Repo {
 		MaxOpenConn:      10,
 		MaxIdleConn:      10,
 		ConnMaxLifeTime:  "1m",
-		Debug:            false,
+		Debug:            true,
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -183,8 +183,7 @@ func daemon(cctx *cli.Context) error {
 		config.ConfigServerOpts(cfg),
 		//clients
 		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, &cfg.Mysql),
-
-		models.DBOptions(true),
+		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfers),
 		piece.PieceOpts(cfg),
 		fundmgr.FundMgrOpts,
