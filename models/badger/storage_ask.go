@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+
 	"github.com/filecoin-project/venus-market/models/itf"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
@@ -13,17 +14,17 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type askStore struct {
+type storageAskRepo struct {
 	ds datastore.Batching
 }
 
-func NewAskStore(ds itf.StorageAskDS) *askStore {
-	return &askStore{ds: ds}
+func NewStorageAskRepo(ds itf.StorageAskDS) *storageAskRepo {
+	return &storageAskRepo{ds: ds}
 }
 
-func (s *askStore) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {
+func (ar *storageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {
 	key := statestore.ToKey(miner)
-	b, err := s.ds.Get(key)
+	b, err := ar.ds.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +36,7 @@ func (s *askStore) GetAsk(miner address.Address) (*storagemarket.SignedStorageAs
 	return &ask, nil
 }
 
-func (s *askStore) SetAsk(ask *storagemarket.SignedStorageAsk) error {
+func (ar *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 	if ask == nil || ask.Ask == nil {
 		return xerrors.Errorf("param is nil")
 	}
@@ -45,9 +46,9 @@ func (s *askStore) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 		return err
 	}
 
-	return s.ds.Put(key, b)
+	return ar.ds.Put(key, b)
 }
 
-func (s *askStore) Close() error {
-	return s.ds.Close()
+func (ar *storageAskRepo) Close() error {
+	return ar.ds.Close()
 }

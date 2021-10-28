@@ -20,12 +20,12 @@ import (
 	"gorm.io/gorm"
 )
 
-type minerDeal struct {
+type storageDeal struct {
 	ClientDealProposal `gorm:"embedded;embeddedPrefix:cdp_"`
 
-	ProposalCid           string                          `gorm:"column:proposal_cid;type:varchar(256);primary_key"`
-	AddFundsCid           string                          `gorm:"column:add_funds_cid;type:varchar(256);"`
-	PublishCid            string                          `gorm:"column:publish_cid;type:varchar(256);"`
+	ProposalCid           string                          `gorm:"column:proposal_cid;type:varchar(128);primary_key"`
+	AddFundsCid           string                          `gorm:"column:add_funds_cid;type:varchar(128);"`
+	PublishCid            string                          `gorm:"column:publish_cid;type:varchar(128);"`
 	Miner                 peer.ID                         `gorm:"column:miner_peer;type:varchar(128);"`
 	Client                peer.ID                         `gorm:"column:client_peer;type:varchar(128);"`
 	State                 storagemarket.StorageDealStatus `gorm:"column:state;type:bigint unsigned;"`
@@ -44,15 +44,15 @@ type minerDeal struct {
 	TransferChannelId datatransfer.ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
 	SectorNumber      abi.SectorNumber       `gorm:"column:sector_number;type:bigint unsigned;"`
 
-	InboundCAR string `gorm:"column:addr;type:varchar(256);primary_key"`
+	InboundCAR string `gorm:"column:addr;type:varchar(128);primary_key"`
 }
 
 type ClientDealProposal struct {
-	PieceCID     string              `gorm:"column:addr;type:varchar(256);"`
+	PieceCID     string              `gorm:"column:addr;type:varchar(128);"`
 	PieceSize    abi.PaddedPieceSize `gorm:"column:piece_size;type:bigint unsigned;"`
 	VerifiedDeal bool                `gorm:"column:verified_deal;"`
-	Client       string              `gorm:"column:client;type:varchar(256);"`
-	Provider     string              `gorm:"column:provider;type:varchar(256);"`
+	Client       string              `gorm:"column:client;type:varchar(128);"`
+	Provider     string              `gorm:"column:provider;type:varchar(128);"`
 
 	// Label is an arbitrary client chosen label to apply to the deal
 	Label string `gorm:"column:label;type:varchar(256);"`
@@ -85,8 +85,6 @@ func (s Signature) Value() (driver.Value, error) {
 	return json.Marshal(s)
 }
 
-type ChannelID datatransfer.ChannelID
-
 type DataRef struct {
 	TransferType string `gorm:"column:transfer_type;type:varchar(128);"`
 	Root         string `gorm:"column:root;type:varchar(128);"`
@@ -96,12 +94,12 @@ type DataRef struct {
 	RawBlockSize uint64                `gorm:"column:raw_block_size;type:bigint unsigned;"`
 }
 
-func (m *minerDeal) TableName() string {
-	return "miner_deals"
+func (m *storageDeal) TableName() string {
+	return "storage_deals"
 }
 
-func fromMinerDeal(src *storagemarket.MinerDeal) *minerDeal {
-	md := &minerDeal{
+func fromStorageDeal(src *storagemarket.MinerDeal) *storageDeal {
+	md := &storageDeal{
 		ClientDealProposal: ClientDealProposal{
 			PieceCID:             decodeCid(src.ClientDealProposal.Proposal.PieceCID),
 			PieceSize:            src.ClientDealProposal.Proposal.PieceSize,
@@ -154,7 +152,7 @@ func fromMinerDeal(src *storagemarket.MinerDeal) *minerDeal {
 	return md
 }
 
-func toMinerDeal(src *minerDeal) (*storagemarket.MinerDeal, error) {
+func toStorageDeal(src *storageDeal) (*storagemarket.MinerDeal, error) {
 	md := &storagemarket.MinerDeal{
 		ClientDealProposal: market.ClientDealProposal{
 			Proposal: market.DealProposal{
@@ -189,13 +187,8 @@ func toMinerDeal(src *minerDeal) (*storagemarket.MinerDeal, error) {
 		AvailableForRetrieval: src.AvailableForRetrieval,
 		DealID:                src.DealID,
 		CreationTime:          typegen.CborTime(time.Unix(0, src.CreationTime).UTC()),
-		TransferChannelId: &datatransfer.ChannelID{
-			Initiator: src.TransferChannelId.Initiator,
-			Responder: src.TransferChannelId.Responder,
-			ID:        src.TransferChannelId.ID,
-		},
-		SectorNumber: src.SectorNumber,
-		InboundCAR:   src.InboundCAR,
+		SectorNumber:          src.SectorNumber,
+		InboundCAR:            src.InboundCAR,
 	}
 	var err error
 	md.ClientDealProposal.Proposal.PieceCID, err = parseCid(src.ClientDealProposal.PieceCID)
@@ -231,40 +224,51 @@ func toMinerDeal(src *minerDeal) (*storagemarket.MinerDeal, error) {
 		return nil, err
 	}
 
+	channelID := src.TransferChannelId
+	if len(channelID.Initiator) == 0 && len(channelID.Responder) == 0 && channelID.ID == 0 {
+		md.TransferChannelId = nil
+	} else {
+		md.TransferChannelId = &datatransfer.ChannelID{
+			Initiator: src.TransferChannelId.Initiator,
+			Responder: src.TransferChannelId.Responder,
+			ID:        src.TransferChannelId.ID,
+		}
+	}
+
 	return md, nil
 }
 
-type minerDealRepo struct {
+type storageDealRepo struct {
 	*gorm.DB
 }
 
-func NewMinerDealRepo(db *gorm.DB) *minerDealRepo {
-	return &minerDealRepo{db}
+func NewStorageDealRepo(db *gorm.DB) *storageDealRepo {
+	return &storageDealRepo{db}
 }
 
-func (m *minerDealRepo) SaveMinerDeal(minerDeal *storagemarket.MinerDeal) error {
-	return m.DB.Create(fromMinerDeal(minerDeal)).Error
+func (m *storageDealRepo) SaveStorageDeal(StorageDeal *storagemarket.MinerDeal) error {
+	return m.DB.Save(fromStorageDeal(StorageDeal)).Error
 }
 
-func (m *minerDealRepo) GetMinerDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error) {
-	var md minerDeal
+func (m *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error) {
+	var md storageDeal
 	err := m.DB.Take(&md, "proposal_cid = ?", proposalCid.String()).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return toMinerDeal(&md)
+	return toStorageDeal(&md)
 }
 
-func (m *minerDealRepo) ListMinerDeal() ([]*storagemarket.MinerDeal, error) {
-	var mds []*minerDeal
+func (m *storageDealRepo) ListStorageDeal() ([]*storagemarket.MinerDeal, error) {
+	var mds []*storageDeal
 	err := m.DB.Find(&mds).Error
 	if err != nil {
 		return nil, err
 	}
 	list := make([]*storagemarket.MinerDeal, 0, len(mds))
 	for _, md := range mds {
-		deal, err := toMinerDeal(md)
+		deal, err := toStorageDeal(md)
 		if err != nil {
 			return nil, err
 		}

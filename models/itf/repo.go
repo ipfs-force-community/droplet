@@ -2,6 +2,7 @@ package itf
 
 import (
 	"errors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -17,10 +18,10 @@ type FundRepo interface {
 	ListFundedAddressState() ([]*types.FundedAddressState, error)
 }
 
-type MinerDealRepo interface {
-	SaveMinerDeal(minerDeal *storagemarket.MinerDeal) error
-	GetMinerDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error)
-	ListMinerDeal() ([]*storagemarket.MinerDeal, error)
+type StorageDealRepo interface {
+	SaveStorageDeal(StorageDeal *storagemarket.MinerDeal) error
+	GetStorageDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error)
+	ListStorageDeal() ([]*storagemarket.MinerDeal, error)
 }
 
 type PaychMsgInfoRepo interface {
@@ -64,7 +65,7 @@ type IPieceRepo interface {
 
 type Repo interface {
 	FundRepo() FundRepo
-	MinerDealRepo() MinerDealRepo
+	StorageDealRepo() StorageDealRepo
 	PaychMsgInfoRepo() PaychMsgInfoRepo
 	PaychChannelInfoRepo() PaychChannelInfoRepo
 	StorageAskRepo() IStorageAskRepo

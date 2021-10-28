@@ -53,9 +53,9 @@ type StorageDealPorcess struct {
 	conns     *connmanager.ConnManager
 	peerTager network.PeerTagger
 	spn       StorageProviderNode
-	deals  StorageDealStore
-	ask    IStorageAsk
-	stores *stores.ReadWriteBlockstores
+	deals     StorageDealStore
+	ask       IStorageAsk
+	stores    *stores.ReadWriteBlockstores
 }
 
 func (storageDealPorcess *StorageDealPorcess) AcceptDeal(ctx context.Context, minerDeal *storagemarket.MinerDeal) error {

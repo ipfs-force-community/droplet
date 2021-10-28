@@ -6,7 +6,7 @@ import (
 
 type BadgerRepo struct {
 	fundRepo         itf.FundRepo
-	minerDealRepo    itf.MinerDealRepo
+	storageDealRepo  itf.StorageDealRepo
 	channelInfoRepo  itf.PaychChannelInfoRepo
 	msgInfoRepo      itf.PaychMsgInfoRepo
 	storageAskRepo   itf.IStorageAskRepo
@@ -15,40 +15,41 @@ type BadgerRepo struct {
 }
 
 func NewBadgerRepo(fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS, paychDS itf.PayChanDS, askDS itf.StorageAskDS, retrAskDs itf.RetrievalAskDS, pieceDs itf.PieceInfoDS, cidInfoDs itf.CIDInfoDS) (itf.Repo, error) {
-	pst := NewPaychStore(paychDS)
+	pst := NewPaychRepo(paychDS)
 
 	pieceRepo, err := NewBadgerPieceRepo(pieceDs, cidInfoDs)
 	if err != nil {
 		return nil, err
 	}
 
-	return &BadgerRepo{fundRepo: NewFundStore(fundDS),
-		minerDealRepo:    NewMinerDealStore(dealDS),
+	return &BadgerRepo{
+		fundRepo:         NewFundRepo(fundDS),
+		storageDealRepo:  NewStorageDealRepo(dealDS),
 		msgInfoRepo:      pst,
 		channelInfoRepo:  pst,
-		storageAskRepo:   NewAskStore(askDS),
+		storageAskRepo:   NewStorageAskRepo(askDS),
 		retrievalAskRepo: NewRetrievalAskRepo(retrAskDs),
 		piecesRepo:       pieceRepo}, nil
 }
 
-func (b *BadgerRepo) FundRepo() itf.FundRepo {
-	return b.fundRepo
+func (r *BadgerRepo) FundRepo() itf.FundRepo {
+	return r.fundRepo
 }
 
-func (b *BadgerRepo) MinerDealRepo() itf.MinerDealRepo {
-	return b.minerDealRepo
+func (r *BadgerRepo) StorageDealRepo() itf.StorageDealRepo {
+	return r.storageDealRepo
 }
 
-func (b *BadgerRepo) PaychMsgInfoRepo() itf.PaychMsgInfoRepo {
-	return b.msgInfoRepo
+func (r *BadgerRepo) PaychMsgInfoRepo() itf.PaychMsgInfoRepo {
+	return r.msgInfoRepo
 }
 
-func (b *BadgerRepo) PaychChannelInfoRepo() itf.PaychChannelInfoRepo {
-	return b.channelInfoRepo
+func (r *BadgerRepo) PaychChannelInfoRepo() itf.PaychChannelInfoRepo {
+	return r.channelInfoRepo
 }
 
-func (b *BadgerRepo) StorageAskRepo() itf.IStorageAskRepo {
-	return b.storageAskRepo
+func (r *BadgerRepo) StorageAskRepo() itf.IStorageAskRepo {
+	return r.storageAskRepo
 }
 
 func (b *BadgerRepo) RetrievalAskRepo() itf.IRetrievalAskRepo {

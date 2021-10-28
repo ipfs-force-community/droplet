@@ -56,11 +56,6 @@ var (
 		Usage: "token for connect venus componets, this flag can set token for messager and node",
 	}
 
-	MessagerTokenFlag = &cli.StringFlag{
-		Name:  "messager-token",
-		Usage: "token for connect venus messager， if specify this flag ,override token set by venus-auth flag ",
-	}
-
 	SignerUrlFlag = &cli.StringFlag{
 		Name:  "signer-url",
 		Usage: "used to connect signer service for sign",
@@ -114,7 +109,7 @@ func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 		return nil, err
 	}
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
-		//create
+		// create
 		err = flagData(cctx, cfg)
 		if err != nil {
 			return nil, xerrors.Errorf("parser data from flag %w", err)
@@ -125,7 +120,7 @@ func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 			return nil, xerrors.Errorf("save config to %s %w", cfgPath, err)
 		}
 	} else if err == nil {
-		//loadConfig
+		// loadConfig
 		err = config.LoadConfig(cfgPath, cfg)
 		if err != nil {
 			return nil, err
@@ -150,7 +145,7 @@ func marketClient(cctx *cli.Context) error {
 	resAPI := &impl.MarketClientNodeImpl{}
 	shutdownChan := make(chan struct{})
 	_, err = builder.New(ctx,
-		//defaults
+		// defaults
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		builder.Override(new(journal.Journal), journal.OpenFilesystemJournal),
 
@@ -162,7 +157,7 @@ func marketClient(cctx *cli.Context) error {
 		config.ConfigClientOpts(cfg),
 
 		clients2.ClientsOpts(false, &cfg.Messager, &cfg.Signer, &config.Mysql{}),
-		models.DBOptions(false),
+		models.DBOptions(false, &config.Mysql{}),
 		network.NetworkOpts(false, cfg.SimultaneousTransfers),
 		paychmgr.PaychOpts,
 		fundmgr.FundMgrOpts,

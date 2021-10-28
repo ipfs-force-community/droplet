@@ -2,6 +2,7 @@ package storageadapter
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -69,7 +70,7 @@ func (repo *StorageAsk) SetAsk(miner address.Address, price abi.TokenAmount, ver
 	var signedAsk *storagemarket.SignedStorageAsk
 
 	if signedAsk, err = repo.signAsk(ask); err != nil {
-		return xerrors.Errorf("Miner:%s sign data failed", miner.String(), err)
+		return xerrors.Errorf("miner %s sign data failed: %v", miner.String(), err)
 	}
 
 	return repo.repo.SetAsk(signedAsk)

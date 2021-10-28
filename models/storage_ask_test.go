@@ -1,6 +1,9 @@
 package models
 
 import (
+	"os"
+	"testing"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -8,8 +11,6 @@ import (
 	"github.com/filecoin-project/venus-market/models/itf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 func TestStorageAsk(t *testing.T) {
@@ -26,7 +27,7 @@ func TestStorageAsk(t *testing.T) {
 			assert.Nil(t, os.RemoveAll(path))
 
 		}()
-		testStorageAsk(t, itf.IStorageAskRepo(badger.NewAskStore(db)))
+		testStorageAsk(t, itf.IStorageAskRepo(badger.NewStorageAskRepo(db)))
 	})
 }
 
@@ -67,13 +68,8 @@ func testStorageAsk(t *testing.T, askRepo itf.IStorageAskRepo) {
 
 	res, err := askRepo.GetAsk(ask.Ask.Miner)
 	assert.Nil(t, err)
-	compareStorageAsk(t, res, ask)
+	assert.Equal(t, res, ask)
 	res2, err := askRepo.GetAsk(ask2.Ask.Miner)
 	assert.Nil(t, err)
-	compareStorageAsk(t, res2, ask2)
-}
-
-func compareStorageAsk(t *testing.T, actual, expected *storagemarket.SignedStorageAsk) {
-	assert.Equal(t, expected.Ask, actual.Ask)
-	assert.Equal(t, expected.Signature, actual.Signature)
+	assert.Equal(t, res2, ask2)
 }
