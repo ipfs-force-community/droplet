@@ -34,7 +34,7 @@ import (
 	"time"
 )
 
-type MockFullnode struct{
+type MockFullnode struct {
 	*testing.T
 }
 

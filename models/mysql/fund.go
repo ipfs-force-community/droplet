@@ -9,9 +9,9 @@ import (
 )
 
 type fundedAddressState struct {
-	Addr        string     `gorm:"column:addr;type:varchar(256);primary_key"`
+	Addr        string     `gorm:"column:addr;type:varchar(128);primary_key"`
 	AmtReserved mtypes.Int `gorm:"column:amt_reserved;type:varchar(256);"`
-	MsgCid      string     `gorm:"column:msg_cid;type:varchar(256);"`
+	MsgCid      string     `gorm:"column:msg_cid;type:varchar(128);"`
 }
 
 func (fas *fundedAddressState) TableName() string {

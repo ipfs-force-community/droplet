@@ -11,16 +11,16 @@ import (
 )
 
 type channelInfo struct {
-	ChannelID     string     `gorm:"column:channel_id;type:varchar(256);primary_key;"`
-	Channel       string     `gorm:"column:channel;type:varchar(256);"`
-	Control       string     `gorm:"column:control;type:varchar(256);"`
-	Target        string     `gorm:"column:target;type:varchar(256);"`
+	ChannelID     string     `gorm:"column:channel_id;type:varchar(128);primary_key;"`
+	Channel       string     `gorm:"column:channel;type:varchar(128);"`
+	Control       string     `gorm:"column:control;type:varchar(128);"`
+	Target        string     `gorm:"column:target;type:varchar(128);"`
 	Direction     uint64     `gorm:"column:direction;type:bigint unsigned;"`
 	NextLane      uint64     `gorm:"column:next_lane;type:bigint unsigned;"`
 	Amount        mtypes.Int `gorm:"column:amount;type:varchar(256);"`
 	PendingAmount mtypes.Int `gorm:"column:pending_amount;type:varchar(256);"`
-	CreateMsg     string     `gorm:"column:create_msg;type:varchar(256);"`
-	AddFundsMsg   string     `gorm:"column:add_funds_msg;type:varchar(256);"`
+	CreateMsg     string     `gorm:"column:create_msg;type:varchar(128);"`
+	AddFundsMsg   string     `gorm:"column:add_funds_msg;type:varchar(128);"`
 	Settling      bool       `gorm:"column:settling;"`
 
 	VoucherInfo types.VoucherInfos `gorm:"column:voucher_info;type:blob;"`

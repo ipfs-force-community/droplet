@@ -29,7 +29,7 @@ func TestPaych(t *testing.T) {
 			assert.Nil(t, os.RemoveAll(path))
 
 		}()
-		ps := badger.NewPaychStore(db)
+		ps := badger.NewPaychRepo(db)
 		testChannelInfo(t, itf.PaychChannelInfoRepo(ps), itf.PaychMsgInfoRepo(ps))
 		testMsgInfo(t, itf.PaychMsgInfoRepo(ps))
 	})
@@ -99,18 +99,18 @@ func testChannelInfo(t *testing.T, channelRepo itf.PaychChannelInfoRepo, msgRepo
 
 	res, err := channelRepo.GetChannelByChannelID(ci.ChannelID)
 	assert.Nil(t, err)
-	compareChannelInfo(t, res, ci)
+	assert.Equal(t, res, ci)
 	res2, err := channelRepo.GetChannelByChannelID(ci2.ChannelID)
 	assert.Nil(t, err)
-	compareChannelInfo(t, res2, ci2)
+	assert.Equal(t, res2, ci2)
 
 	res3, err := channelRepo.GetChannelByAddress(*ci.Channel)
 	assert.Nil(t, err)
-	compareChannelInfo(t, res3, ci)
+	assert.Equal(t, res3, ci)
 
 	res4, err := channelRepo.GetChannelByMessageCid(msgInfo.MsgCid)
 	assert.Nil(t, err)
-	compareChannelInfo(t, res4, ci)
+	assert.Equal(t, res4, ci)
 
 	from, to := randAddress(t), randAddress(t)
 	chMsgCid := randCid(t)
@@ -141,21 +141,6 @@ func testChannelInfo(t *testing.T, channelRepo itf.PaychChannelInfoRepo, msgRepo
 	assert.Equal(t, res6.ChannelID, ci.ChannelID)
 }
 
-func compareChannelInfo(t *testing.T, actual, expected *types.ChannelInfo) {
-	assert.Equal(t, expected.ChannelID, actual.ChannelID)
-	assert.Equal(t, expected.Channel, actual.Channel)
-	assert.Equal(t, expected.Control, actual.Control)
-	assert.Equal(t, expected.Target, actual.Target)
-	assert.Equal(t, expected.Direction, actual.Direction)
-	assert.Equal(t, expected.Vouchers, actual.Vouchers)
-	assert.Equal(t, expected.NextLane, actual.NextLane)
-	assert.Equal(t, expected.Amount, actual.Amount)
-	assert.Equal(t, expected.PendingAmount, actual.PendingAmount)
-	assert.Equal(t, expected.CreateMsg, actual.CreateMsg)
-	assert.Equal(t, expected.AddFundsMsg, actual.AddFundsMsg)
-	assert.Equal(t, expected.Settling, actual.Settling)
-}
-
 func testMsgInfo(t *testing.T, msgRepo itf.PaychMsgInfoRepo) {
 	info := &types.MsgInfo{
 		ChannelID: uuid.New().String(),
@@ -176,20 +161,14 @@ func testMsgInfo(t *testing.T, msgRepo itf.PaychMsgInfoRepo) {
 
 	res, err := msgRepo.GetMessage(info.MsgCid)
 	assert.Nil(t, err)
-	compareMsgInfo(t, res, info)
+	assert.Equal(t, res, info)
 	res2, err := msgRepo.GetMessage(info2.MsgCid)
 	assert.Nil(t, err)
-	compareMsgInfo(t, res2, info2)
+	assert.Equal(t, res2, info2)
 
 	errMsg := xerrors.Errorf("test err")
 	assert.Nil(t, msgRepo.SaveMessageResult(info.MsgCid, errMsg))
 	res3, err := msgRepo.GetMessage(info.MsgCid)
 	assert.Nil(t, err)
 	assert.Equal(t, res3.Err, errMsg.Error())
-}
-
-func compareMsgInfo(t *testing.T, actual, expected *types.MsgInfo) {
-	assert.Equal(t, expected.ChannelID, actual.ChannelID)
-	assert.Equal(t, expected.MsgCid, actual.MsgCid)
-	assert.Equal(t, expected.Err, actual.Err)
 }
