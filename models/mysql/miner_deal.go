@@ -4,10 +4,10 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -41,8 +41,8 @@ type minerDeal struct {
 	DealID       abi.DealID `gorm:"column:deal_id;type:bigint unsigned;"`
 	CreationTime int64      `gorm:"column:creation_time;type:bigint;"`
 
-	TransferChannelId datatransfer.ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
-	SectorNumber      abi.SectorNumber       `gorm:"column:sector_number;type:bigint unsigned;"`
+	TransferChannelId ChannelID        `gorm:"embedded;embeddedPrefix:tci_"`
+	SectorNumber      abi.SectorNumber `gorm:"column:sector_number;type:bigint unsigned;"`
 
 	InboundCAR string `gorm:"column:addr;type:varchar(256);primary_key"`
 }
@@ -85,7 +85,11 @@ func (s Signature) Value() (driver.Value, error) {
 	return json.Marshal(s)
 }
 
-type ChannelID datatransfer.ChannelID
+type ChannelID struct {
+	Initiator string `gorm:"column:initiator;type:varchar(256);"`
+	Responder string `gorm:"column:responder;type:varchar(256);"`
+	ID        uint64 `gorm:"column:channel_id;type:bigint unsigned;"`
+}
 
 type DataRef struct {
 	TransferType string `gorm:"column:transfer_type;type:varchar(128);"`
@@ -148,7 +152,11 @@ func fromMinerDeal(src *storagemarket.MinerDeal) *minerDeal {
 		}
 	}
 	if src.TransferChannelId != nil {
-		md.TransferChannelId = *src.TransferChannelId
+		md.TransferChannelId = ChannelID{
+			Initiator: src.TransferChannelId.Initiator.String(),
+			Responder: src.TransferChannelId.Responder.String(),
+			ID:        uint64(src.TransferChannelId.ID),
+		}
 	}
 
 	return md
@@ -189,13 +197,8 @@ func toMinerDeal(src *minerDeal) (*storagemarket.MinerDeal, error) {
 		AvailableForRetrieval: src.AvailableForRetrieval,
 		DealID:                src.DealID,
 		CreationTime:          typegen.CborTime(time.Unix(0, src.CreationTime).UTC()),
-		TransferChannelId: &datatransfer.ChannelID{
-			Initiator: src.TransferChannelId.Initiator,
-			Responder: src.TransferChannelId.Responder,
-			ID:        src.TransferChannelId.ID,
-		},
-		SectorNumber: src.SectorNumber,
-		InboundCAR:   src.InboundCAR,
+		SectorNumber:          src.SectorNumber,
+		InboundCAR:            src.InboundCAR,
 	}
 	var err error
 	md.ClientDealProposal.Proposal.PieceCID, err = parseCid(src.ClientDealProposal.PieceCID)
@@ -231,6 +234,18 @@ func toMinerDeal(src *minerDeal) (*storagemarket.MinerDeal, error) {
 		return nil, err
 	}
 
+	if len(src.TransferChannelId.Initiator) > 0 {
+		md.TransferChannelId = &datatransfer.ChannelID{}
+		md.TransferChannelId.ID = datatransfer.TransferID(src.TransferChannelId.ID)
+		md.TransferChannelId.Initiator, err = decodePeerId(src.TransferChannelId.Initiator)
+		if err != nil {
+			return nil, err
+		}
+		md.TransferChannelId.Responder, err = decodePeerId(src.TransferChannelId.Responder)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return md, nil
 }
 

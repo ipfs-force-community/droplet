@@ -2,10 +2,12 @@ package itf
 
 import (
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 type FundRepo interface {
@@ -18,6 +20,13 @@ type MinerDealRepo interface {
 	SaveMinerDeal(minerDeal *storagemarket.MinerDeal) error
 	GetMinerDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error)
 	ListMinerDeal() ([]*storagemarket.MinerDeal, error)
+}
+
+type IRetrievalDealRepo interface {
+	SaveDeal(deal *retrievalmarket.ProviderDealState) error
+	GetDeal(peer.ID, retrievalmarket.DealID) (*retrievalmarket.ProviderDealState, error)
+	HasDeal(peer.ID, retrievalmarket.DealID) (bool, error)
+	ListDeals(pageIndex, pageSize int) ([]*retrievalmarket.ProviderDealState, error)
 }
 
 type PaychMsgInfoRepo interface {
@@ -50,4 +59,5 @@ type Repo interface {
 	PaychMsgInfoRepo() PaychMsgInfoRepo
 	PaychChannelInfoRepo() PaychChannelInfoRepo
 	StorageAskRepo() IStorageAskRepo
+	RetrievalDealRepo() IRetrievalDealRepo
 }

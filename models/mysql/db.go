@@ -3,6 +3,7 @@ package mysql
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"time"
 
 	mtypes "github.com/filecoin-project/venus-messager/types"
@@ -41,6 +42,10 @@ func (r MysqlRepo) PaychChannelInfoRepo() itf.PaychChannelInfoRepo {
 
 func (r MysqlRepo) StorageAskRepo() itf.IStorageAskRepo {
 	return NewStorageAskRepo(r.GetDb())
+}
+
+func (r MysqlRepo) RetrievalDealRepo() itf.IRetrievalDealRepo {
+	return NewRetrievalDealRepo(r.GetDb())
 }
 
 func InitMysql(cfg *config.Mysql) (itf.Repo, error) {
@@ -131,4 +136,8 @@ func convertBigInt(v big.Int) mtypes.Int {
 		return mtypes.Zero()
 	}
 	return mtypes.NewFromGo(v.Int)
+}
+
+func decodePeerId(str string) (peer.ID, error) {
+	return peer.Decode(str)
 }
