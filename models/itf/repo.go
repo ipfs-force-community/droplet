@@ -10,6 +10,7 @@ import (
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 type FundRepo interface {
@@ -22,6 +23,13 @@ type StorageDealRepo interface {
 	SaveStorageDeal(StorageDeal *storagemarket.MinerDeal) error
 	GetStorageDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error)
 	ListStorageDeal() ([]*storagemarket.MinerDeal, error)
+}
+
+type IRetrievalDealRepo interface {
+	SaveDeal(deal *retrievalmarket.ProviderDealState) error
+	GetDeal(peer.ID, retrievalmarket.DealID) (*retrievalmarket.ProviderDealState, error)
+	HasDeal(peer.ID, retrievalmarket.DealID) (bool, error)
+	ListDeals(pageIndex, pageSize int) ([]*retrievalmarket.ProviderDealState, error)
 }
 
 type PaychMsgInfoRepo interface {
@@ -71,6 +79,7 @@ type Repo interface {
 	StorageAskRepo() IStorageAskRepo
 	RetrievalAskRepo() IRetrievalAskRepo
 	PieceRepo() IPieceRepo
+	RetrievalDealRepo() IRetrievalDealRepo
 }
 
 var ErrNotFound = errors.New("not found")

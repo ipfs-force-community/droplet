@@ -2,9 +2,8 @@ package models
 
 import (
 	"context"
-	"path"
-
 	"github.com/filecoin-project/venus-market/models/itf"
+	"path"
 
 	badger_models "github.com/filecoin-project/venus-market/models/badger"
 	"github.com/filecoin-project/venus-market/models/mysql"

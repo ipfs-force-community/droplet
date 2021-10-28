@@ -12,9 +12,13 @@ type BadgerRepo struct {
 	storageAskRepo   itf.IStorageAskRepo
 	retrievalAskRepo itf.IRetrievalAskRepo
 	piecesRepo       itf.IPieceRepo
+	retrievalRepo    itf.IRetrievalDealRepo
 }
 
-func NewBadgerRepo(fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS, paychDS itf.PayChanDS, askDS itf.StorageAskDS, retrAskDs itf.RetrievalAskDS, pieceDs itf.PieceInfoDS, cidInfoDs itf.CIDInfoDS) (itf.Repo, error) {
+func NewBadgerRepo(fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS,
+	paychDS itf.PayChanDS, askDS itf.StorageAskDS, retrAskDs itf.RetrievalAskDS,
+	pieceDs itf.PieceInfoDS, cidInfoDs itf.CIDInfoDS,
+	retrievalDs itf.RetrievalProviderDS) (itf.Repo, error) {
 	pst := NewPaychRepo(paychDS)
 
 	pieceRepo, err := NewBadgerPieceRepo(pieceDs, cidInfoDs)
@@ -29,7 +33,9 @@ func NewBadgerRepo(fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS, paychDS itf.
 		channelInfoRepo:  pst,
 		storageAskRepo:   NewStorageAskRepo(askDS),
 		retrievalAskRepo: NewRetrievalAskRepo(retrAskDs),
-		piecesRepo:       pieceRepo}, nil
+		piecesRepo:       pieceRepo,
+		retrievalRepo:    NewRetrievalDealRepo(retrievalDs),
+	}, nil
 }
 
 func (r *BadgerRepo) FundRepo() itf.FundRepo {
@@ -58,4 +64,8 @@ func (b *BadgerRepo) RetrievalAskRepo() itf.IRetrievalAskRepo {
 
 func (b *BadgerRepo) PieceRepo() itf.IPieceRepo {
 	return b.piecesRepo
+}
+
+func (r *BadgerRepo) RetrievalDealRepo() itf.IRetrievalDealRepo {
+	return r.retrievalRepo
 }
