@@ -24,7 +24,7 @@ func TestStorageAsk(t *testing.T) {
 	})
 	t.Run("badger", func(t *testing.T) {
 		path := "./badger_stoarage_ask_db"
-		badgerAsk := &StorageAsk{repo: badger.NewAskStore(models.BadgerDB(t, path)),
+		badgerAsk := &StorageAsk{repo: badger.NewStorageAskRepo(models.BadgerDB(t, path)),
 			fullNode: test_helper.MockFullnode{T: t}}
 		defer func() {
 			assert.Nil(t, badgerAsk.Close())
