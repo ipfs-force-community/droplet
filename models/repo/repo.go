@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"errors"
 
 	"github.com/filecoin-project/go-address"
@@ -69,6 +70,7 @@ type IPieceRepo interface {
 	GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error)
 	ListCidInfoKeys() ([]cid.Cid, error)
 	ListPieceInfoKeys() ([]cid.Cid, error)
+	GetPieceInfoFromCid(ctx context.Context, payloadCID, pieceCID cid.Cid) (piecestore.PieceInfo, bool, error)
 }
 
 type Repo interface {

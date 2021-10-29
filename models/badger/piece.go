@@ -2,6 +2,7 @@ package badger
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filecoin-project/go-ds-versioning/pkg/statestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -129,6 +130,9 @@ func (ps *pieceStore) ListCidInfoKeys() ([]cid.Cid, error) {
 	}
 
 	return out, nil
+}
+func (p *pieceStore) GetPieceInfoFromCid(ctx context.Context, payloadCID, pieceCID cid.Cid) (piecestore.PieceInfo, bool, error) {
+	return piecestore.PieceInfo{}, false, errors.New("to implement")
 }
 
 // Retrieve the PieceInfo associated with `pieceCID` from the piece info store.

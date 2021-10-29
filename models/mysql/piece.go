@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/ipfs/go-cid"
@@ -18,6 +19,10 @@ func NewMysqlPieceRepo(ds *gorm.DB) *mysqlPieceRepo {
 }
 
 func (m *mysqlPieceRepo) AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error {
+	panic("implement me")
+}
+
+func (m *mysqlPieceRepo) GetPieceInfoFromCid(ctx context.Context, payloadCID, pieceCID cid.Cid) (piecestore.PieceInfo, bool, error) {
 	panic("implement me")
 }
 
