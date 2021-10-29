@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -62,12 +63,12 @@ func (pde *providerDealEnvironment) PrepareBlockstore(ctx context.Context, dealI
 }
 
 func (pde *providerDealEnvironment) TrackTransfer(deal retrievalmarket.ProviderDealState) error {
-	pde.p.revalidator.TrackChannel(deal)
+	pde.p.reValidator.TrackChannel(deal)
 	return nil
 }
 
 func (pde *providerDealEnvironment) UntrackTransfer(deal retrievalmarket.ProviderDealState) error {
-	pde.p.revalidator.UntrackChannel(deal)
+	pde.p.reValidator.UntrackChannel(deal)
 	return nil
 }
 
@@ -102,7 +103,7 @@ func (pde *providerDealEnvironment) DeleteStore(dealID retrievalmarket.DealID) e
 var _ dtutils.StoreGetter = &providerStoreGetter{}
 
 type providerStoreGetter struct {
-	deals  RetrievalDealStore
+	deals  repo.IRetrievalDealRepo
 	stores *stores.ReadOnlyBlockstores
 }
 

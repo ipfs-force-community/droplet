@@ -4,8 +4,6 @@ package storageadapter
 
 import (
 	"context"
-	"io"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
@@ -87,93 +85,6 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 
 func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (cid.Cid, error) {
 	return n.dealPublisher.Publish(ctx, deal.ClientDealProposal)
-}
-
-func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) (*storagemarket.PackingResult, error) {
-	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
-	has, err := n.storage.Has(pieceCid.String())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get piece cid data %w", err)
-	}
-
-	if !has {
-		wLen, err := n.storage.SaveTo(ctx, pieceCid.String(), pieceData)
-		if err != nil {
-			return nil, err
-		}
-		if wLen != int64(pieceSize) {
-			return nil, xerrors.Errorf("save piece expect len %d but got %d", pieceSize, wLen)
-		}
-		log.Infof("success to write file %s to piece storage", pieceCid)
-	}
-
-	/*	storagemarket.MinerDeal{
-			Client:             deal.Client,
-			ClientDealProposal: deal.ClientDealProposal,
-			ProposalCid:        deal.ProposalCid,
-			State:              deal.State,
-			Ref:                deal.Ref,
-			PublishCid:         deal.PublishCid,
-			DealID:             deal.DealID,
-			FastRetrieval:      deal.FastRetrieval,
-		},
-			deal.Proposal.PieceSize.Unpadded(),
-			paddedReader,*/
-
-	err = n.extendPieceMeta.UpdateDealOnComplete(pieceCid, deal.ClientDealProposal, deal.Ref, *deal.PublishCid, deal.DealID, deal.FastRetrieval)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Infof("add deal to piece meta data %s", pieceCid)
-	return &storagemarket.PackingResult{
-		SectorNumber: 0,
-		Offset:       0,
-		Size:         pieceSize.Padded(),
-	}, nil
-	//todo wait until assign deals
-	/*if deal.PublishCid == nil {
-		return nil, xerrors.Errorf("deal.PublishCid can't be nil")
-	}
-
-	sdInfo := marketTypes.PieceDealInfo{
-		DealID:       deal.DealID,
-		DealProposal: &deal.Proposal,
-		PublishCid:   deal.PublishCid,
-		DealSchedule: marketTypes.DealSchedule{
-			StartEpoch: deal.ClientDealProposal.Proposal.StartEpoch,
-			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
-		},
-		KeepUnsealed: deal.FastRetrieval,
-	}
-
-	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
-	curTime := constants.Clock.Now()
-	for constants.Clock.Since(curTime) < addPieceRetryTimeout {
-		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
-			if err != nil {
-				log.Errorf("failed to addPiece for deal %d, err: %v", deal.DealID, err)
-			}
-			break
-		}
-		select {
-		case <-constants.Clock.After(addPieceRetryWait):
-			p, offset, err = n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
-		case <-ctx.Done():
-			return nil, xerrors.New("context expired while waiting to retry AddPiece")
-		}
-	}
-
-	if err != nil {
-		return nil, xerrors.Errorf("AddPiece failed: %s", err)
-	}
-	log.Warnf("New Deal: deal %d", deal.DealID)
-
-	return &storagemarket.PackingResult{
-		SectorNumber: p,
-		Offset:       offset,
-		Size:         pieceSize.Padded(),
-	}, nil*/
 }
 
 func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
@@ -530,9 +441,6 @@ type StorageProviderNode interface {
 
 	// WaitForPublishDeals waits for a deal publish message to land on chain.
 	WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error)
-
-	// OnDealComplete is called when a deal is complete and on chain, and data has been transferred and is ready to be added to a sector
-	OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceReader io.Reader) (*storagemarket.PackingResult, error)
 
 	// GetMinerWorkerAddress returns the worker address associated with a miner
 	GetMinerWorkerAddress(ctx context.Context, addr address.Address, tok shared.TipSetToken) (address.Address, error)

@@ -15,7 +15,7 @@ const (
 )
 
 var DefaultMarketConfig = &MarketConfig{
-	Home:         Home{HomePath},
+	Home: Home{HomePath},
 	Common: Common{
 		API: API{
 			ListenAddress: "/ip4/127.0.0.1/tcp/41235",

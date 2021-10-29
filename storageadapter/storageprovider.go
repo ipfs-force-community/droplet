@@ -2,6 +2,7 @@ package storageadapter
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/minermgr"
 	"io"
 	"time"
 
@@ -28,7 +29,6 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dagstore"
-	"github.com/filecoin-project/venus-market/models/minermgr"
 	"github.com/filecoin-project/venus-market/network"
 )
 
@@ -70,12 +70,12 @@ type StorageProviderV2 interface {
 type StorageProviderV2Impl struct {
 	net smnet.StorageMarketNetwork
 
-	spn          StorageProviderNode
-	fs           filestore.FileStore
-	conns        *connmanager.ConnManager
-	storedAsk    IStorageAsk
+	spn       StorageProviderNode
+	fs        filestore.FileStore
+	conns     *connmanager.ConnManager
+	storedAsk IStorageAsk
 
-	pubSub   *pubsub.PubSub
+	pubSub *pubsub.PubSub
 
 	unsubDataTransfer datatransfer.Unsubscribe
 
@@ -83,8 +83,7 @@ type StorageProviderV2Impl struct {
 	dealProcess     StorageDealProcess
 	transferProcess TransferProcess
 	storageReceiver smnet.StorageReceiver
-
-	minerMgr minermgr.IMinerMgr
+	minerMgr        minermgr.IMinerMgr
 }
 
 type internalProviderEvent struct {
@@ -127,12 +126,12 @@ func NewStorageProviderV2(
 	spV2 := &StorageProviderV2Impl{
 		net: net,
 
-		spn:          spn,
-		fs:           store,
-		conns:        connmanager.NewConnManager(),
-		storedAsk:    storedAsk,
+		spn:       spn,
+		fs:        store,
+		conns:     connmanager.NewConnManager(),
+		storedAsk: storedAsk,
 
-		pubSub:   pubsub.New(providerDispatcher),
+		pubSub: pubsub.New(providerDispatcher),
 
 		deals: deals,
 

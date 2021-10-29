@@ -2,6 +2,7 @@ package retrievaladapter
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/models/repo"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -14,22 +15,22 @@ import (
 )
 
 type IAskHandler interface {
-	GetAsk(mAddr address.Address) (*retrievalmarket.Ask, error)
-	SetAsk(ask *retrievalmarket.Ask) error
-	GetDynamicAsk(ctx context.Context, input retrievalmarket.PricingInput, storageDeals []abi.DealID) (retrievalmarket.Ask, error)
-	GetAskForPayload(ctx context.Context, payloadCid cid.Cid, pieceCid *cid.Cid, piece piecestore.PieceInfo, isUnsealed bool, client peer.ID) (retrievalmarket.Ask, error)
+	GetAsk(address.Address) (*retrievalmarket.Ask, error)
+	SetAsk(address.Address, *retrievalmarket.Ask) error
+	GetDynamicAsk(context.Context, retrievalmarket.PricingInput, []abi.DealID) (retrievalmarket.Ask, error)
+	GetAskForPayload(context.Context, cid.Cid, *cid.Cid, piecestore.PieceInfo, bool, peer.ID) (retrievalmarket.Ask, error)
 }
 
 var _ IAskHandler = (*AskHandler)(nil)
 
 type AskHandler struct {
 	pieceStore           piecestore.PieceStore
-	askStore             RetrievalAsk
+	askStore             repo.IRetrievalAskRepo
 	node                 retrievalmarket.RetrievalProviderNode
 	retrievalPricingFunc retrievalimpl.RetrievalPricingFunc
 }
 
-func NewAskHandler(askStore RetrievalAsk, node retrievalmarket.RetrievalProviderNode, retrievalPricingFunc retrievalimpl.RetrievalPricingFunc) *AskHandler {
+func NewAskHandler(askStore repo.IRetrievalAskRepo, node retrievalmarket.RetrievalProviderNode, retrievalPricingFunc retrievalimpl.RetrievalPricingFunc) *AskHandler {
 	return &AskHandler{askStore: askStore, node: node, retrievalPricingFunc: retrievalPricingFunc}
 }
 
@@ -39,8 +40,8 @@ func (p *AskHandler) GetAsk(mAddr address.Address) (*retrievalmarket.Ask, error)
 }
 
 // SetAsk sets the deal parameters this provider accepts
-func (p *AskHandler) SetAsk(ask *retrievalmarket.Ask) error {
-	return p.askStore.SetAsk(ask)
+func (p *AskHandler) SetAsk(maddr address.Address, ask *retrievalmarket.Ask) error {
+	return p.askStore.SetAsk(maddr, ask)
 }
 
 // GetDynamicAsk quotes a dynamic price for the retrieval deal by calling the user configured

@@ -68,13 +68,13 @@ func TestLotusMount(t *testing.T) {
 }
 
 func TestLotusMountDeserialize(t *testing.T) {
-	api := &minerAPI{}
+	api := &marketAPI{}
 
 	bgen := blocksutil.NewBlockGenerator()
 	cid := bgen.Next().Cid()
 
 	// success
-	us := lotusScheme + "://" + cid.String()
+	us := marketScheme + "://" + cid.String()
 	u, err := url.Parse(us)
 	require.NoError(t, err)
 
@@ -86,7 +86,7 @@ func TestLotusMountDeserialize(t *testing.T) {
 	require.Equal(t, api, mnt.API)
 
 	// fails if cid is not valid
-	us = lotusScheme + "://" + "rand"
+	us = marketScheme + "://" + "rand"
 	u, err = url.Parse(us)
 	require.NoError(t, err)
 	err = mnt.Deserialize(u)
@@ -100,7 +100,7 @@ func TestLotusMountRegistration(t *testing.T) {
 	cid := bgen.Next().Cid()
 
 	// success
-	us := lotusScheme + "://" + cid.String()
+	us := marketScheme + "://" + cid.String()
 	u, err := url.Parse(us)
 	require.NoError(t, err)
 
@@ -110,7 +110,7 @@ func TestLotusMountRegistration(t *testing.T) {
 
 	mockLotusMountAPI := mock_dagstore2.NewMockLotusAccessor(mockCtrl)
 	registry := mount.NewRegistry()
-	err = registry.Register(lotusScheme, mountTemplate(mockLotusMountAPI))
+	err = registry.Register(marketScheme, mountTemplate(mockLotusMountAPI))
 	require.NoError(t, err)
 
 	mnt, err := registry.Instantiate(u)

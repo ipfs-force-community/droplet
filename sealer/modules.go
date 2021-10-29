@@ -3,14 +3,9 @@ package sealer
 import (
 	"context"
 	"github.com/filecoin-project/dagstore"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	dagstore2 "github.com/filecoin-project/venus-market/dagstore"
-	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	types2 "github.com/filecoin-project/venus/pkg/types"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 	"os"
@@ -22,22 +17,6 @@ var (
 	DAGStoreKey = builder.Special{ID: 1}
 )
 
-func MinerAddress(cfg *config.MarketConfig) (types.MinerAddress, error) {
-	addr, err := address.NewFromString(cfg.MinerAddress)
-	if err != nil {
-		return types.MinerAddress{}, err
-	}
-	return types.MinerAddress(addr), nil
-}
-
-func MinerSectorSize(minerAddr types.MinerAddress, node apiface.FullNode) (types.SectorSize, error) {
-	minerInfo, err := node.StateMinerInfo(context.TODO(), address.Address(minerAddr), types2.EmptyTSK)
-	if err != nil {
-		return types.SectorSize(0), err
-	}
-	return types.SectorSize(minerInfo.SectorSize), nil
-}
-
 func NewAddressSelector(cfg *config.MarketConfig) (*AddressSelector, error) {
 	return &AddressSelector{
 		AddressConfig: cfg.AddressConfig,
@@ -47,7 +26,7 @@ func NewAddressSelector(cfg *config.MarketConfig) (*AddressSelector, error) {
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func NewDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI dagstore2.MinerAPI) (*dagstore.DAGStore, *dagstore2.Wrapper, error) {
+func NewDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI dagstore2.MarketAPI) (*dagstore.DAGStore, *dagstore2.Wrapper, error) {
 	// fall back to default root directory if not explicitly set in the config.
 	if cfg.RootDir == "" {
 		cfg.RootDir = filepath.Join(string(*homeDir), DefaultDAGStoreDir)
@@ -79,12 +58,7 @@ func NewDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreC
 }
 
 var SealerOpts = builder.Options(
-	//sealer service
-	builder.Override(new(types.MinerAddress), MinerAddress), //todo miner single miner todo change to support multiple miner
-	builder.Override(new(types.SectorSize), MinerSectorSize),
-	builder.Override(new(PieceProvider), NewPieceProvider),
 	builder.Override(new(*AddressSelector), NewAddressSelector),
-	builder.Override(new(dagstore2.MinerAPI), NewMinerAPI),
-	builder.Override(new(retrievalmarket.SectorAccessor), NewSectorAccessor),
+	builder.Override(new(dagstore2.MarketAPI), NewMinerAPI),
 	builder.Override(DAGStoreKey, NewDAGStore),
 )

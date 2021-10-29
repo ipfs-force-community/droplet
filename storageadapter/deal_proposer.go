@@ -2,6 +2,10 @@ package storageadapter
 
 import (
 	"context"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
+	"github.com/filecoin-project/venus-market/piece"
 	"io"
 	"os"
 
@@ -13,7 +17,6 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/dtutils"
@@ -24,12 +27,10 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
-	"github.com/filecoin-project/venus-market/models/minermgr"
 	network2 "github.com/filecoin-project/venus-market/network"
 )
 
@@ -58,7 +59,8 @@ type StorageDealProcessImpl struct {
 
 	dagStore stores.DAGStoreWrapper // TODO:检查是否遗漏
 
-	minerMgr minermgr.IMinerMgr
+	minerMgr minermgr2.IMinerMgr
+	storage  piece.IPieceStorage
 }
 
 // NewStorageDealProcessImpl returns a new deal process instance
@@ -69,7 +71,7 @@ func NewStorageDealProcessImpl(
 	deals StorageDealStore,
 	ask IStorageAsk,
 	fs filestore.FileStore,
-	minerMgr minermgr.IMinerMgr,
+	minerMgr minermgr2.IMinerMgr,
 	pieceStore piecestore.PieceStore,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
@@ -384,7 +386,6 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 	// HandoffDeal
 	if deal.State == storagemarket.StorageDealStaged {
-		var packingInfo *storagemarket.PackingResult
 		var carFilePath string
 		if deal.PiecePath != "" {
 			// Data for offline deals is stored on disk, so if PiecePath is set,
@@ -397,7 +398,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 			// Hand the deal off to the process that adds it to a sector
 			log.Infow("handing off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
-			packingInfo, err = storageDealPorcess.handoffDeal(ctx, deal, file, uint64(file.Size()))
+			err = storageDealPorcess.savePieceFile(ctx, deal, file, uint64(file.Size()))
 			if err := file.Close(); err != nil {
 				log.Errorw("failed to close imported CAR file", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid, "err", err)
 			}
@@ -418,7 +419,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			// Hand the deal off to the process that adds it to a sector
 			var packingErr error
 			log.Infow("handing off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
-			packingInfo, packingErr = storageDealPorcess.handoffDeal(ctx, deal, v2r.DataReader(), v2r.Header.DataSize)
+			packingErr = storageDealPorcess.savePieceFile(ctx, deal, v2r.DataReader(), v2r.Header.DataSize)
 			// Close the reader as we're done reading from it.
 			if err := v2r.Close(); err != nil {
 				return storageDealPorcess.HandleError(deal, xerrors.Errorf("failed to close CARv2 reader: %w", err))
@@ -430,7 +431,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			}
 		}
 
-		if err := storageDealPorcess.recordPiece(deal, packingInfo.SectorNumber, packingInfo.Offset, packingInfo.Size); err != nil {
+		if err := storageDealPorcess.savePieceMetadata(deal); err != nil {
 			err = xerrors.Errorf("failed to register deal data for piece %s for retrieval: %w", deal.Ref.PieceCid, err)
 			log.Error(err.Error())
 			return storageDealPorcess.HandleError(deal, err)
@@ -438,7 +439,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 		// Register the deal data as a "shard" with the DAG store. Later it can be
 		// fetched from the DAG store during retrieval.
-		if err := storageDealPorcess.RegisterShard(ctx, deal.Proposal.PieceCID, carFilePath, true); err != nil {
+		if err := stores.RegisterShardSync(ctx, storageDealPorcess.dagStore, deal.Proposal.PieceCID, carFilePath, true); err != nil {
 			err = xerrors.Errorf("failed to activate shard: %w", err)
 			log.Error(err)
 		}
@@ -448,6 +449,8 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		deal.State = storagemarket.StorageDealAwaitingPreCommit
 	}
 
+	//todo should be async to do
+	//add timer to check P2 C2 status
 	// VerifyDealPreCommitted
 	if deal.State == storagemarket.StorageDealAwaitingPreCommit {
 		cb := func(sectorNumber abi.SectorNumber, isActive bool, err error) {
@@ -549,7 +552,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 	return nil
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) recordPiece(deal *storagemarket.MinerDeal, sectorID abi.SectorNumber, offset, length abi.PaddedPieceSize) error {
+func (storageDealPorcess *StorageDealProcessImpl) savePieceMetadata(deal *storagemarket.MinerDeal) error {
 
 	var blockLocations map[cid.Cid]piecestore.BlockLocation
 	if deal.MetadataPath != filestore.Path("") {
@@ -568,44 +571,37 @@ func (storageDealPorcess *StorageDealProcessImpl) recordPiece(deal *storagemarke
 		return xerrors.Errorf("failed to add piece block locations: %s", err)
 	}
 
-	err := storageDealPorcess.pieceStore.AddDealForPiece(deal.Proposal.PieceCID, piecestore.DealInfo{
-		DealID:   deal.DealID,
-		SectorID: sectorID,
-		Offset:   offset,
-		Length:   length,
-	})
-	if err != nil {
-		return xerrors.Errorf("failed to add deal for piece: %s", err)
-	}
-
 	return nil
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) handoffDeal(ctx context.Context, deal *storagemarket.MinerDeal, reader io.Reader, payloadSize uint64) (*storagemarket.PackingResult, error) {
+func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Context, deal *storagemarket.MinerDeal, reader io.Reader, payloadSize uint64) error {
 	// because we use the PadReader directly during AP we need to produce the
 	// correct amount of zeroes
 	// (alternative would be to keep precise track of sector offsets for each
 	// piece which is just too much work for a seldom used feature)
+	unPadPieceSize := deal.Proposal.PieceSize.Unpadded()
 	paddedReader, err := padreader.NewInflator(reader, payloadSize, deal.Proposal.PieceSize.Unpadded())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return storageDealPorcess.spn.OnDealComplete(
-		ctx,
-		storagemarket.MinerDeal{
-			Client:             deal.Client,
-			ClientDealProposal: deal.ClientDealProposal,
-			ProposalCid:        deal.ProposalCid,
-			State:              deal.State,
-			Ref:                deal.Ref,
-			PublishCid:         deal.PublishCid,
-			DealID:             deal.DealID,
-			FastRetrieval:      deal.FastRetrieval,
-		},
-		deal.Proposal.PieceSize.Unpadded(),
-		paddedReader,
-	)
+	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
+	has, err := storageDealPorcess.storage.Has(pieceCid.String())
+	if err != nil {
+		return xerrors.Errorf("failed to get piece cid data %w", err)
+	}
+
+	if !has {
+		wLen, err := storageDealPorcess.storage.SaveTo(ctx, pieceCid.String(), paddedReader)
+		if err != nil {
+			return err
+		}
+		if wLen != int64(unPadPieceSize) {
+			return xerrors.Errorf("save piece expect len %d but got %d", unPadPieceSize, wLen)
+		}
+		log.Infof("success to write file %s to piece storage", pieceCid)
+	}
+	return nil
 }
 
 func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context.Context, resp *network.Response) error {
@@ -709,10 +705,6 @@ func (storageDealPorcess *StorageDealProcessImpl) releaseReservedFunds(ctx conte
 func (storageDealPorcess *StorageDealProcessImpl) SaveState(deal *storagemarket.MinerDeal, event storagemarket.StorageDealStatus) error {
 	deal.State = event
 	return storageDealPorcess.deals.SaveDeal(deal)
-}
-
-func (storageDealPorcess *StorageDealProcessImpl) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath string, eagerInit bool) error {
-	return stores.RegisterShardSync(ctx, storageDealPorcess.dagStore, pieceCid, carPath, eagerInit)
 }
 
 func (storageDealPorcess *StorageDealProcessImpl) ReadCAR(path string) (*carv2.Reader, error) {
