@@ -59,12 +59,9 @@ func RetrievalProvider(node retrievalmarket.RetrievalProviderNode,
 	dagStore stores.DAGStoreWrapper,
 	dataTransfer datatransfer.Manager,
 	retrievalPricingFunc retrievalimpl.RetrievalPricingFunc,
-
-	askRepo repo.IRetrievalAskRepo,
-	storageDealsRepo repo.StorageDealRepo,
-	reterivalDealRepo repo.IRetrievalDealRepo,
-	cidInfoRepo repo.ICidInfoRepo) (IRetrievalProvider, error) {
-	return NewProvider(node, network, dagStore, dataTransfer, retrievalPricingFunc, askRepo, storageDealsRepo, reterivalDealRepo, cidInfoRepo)
+	repo repo.Repo,
+) (IRetrievalProvider, error) {
+	return NewProvider(node, network, dagStore, dataTransfer, retrievalPricingFunc, repo)
 }
 
 func HandleRetrieval(host host.Host,
@@ -109,7 +106,7 @@ var RetrievalProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		// Markets (retrieval)
 		builder.Override(new(retrievalmarket.RetrievalProviderNode), NewRetrievalProviderNode),
 		builder.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
-		builder.Override(new(IRetrievalProvider), RetrievalProvider), //save to metadata /retrievals/provider
+		builder.Override(new(IRetrievalProvider), RetrievalProvider), // save to metadata /retrievals/provider
 		builder.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(nil)),
 		builder.Override(HandleRetrievalKey, HandleRetrieval),
 		builder.If(cfg.RetrievalFilter != "",

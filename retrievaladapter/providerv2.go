@@ -71,19 +71,19 @@ func NewProvider(node retrievalmarket.RetrievalProviderNode,
 	dagStore stores.DAGStoreWrapper,
 	dataTransfer datatransfer.Manager,
 	retrievalPricingFunc retrievalimpl.RetrievalPricingFunc,
-
-	askRepo repo.IRetrievalAskRepo,
-	storageDealsRepo repo.StorageDealRepo,
-	retrievalDealRepo repo.IRetrievalDealRepo,
-	cidInfoRepo repo.ICidInfoRepo,
+	repo repo.Repo,
 ) (*RetrievalProviderV2, error) {
 	if retrievalPricingFunc == nil {
 		return nil, xerrors.New("retrievalPricingFunc is nil")
 	}
 
-	askHandler := NewAskHandler(askRepo, node, retrievalPricingFunc)
+	askHandler := NewAskHandler(repo, node, retrievalPricingFunc)
 
-	pieceInfo := &PieceInfo{cidInfoRepo: cidInfoRepo, dealRepo: storageDealsRepo}
+	storageDealsRepo := repo.StorageDealRepo()
+	retrievalDealRepo := repo.RetrievalDealRepo()
+
+
+	pieceInfo := &PieceInfo{cidInfoRepo:repo.CidInfoRepo(), dealRepo: repo.StorageDealRepo()}
 	p := &RetrievalProviderV2{
 		dataTransfer:           dataTransfer,
 		node:                   node,
