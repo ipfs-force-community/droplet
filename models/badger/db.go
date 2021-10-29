@@ -1,24 +1,24 @@
 package badger
 
 import (
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 )
 
 type BadgerRepo struct {
-	fundRepo         itf.FundRepo
-	storageDealRepo  itf.StorageDealRepo
-	channelInfoRepo  itf.PaychChannelInfoRepo
-	msgInfoRepo      itf.PaychMsgInfoRepo
-	storageAskRepo   itf.IStorageAskRepo
-	retrievalAskRepo itf.IRetrievalAskRepo
-	piecesRepo       itf.IPieceRepo
-	retrievalRepo    itf.IRetrievalDealRepo
+	fundRepo         repo.FundRepo
+	storageDealRepo  repo.StorageDealRepo
+	channelInfoRepo  repo.PaychChannelInfoRepo
+	msgInfoRepo      repo.PaychMsgInfoRepo
+	storageAskRepo   repo.IStorageAskRepo
+	retrievalAskRepo repo.IRetrievalAskRepo
+	piecesRepo       repo.IPieceRepo
+	retrievalRepo    repo.IRetrievalDealRepo
 }
 
-func NewBadgerRepo(fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS,
-	paychDS itf.PayChanDS, askDS itf.StorageAskDS, retrAskDs itf.RetrievalAskDS,
-	pieceDs itf.PieceInfoDS, cidInfoDs itf.CIDInfoDS,
-	retrievalDs itf.RetrievalProviderDS) (itf.Repo, error) {
+func NewBadgerRepo(fundDS repo.FundMgrDS, dealDS repo.ProviderDealDS,
+	paychDS repo.PayChanDS, askDS repo.StorageAskDS, retrAskDs repo.RetrievalAskDS,
+	pieceDs repo.PieceInfoDS, cidInfoDs repo.CIDInfoDS,
+	retrievalDs repo.RetrievalProviderDS) (repo.Repo, error) {
 	pst := NewPaychRepo(paychDS)
 
 	pieceRepo, err := NewBadgerPieceRepo(pieceDs, cidInfoDs)
@@ -38,34 +38,34 @@ func NewBadgerRepo(fundDS itf.FundMgrDS, dealDS itf.ProviderDealDS,
 	}, nil
 }
 
-func (r *BadgerRepo) FundRepo() itf.FundRepo {
+func (r *BadgerRepo) FundRepo() repo.FundRepo {
 	return r.fundRepo
 }
 
-func (r *BadgerRepo) StorageDealRepo() itf.StorageDealRepo {
+func (r *BadgerRepo) StorageDealRepo() repo.StorageDealRepo {
 	return r.storageDealRepo
 }
 
-func (r *BadgerRepo) PaychMsgInfoRepo() itf.PaychMsgInfoRepo {
+func (r *BadgerRepo) PaychMsgInfoRepo() repo.PaychMsgInfoRepo {
 	return r.msgInfoRepo
 }
 
-func (r *BadgerRepo) PaychChannelInfoRepo() itf.PaychChannelInfoRepo {
+func (r *BadgerRepo) PaychChannelInfoRepo() repo.PaychChannelInfoRepo {
 	return r.channelInfoRepo
 }
 
-func (r *BadgerRepo) StorageAskRepo() itf.IStorageAskRepo {
+func (r *BadgerRepo) StorageAskRepo() repo.IStorageAskRepo {
 	return r.storageAskRepo
 }
 
-func (b *BadgerRepo) RetrievalAskRepo() itf.IRetrievalAskRepo {
+func (b *BadgerRepo) RetrievalAskRepo() repo.IRetrievalAskRepo {
 	return b.retrievalAskRepo
 }
 
-func (b *BadgerRepo) PieceRepo() itf.IPieceRepo {
+func (b *BadgerRepo) PieceRepo() repo.IPieceRepo {
 	return b.piecesRepo
 }
 
-func (r *BadgerRepo) RetrievalDealRepo() itf.IRetrievalDealRepo {
+func (r *BadgerRepo) RetrievalDealRepo() repo.IRetrievalDealRepo {
 	return r.retrievalRepo
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus-market/models/badger"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,11 +27,11 @@ func TestStorageAsk(t *testing.T) {
 			assert.Nil(t, os.RemoveAll(path))
 
 		}()
-		testStorageAsk(t, itf.IStorageAskRepo(badger.NewStorageAskRepo(db)))
+		testStorageAsk(t, repo.IStorageAskRepo(badger.NewStorageAskRepo(db)))
 	})
 }
 
-func testStorageAsk(t *testing.T, askRepo itf.IStorageAskRepo) {
+func testStorageAsk(t *testing.T, askRepo repo.IStorageAskRepo) {
 	ask := &storagemarket.SignedStorageAsk{
 		Ask: &storagemarket.StorageAsk{
 			Price:         abi.NewTokenAmount(10),

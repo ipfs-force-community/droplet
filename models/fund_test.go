@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models/badger"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,11 +24,11 @@ func TestFund(t *testing.T) {
 			assert.Nil(t, os.RemoveAll(path))
 
 		}()
-		testFund(t, itf.FundRepo(badger.NewFundRepo(db)))
+		testFund(t, repo.FundRepo(badger.NewFundRepo(db)))
 	})
 }
 
-func testFund(t *testing.T, fundRepo itf.FundRepo) {
+func testFund(t *testing.T, fundRepo repo.FundRepo) {
 	msgCid := randCid(t)
 	state := &types.FundedAddressState{
 		Addr:        randAddress(t),

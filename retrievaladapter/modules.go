@@ -2,6 +2,7 @@ package retrievaladapter
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -12,7 +13,7 @@ import (
 	"github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/dealfilter"
 	"github.com/filecoin-project/venus-market/journal"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
@@ -29,7 +30,7 @@ func RetrievalProvider(
 	maddr types2.MinerAddress,
 	adapter retrievalmarket.RetrievalProviderNode,
 	netwk rmnet.RetrievalMarketNetwork,
-	retrievalProviderDs itf.RetrievalProviderDS,
+	retrievalProviderDs repo.RetrievalProviderDS,
 	sa retrievalmarket.SectorAccessor,
 	pieceStore piecestore.PieceStore,
 	dagStore *dagstore.Wrapper,

@@ -2,30 +2,31 @@ package badger
 
 import (
 	"bytes"
+
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/ipfs/go-datastore"
 	"golang.org/x/xerrors"
 )
 
 type retrievalAskRepo struct {
-	ds itf.RetrievalAskDS
+	ds repo.RetrievalAskDS
 }
 
-var _ itf.IRetrievalAskRepo = (*retrievalAskRepo)(nil)
+var _ repo.IRetrievalAskRepo = (*retrievalAskRepo)(nil)
 
-func NewRetrievalAskRepo(ds itf.RetrievalAskDS) itf.IRetrievalAskRepo {
+func NewRetrievalAskRepo(ds repo.RetrievalAskDS) repo.IRetrievalAskRepo {
 	return &retrievalAskRepo{ds: ds}
 }
 
-func (repo *retrievalAskRepo) GetAsk(addr address.Address) (*retrievalmarket.Ask, error) {
-	data, err := repo.ds.Get(statestore.ToKey(addr))
+func (r *retrievalAskRepo) GetAsk(addr address.Address) (*retrievalmarket.Ask, error) {
+	data, err := r.ds.Get(statestore.ToKey(addr))
 	if err != nil {
 		if xerrors.Is(err, datastore.ErrNotFound) {
-			err = itf.ErrNotFound
+			err = repo.ErrNotFound
 		}
 		return nil, err
 	}
@@ -36,14 +37,14 @@ func (repo *retrievalAskRepo) GetAsk(addr address.Address) (*retrievalmarket.Ask
 	return &ask, nil
 }
 
-func (repo *retrievalAskRepo) SetAsk(addr address.Address, ask *retrievalmarket.Ask) error {
+func (r *retrievalAskRepo) SetAsk(addr address.Address, ask *retrievalmarket.Ask) error {
 	data, err := cborrpc.Dump(ask)
 	if err != nil {
 		return err
 	}
-	return repo.ds.Put(statestore.ToKey(addr), data)
+	return r.ds.Put(statestore.ToKey(addr), data)
 }
 
-func (repo *retrievalAskRepo) Close() error {
-	return repo.ds.Close()
+func (r *retrievalAskRepo) Close() error {
+	return r.ds.Close()
 }

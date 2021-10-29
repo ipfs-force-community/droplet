@@ -1,4 +1,4 @@
-package itf
+package repo
 
 import (
 	"github.com/ipfs/go-datastore"

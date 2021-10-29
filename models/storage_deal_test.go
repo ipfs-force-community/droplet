@@ -5,36 +5,46 @@ import (
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/peer"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/models/badger"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/stretchr/testify/assert"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
-func TestMinerDeal(t *testing.T) {
+func TestStorageDeal(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
-		testMinerDeal(t, MysqlDB(t).StorageDealRepo())
+		testStorageDeal(t, MysqlDB(t).StorageDealRepo())
 	})
 
 	t.Run("badger", func(t *testing.T) {
-		path := "./badger_miner_deal_db"
+		path := "./badger_storage_deal_db"
 		db := BadgerDB(t, path)
 		defer func() {
 			assert.Nil(t, db.Close())
 			assert.Nil(t, os.RemoveAll(path))
 
 		}()
-		testMinerDeal(t, itf.StorageDealRepo(badger.NewStorageDealRepo(db)))
+		testStorageDeal(t, repo.StorageDealRepo(badger.NewStorageDealRepo(db)))
 	})
 }
 
-func testMinerDeal(t *testing.T, dealRepo itf.StorageDealRepo) {
+func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	c := randCid(t)
+	pid, err := peer.Decode("12D3KooWG8tR9PHjjXcMknbNPVWT75BuXXA2RaYx3fMwwg2oPZXd")
+	if err != nil {
+		assert.Nil(t, err)
+	}
+	newPid, err := peer.Decode(pid.Pretty())
+	assert.Nil(t, err)
+	t.Log(newPid)
+
 	deal := &storagemarket.MinerDeal{
 		ClientDealProposal: market.ClientDealProposal{
 			Proposal: market.DealProposal{
@@ -58,8 +68,8 @@ func testMinerDeal(t *testing.T, dealRepo itf.StorageDealRepo) {
 		ProposalCid:   randCid(t),
 		AddFundsCid:   &c,
 		PublishCid:    &c,
-		Miner:         "miner",
-		Client:        "client",
+		Miner:         pid,
+		Client:        pid,
 		State:         0,
 		PiecePath:     "path",
 		MetadataPath:  "path",
@@ -87,8 +97,8 @@ func testMinerDeal(t *testing.T, dealRepo itf.StorageDealRepo) {
 	*deal2 = *deal
 	deal2.ProposalCid = randCid(t)
 	deal2.TransferChannelId = &datatransfer.ChannelID{
-		Initiator: "Initiator",
-		Responder: "Responder",
+		Initiator: pid,
+		Responder: pid,
 		ID:        10,
 	}
 	assert.Nil(t, dealRepo.SaveStorageDeal(deal2))
@@ -102,7 +112,7 @@ func testMinerDeal(t *testing.T, dealRepo itf.StorageDealRepo) {
 
 	list, err := dealRepo.ListStorageDeal()
 	assert.Nil(t, err)
-	assert.GreaterOrEqual(t, len(list), 1)
+	assert.GreaterOrEqual(t, len(list), 2)
 }
 
 func compareDeal(t *testing.T, actual, excepted *storagemarket.MinerDeal) {

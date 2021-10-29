@@ -1,4 +1,4 @@
-package itf
+package repo
 
 import (
 	"errors"

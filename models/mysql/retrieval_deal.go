@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	mtypes "github.com/filecoin-project/venus-messager/types"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -186,6 +186,6 @@ func (r *retrievalDealRepo) ListDeals(pageIndex, pageSize int) ([]*rm.ProviderDe
 	return result, err
 }
 
-func NewRetrievalDealRepo(db *gorm.DB) itf.IRetrievalDealRepo {
+func NewRetrievalDealRepo(db *gorm.DB) repo.IRetrievalDealRepo {
 	return &retrievalDealRepo{db}
 }
