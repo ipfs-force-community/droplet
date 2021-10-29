@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/venus-market/models/badger"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/types"
@@ -30,12 +30,12 @@ func TestPaych(t *testing.T) {
 
 		}()
 		ps := badger.NewPaychRepo(db)
-		testChannelInfo(t, itf.PaychChannelInfoRepo(ps), itf.PaychMsgInfoRepo(ps))
-		testMsgInfo(t, itf.PaychMsgInfoRepo(ps))
+		testChannelInfo(t, repo.PaychChannelInfoRepo(ps), repo.PaychMsgInfoRepo(ps))
+		testMsgInfo(t, repo.PaychMsgInfoRepo(ps))
 	})
 }
 
-func testChannelInfo(t *testing.T, channelRepo itf.PaychChannelInfoRepo, msgRepo itf.PaychMsgInfoRepo) {
+func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRepo repo.PaychMsgInfoRepo) {
 	msgInfo := &types.MsgInfo{
 		ChannelID: uuid.New().String(),
 		MsgCid:    randCid(t),
@@ -141,7 +141,7 @@ func testChannelInfo(t *testing.T, channelRepo itf.PaychChannelInfoRepo, msgRepo
 	assert.Equal(t, res6.ChannelID, ci.ChannelID)
 }
 
-func testMsgInfo(t *testing.T, msgRepo itf.PaychMsgInfoRepo) {
+func testMsgInfo(t *testing.T, msgRepo repo.PaychMsgInfoRepo) {
 	info := &types.MsgInfo{
 		ChannelID: uuid.New().String(),
 		MsgCid:    randCid(t),

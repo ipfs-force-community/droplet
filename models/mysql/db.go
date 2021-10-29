@@ -14,52 +14,52 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 )
 
 type MysqlRepo struct {
 	*gorm.DB
 }
 
-var _ itf.Repo = MysqlRepo{}
+var _ repo.Repo = MysqlRepo{}
 
 func (r MysqlRepo) GetDb() *gorm.DB {
 	return r.DB
 }
 
-func (r MysqlRepo) FundRepo() itf.FundRepo {
+func (r MysqlRepo) FundRepo() repo.FundRepo {
 	return NewFundedAddressStateRepo(r.GetDb())
 }
 
-func (r MysqlRepo) StorageDealRepo() itf.StorageDealRepo {
+func (r MysqlRepo) StorageDealRepo() repo.StorageDealRepo {
 	return NewStorageDealRepo(r.GetDb())
 }
 
-func (r MysqlRepo) PaychMsgInfoRepo() itf.PaychMsgInfoRepo {
+func (r MysqlRepo) PaychMsgInfoRepo() repo.PaychMsgInfoRepo {
 	return NewMsgInfoRepo(r.GetDb())
 }
 
-func (r MysqlRepo) PaychChannelInfoRepo() itf.PaychChannelInfoRepo {
+func (r MysqlRepo) PaychChannelInfoRepo() repo.PaychChannelInfoRepo {
 	return NewChannelInfoRepo(r.GetDb())
 }
 
-func (r MysqlRepo) StorageAskRepo() itf.IStorageAskRepo {
+func (r MysqlRepo) StorageAskRepo() repo.IStorageAskRepo {
 	return NewStorageAskRepo(r.GetDb())
 }
 
-func (r MysqlRepo) RetrievalAskRepo() itf.IRetrievalAskRepo {
+func (r MysqlRepo) RetrievalAskRepo() repo.IRetrievalAskRepo {
 	return NewRetrievalAskRepo(r.GetDb())
 }
 
-func (r MysqlRepo) PieceRepo() itf.IPieceRepo {
+func (r MysqlRepo) PieceRepo() repo.IPieceRepo {
 	return NewMysqlPieceRepo(r.GetDb())
 }
 
-func (r MysqlRepo) RetrievalDealRepo() itf.IRetrievalDealRepo {
+func (r MysqlRepo) RetrievalDealRepo() repo.IRetrievalDealRepo {
 	return NewRetrievalDealRepo(r.GetDb())
 }
 
-func InitMysql(cfg *config.Mysql) (itf.Repo, error) {
+func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 
 	if err != nil {

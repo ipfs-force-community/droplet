@@ -3,27 +3,29 @@ package piece
 import (
 	"context"
 	"encoding/json"
-	"github.com/filecoin-project/go-commp-utils/zerocomm"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/itf"
-	"github.com/filecoin-project/venus-market/types"
-	logging "github.com/ipfs/go-log/v2"
 	"math"
 	"math/bits"
 	"path"
 	"sort"
 	"strings"
 
+	"github.com/filecoin-project/go-commp-utils/zerocomm"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/types"
+	logging "github.com/ipfs/go-log/v2"
+
+	"sync"
+
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"golang.org/x/xerrors"
-	"sync"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -104,7 +106,7 @@ type dsPieceStore struct {
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func NewDsPieceStore(ds itf.PieceInfoDS, ssize types.SectorSize, pieceStorage *config.PieceStorageString) (PieceStore, error) {
+func NewDsPieceStore(ds repo.PieceInfoDS, ssize types.SectorSize, pieceStorage *config.PieceStorageString) (PieceStore, error) {
 	return &dsPieceStore{
 		pieces:       ds,
 		pieceStorage: pieceStorage,

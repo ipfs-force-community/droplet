@@ -2,11 +2,12 @@ package badger
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-ds-versioning/pkg/statestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore/migrations"
 	"github.com/filecoin-project/go-fil-markets/shared"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -15,7 +16,7 @@ import (
 var log = logging.Logger("badgerpieces")
 
 // todo: 去掉NewVersionedStateStore的依赖,使用自己的处理逻辑
-func NewBadgerPieceRepo(pieceDs itf.PieceInfoDS, cidInfoDs itf.CIDInfoDS) (itf.IPieceRepo, error) {
+func NewBadgerPieceRepo(pieceDs repo.PieceInfoDS, cidInfoDs repo.CIDInfoDS) (repo.IPieceRepo, error) {
 	pieceInfoMigrations, err := migrations.PieceInfoMigrations.Build()
 	if err != nil {
 		return nil, err

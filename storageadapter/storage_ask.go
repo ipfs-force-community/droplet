@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"golang.org/x/xerrors"
@@ -22,14 +22,14 @@ type IStorageAsk interface {
 
 func NewStorageAsk(
 	ctx metrics.MetricsCtx,
-	repo itf.Repo,
+	repo repo.Repo,
 	fullnode apiface.FullNode,
 ) (IStorageAsk, error) {
 	return &StorageAsk{repo: repo.StorageAskRepo(), fullNode: fullnode}, nil
 }
 
 type StorageAsk struct {
-	repo     itf.IStorageAskRepo
+	repo     repo.IStorageAskRepo
 	fullNode apiface.FullNode
 }
 

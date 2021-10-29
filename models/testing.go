@@ -2,11 +2,12 @@ package models
 
 import (
 	"bytes"
+	"math/rand"
+	"testing"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/utils/test_helper"
-	"math/rand"
-	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/models/mysql"
@@ -16,10 +17,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 )
 
-func MysqlDB(t *testing.T) itf.Repo {
+func MysqlDB(t *testing.T) repo.Repo {
 	connSql := test_helper.Mysql(t)
 	repo, err := mysql.InitMysql(&config.Mysql{
 		ConnectionString: connSql,

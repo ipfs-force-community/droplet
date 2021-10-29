@@ -2,7 +2,7 @@ package paychmgr
 
 import (
 	"github.com/filecoin-project/venus-market/metrics"
-	itf "github.com/filecoin-project/venus-market/models/itf"
+	itf "github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/paychmgr"
 )

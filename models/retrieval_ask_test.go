@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models/badger"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,10 +32,10 @@ func TestRetrievalAsk(t *testing.T) {
 	})
 }
 
-func testRetrievalAsk(t *testing.T, rtAskRepo itf.IRetrievalAskRepo) {
+func testRetrievalAsk(t *testing.T, rtAskRepo repo.IRetrievalAskRepo) {
 	addr := randAddress(t)
 	_, err := rtAskRepo.GetAsk(addr)
-	assert.ErrorIs(t, err, itf.ErrNotFound, "must be an not found error")
+	assert.ErrorIs(t, err, repo.ErrNotFound, "must be an not found error")
 
 	ask1 := &retrievalmarket.Ask{
 		PricePerByte:            abi.NewTokenAmount(1024),

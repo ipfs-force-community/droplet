@@ -2,8 +2,9 @@ package models
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/models/itf"
 	"path"
+
+	"github.com/filecoin-project/venus-market/models/repo"
 
 	badger_models "github.com/filecoin-project/venus-market/models/badger"
 	"github.com/filecoin-project/venus-market/models/mysql"
@@ -41,7 +42,7 @@ const (
 	clientTransfer  = "/datatransfer/client/transfers"
 )
 
-func NewMetadataDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (itf.MetadataDS, error) {
+func NewMetadataDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (repo.MetadataDS, error) {
 	db, err := badger.NewDatastore(path.Join(string(*homeDir), metadata), &badger.DefaultOptions)
 	if err != nil {
 		return nil, err
@@ -72,107 +73,107 @@ func NewStagingBlockStore(lc fx.Lifecycle, stagingDs StagingDS) (StagingBlocksto
 	return blockstore.FromDatastore(stagingDs), nil
 }
 
-func NewPieceMetaDs(ds itf.MetadataDS) itf.PieceMetaDs {
+func NewPieceMetaDs(ds repo.MetadataDS) repo.PieceMetaDs {
 	return namespace.Wrap(ds, datastore.NewKey(piecemeta))
 }
 
-func NewFundMgrDS(ds itf.MetadataDS) itf.FundMgrDS {
+func NewFundMgrDS(ds repo.MetadataDS) repo.FundMgrDS {
 	return namespace.Wrap(ds, datastore.NewKey(fundmgr))
 }
 
-func NewCidInfoDs(ds itf.PieceMetaDs) itf.CIDInfoDS {
+func NewCidInfoDs(ds repo.PieceMetaDs) repo.CIDInfoDS {
 	return namespace.Wrap(ds, datastore.NewKey(cidinfo))
 }
 
-func NewPieceInfoDs(ds itf.PieceMetaDs) itf.PieceInfoDS {
+func NewPieceInfoDs(ds repo.PieceMetaDs) repo.PieceInfoDS {
 	return namespace.Wrap(ds, datastore.NewKey(pieceinfo))
 }
 
-func NewRetrievalProviderDS(ds itf.MetadataDS) itf.RetrievalProviderDS {
+func NewRetrievalProviderDS(ds repo.MetadataDS) repo.RetrievalProviderDS {
 	return namespace.Wrap(ds, datastore.NewKey(retrievalProvider))
 }
 
-func NewRetrievalAskDS(ds itf.RetrievalProviderDS) itf.RetrievalAskDS {
+func NewRetrievalAskDS(ds repo.RetrievalProviderDS) repo.RetrievalAskDS {
 	return namespace.Wrap(ds, datastore.NewKey(retrievalAsk))
 }
 
-func NewDagTransferDS(ds itf.MetadataDS) itf.DagTransferDS {
+func NewDagTransferDS(ds repo.MetadataDS) repo.DagTransferDS {
 	return namespace.Wrap(ds, datastore.NewKey(transfer))
 }
 
-func NewProviderDealDS(ds itf.MetadataDS) itf.ProviderDealDS {
+func NewProviderDealDS(ds repo.MetadataDS) repo.ProviderDealDS {
 	return namespace.Wrap(ds, datastore.NewKey(dealProvider))
 }
 
-func NewStorageAskDS(ds itf.ProviderDealDS) itf.StorageAskDS {
+func NewStorageAskDS(ds repo.ProviderDealDS) repo.StorageAskDS {
 	return namespace.Wrap(ds, datastore.NewKey(storageAsk))
 }
 
-func NewPayChanDS(ds itf.MetadataDS) itf.PayChanDS {
+func NewPayChanDS(ds repo.MetadataDS) repo.PayChanDS {
 	return namespace.Wrap(ds, datastore.NewKey(paych))
 }
 
 // NewClientDatastore creates a datastore for the client to store its deals
-func NewClientDatastore(ds itf.MetadataDS) itf.ClientDatastore {
+func NewClientDatastore(ds repo.MetadataDS) repo.ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey(dealClient))
 }
 
 // for discover
-func NewClientDealsDS(ds itf.MetadataDS) itf.ClientDealsDS {
+func NewClientDealsDS(ds repo.MetadataDS) repo.ClientDealsDS {
 	return namespace.Wrap(ds, datastore.NewKey(dealLocal))
 }
 
-func NewRetrievalClientDS(ds itf.MetadataDS) itf.RetrievalClientDS {
+func NewRetrievalClientDS(ds repo.MetadataDS) repo.RetrievalClientDS {
 	return namespace.Wrap(ds, datastore.NewKey(retrievalClient))
 }
 
-func NewImportClientDS(ds itf.MetadataDS) itf.ImportClientDS {
+func NewImportClientDS(ds repo.MetadataDS) repo.ImportClientDS {
 	return namespace.Wrap(ds, datastore.NewKey(client))
 }
 
-func NewClientTransferDS(ds itf.MetadataDS) itf.ClientTransferDS {
+func NewClientTransferDS(ds repo.MetadataDS) repo.ClientTransferDS {
 	return namespace.Wrap(ds, datastore.NewKey(clientTransfer))
 }
 
 var DBOptions = func(server bool, mysql2 *config.Mysql) builder.Option {
 	if server {
 		return builder.Options(
-			builder.Override(new(itf.MetadataDS), NewMetadataDS),
+			builder.Override(new(repo.MetadataDS), NewMetadataDS),
 			builder.Override(new(StagingDS), NewStagingDS),
 			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
-			builder.Override(new(itf.PieceMetaDs), NewPieceMetaDs),
-			builder.Override(new(itf.PieceInfoDS), NewPieceInfoDs),
-			builder.Override(new(itf.CIDInfoDS), NewCidInfoDs),
-			builder.Override(new(itf.RetrievalProviderDS), NewRetrievalProviderDS),
-			builder.Override(new(itf.RetrievalAskDS), NewRetrievalAskDS),
-			builder.Override(new(itf.DagTransferDS), NewDagTransferDS),
-			builder.Override(new(itf.ProviderDealDS), NewProviderDealDS),
-			builder.Override(new(itf.StorageAskDS), NewStorageAskDS),
+			builder.Override(new(repo.PieceMetaDs), NewPieceMetaDs),
+			builder.Override(new(repo.PieceInfoDS), NewPieceInfoDs),
+			builder.Override(new(repo.CIDInfoDS), NewCidInfoDs),
+			builder.Override(new(repo.RetrievalProviderDS), NewRetrievalProviderDS),
+			builder.Override(new(repo.RetrievalAskDS), NewRetrievalAskDS),
+			builder.Override(new(repo.DagTransferDS), NewDagTransferDS),
+			builder.Override(new(repo.ProviderDealDS), NewProviderDealDS),
+			builder.Override(new(repo.StorageAskDS), NewStorageAskDS),
 			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
-			builder.Override(new(itf.PayChanDS), NewPayChanDS),
-			builder.Override(new(itf.FundMgrDS), NewFundMgrDS),
-			builder.Override(new(itf.Repo), badger_models.NewBadgerRepo),
+			builder.Override(new(repo.PayChanDS), NewPayChanDS),
+			builder.Override(new(repo.FundMgrDS), NewFundMgrDS),
+			builder.Override(new(repo.Repo), badger_models.NewBadgerRepo),
 			// if there is a mysql connection string exist,
 			// use mysql storage_ask_ds, otherwise use a badger
 			builder.ApplyIf(func(s *builder.Settings) bool { return len(mysql2.ConnectionString) > 0 },
-				builder.Override(new(itf.Repo), func(cfg *config.Mysql) (itf.Repo, error) {
+				builder.Override(new(repo.Repo), func(cfg *config.Mysql) (repo.Repo, error) {
 					return mysql.InitMysql(cfg)
 				})),
-			builder.Override(new(itf.IStorageAskRepo), func(repo itf.Repo) itf.IStorageAskRepo { return repo.StorageAskRepo() }),
-			builder.Override(new(itf.IRetrievalAskRepo), func(repo itf.Repo) itf.IRetrievalAskRepo { return repo.RetrievalAskRepo() }),
+			builder.Override(new(repo.IStorageAskRepo), func(repo repo.Repo) repo.IStorageAskRepo { return repo.StorageAskRepo() }),
+			builder.Override(new(repo.IRetrievalAskRepo), func(repo repo.Repo) repo.IRetrievalAskRepo { return repo.RetrievalAskRepo() }),
 		)
 	} else {
 		return builder.Options(
-			builder.Override(new(itf.MetadataDS), NewMetadataDS),
-			builder.Override(new(itf.FundMgrDS), NewFundMgrDS),
-			builder.Override(new(itf.PayChanDS), NewPayChanDS),
-			builder.Override(new(itf.ClientDatastore), NewClientDatastore),
+			builder.Override(new(repo.MetadataDS), NewMetadataDS),
+			builder.Override(new(repo.FundMgrDS), NewFundMgrDS),
+			builder.Override(new(repo.PayChanDS), NewPayChanDS),
+			builder.Override(new(repo.ClientDatastore), NewClientDatastore),
 			builder.Override(new(ClientBlockstore), NewClientBlockstore),
-			builder.Override(new(itf.ClientDealsDS), NewClientDealsDS),
-			builder.Override(new(itf.RetrievalClientDS), NewRetrievalClientDS),
-			builder.Override(new(itf.ImportClientDS), NewImportClientDS),
-			builder.Override(new(itf.ClientTransferDS), NewClientTransferDS),
-			builder.Override(new(itf.Repo), func() itf.Repo {
+			builder.Override(new(repo.ClientDealsDS), NewClientDealsDS),
+			builder.Override(new(repo.RetrievalClientDS), NewRetrievalClientDS),
+			builder.Override(new(repo.ImportClientDS), NewImportClientDS),
+			builder.Override(new(repo.ClientTransferDS), NewClientTransferDS),
+			builder.Override(new(repo.Repo), func() repo.Repo {
 				return nil
 			}),
 		)

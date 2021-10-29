@@ -6,7 +6,7 @@ import (
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -16,7 +16,7 @@ type storageDealRepo struct {
 	ds datastore.Batching
 }
 
-func NewStorageDealRepo(ds itf.ProviderDealDS) *storageDealRepo {
+func NewStorageDealRepo(ds repo.ProviderDealDS) *storageDealRepo {
 	return &storageDealRepo{ds}
 }
 

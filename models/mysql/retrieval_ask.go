@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"golang.org/x/xerrors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -25,9 +26,9 @@ type retrievalAskRepo struct {
 	ds *gorm.DB
 }
 
-var _ itf.IRetrievalAskRepo = (*retrievalAskRepo)(nil)
+var _ repo.IRetrievalAskRepo = (*retrievalAskRepo)(nil)
 
-func NewRetrievalAskRepo(ds *gorm.DB) itf.IRetrievalAskRepo {
+func NewRetrievalAskRepo(ds *gorm.DB) repo.IRetrievalAskRepo {
 	return &retrievalAskRepo{ds: ds}
 }
 
@@ -82,11 +83,11 @@ func (a *modelRetrievalAsk) TableName() string {
 	return "retrieval_asks"
 }
 
-func (repo *retrievalAskRepo) GetAsk(addr address.Address) (*retrievalmarket.Ask, error) {
+func (r *retrievalAskRepo) GetAsk(addr address.Address) (*retrievalmarket.Ask, error) {
 	var mAsk modelRetrievalAsk
-	if err := repo.ds.Take(&mAsk, "uidx = ?", (mysqlAddress)(addr).Key()).Error; err != nil {
+	if err := r.ds.Take(&mAsk, "uidx = ?", (mysqlAddress)(addr).Key()).Error; err != nil {
 		if xerrors.Is(err, gorm.ErrRecordNotFound) {
-			err = itf.ErrNotFound
+			err = repo.ErrNotFound
 		}
 		return nil, err
 	}

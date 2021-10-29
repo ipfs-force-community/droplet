@@ -2,7 +2,7 @@ package mysql
 
 import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/ipfs/go-cid"
 	"gorm.io/gorm"
 )
@@ -11,7 +11,7 @@ type mysqlPieceRepo struct {
 	ds *gorm.DB
 }
 
-var _ itf.IPieceRepo = (*mysqlPieceRepo)(nil)
+var _ repo.IPieceRepo = (*mysqlPieceRepo)(nil)
 
 func NewMysqlPieceRepo(ds *gorm.DB) *mysqlPieceRepo {
 	return &mysqlPieceRepo{ds: ds}
@@ -41,4 +41,4 @@ func (m *mysqlPieceRepo) ListPieceInfoKeys() ([]cid.Cid, error) {
 	panic("implement me")
 }
 
-var _ itf.IPieceRepo = (*mysqlPieceRepo)(nil)
+var _ repo.IPieceRepo = (*mysqlPieceRepo)(nil)

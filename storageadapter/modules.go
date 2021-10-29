@@ -7,9 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/host"
-	"go.uber.org/fx"
-
 	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
@@ -28,12 +25,14 @@ import (
 	"github.com/filecoin-project/venus-market/dealfilter"
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/models/itf"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/libp2p/go-libp2p-core/host"
+	"go.uber.org/fx"
 )
 
 var (
@@ -46,7 +45,7 @@ func StorageProvider(
 	minerAddress types2.MinerAddress,
 	storedAsk *storedask.StoredAsk,
 	h host.Host,
-	providerDealsDs itf.ProviderDealDS,
+	providerDealsDs repo.ProviderDealDS,
 	dagStore *dagstore.Wrapper,
 	pieceStore piecestore.PieceStore,
 	dataTransfer network.ProviderDataTransfer,
@@ -84,7 +83,7 @@ func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h Sto
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs itf.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync) (network.ProviderDataTransfer, error) {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs repo.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync) (network.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
 
 	transport := dtgstransport.NewTransport(h.ID(), gs)
