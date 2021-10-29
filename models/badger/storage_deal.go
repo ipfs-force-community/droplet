@@ -3,6 +3,8 @@ package badger
 import (
 	"bytes"
 
+	"github.com/filecoin-project/go-address"
+
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-statestore"
@@ -20,7 +22,7 @@ func NewStorageDealRepo(ds repo.ProviderDealDS) *storageDealRepo {
 	return &storageDealRepo{ds}
 }
 
-func (sdr *storageDealRepo) SaveStorageDeal(storageDeal *storagemarket.MinerDeal) error {
+func (sdr *storageDealRepo) SaveDeal(storageDeal *storagemarket.MinerDeal) error {
 	b, err := cborrpc.Dump(storageDeal)
 	if err != nil {
 		return err
@@ -29,7 +31,7 @@ func (sdr *storageDealRepo) SaveStorageDeal(storageDeal *storagemarket.MinerDeal
 	return sdr.ds.Put(statestore.ToKey(storageDeal.ProposalCid), b)
 }
 
-func (sdr *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error) {
 	value, err := sdr.ds.Get(statestore.ToKey(proposalCid))
 	if err != nil {
 		return nil, err
@@ -42,14 +44,14 @@ func (sdr *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*storagemarket.
 	return &StorageDeal, nil
 }
 
-func (sdr *storageDealRepo) ListStorageDeal() ([]*storagemarket.MinerDeal, error) {
+func (sdr *storageDealRepo) ListDeal(mAddr address.Address) ([]storagemarket.MinerDeal, error) {
 	result, err := sdr.ds.Query(query.Query{})
 	if err != nil {
 		return nil, err
 	}
 	defer result.Close() //nolint:errcheck
 
-	storageDeals := make([]*storagemarket.MinerDeal, 0)
+	storageDeals := make([]storagemarket.MinerDeal, 0)
 	for res := range result.Next() {
 		if res.Error != nil {
 			return nil, err
@@ -58,7 +60,9 @@ func (sdr *storageDealRepo) ListStorageDeal() ([]*storagemarket.MinerDeal, error
 		if err := deal.UnmarshalCBOR(bytes.NewReader(res.Value)); err != nil {
 			return nil, err
 		}
-		storageDeals = append(storageDeals, &deal)
+		if deal.Proposal.Provider == mAddr {
+			storageDeals = append(storageDeals, deal)
+		}
 	}
 
 	return storageDeals, nil
