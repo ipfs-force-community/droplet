@@ -2,9 +2,6 @@ package storageadapter
 
 import (
 	"context"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-padreader"
-	"github.com/filecoin-project/go-state-types/exitcode"
 	"io"
 	"os"
 
@@ -16,18 +13,24 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/dtutils"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/venus-market/models/minermgr"
+	network2 "github.com/filecoin-project/venus-market/network"
 )
 
 // TODO: These are copied from spec-actors master, use spec-actors exports when we update
@@ -49,7 +52,7 @@ type StorageDealProcessImpl struct {
 	deals      StorageDealStore
 	ask        IStorageAsk
 	fs         filestore.FileStore
-	stores     *stores.ReadWriteBlockstores // TODO:检查是否遗漏
+	stores     *stores.ReadWriteBlockstores
 
 	pieceStore piecestore.PieceStore // TODO:检查是否遗漏
 
@@ -68,8 +71,20 @@ func NewStorageDealProcessImpl(
 	fs filestore.FileStore,
 	minerMgr minermgr.IMinerMgr,
 	pieceStore piecestore.PieceStore,
+	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
 ) (StorageDealProcess, error) {
+	stores := stores.NewReadWriteBlockstores()
+
+	err := dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{deals}, nil))
+	if err != nil {
+		return nil, err
+	}
+
+	err = dataTransfer.RegisterTransportConfigurer(&requestvalidation.StorageDataTransferVoucher{}, dtutils.TransportConfigurer(newProviderStoreGetter(deals, stores)))
+	if err != nil {
+		return nil, err
+	}
 
 	return &StorageDealProcessImpl{
 		conns:      conns,
@@ -78,7 +93,7 @@ func NewStorageDealProcessImpl(
 		deals:      deals,
 		ask:        ask,
 		fs:         fs,
-		stores:     stores.NewReadWriteBlockstores(),
+		stores:     stores,
 
 		minerMgr: minerMgr,
 
@@ -351,7 +366,6 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		deal.State = storagemarket.StorageDealPublishing
 	}
 
-
 	// WaitForPublish
 	if deal.State == storagemarket.StorageDealPublishing {
 		res, err := storageDealPorcess.spn.WaitForPublishDeals(ctx, *deal.PublishCid, deal.Proposal)
@@ -444,7 +458,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			// In either of these two cases, isActive will be true.
 			switch {
 			case err != nil:
-				storageDealPorcess.HandleError(deal, err)  // TODO: ???
+				storageDealPorcess.HandleError(deal, err) // TODO: ???
 			case isActive:
 				deal.State = storagemarket.StorageDealFinalizing
 			default:

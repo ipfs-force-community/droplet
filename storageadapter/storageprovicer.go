@@ -21,8 +21,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/dtutils"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -76,9 +74,8 @@ type StorageProviderV2Impl struct {
 	fs           filestore.FileStore
 	conns        *connmanager.ConnManager
 	storedAsk    IStorageAsk
-	dataTransfer datatransfer.Manager
 
-	pubSub *pubsub.PubSub
+	pubSub   *pubsub.PubSub
 
 	unsubDataTransfer datatransfer.Unsubscribe
 
@@ -86,6 +83,8 @@ type StorageProviderV2Impl struct {
 	dealProcess     StorageDealProcess
 	transferProcess TransferProcess
 	storageReceiver smnet.StorageReceiver
+
+	minerMgr minermgr.IMinerMgr
 }
 
 type internalProviderEvent struct {
@@ -132,14 +131,15 @@ func NewStorageProviderV2(
 		fs:           store,
 		conns:        connmanager.NewConnManager(),
 		storedAsk:    storedAsk,
-		dataTransfer: dataTransfer,
 
-		pubSub: pubsub.New(providerDispatcher),
+		pubSub:   pubsub.New(providerDispatcher),
 
 		deals: deals,
+
+		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.deals, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, dagStore)
+	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.deals, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, dataTransfer, dagStore)
 	if err != nil {
 		return nil, err
 	}
@@ -154,16 +154,6 @@ func NewStorageProviderV2(
 		return nil, err
 	}
 	spV2.storageReceiver = storageReceiver
-
-	err = dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{spV2.deals}, nil))
-	if err != nil {
-		return nil, err
-	}
-
-	err = dataTransfer.RegisterTransportConfigurer(&requestvalidation.StorageDataTransferVoucher{}, dtutils.TransportConfigurer(newProviderStoreGetter(spV2.deals)))
-	if err != nil {
-		return nil, err
-	}
 
 	return spV2, nil
 }
