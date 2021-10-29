@@ -37,10 +37,10 @@ type MinerDeal struct {
 	TransferChannelId *datatransfer.ChannelID
 	SectorNumber      abi.SectorNumber
 
-	InboundCAR string
-
 	Offset abi.PaddedPieceSize
 	Length abi.PaddedPieceSize
+
+	InboundCAR string
 }
 
 func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
@@ -48,7 +48,9 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{180}); err != nil {
+
+	first := uint8(22) | (uint8(cbg.MajMap) << 5)
+	if _, err := w.Write([]byte{first}); err != nil {
 		return err
 	}
 
@@ -449,7 +451,6 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-
 	if len("Length") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Length\" was too long")
 	}
@@ -464,6 +465,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.Length)); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -489,43 +491,32 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 	n := extra
 
 	for i := uint64(0); i < n; i++ {
-
 		{
 			sval, err := cbg.ReadStringBuf(br, scratch)
 			if err != nil {
 				return err
 			}
-
 			name = string(sval)
 		}
-
 		switch name {
 		// t.ClientDealProposal (market.ClientDealProposal) (struct)
 		case "ClientDealProposal":
-
 			{
-
 				if err := t.ClientDealProposal.UnmarshalCBOR(br); err != nil {
 					return xerrors.Errorf("unmarshaling t.ClientDealProposal: %w", err)
 				}
-
 			}
 			// t.ProposalCid (cid.Cid) (struct)
 		case "ProposalCid":
-
 			{
-
 				c, err := cbg.ReadCid(br)
 				if err != nil {
 					return xerrors.Errorf("failed to read cid field t.ProposalCid: %w", err)
 				}
-
 				t.ProposalCid = c
-
 			}
 			// t.AddFundsCid (cid.Cid) (struct)
 		case "AddFundsCid":
-
 			{
 
 				b, err := br.ReadByte()
@@ -544,13 +535,10 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 
 					t.AddFundsCid = &c
 				}
-
 			}
 			// t.PublishCid (cid.Cid) (struct)
 		case "PublishCid":
-
 			{
-
 				b, err := br.ReadByte()
 				if err != nil {
 					return err
@@ -559,19 +547,15 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 					if err := br.UnreadByte(); err != nil {
 						return err
 					}
-
 					c, err := cbg.ReadCid(br)
 					if err != nil {
 						return xerrors.Errorf("failed to read cid field t.PublishCid: %w", err)
 					}
-
 					t.PublishCid = &c
 				}
-
 			}
 			// t.Miner (peer.ID) (string)
 		case "Miner":
-
 			{
 				sval, err := cbg.ReadStringBuf(br, scratch)
 				if err != nil {
@@ -582,7 +566,6 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 			}
 			// t.Client (peer.ID) (string)
 		case "Client":
-
 			{
 				sval, err := cbg.ReadStringBuf(br, scratch)
 				if err != nil {
@@ -593,7 +576,6 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 			}
 			// t.State (uint64) (uint64)
 		case "State":
-
 			{
 
 				maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
@@ -608,7 +590,6 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 			}
 			// t.PiecePath (filestore.Path) (string)
 		case "PiecePath":
-
 			{
 				sval, err := cbg.ReadStringBuf(br, scratch)
 				if err != nil {
@@ -619,7 +600,6 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 			}
 			// t.MetadataPath (filestore.Path) (string)
 		case "MetadataPath":
-
 			{
 				sval, err := cbg.ReadStringBuf(br, scratch)
 				if err != nil {
@@ -656,7 +636,6 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 			}
 			// t.FastRetrieval (bool) (bool)
 		case "FastRetrieval":
-
 			maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 			if err != nil {
 				return err
@@ -674,18 +653,15 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 			}
 			// t.Message (string) (string)
 		case "Message":
-
 			{
 				sval, err := cbg.ReadStringBuf(br, scratch)
 				if err != nil {
 					return err
 				}
-
 				t.Message = string(sval)
 			}
 			// t.FundsReserved (big.Int) (struct)
 		case "FundsReserved":
-
 			{
 
 				if err := t.FundsReserved.UnmarshalCBOR(br); err != nil {
@@ -695,7 +671,6 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 			}
 			// t.Ref (storagemarket.DataRef) (struct)
 		case "Ref":
-
 			{
 
 				b, err := br.ReadByte()
@@ -711,11 +686,9 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 						return xerrors.Errorf("unmarshaling t.Ref pointer: %w", err)
 					}
 				}
-
 			}
 			// t.AvailableForRetrieval (bool) (bool)
 		case "AvailableForRetrieval":
-
 			maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
 			if err != nil {
 				return err
@@ -733,7 +706,6 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 			}
 			// t.DealID (abi.DealID) (uint64)
 		case "DealID":
-
 			{
 
 				maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
@@ -758,7 +730,6 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 			}
 			// t.TransferChannelId (datatransfer.ChannelID) (struct)
 		case "TransferChannelId":
-
 			{
 
 				b, err := br.ReadByte()

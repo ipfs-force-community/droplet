@@ -1,7 +1,9 @@
 package models
 
 import (
+	"bytes"
 	"github.com/filecoin-project/venus-market/types"
+	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 	"time"
@@ -20,6 +22,8 @@ import (
 )
 
 func TestStorageDeal(t *testing.T) {
+	t.Run("MinerDealMarshal", testCborMarshal)
+
 	t.Run("mysql", func(t *testing.T) {
 		testStorageDeal(t, MysqlDB(t).StorageDealRepo())
 	})
@@ -36,14 +40,13 @@ func TestStorageDeal(t *testing.T) {
 	})
 }
 
-func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
+func getTestMinerDeal(t *testing.T) *types.MinerDeal {
 	c := randCid(t)
 	pid, err := peer.Decode("12D3KooWG8tR9PHjjXcMknbNPVWT75BuXXA2RaYx3fMwwg2oPZXd")
 	if err != nil {
 		assert.Nil(t, err)
 	}
-
-	deal := &types.MinerDeal{
+	return &types.MinerDeal{
 		ClientDealProposal: market.ClientDealProposal{
 			Proposal: market.DealProposal{
 				PieceCID:             c,
@@ -88,13 +91,44 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 		TransferChannelId:     nil,
 		SectorNumber:          10,
 		InboundCAR:            "InboundCAR",
-		Offset: 1022222,
-		Length: 555,
+		Offset:                1022222,
+		Length:                555,
 	}
+}
+
+func testCborMarshal(t *testing.T) {
+	src := getTestMinerDeal(t)
+
+	buf := bytes.NewBuffer(nil)
+	var dist types.MinerDeal
+	require.NoError(t, src.MarshalCBOR(buf))
+	require.NoError(t, dist.UnmarshalCBOR(buf))
+	compareDeal(t, src, &dist)
+}
+
+func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
+	pid, err := peer.Decode("12D3KooWG8tR9PHjjXcMknbNPVWT75BuXXA2RaYx3fMwwg2oPZXd")
+	if err != nil {
+		assert.Nil(t, err)
+	}
+
+	deal := getTestMinerDeal(t)
+	// test save and get
+	assert.Nil(t, dealRepo.SaveDeal(deal))
+	deal2, err := dealRepo.GetDeal(deal.ProposalCid)
+	require.NoError(t, err)
+	compareDeal(t, deal, deal2)
+	assert.Nil(t, dealRepo.SaveDeal(deal2))
+
+	// test update
+	deal.Offset = 90000
+	deal.Length = 18908
 	assert.Nil(t, dealRepo.SaveDeal(deal))
 
-	deal2 := &types.MinerDeal{}
-	*deal2 = *deal
+	deal2, err = dealRepo.GetDeal(deal.ProposalCid)
+	require.NoError(t, err)
+	compareDeal(t, deal, deal2)
+
 	deal2.ProposalCid = randCid(t)
 	deal2.TransferChannelId = &datatransfer.ChannelID{
 		Initiator: pid,
@@ -107,10 +141,12 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	res, err := dealRepo.GetDeal(deal.ProposalCid)
 	assert.Nil(t, err)
 	compareDeal(t, res, deal)
+
 	res2, err := dealRepo.GetDeal(deal2.ProposalCid)
 	assert.Nil(t, err)
 	compareDeal(t, res2, deal2)
 
+	// test list
 	list, err := dealRepo.ListDeal(deal.Proposal.Provider)
 	assert.Nil(t, err)
 	assert.Equal(t, len(list), 1)
