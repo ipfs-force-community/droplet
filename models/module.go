@@ -135,33 +135,39 @@ func NewClientTransferDS(ds repo.MetadataDS) repo.ClientTransferDS {
 	return namespace.Wrap(ds, datastore.NewKey(clientTransfer))
 }
 
-var DBOptions = func(server bool, mysql2 *config.Mysql) builder.Option {
+var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 	if server {
-		return builder.Options(
+		commonOpts := builder.Options(
 			builder.Override(new(repo.MetadataDS), NewMetadataDS),
 			builder.Override(new(StagingDS), NewStagingDS),
 			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
 			builder.Override(new(repo.PieceMetaDs), NewPieceMetaDs),
-			builder.Override(new(repo.PieceInfoDS), NewPieceInfoDs),
-			builder.Override(new(repo.CIDInfoDS), NewCidInfoDs),
-			builder.Override(new(repo.RetrievalProviderDS), NewRetrievalProviderDS),
-			builder.Override(new(repo.RetrievalAskDS), NewRetrievalAskDS),
 			builder.Override(new(repo.DagTransferDS), NewDagTransferDS),
-			builder.Override(new(repo.ProviderDealDS), NewProviderDealDS),
-			builder.Override(new(repo.StorageAskDS), NewStorageAskDS),
 			builder.Override(new(StagingBlockstore), NewStagingBlockStore),
-			builder.Override(new(repo.PayChanDS), NewPayChanDS),
-			builder.Override(new(repo.FundMgrDS), NewFundMgrDS),
-			builder.Override(new(repo.Repo), badger_models.NewBadgerRepo),
-			// if there is a mysql connection string exist,
-			// use mysql storage_ask_ds, otherwise use a badger
-			builder.ApplyIf(func(s *builder.Settings) bool { return len(mysql2.ConnectionString) > 0 },
-				builder.Override(new(repo.Repo), func(cfg *config.Mysql) (repo.Repo, error) {
-					return mysql.InitMysql(cfg)
-				})),
-			builder.Override(new(repo.IStorageAskRepo), func(repo repo.Repo) repo.IStorageAskRepo { return repo.StorageAskRepo() }),
-			builder.Override(new(repo.IRetrievalAskRepo), func(repo repo.Repo) repo.IRetrievalAskRepo { return repo.RetrievalAskRepo() }),
 		)
+		var opts builder.Option
+		if len(mysqlCfg.ConnectionString) > 0 {
+			opts = builder.Override(new(repo.Repo), func() (repo.Repo, error) {
+				return mysql.InitMysql(mysqlCfg)
+			})
+		} else {
+			opts = builder.Options(
+				builder.Override(new(repo.PieceInfoDS), NewPieceInfoDs),
+				builder.Override(new(repo.CIDInfoDS), NewCidInfoDs),
+				builder.Override(new(repo.RetrievalProviderDS), NewRetrievalProviderDS),
+				builder.Override(new(repo.RetrievalAskDS), NewRetrievalAskDS),
+				builder.Override(new(repo.ProviderDealDS), NewProviderDealDS),
+				builder.Override(new(repo.StorageAskDS), NewStorageAskDS),
+				builder.Override(new(repo.PayChanDS), NewPayChanDS),
+				builder.Override(new(repo.FundMgrDS), NewFundMgrDS),
+				builder.Override(new(repo.Repo), func(fundDS repo.FundMgrDS, dealDS repo.ProviderDealDS,
+					paychDS repo.PayChanDS, askDS repo.StorageAskDS, retrAskDs repo.RetrievalAskDS,
+					pieceDs repo.PieceInfoDS, cidInfoDs repo.CIDInfoDS, retrievalDs repo.RetrievalProviderDS) (repo.Repo, error) {
+					return badger_models.NewBadgerRepo(fundDS, dealDS, paychDS, askDS, retrAskDs, pieceDs, cidInfoDs, retrievalDs)
+				}),
+			)
+		}
+		return builder.Options(commonOpts, opts)
 	} else {
 		return builder.Options(
 			builder.Override(new(repo.MetadataDS), NewMetadataDS),

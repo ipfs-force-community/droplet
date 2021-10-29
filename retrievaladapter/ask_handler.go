@@ -2,6 +2,7 @@ package retrievaladapter
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus-market/models/repo"
 
 	"github.com/filecoin-project/go-address"
@@ -30,8 +31,8 @@ type AskHandler struct {
 	retrievalPricingFunc retrievalimpl.RetrievalPricingFunc
 }
 
-func NewAskHandler(askStore repo.IRetrievalAskRepo, node retrievalmarket.RetrievalProviderNode, retrievalPricingFunc retrievalimpl.RetrievalPricingFunc) *AskHandler {
-	return &AskHandler{askStore: askStore, node: node, retrievalPricingFunc: retrievalPricingFunc}
+func NewAskHandler(r repo.Repo, node retrievalmarket.RetrievalProviderNode, retrievalPricingFunc retrievalimpl.RetrievalPricingFunc) *AskHandler {
+	return &AskHandler{askStore: r.RetrievalAskRepo(), node: node, retrievalPricingFunc: retrievalPricingFunc}
 }
 
 // GetAsk returns the current deal parameters this provider accepts
