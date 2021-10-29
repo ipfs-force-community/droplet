@@ -264,11 +264,11 @@ func NewStorageDealRepo(db *gorm.DB) *storageDealRepo {
 	return &storageDealRepo{db}
 }
 
-func (m *storageDealRepo) SaveStorageDeal(StorageDeal *storagemarket.MinerDeal) error {
+func (m *storageDealRepo) SaveDeal(StorageDeal *storagemarket.MinerDeal) error {
 	return m.DB.Save(fromStorageDeal(StorageDeal)).Error
 }
 
-func (m *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error) {
+func (m *storageDealRepo) GetDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error) {
 	var md storageDeal
 	err := m.DB.Take(&md, "proposal_cid = ?", proposalCid.String()).Error
 	if err != nil {
@@ -278,19 +278,19 @@ func (m *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*storagemarket.Mi
 	return toStorageDeal(&md)
 }
 
-func (m *storageDealRepo) ListStorageDeal() ([]*storagemarket.MinerDeal, error) {
+func (m *storageDealRepo) ListDeal(mAddr address.Address) ([]storagemarket.MinerDeal, error) {
 	var mds []*storageDeal
-	err := m.DB.Find(&mds).Error
+	err := m.DB.Find(&mds, "cdp_provider = ?", mAddr.String()).Error
 	if err != nil {
 		return nil, err
 	}
-	list := make([]*storagemarket.MinerDeal, 0, len(mds))
+	list := make([]storagemarket.MinerDeal, 0, len(mds))
 	for _, md := range mds {
 		deal, err := toStorageDeal(md)
 		if err != nil {
 			return nil, err
 		}
-		list = append(list, deal)
+		list = append(list, *deal)
 	}
 
 	return list, nil

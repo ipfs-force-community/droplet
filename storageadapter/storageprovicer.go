@@ -83,7 +83,7 @@ type StorageProviderV2Impl struct {
 	unsubDataTransfer datatransfer.Unsubscribe
 
 	deals           StorageDealStore
-	dealProcess StorageDealProcess
+	dealProcess     StorageDealProcess
 	transferProcess TransferProcess
 	storageReceiver smnet.StorageReceiver
 }
@@ -324,11 +324,12 @@ func (p *StorageProviderV2Impl) GetStorageCollateral(ctx context.Context, mAddr 
 
 // ListLocalDeals lists deals processed by this storage provider
 func (p *StorageProviderV2Impl) ListLocalDeals(mAddr address.Address) ([]storagemarket.MinerDeal, error) {
-	var out []storagemarket.MinerDeal
-	if err := p.deals.List(mAddr, &out); err != nil {
+
+	deals, err := p.deals.ListDeal(mAddr)
+	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return deals, nil
 }
 
 // SetAsk configures the storage miner's ask with the provided price,

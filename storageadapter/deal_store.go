@@ -16,7 +16,7 @@ var RecordNotFound = fmt.Errorf("unable to find record")
 type StorageDealStore interface {
 	SaveDeal(deal *storagemarket.MinerDeal) error
 	GetDeal(cid cid.Cid) (*storagemarket.MinerDeal, error)
-	List(mAddr address.Address, out interface{}) error
+	ListDeal(mAddr address.Address) ([]storagemarket.MinerDeal, error)
 	GetPieceInfoFromCid(ctx context.Context, payloadCID, pieceCID cid.Cid) (piecestore.PieceInfo, bool, error)
 	GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, error)
 }
