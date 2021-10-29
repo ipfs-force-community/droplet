@@ -8,7 +8,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-
 	"github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -166,7 +165,7 @@ type MarketConfig struct {
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
 
-	MinerAddress string
+	MinerAddress []string
 	// When enabled, the miner can accept online deals
 	ConsiderOnlineStorageDeals bool
 	// When enabled, the miner can accept offline deals

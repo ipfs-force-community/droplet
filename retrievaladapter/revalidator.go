@@ -3,6 +3,7 @@ package retrievaladapter
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"sync"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -28,14 +29,14 @@ type channelData struct {
 // a provider for a retrieval deal
 type ProviderRevalidator struct {
 	node                 rm.RetrievalProviderNode
-	deals                RetrievalDealStore
+	deals                repo.IRetrievalDealRepo
 	retrievalDealHandler IRetrievalHandler
 	trackedChannelsLk    sync.RWMutex
 	trackedChannels      map[datatransfer.ChannelID]*channelData
 }
 
 // NewProviderRevalidator returns a new instance of a ProviderRevalidator
-func NewProviderRevalidator(node rm.RetrievalProviderNode, deals RetrievalDealStore, retrievalDealHandler IRetrievalHandler) *ProviderRevalidator {
+func NewProviderRevalidator(node rm.RetrievalProviderNode, deals repo.IRetrievalDealRepo, retrievalDealHandler IRetrievalHandler) *ProviderRevalidator {
 	return &ProviderRevalidator{
 		node:                 node,
 		deals:                deals,
@@ -424,9 +425,9 @@ func (lrv *legacyRevalidator) OnComplete(chid datatransfer.ChannelID) (bool, dat
 	return false, nil, nil
 }
 
-// NewLegacyRevalidator adds a revalidator that will capture revalidation requests for the legacy protocol but
+// NewLegacyRevalidator adds a reValidator that will capture revalidation requests for the legacy protocol but
 // won't double count data being sent
-// TODO: the data transfer revalidator registration needs to be able to take multiple types to avoid double counting
+// TODO: the data transfer reValidator registration needs to be able to take multiple types to avoid double counting
 // for data being sent.
 func NewLegacyRevalidator(providerRevalidator *ProviderRevalidator) datatransfer.Revalidator {
 	return &legacyRevalidator{providerRevalidator: providerRevalidator}

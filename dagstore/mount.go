@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/dagstore/mount"
 )
 
-const lotusScheme = "lotus"
+const marketScheme = "market"
 
 var _ mount.Mount = (*LotusMount)(nil)
 
@@ -23,18 +23,18 @@ var _ mount.Mount = (*LotusMount)(nil)
 // When the registry needs to deserialize a mount it clones the template then
 // calls Deserialize on the cloned instance, which will have a reference to the
 // lotus mount API supplied here.
-func mountTemplate(api MinerAPI) *LotusMount {
+func mountTemplate(api MarketAPI) *LotusMount {
 	return &LotusMount{API: api}
 }
 
 // LotusMount is a DAGStore mount implementation that fetches deal data
 // from a PieceCID.
 type LotusMount struct {
-	API      MinerAPI
+	API      MarketAPI
 	PieceCid cid.Cid
 }
 
-func NewLotusMount(pieceCid cid.Cid, api MinerAPI) (*LotusMount, error) {
+func NewLotusMount(pieceCid cid.Cid, api MarketAPI) (*LotusMount, error) {
 	return &LotusMount{
 		PieceCid: pieceCid,
 		API:      api,

@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/types"
 
@@ -23,7 +24,7 @@ func NewStorageDealRepo(ds repo.ProviderDealDS) *storageDealRepo {
 	return &storageDealRepo{ds}
 }
 
-func (sdr *storageDealRepo) SaveStorageDeal(storageDeal *types.MinerDeal) error {
+func (sdr *storageDealRepo) SaveDeal(storageDeal *types.MinerDeal) error {
 	b, err := cborrpc.Dump(storageDeal)
 	if err != nil {
 		return err
@@ -31,7 +32,7 @@ func (sdr *storageDealRepo) SaveStorageDeal(storageDeal *types.MinerDeal) error 
 	return sdr.ds.Put(statestore.ToKey(storageDeal.ProposalCid), b)
 }
 
-func (sdr *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
 	value, err := sdr.ds.Get(statestore.ToKey(proposalCid))
 	if err != nil {
 		return nil, err
@@ -44,11 +45,13 @@ func (sdr *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*types.MinerDea
 	return &deal, nil
 }
 
-func (sdr *storageDealRepo) ListStorageDeal() ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
-	if err := sdr.travelDeals(func(deal *types.MinerDeal) error {
-		storageDeals = append(storageDeals, deal)
-		return nil
+	if err := sdr.travelDeals(func(deal *types.MinerDeal) (err error) {
+		if deal.ClientDealProposal.Proposal.Provider == miner {
+			storageDeals = append(storageDeals, deal)
+		}
+		return
 	}); err != nil {
 		return nil, err
 	}
@@ -84,7 +87,6 @@ func (dsr *storageDealRepo) travelDeals(travelFn func(deal *types.MinerDeal) err
 		return err
 	}
 	defer result.Close() //nolint:errcheck
-
 	for res := range result.Next() {
 		if res.Error != nil {
 			return err

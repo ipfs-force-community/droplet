@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -33,14 +33,15 @@ func init() {
 
 // ProviderRequestValidator validates incoming requests for the Retrieval Provider
 type ProviderRequestValidator struct {
-	storageDeals  storageadapter.StorageDealStore
-	retrievalDeal RetrievalDealStore
+	storageDeals  repo.StorageDealRepo
+	pieceInfo     *PieceInfo
+	retrievalDeal repo.IRetrievalDealRepo
 	askHandler    IAskHandler
 }
 
 // NewProviderRequestValidator returns a new instance of the ProviderRequestValidator
-func NewProviderRequestValidator(storageDeals storageadapter.StorageDealStore, retrievalDeal RetrievalDealStore, askHandler IAskHandler) *ProviderRequestValidator {
-	return &ProviderRequestValidator{storageDeals: storageDeals, retrievalDeal: retrievalDeal, askHandler: askHandler}
+func NewProviderRequestValidator(storageDeals repo.StorageDealRepo, retrievalDeal repo.IRetrievalDealRepo, pieceInfo *PieceInfo, askHandler IAskHandler) *ProviderRequestValidator {
+	return &ProviderRequestValidator{storageDeals: storageDeals, retrievalDeal: retrievalDeal, pieceInfo: pieceInfo, askHandler: askHandler}
 }
 
 // ValidatePush validates a push request received from the peer that will send data
@@ -160,7 +161,7 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *retrie
 	if deal.PieceCID != nil {
 		inPieceCid = *deal.PieceCID
 	}
-	pieceInfo, isUnsealed, err := rv.storageDeals.GetPieceInfoFromCid(ctx, deal.PayloadCID, inPieceCid)
+	pieceInfo, isUnsealed, err := rv.pieceInfo.GetPieceInfoFromCid(ctx, deal.PayloadCID, inPieceCid)
 	if err != nil {
 		if err == retrievalmarket.ErrNotFound { //todo use db not found
 			return retrievalmarket.DealStatusDealNotFound, err

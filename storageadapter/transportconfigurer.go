@@ -14,10 +14,10 @@ type providerStoreGetter struct {
 	deals  StorageDealStore
 }
 
-func newProviderStoreGetter(deals StorageDealStore) *providerStoreGetter {
+func newProviderStoreGetter(deals StorageDealStore, stores *stores.ReadWriteBlockstores) *providerStoreGetter {
 	return &providerStoreGetter{
 		deals:  deals,
-		stores: stores.NewReadWriteBlockstores(),
+		stores: stores,
 	}
 }
 

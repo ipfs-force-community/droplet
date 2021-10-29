@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/models/minermgr"
+	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
 	"log"
 	"os"
 
@@ -183,7 +183,7 @@ func daemon(cctx *cli.Context) error {
 		config.ConfigServerOpts(cfg),
 
 		// miner manager
-		minermgr.MinerMgrOpts(cfg),
+		minermgr2.MinerMgrOpts(cfg),
 
 		//clients
 		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, &cfg.Mysql),

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/filecoin-project/venus-market/types"
 	"os"
 	"testing"
 	"time"
@@ -41,11 +42,8 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	if err != nil {
 		assert.Nil(t, err)
 	}
-	newPid, err := peer.Decode(pid.Pretty())
-	assert.Nil(t, err)
-	t.Log(newPid)
 
-	deal := &storagemarket.MinerDeal{
+	deal := &types.MinerDeal{
 		ClientDealProposal: market.ClientDealProposal{
 			Proposal: market.DealProposal{
 				PieceCID:             c,
@@ -90,10 +88,12 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 		TransferChannelId:     nil,
 		SectorNumber:          10,
 		InboundCAR:            "InboundCAR",
+		Offset: 1022222,
+		Length: 555,
 	}
-	assert.Nil(t, dealRepo.SaveStorageDeal(deal))
+	assert.Nil(t, dealRepo.SaveDeal(deal))
 
-	deal2 := &storagemarket.MinerDeal{}
+	deal2 := &types.MinerDeal{}
 	*deal2 = *deal
 	deal2.ProposalCid = randCid(t)
 	deal2.TransferChannelId = &datatransfer.ChannelID{
@@ -101,21 +101,23 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 		Responder: pid,
 		ID:        10,
 	}
-	assert.Nil(t, dealRepo.SaveStorageDeal(deal2))
+	deal2.Proposal.Provider = randAddress(t)
+	assert.Nil(t, dealRepo.SaveDeal(deal2))
 
-	res, err := dealRepo.GetStorageDeal(deal.ProposalCid)
+	res, err := dealRepo.GetDeal(deal.ProposalCid)
 	assert.Nil(t, err)
 	compareDeal(t, res, deal)
-	res2, err := dealRepo.GetStorageDeal(deal2.ProposalCid)
+	res2, err := dealRepo.GetDeal(deal2.ProposalCid)
 	assert.Nil(t, err)
 	compareDeal(t, res2, deal2)
 
-	list, err := dealRepo.ListStorageDeal()
+	list, err := dealRepo.ListDeal(deal.Proposal.Provider)
 	assert.Nil(t, err)
-	assert.GreaterOrEqual(t, len(list), 2)
+	assert.Equal(t, len(list), 1)
+	compareDeal(t, list[0], deal)
 }
 
-func compareDeal(t *testing.T, actual, excepted *storagemarket.MinerDeal) {
+func compareDeal(t *testing.T, actual, excepted *types.MinerDeal) {
 	assert.Equal(t, excepted.ClientDealProposal, actual.ClientDealProposal)
 	assert.Equal(t, excepted.ProposalCid, actual.ProposalCid)
 	assert.Equal(t, excepted.PublishCid, actual.PublishCid)
@@ -135,4 +137,6 @@ func compareDeal(t *testing.T, actual, excepted *storagemarket.MinerDeal) {
 	assert.Equal(t, actual.TransferChannelId, excepted.TransferChannelId)
 	assert.Equal(t, excepted.SectorNumber, actual.SectorNumber)
 	assert.Equal(t, excepted.InboundCAR, actual.InboundCAR)
+	assert.Equal(t, excepted.Offset, actual.Offset)
+	assert.Equal(t, excepted.Length, actual.Length)
 }

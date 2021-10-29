@@ -2,21 +2,17 @@ package retrievaladapter
 
 import (
 	"context"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/venus-market/models/repo"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/dealfilter"
 	"github.com/filecoin-project/venus-market/journal"
-	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/network"
-	types2 "github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus-market/utils"
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
 )
@@ -24,23 +20,6 @@ import (
 var (
 	HandleRetrievalKey builder.Invoke = builder.NextInvoke()
 )
-
-// RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(
-	maddr types2.MinerAddress,
-	adapter retrievalmarket.RetrievalProviderNode,
-	netwk rmnet.RetrievalMarketNetwork,
-	retrievalProviderDs repo.RetrievalProviderDS,
-	sa retrievalmarket.SectorAccessor,
-	pieceStore piecestore.PieceStore,
-	dagStore *dagstore.Wrapper,
-	dt network.ProviderDataTransfer,
-	pricingFnc config.RetrievalPricingFunc,
-	userFilter config.RetrievalDealFilter,
-) (retrievalmarket.RetrievalProvider, error) {
-	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-	return retrievalimpl.NewProvider(address.Address(maddr), adapter, sa, netwk, pieceStore, dagStore, dt, retrievalProviderDs, retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
-}
 
 func RetrievalDealFilter(userFilter config.RetrievalDealFilter) func(onlineOk config.ConsiderOnlineRetrievalDealsConfigFunc,
 	offlineOk config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalDealFilter {
@@ -75,19 +54,26 @@ func RetrievalDealFilter(userFilter config.RetrievalDealFilter) func(onlineOk co
 	}
 }
 
+func RetrievalProvider(node retrievalmarket.RetrievalProviderNode,
+	network rmnet.RetrievalMarketNetwork,
+	dagStore stores.DAGStoreWrapper,
+	dataTransfer datatransfer.Manager,
+	retrievalPricingFunc retrievalimpl.RetrievalPricingFunc,
+
+	askRepo repo.IRetrievalAskRepo,
+	storageDealsRepo repo.StorageDealRepo,
+	reterivalDealRepo repo.IRetrievalDealRepo,
+	cidInfoRepo repo.ICidInfoRepo) (IRetrievalProvider, error) {
+	return NewProvider(node, network, dagStore, dataTransfer, retrievalPricingFunc, askRepo, storageDealsRepo, reterivalDealRepo, cidInfoRepo)
+}
+
 func HandleRetrieval(host host.Host,
 	lc fx.Lifecycle,
-	m retrievalmarket.RetrievalProvider,
+	m RetrievalProviderV2,
 	j journal.Journal,
 ) {
-	m.OnReady(utils.ReadyLogger("retrieval provider"))
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			m.SubscribeToEvents(utils.RetrievalProviderLogger)
-
-			evtType := j.RegisterEventType("markets/retrieval/provider", "state_change")
-			m.SubscribeToEvents(utils.RetrievalProviderJournaler(j, evtType))
-
 			return m.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
@@ -123,7 +109,7 @@ var RetrievalProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		// Markets (retrieval)
 		builder.Override(new(retrievalmarket.RetrievalProviderNode), NewRetrievalProviderNode),
 		builder.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
-		builder.Override(new(retrievalmarket.RetrievalProvider), RetrievalProvider), //save to metadata /retrievals/provider
+		builder.Override(new(IRetrievalProvider), RetrievalProvider), //save to metadata /retrievals/provider
 		builder.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(nil)),
 		builder.Override(HandleRetrievalKey, HandleRetrieval),
 		builder.If(cfg.RetrievalFilter != "",

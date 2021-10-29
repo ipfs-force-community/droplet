@@ -2,6 +2,7 @@ package storageadapter
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/minermgr"
 	"io"
 	"time"
 
@@ -21,8 +22,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/dtutils"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -30,7 +29,6 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dagstore"
-	"github.com/filecoin-project/venus-market/models/minermgr"
 	"github.com/filecoin-project/venus-market/network"
 )
 
@@ -72,20 +70,20 @@ type StorageProviderV2 interface {
 type StorageProviderV2Impl struct {
 	net smnet.StorageMarketNetwork
 
-	spn          StorageProviderNode
-	fs           filestore.FileStore
-	conns        *connmanager.ConnManager
-	storedAsk    IStorageAsk
-	dataTransfer datatransfer.Manager
+	spn       StorageProviderNode
+	fs        filestore.FileStore
+	conns     *connmanager.ConnManager
+	storedAsk IStorageAsk
 
 	pubSub *pubsub.PubSub
 
 	unsubDataTransfer datatransfer.Unsubscribe
 
 	deals           StorageDealStore
-	dealProcess StorageDealProcess
+	dealProcess     StorageDealProcess
 	transferProcess TransferProcess
 	storageReceiver smnet.StorageReceiver
+	minerMgr        minermgr.IMinerMgr
 }
 
 type internalProviderEvent struct {
@@ -128,18 +126,19 @@ func NewStorageProviderV2(
 	spV2 := &StorageProviderV2Impl{
 		net: net,
 
-		spn:          spn,
-		fs:           store,
-		conns:        connmanager.NewConnManager(),
-		storedAsk:    storedAsk,
-		dataTransfer: dataTransfer,
+		spn:       spn,
+		fs:        store,
+		conns:     connmanager.NewConnManager(),
+		storedAsk: storedAsk,
 
 		pubSub: pubsub.New(providerDispatcher),
 
 		deals: deals,
+
+		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.deals, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, dagStore)
+	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.deals, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, dataTransfer, dagStore)
 	if err != nil {
 		return nil, err
 	}
@@ -154,16 +153,6 @@ func NewStorageProviderV2(
 		return nil, err
 	}
 	spV2.storageReceiver = storageReceiver
-
-	err = dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{spV2.deals}, nil))
-	if err != nil {
-		return nil, err
-	}
-
-	err = dataTransfer.RegisterTransportConfigurer(&requestvalidation.StorageDataTransferVoucher{}, dtutils.TransportConfigurer(newProviderStoreGetter(spV2.deals)))
-	if err != nil {
-		return nil, err
-	}
 
 	return spV2, nil
 }
@@ -324,11 +313,12 @@ func (p *StorageProviderV2Impl) GetStorageCollateral(ctx context.Context, mAddr 
 
 // ListLocalDeals lists deals processed by this storage provider
 func (p *StorageProviderV2Impl) ListLocalDeals(mAddr address.Address) ([]storagemarket.MinerDeal, error) {
-	var out []storagemarket.MinerDeal
-	if err := p.deals.List(mAddr, &out); err != nil {
+
+	deals, err := p.deals.ListDeal(mAddr)
+	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return deals, nil
 }
 
 // SetAsk configures the storage miner's ask with the provided price,

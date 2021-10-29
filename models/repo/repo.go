@@ -20,9 +20,9 @@ type FundRepo interface {
 }
 
 type StorageDealRepo interface {
-	SaveStorageDeal(StorageDeal *types.MinerDeal) error
-	GetStorageDeal(proposalCid cid.Cid) (*types.MinerDeal, error)
-	ListStorageDeal() ([]*types.MinerDeal, error)
+	SaveDeal(StorageDeal *types.MinerDeal) error
+	GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error)
+	ListDeal(mAddr address.Address) ([]*types.MinerDeal, error)
 	GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error)
 }
 

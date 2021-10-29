@@ -6,6 +6,7 @@ import (
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/providerstates"
 	"github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/venus-market/models/repo"
 )
 
 type IRetrievalHandler interface {
@@ -20,10 +21,10 @@ var _ IRetrievalHandler = (*RetrievalDealHandler)(nil)
 
 type RetrievalDealHandler struct {
 	env                providerstates.ProviderDealEnvironment
-	retrievalDealStore RetrievalDealStore
+	retrievalDealStore repo.IRetrievalDealRepo
 }
 
-func NewRetrievalDealHandler(env providerstates.ProviderDealEnvironment, retrievalDealStore RetrievalDealStore) IRetrievalHandler {
+func NewRetrievalDealHandler(env providerstates.ProviderDealEnvironment, retrievalDealStore repo.IRetrievalDealRepo) IRetrievalHandler {
 	return &RetrievalDealHandler{env: env, retrievalDealStore: retrievalDealStore}
 }
 

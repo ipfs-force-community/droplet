@@ -4,9 +4,11 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus-market/models/repo"
+	"time"
+
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/types"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -270,15 +272,17 @@ type storageDealRepo struct {
 	*gorm.DB
 }
 
+var _ repo.StorageDealRepo = (*storageDealRepo)(nil)
+
 func NewStorageDealRepo(db *gorm.DB) *storageDealRepo {
 	return &storageDealRepo{db}
 }
 
-func (m *storageDealRepo) SaveStorageDeal(StorageDeal *types.MinerDeal) error {
+func (m *storageDealRepo) SaveDeal(StorageDeal *types.MinerDeal) error {
 	return m.DB.Save(fromStorageDeal(StorageDeal)).Error
 }
 
-func (m *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
+func (m *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
 	var md storageDeal
 	err := m.DB.Take(&md, "proposal_cid = ?", proposalCid.String()).Error
 	if err != nil {
@@ -288,15 +292,19 @@ func (m *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*types.MinerDeal,
 	return toStorageDeal(&md)
 }
 
-func (m *storageDealRepo) ListStorageDeal() ([]*types.MinerDeal, error) {
-	list := make([]*types.MinerDeal, 0)
-	if err := m.travelDeals(func(deal *types.MinerDeal) error {
-		list = append(list, deal)
-		return nil
+// todo: mysql query with condition:
+//  select xxxx ... from xxxx where 'provider' = miner;
+func (m *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {
+	storageDeals := make([]*types.MinerDeal, 0)
+	if err := m.travelDeals(func(deal *types.MinerDeal) (err error) {
+		if deal.ClientDealProposal.Proposal.Provider == miner {
+			storageDeals = append(storageDeals, deal)
+		}
+		return
 	}); err != nil {
 		return nil, err
 	}
-	return list, nil
+	return storageDeals, nil
 }
 
 func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error) {

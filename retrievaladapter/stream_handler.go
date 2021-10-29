@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 )
@@ -20,12 +20,13 @@ var _ IRetrievalStream = (*RetrievalStreamHandler)(nil)
 
 type RetrievalStreamHandler struct {
 	askHandler         IAskHandler
-	retrievalDealStore RetrievalDealStore
-	storageDealStore   storageadapter.StorageDealStore
+	retrievalDealStore repo.IRetrievalDealRepo
+	storageDealStore   repo.StorageDealRepo
+	pieceInfo          *PieceInfo
 }
 
-func NewRetrievalStreamHandler(askHandler IAskHandler, retrievalDealStore RetrievalDealStore, storageDealStore storageadapter.StorageDealStore) *RetrievalStreamHandler {
-	return &RetrievalStreamHandler{askHandler: askHandler, retrievalDealStore: retrievalDealStore, storageDealStore: storageDealStore}
+func NewRetrievalStreamHandler(askHandler IAskHandler, retrievalDealStore repo.IRetrievalDealRepo, storageDealStore repo.StorageDealRepo, pieceInfo *PieceInfo) *RetrievalStreamHandler {
+	return &RetrievalStreamHandler{askHandler: askHandler, retrievalDealStore: retrievalDealStore, storageDealStore: storageDealStore, pieceInfo: pieceInfo}
 }
 
 /*
@@ -92,7 +93,7 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	if query.PieceCID != nil {
 		pieceCID = *query.PieceCID
 	}
-	pieceInfo, isUnsealed, err := p.storageDealStore.GetPieceInfoFromCid(ctx, query.PayloadCID, pieceCID)
+	pieceInfo, isUnsealed, err := p.pieceInfo.GetPieceInfoFromCid(ctx, query.PayloadCID, pieceCID)
 	if err != nil {
 		log.Errorf("Retrieval query: getPieceInfoFromCid: %s", err)
 		if !xerrors.Is(err, retrievalmarket.ErrNotFound) {

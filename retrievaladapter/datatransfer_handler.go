@@ -4,6 +4,7 @@ import (
 	"context"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/venus-market/models/repo"
 )
 
 // EventReceiver is any thing that can receive FSM events
@@ -21,10 +22,10 @@ var _ IDatatransferHandler = (*DataTransferHandler)(nil)
 
 type DataTransferHandler struct {
 	retrievalDealHandler IRetrievalHandler
-	retrievalDealStore   RetrievalDealStore
+	retrievalDealStore   repo.IRetrievalDealRepo
 }
 
-func NewDataTransferHandler(retrievalDealHandler IRetrievalHandler, retrievalDealStore RetrievalDealStore) *DataTransferHandler {
+func NewDataTransferHandler(retrievalDealHandler IRetrievalHandler, retrievalDealStore repo.IRetrievalDealRepo) *DataTransferHandler {
 	return &DataTransferHandler{retrievalDealHandler: retrievalDealHandler, retrievalDealStore: retrievalDealStore}
 }
 

@@ -103,7 +103,7 @@ type MarketFullNodeStruct struct {
 	Internal struct {
 		ActorAddress func(p0 context.Context) ([]address.Address, error) `perm:"read"`
 
-		ActorExist func(p0 context.Context, p1 address.Address) (bool, error)  `perm:"read"`
+		ActorExist func(p0 context.Context, p1 address.Address) (bool, error) `perm:"read"`
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
@@ -502,11 +502,11 @@ func (s *MarketFullNodeStub) ActorAddress(p0 context.Context) ([]address.Address
 	return *new([]address.Address), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) ActorExist(p0 context.Context, p1 address.Address) (bool, error)  {
+func (s *MarketFullNodeStruct) ActorExist(p0 context.Context, p1 address.Address) (bool, error) {
 	return s.Internal.ActorExist(p0, p1)
 }
 
-func (s *MarketFullNodeStub) ActorExist(p0 context.Context, p1 address.Address) (bool, error)  {
+func (s *MarketFullNodeStub) ActorExist(p0 context.Context, p1 address.Address) (bool, error) {
 	return false, xerrors.New("method not supported")
 }
 

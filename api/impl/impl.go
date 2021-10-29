@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/minermgr"
 	"os"
 	"sort"
 	"time"
@@ -26,7 +27,6 @@ import (
 	"github.com/filecoin-project/venus-market/api"
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/minermgr"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piece"
 	storageadapter2 "github.com/filecoin-project/venus-market/storageadapter"
@@ -55,11 +55,10 @@ type MarketNodeImpl struct {
 	DataTransfer      network.ProviderDataTransfer
 	DealPublisher     *storageadapter2.DealPublisher
 	PieceStore        piece.ExtendPieceStore
-	SectorAccessor    retrievalmarket.SectorAccessor
 	Messager          clients2.IMessager `optional:"true"`
 	DAGStore          *dagstore.DAGStore
-
-	MinerMgr minermgr.IMinerMgr
+	PieceStorage      piece.PieceStorage
+	MinerMgr          minermgr.IMinerMgr
 
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc
@@ -85,7 +84,7 @@ func (m MarketNodeImpl) ActorAddress(ctx context.Context) ([]address.Address, er
 	return m.MinerMgr.ActorAddress(ctx)
 }
 
-func (m MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error)  {
+func (m MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {
 	return m.MinerMgr.Has(ctx, addr), nil
 }
 
@@ -476,22 +475,10 @@ func (m MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.
 				continue
 			}
 
-			pi, err := m.PieceStore.GetPieceInfo(pieceCid)
+			isUnsealed, err := m.PieceStorage.Has(pieceCid.String())
 			if err != nil {
-				log.Warnw("DagstoreInitializeAll: failed to get piece info; skipping", "piece_cid", pieceCid, "error", err)
+				log.Warnw("DagstoreInitializeAll: failed to get unsealed status; skipping deal", "piece cid", pieceCid, "error", err)
 				continue
-			}
-
-			var isUnsealed bool
-			for _, d := range pi.Deals {
-				isUnsealed, err = m.SectorAccessor.IsUnsealed(ctx, d.SectorID, d.Offset.Unpadded(), d.Length.Unpadded())
-				if err != nil {
-					log.Warnw("DagstoreInitializeAll: failed to get unsealed status; skipping deal", "deal_id", d.DealID, "error", err)
-					continue
-				}
-				if isUnsealed {
-					break
-				}
 			}
 
 			if !isUnsealed {

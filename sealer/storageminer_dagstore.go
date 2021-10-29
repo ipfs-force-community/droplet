@@ -3,9 +3,9 @@ package sealer
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/venus-market/dagstore"
+	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/piece"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus-market/config"
@@ -16,13 +16,10 @@ const (
 	DefaultDAGStoreDir         = "dagstore"
 )
 
-// NewMinerAPI creates a new MinerAPI adaptor for the dagstore mounts.
-func NewMinerAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, pieceStore piecestore.PieceStore, sa retrievalmarket.SectorAccessor) (dagstore.MinerAPI, error) {
-	mountApi := dagstore.NewMinerAPI(pieceStore, sa, r.MaxConcurrencyStorageCalls)
+// NewMinerAPI creates a new MarketAPI adaptor for the dagstore mounts.
+func NewMinerAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, pieceRepo repo.StorageDealRepo, pieceStorage piece.PieceStorage) (dagstore.MarketAPI, error) {
+	mountApi := dagstore.NewMinerAPI(pieceRepo, pieceStorage, r.MaxConcurrencyStorageCalls)
 	ready := make(chan error, 1)
-	pieceStore.OnReady(func(err error) {
-		ready <- err
-	})
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			if err := <-ready; err != nil {

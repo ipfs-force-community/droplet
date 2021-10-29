@@ -45,7 +45,7 @@ type Wrapper struct {
 
 	cfg        *config.DAGStoreConfig
 	dagst      dagstore.Interface
-	minerAPI   MinerAPI
+	minerAPI   MarketAPI
 	failureCh  chan dagstore.ShardResult
 	traceCh    chan dagstore.Trace
 	gcInterval time.Duration
@@ -53,10 +53,10 @@ type Wrapper struct {
 
 var _ stores.DAGStoreWrapper = (*Wrapper)(nil)
 
-func NewDAGStore(cfg *config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGStore, *Wrapper, error) {
+func NewDAGStore(cfg *config.DAGStoreConfig, minerApi MarketAPI) (*dagstore.DAGStore, *Wrapper, error) {
 	// construct the DAG Store.
 	registry := mount.NewRegistry()
-	if err := registry.Register(lotusScheme, mountTemplate(minerApi)); err != nil {
+	if err := registry.Register(marketScheme, mountTemplate(minerApi)); err != nil {
 		return nil, nil, xerrors.Errorf("failed to create registry: %w", err)
 	}
 
