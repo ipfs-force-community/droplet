@@ -158,6 +158,8 @@ var DBOptions = func(server bool, mysql2 *config.Mysql) builder.Option {
 				builder.Override(new(itf.Repo), func(cfg *config.Mysql) (itf.Repo, error) {
 					return mysql.InitMysql(cfg)
 				})),
+			builder.Override(new(itf.IStorageAskRepo), func(repo itf.Repo) itf.IStorageAskRepo { return repo.StorageAskRepo() }),
+			builder.Override(new(itf.IRetrievalAskRepo), func(repo itf.Repo) itf.IRetrievalAskRepo { return repo.RetrievalAskRepo() }),
 		)
 	} else {
 		return builder.Options(
