@@ -51,8 +51,8 @@ func (r MysqlRepo) RetrievalAskRepo() repo.IRetrievalAskRepo {
 	return NewRetrievalAskRepo(r.GetDb())
 }
 
-func (r MysqlRepo) PieceRepo() repo.IPieceRepo {
-	return NewMysqlPieceRepo(r.GetDb())
+func (r MysqlRepo) CidInfoRepo() repo.ICidInfoRepo {
+	return NewMysqlCidInfoRepo(r.GetDb())
 }
 
 func (r MysqlRepo) RetrievalDealRepo() repo.IRetrievalDealRepo {

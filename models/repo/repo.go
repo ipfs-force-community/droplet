@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"context"
 	"errors"
 
 	"github.com/filecoin-project/go-address"
@@ -21,9 +20,10 @@ type FundRepo interface {
 }
 
 type StorageDealRepo interface {
-	SaveStorageDeal(StorageDeal *storagemarket.MinerDeal) error
-	GetStorageDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error)
-	ListStorageDeal() ([]*storagemarket.MinerDeal, error)
+	SaveStorageDeal(StorageDeal *types.MinerDeal) error
+	GetStorageDeal(proposalCid cid.Cid) (*types.MinerDeal, error)
+	ListStorageDeal() ([]*types.MinerDeal, error)
+	GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error)
 }
 
 type IRetrievalDealRepo interface {
@@ -63,14 +63,13 @@ type IRetrievalAskRepo interface {
 	Close() error
 }
 
-type IPieceRepo interface {
-	AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error
+type ICidInfoRepo interface {
+	// AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error
 	AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error
-	GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, error)
 	GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error)
 	ListCidInfoKeys() ([]cid.Cid, error)
-	ListPieceInfoKeys() ([]cid.Cid, error)
-	GetPieceInfoFromCid(ctx context.Context, payloadCID, pieceCID cid.Cid) (piecestore.PieceInfo, bool, error)
+	// ListPieceInfoKeys() ([]cid.Cid, error)
+	// GetPieceInfoFromCid(ctx context.Context, payloadCID, pieceCID cid.Cid) (piecestore.PieceInfo, bool, error)
 }
 
 type Repo interface {
@@ -80,7 +79,7 @@ type Repo interface {
 	PaychChannelInfoRepo() PaychChannelInfoRepo
 	StorageAskRepo() IStorageAskRepo
 	RetrievalAskRepo() IRetrievalAskRepo
-	PieceRepo() IPieceRepo
+	CidInfoRepo() ICidInfoRepo
 	RetrievalDealRepo() IRetrievalDealRepo
 }
 

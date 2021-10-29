@@ -4,6 +4,8 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/venus-market/types"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -44,6 +46,9 @@ type storageDeal struct {
 	SectorNumber      uint64    `gorm:"column:sector_number;type:bigint unsigned;"`
 
 	InboundCAR string `gorm:"column:addr;type:varchar(128);primary_key"`
+
+	Offset uint64 `gorm:"column:offset;type:bigint"`
+	Length uint64 `gorm:"column:length;type:bigint"`
 }
 
 type ClientDealProposal struct {
@@ -103,7 +108,7 @@ func (m *storageDeal) TableName() string {
 	return "storage_deals"
 }
 
-func fromStorageDeal(src *storagemarket.MinerDeal) *storageDeal {
+func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 	md := &storageDeal{
 		ClientDealProposal: ClientDealProposal{
 			PieceCID:             decodeCid(src.ClientDealProposal.Proposal.PieceCID),
@@ -139,6 +144,9 @@ func fromStorageDeal(src *storagemarket.MinerDeal) *storageDeal {
 		CreationTime:          src.CreationTime.Time().UnixNano(),
 		SectorNumber:          uint64(src.SectorNumber),
 		InboundCAR:            src.InboundCAR,
+
+		Offset: uint64(src.Offset),
+		Length: uint64(src.Length),
 	}
 
 	if src.Ref != nil {
@@ -161,8 +169,8 @@ func fromStorageDeal(src *storagemarket.MinerDeal) *storageDeal {
 	return md
 }
 
-func toStorageDeal(src *storageDeal) (*storagemarket.MinerDeal, error) {
-	md := &storagemarket.MinerDeal{
+func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
+	md := &types.MinerDeal{
 		ClientDealProposal: market.ClientDealProposal{
 			Proposal: market.DealProposal{
 				PieceSize:            abi.PaddedPieceSize(src.PieceSize),
@@ -196,6 +204,8 @@ func toStorageDeal(src *storageDeal) (*storagemarket.MinerDeal, error) {
 		CreationTime:          typegen.CborTime(time.Unix(0, src.CreationTime).UTC()),
 		SectorNumber:          abi.SectorNumber(src.SectorNumber),
 		InboundCAR:            src.InboundCAR,
+		Offset:                abi.PaddedPieceSize(src.Offset),
+		Length:                abi.PaddedPieceSize(src.Length),
 	}
 	var err error
 	md.ClientDealProposal.Proposal.PieceCID, err = parseCid(src.ClientDealProposal.PieceCID)
@@ -264,11 +274,11 @@ func NewStorageDealRepo(db *gorm.DB) *storageDealRepo {
 	return &storageDealRepo{db}
 }
 
-func (m *storageDealRepo) SaveStorageDeal(StorageDeal *storagemarket.MinerDeal) error {
+func (m *storageDealRepo) SaveStorageDeal(StorageDeal *types.MinerDeal) error {
 	return m.DB.Save(fromStorageDeal(StorageDeal)).Error
 }
 
-func (m *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*storagemarket.MinerDeal, error) {
+func (m *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
 	var md storageDeal
 	err := m.DB.Take(&md, "proposal_cid = ?", proposalCid.String()).Error
 	if err != nil {
@@ -278,20 +288,53 @@ func (m *storageDealRepo) GetStorageDeal(proposalCid cid.Cid) (*storagemarket.Mi
 	return toStorageDeal(&md)
 }
 
-func (m *storageDealRepo) ListStorageDeal() ([]*storagemarket.MinerDeal, error) {
-	var mds []*storageDeal
-	err := m.DB.Find(&mds).Error
-	if err != nil {
+func (m *storageDealRepo) ListStorageDeal() ([]*types.MinerDeal, error) {
+	list := make([]*types.MinerDeal, 0)
+	if err := m.travelDeals(func(deal *types.MinerDeal) error {
+		list = append(list, deal)
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-	list := make([]*storagemarket.MinerDeal, 0, len(mds))
+	return list, nil
+}
+
+func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
+	var pieceInfo = piecestore.PieceInfo{
+		PieceCID: pieceCID,
+		Deals:    nil,
+	}
+
+	if err := m.travelDeals(func(deal *types.MinerDeal) error {
+		if deal.ClientDealProposal.Proposal.PieceCID.Equals(pieceCID) {
+			pieceInfo.Deals = append(pieceInfo.Deals, piecestore.DealInfo{
+				DealID:   deal.DealID,
+				SectorID: deal.SectorNumber,
+				Offset:   deal.Offset,
+				Length:   deal.Length,
+			})
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return &pieceInfo, nil
+}
+
+func (m *storageDealRepo) travelDeals(travelFn func(deal *types.MinerDeal) error) error {
+	var mds []*storageDeal
+	if err := m.DB.Find(&mds).Error; err != nil {
+		return err
+	}
 	for _, md := range mds {
 		deal, err := toStorageDeal(md)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		list = append(list, deal)
+		if err := travelFn(deal); err != nil {
+			return err
+		}
 	}
-
-	return list, nil
+	return nil
 }
