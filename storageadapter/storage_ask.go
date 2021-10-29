@@ -15,8 +15,16 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func NewStorageAsk(ctx metrics.MetricsCtx,
-	repo itf.Repo, fullnode apiface.FullNode) (*StorageAsk, error) {
+type IStorageAsk interface {
+	GetAsk(mAddr address.Address) (*storagemarket.SignedStorageAsk, error)
+	SetAsk(mAddr address.Address, price abi.TokenAmount, verifiedPrice abi.TokenAmount, duration abi.ChainEpoch, options ...storagemarket.StorageAskOption) error
+}
+
+func NewStorageAsk(
+	ctx metrics.MetricsCtx,
+	repo itf.Repo,
+	fullnode apiface.FullNode,
+) (IStorageAsk, error) {
 	return &StorageAsk{repo: repo.StorageAskRepo(), fullNode: fullnode}, nil
 }
 

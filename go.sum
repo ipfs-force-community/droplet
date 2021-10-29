@@ -409,7 +409,6 @@ github.com/filecoin-project/specs-actors/v5 v5.0.0-20210512015452-4fe3889fff57/g
 github.com/filecoin-project/specs-actors/v5 v5.0.1/go.mod h1:74euMDIXorusOBs/QL/LNkYsXZdDpLJwojWw6T03pdE=
 github.com/filecoin-project/specs-actors/v5 v5.0.4 h1:OY7BdxJWlUfUFXWV/kpNBYGXNPasDIedf42T3sGx08s=
 github.com/filecoin-project/specs-actors/v5 v5.0.4/go.mod h1:5BAKRAMsOOlD8+qCw4UvT/lTLInCJ3JwOWZbX8Ipwq4=
-github.com/filecoin-project/specs-actors/v6 v6.0.0-20211001193936-c3afe7fa3c5c/go.mod h1:V1AYfi5GkHXipx1mnVivoICZh3wtwPxDVuds+fbfQtk=
 github.com/filecoin-project/specs-actors/v6 v6.0.0 h1:i+16MFE8GScWWUF0kG7x2RZ5Hqpz0CeyBHTpnijCJ6I=
 github.com/filecoin-project/specs-actors/v6 v6.0.0/go.mod h1:V1AYfi5GkHXipx1mnVivoICZh3wtwPxDVuds+fbfQtk=
 github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506 h1:Ur/l2+6qN+lQiqjozWWc5p9UDaAMDZKTlDS98oRnlIw=
@@ -417,8 +416,8 @@ github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506/g
 github.com/filecoin-project/test-vectors/schema v0.0.5/go.mod h1:iQ9QXLpYWL3m7warwvK1JC/pTri8mnfEmKygNDqqY6E=
 github.com/filecoin-project/venus v1.0.1-0.20210707073618-62e8cf9a7834/go.mod h1:BVcA3ztDkxMbLPoMJKUKlkcbDUwI2dktfiu4rxhzYXc=
 github.com/filecoin-project/venus v1.0.4/go.mod h1:rVBuSrtLT37l4xC5jGpgZg/wnZpTv1jwWtektxo8kuA=
-github.com/filecoin-project/venus v1.1.0-rc1 h1:t4PrUd+TpOzyDEs+hg8XuqskNQQfOe0i5a3Te9Ieb+c=
-github.com/filecoin-project/venus v1.1.0-rc1/go.mod h1:wYokL8jvZwSae8SvFlJ7ez37VBZ3TNjgljrgYBA4ZiE=
+github.com/filecoin-project/venus v1.1.1 h1:ulnYC1SXd/l9WaZrP8DNTn2IsQVRdrvtCIXrREWi4jQ=
+github.com/filecoin-project/venus v1.1.1/go.mod h1:8yWJRyxyssmXOQO0jBywLZ26HFqsMUNAI+5V3yXplv4=
 github.com/filecoin-project/venus-auth v1.1.0/go.mod h1:LXrT3H5dbcG/N+Ze5jMLGwAyGic9s1y3J/JV2/qM0sU=
 github.com/filecoin-project/venus-auth v1.1.1-0.20210601064545-55f3162444fd/go.mod h1:5tTtug4j0zXhaHBt731KyPpV5r8BG4z64huN4uZHmsE=
 github.com/filecoin-project/venus-auth v1.2.2-0.20210716071053-565a8999f9e5/go.mod h1:jUtjoz4kKz+VtilL4900JbWf+OQoxF7KZlnfQrvKKa8=

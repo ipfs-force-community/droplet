@@ -5,10 +5,11 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/state"
 	"github.com/filecoin-project/venus/pkg/types"
-	actorsmarket "github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 )
 
 // dealStateMatcher caches the DealStates for the most recent
@@ -19,8 +20,8 @@ type dealStateMatcher struct {
 	lk               sync.Mutex
 	oldTsk           types.TipSetKey
 	newTsk           types.TipSetKey
-	oldDealStateRoot actorsmarket.DealStates
-	newDealStateRoot actorsmarket.DealStates
+	oldDealStateRoot market.DealStates
+	newDealStateRoot market.DealStates
 }
 
 func newDealStateMatcher(preds *state.StatePredicates) *dealStateMatcher {
@@ -58,8 +59,8 @@ func (mc *dealStateMatcher) matcher(ctx context.Context, dealID abi.DealID) even
 
 		// Replace dealStateChangedForID with a function that records the
 		// DealStates so that we can cache them
-		var oldDealStateRootSaved, newDealStateRootSaved actorsmarket.DealStates
-		recorder := func(ctx context.Context, oldDealStateRoot, newDealStateRoot actorsmarket.DealStates) (changed bool, user state.UserData, err error) {
+		var oldDealStateRootSaved, newDealStateRootSaved market.DealStates
+		recorder := func(ctx context.Context, oldDealStateRoot, newDealStateRoot market.DealStates) (changed bool, user state.UserData, err error) {
 			// Record DealStates
 			oldDealStateRootSaved = oldDealStateRoot
 			newDealStateRootSaved = newDealStateRoot

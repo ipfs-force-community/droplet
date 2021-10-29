@@ -80,19 +80,21 @@ func main() {
 		Flags: []cli.Flag{
 			RepoFlag,
 		},
-		Commands: append(cli2.ClientCmds, &cli.Command{
-			Name:  "run",
-			Usage: "run market daemon",
-			Flags: []cli.Flag{
-				NodeUrlFlag,
-				MessagerUrlFlag,
-				AuthTokenFlag,
-				SignerUrlFlag,
-				SignerTokenFlag,
-				DefaultAddressFlag,
-			},
-			Action: marketClient,
-		}),
+		Commands: append(
+			cli2.ClientCmds,
+			&cli.Command{
+				Name:  "run",
+				Usage: "run market daemon",
+				Flags: []cli.Flag{
+					NodeUrlFlag,
+					MessagerUrlFlag,
+					AuthTokenFlag,
+					SignerUrlFlag,
+					SignerTokenFlag,
+					DefaultAddressFlag,
+				},
+				Action: marketClient,
+			}),
 	}
 
 	app.Setup()
@@ -194,9 +196,6 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 	}
 	if cctx.IsSet("auth-token") {
 		cfg.Messager.Token = cctx.String("auth-token")
-	}
-	if cctx.IsSet("messager-token") {
-		cfg.Messager.Token = cctx.String("messager-token")
 	}
 
 	if cctx.IsSet("signer-url") {

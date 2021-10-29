@@ -3,10 +3,6 @@ package storageadapter
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/sealer"
-	marketTypes "github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"strings"
 	"sync"
 	"time"
@@ -21,7 +17,12 @@ import (
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/sealer"
+	marketTypes "github.com/filecoin-project/venus-market/types"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
 )

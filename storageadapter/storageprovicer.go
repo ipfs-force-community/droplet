@@ -1,73 +1,346 @@
 package storageadapter
 
 import (
+	"context"
+	"io"
+	"time"
+
+	"github.com/hannahhoward/go-pubsub"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/host"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/dtutils"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"time"
+	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
+
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/dagstore"
+	"github.com/filecoin-project/venus-market/models/minermgr"
+	"github.com/filecoin-project/venus-market/network"
 )
 
-type StorageProviderV2 struct {
-	apiFull apiface.FullNode
-	net     network.StorageMarketNetwork
-	fs      filestore.FileStore
-	spn     StorageProviderNode
+// StorageProviderV2 provides an interface to the storage market for a single
+// storage miner.
+type StorageProviderV2 interface {
 
-	pieceStore   piecestore.PieceStore
+	// Start initializes deal processing on a StorageProvider and restarts in progress deals.
+	// It also registers the provider with a StorageMarketNetwork so it can receive incoming
+	// messages on the storage market's libp2p protocols
+	Start(ctx context.Context) error
+
+	// Stop terminates processing of deals on a StorageProvider
+	Stop() error
+
+	// SetAsk configures the storage miner's ask with the provided prices (for unverified and verified deals),
+	// duration, and options. Any previously-existing ask is replaced.
+	SetAsk(mAddr address.Address, price abi.TokenAmount, verifiedPrice abi.TokenAmount, duration abi.ChainEpoch, options ...storagemarket.StorageAskOption) error
+
+	// GetAsk returns the storage miner's ask, or nil if one does not exist.
+	GetAsk(mAddr address.Address) (*storagemarket.SignedStorageAsk, error)
+
+	// ListLocalDeals lists deals processed by this storage provider
+	ListLocalDeals(mAddr address.Address) ([]storagemarket.MinerDeal, error)
+
+	// AddStorageCollateral adds storage collateral
+	AddStorageCollateral(ctx context.Context, mAddr address.Address, amount abi.TokenAmount) error
+
+	// GetStorageCollateral returns the current collateral balance
+	GetStorageCollateral(ctx context.Context, mAddr address.Address) (storagemarket.Balance, error)
+
+	// ImportDataForDeal manually imports data for an offline storage deal
+	ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error
+
+	// SubscribeToEvents listens for events that happen related to storage deals on a provider
+	SubscribeToEvents(subscriber storagemarket.ProviderSubscriber) shared.Unsubscribe
+}
+
+type StorageProviderV2Impl struct {
+	net smnet.StorageMarketNetwork
+
+	spn          StorageProviderNode
+	fs           filestore.FileStore
 	conns        *connmanager.ConnManager
 	storedAsk    IStorageAsk
 	dataTransfer datatransfer.Manager
 
-	deals StorageDealStore
+	pubSub *pubsub.PubSub
 
 	unsubDataTransfer datatransfer.Unsubscribe
 
-	dagStore stores.DAGStoreWrapper
-
+	deals           StorageDealStore
+	dealProcess StorageDealProcess
 	transferProcess TransferProcess
+	storageReceiver smnet.StorageReceiver
 }
 
-// NewProvider returns a new storage provider
-func NewProvider(net network.StorageMarketNetwork,
-	fs filestore.FileStore,
-	dagStore stores.DAGStoreWrapper,
-	pieceStore piecestore.PieceStore,
-	dataTransfer datatransfer.Manager,
-	spn StorageProviderNode,
+type internalProviderEvent struct {
+	evt  storagemarket.ProviderEvent
+	deal storagemarket.MinerDeal
+}
+
+func providerDispatcher(evt pubsub.Event, fn pubsub.SubscriberFn) error {
+	ie, ok := evt.(internalProviderEvent)
+	if !ok {
+		return xerrors.New("wrong type of event")
+	}
+	cb, ok := fn.(storagemarket.ProviderSubscriber)
+	if !ok {
+		return xerrors.New("wrong type of callback")
+	}
+	cb(ie.evt, ie.deal)
+	return nil
+}
+
+// NewStorageProviderV2 returns a new storage provider
+func NewStorageProviderV2(
 	storedAsk IStorageAsk,
-) (*StorageProviderV2, error) {
-	h := &StorageProviderV2{
-		net:          net,
+	h host.Host,
+	homeDir *config.HomeDir,
+	pieceStore piecestore.PieceStore,
+	dataTransfer network.ProviderDataTransfer,
+	spn StorageProviderNode,
+	dagStore *dagstore.Wrapper,
+	deals StorageDealStore,
+	minerMgr minermgr.IMinerMgr,
+) (StorageProviderV2, error) {
+	net := smnet.NewFromLibp2pHost(h)
+
+	store, err := filestore.NewLocalFileStore(filestore.OsPath(string(*homeDir)))
+	if err != nil {
+		return nil, err
+	}
+
+	spV2 := &StorageProviderV2Impl{
+		net: net,
+
 		spn:          spn,
-		fs:           fs,
-		pieceStore:   pieceStore,
+		fs:           store,
 		conns:        connmanager.NewConnManager(),
 		storedAsk:    storedAsk,
 		dataTransfer: dataTransfer,
-		dagStore:     dagStore,
+
+		pubSub: pubsub.New(providerDispatcher),
+
+		deals: deals,
 	}
 
+	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.deals, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, dagStore)
+	if err != nil {
+		return nil, err
+	}
+	spV2.dealProcess = dealProcess
+
+	spV2.transferProcess = NewDataTransferProcess(dealProcess, spV2.deals)
 	// register a data transfer event handler -- this will send events to the state machines based on DT events
-	h.unsubDataTransfer = dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(h.transferProcess)) //
+	spV2.unsubDataTransfer = dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(spV2.transferProcess)) // fsm.Group
 
-	err := dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{h.deals}, nil))
+	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.deals, spV2.net, spV2.fs, dealProcess)
+	if err != nil {
+		return nil, err
+	}
+	spV2.storageReceiver = storageReceiver
+
+	err = dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{spV2.deals}, nil))
 	if err != nil {
 		return nil, err
 	}
 
-	err = dataTransfer.RegisterTransportConfigurer(&requestvalidation.StorageDataTransferVoucher{}, dtutils.TransportConfigurer(newProviderStoreGetter(h.deals)))
+	err = dataTransfer.RegisterTransportConfigurer(&requestvalidation.StorageDataTransferVoucher{}, dtutils.TransportConfigurer(newProviderStoreGetter(spV2.deals)))
 	if err != nil {
 		return nil, err
 	}
 
-	return h, nil
+	return spV2, nil
+}
+
+// Start initializes deal processing on a StorageProvider and restarts in progress deals.
+// It also registers the provider with a StorageMarketNetwork so it can receive incoming
+// messages on the storage market's libp2p protocols
+func (p *StorageProviderV2Impl) Start(ctx context.Context) error {
+	err := p.net.SetDelegate(p.storageReceiver)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Stop terminates processing of deals on a StorageProvider
+func (p *StorageProviderV2Impl) Stop() error {
+	p.unsubDataTransfer()
+
+	return p.net.StopHandlingRequests()
+}
+
+// ImportDataForDeal manually imports data for an offline storage deal
+// It will verify that the data in the passed io.Reader matches the expected piece
+// cid for the given deal or it will error
+func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error {
+	// TODO: be able to check if we have enough disk space
+	d, err := p.deals.GetDeal(propCid)
+	if err != nil {
+		return xerrors.Errorf("failed getting deal %s: %w", propCid, err)
+	}
+
+	tempfi, err := p.fs.CreateTemp()
+	if err != nil {
+		return xerrors.Errorf("failed to create temp file for data import: %w", err)
+	}
+	defer tempfi.Close()
+	cleanup := func() {
+		_ = tempfi.Close()
+		_ = p.fs.Delete(tempfi.Path())
+	}
+
+	log.Debugw("will copy imported file to local file", "propCid", propCid)
+	n, err := io.Copy(tempfi, data)
+	if err != nil {
+		cleanup()
+		return xerrors.Errorf("importing deal data failed: %w", err)
+	}
+	log.Debugw("finished copying imported file to local file", "propCid", propCid)
+
+	_ = n // TODO: verify n?
+
+	carSize := uint64(tempfi.Size())
+
+	_, err = tempfi.Seek(0, io.SeekStart)
+	if err != nil {
+		cleanup()
+		return xerrors.Errorf("failed to seek through temp imported file: %w", err)
+	}
+
+	proofType, err := p.spn.GetProofType(ctx, d.Proposal.Provider, nil) // TODO: 判断是不是属于此矿池?
+	if err != nil {
+		cleanup()
+		return xerrors.Errorf("failed to determine proof type: %w", err)
+	}
+	log.Debugw("fetched proof type", "propCid", propCid)
+
+	pieceCid, err := generatePieceCommitment(proofType, tempfi, carSize)
+	if err != nil {
+		cleanup()
+		return xerrors.Errorf("failed to generate commP: %w", err)
+	}
+	log.Debugw("generated pieceCid for imported file", "propCid", propCid)
+
+	if carSizePadded := padreader.PaddedSize(carSize).Padded(); carSizePadded < d.Proposal.PieceSize {
+		// need to pad up!
+		rawPaddedCommp, err := commp.PadCommP(
+			// we know how long a pieceCid "hash" is, just blindly extract the trailing 32 bytes
+			pieceCid.Hash()[len(pieceCid.Hash())-32:],
+			uint64(carSizePadded),
+			uint64(d.Proposal.PieceSize),
+		)
+		if err != nil {
+			cleanup()
+			return err
+		}
+		pieceCid, _ = commcid.DataCommitmentV1ToCID(rawPaddedCommp)
+	}
+
+	// Verify CommP matches
+	if !pieceCid.Equals(d.Proposal.PieceCID) {
+		cleanup()
+		return xerrors.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, d.Proposal.PieceCID)
+	}
+
+	log.Debugw("will fire ProviderEventVerifiedData for imported file", "propCid", propCid)
+
+	// TODO: 实现 ProviderEventVerifiedData 后的状态机逻辑
+	d.PiecePath = filestore.Path("")
+	d.MetadataPath = tempfi.Path()
+
+	d.State = storagemarket.StorageDealReserveProviderFunds
+
+	return p.dealProcess.HandleOff(ctx, d)
+}
+
+func generatePieceCommitment(rt abi.RegisteredSealProof, rd io.Reader, pieceSize uint64) (cid.Cid, error) {
+	paddedReader, paddedSize := padreader.New(rd, pieceSize)
+	commitment, err := ffiwrapper.GeneratePieceCIDFromFile(rt, paddedReader, paddedSize)
+	if err != nil {
+		return cid.Undef, err
+	}
+	return commitment, nil
+}
+
+// GetAsk returns the storage miner's ask, or nil if one does not exist.
+func (p *StorageProviderV2Impl) GetAsk(mAddr address.Address) (*storagemarket.SignedStorageAsk, error) {
+	return p.storedAsk.GetAsk(mAddr)
+}
+
+// AddStorageCollateral adds storage collateral
+func (p *StorageProviderV2Impl) AddStorageCollateral(ctx context.Context, mAddr address.Address, amount abi.TokenAmount) error {
+	done := make(chan error, 1)
+
+	mcid, err := p.spn.AddFunds(ctx, mAddr, amount)
+	if err != nil {
+		return err
+	}
+
+	err = p.spn.WaitForMessage(ctx, mcid, func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error {
+		if err != nil {
+			done <- xerrors.Errorf("AddFunds errored: %w", err)
+		} else if code != exitcode.Ok {
+			done <- xerrors.Errorf("AddFunds error, exit code: %s", code.String())
+		} else {
+			done <- nil
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return <-done
+}
+
+// GetStorageCollateral returns the current collateral balance
+func (p *StorageProviderV2Impl) GetStorageCollateral(ctx context.Context, mAddr address.Address) (storagemarket.Balance, error) {
+	tok, _, err := p.spn.GetChainHead(ctx)
+	if err != nil {
+		return storagemarket.Balance{}, err
+	}
+
+	return p.spn.GetBalance(ctx, mAddr, tok)
+}
+
+// ListLocalDeals lists deals processed by this storage provider
+func (p *StorageProviderV2Impl) ListLocalDeals(mAddr address.Address) ([]storagemarket.MinerDeal, error) {
+	var out []storagemarket.MinerDeal
+	if err := p.deals.List(mAddr, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// SetAsk configures the storage miner's ask with the provided price,
+// duration, and options. Any previously-existing ask is replaced.
+func (p *StorageProviderV2Impl) SetAsk(mAddr address.Address, price abi.TokenAmount, verifiedPrice abi.TokenAmount, duration abi.ChainEpoch, options ...storagemarket.StorageAskOption) error {
+	return p.storedAsk.SetAsk(mAddr, price, verifiedPrice, duration, options...)
+}
+
+// SubscribeToEvents allows another component to listen for events on the StorageProvider
+// in order to track deals as they progress through the deal flow
+func (p *StorageProviderV2Impl) SubscribeToEvents(subscriber storagemarket.ProviderSubscriber) shared.Unsubscribe {
+	return shared.Unsubscribe(p.pubSub.Subscribe(subscriber))
 }
 
 func curTime() cbg.CborTime {

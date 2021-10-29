@@ -5,6 +5,7 @@ import (
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
@@ -14,6 +15,16 @@ var _ TransferProcess = (*DataTransferProcess)(nil)
 type DataTransferProcess struct {
 	dealProcess StorageDealProcess
 	deals       StorageDealStore
+}
+
+func NewDataTransferProcess(
+	dealProcess StorageDealProcess,
+	deals StorageDealStore,
+) TransferProcess {
+	return &DataTransferProcess{
+		dealProcess: dealProcess,
+		deals:       deals,
+	}
 }
 
 func (d *DataTransferProcess) HandleCompleteFor(proposalid cid.Cid) error {

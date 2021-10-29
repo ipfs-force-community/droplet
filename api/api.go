@@ -28,16 +28,17 @@ import (
 var _ = xerrors.New("") // nolint
 
 type MarketFullNode interface {
-	ActorAddress(context.Context) (address.Address, error)                    //perm:read
+	ActorAddress(context.Context) ([]address.Address, error)                  //perm:read
+	ActorExist(ctx context.Context, addr address.Address) (bool, error)       //perm:read
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error) //perm:read
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                          //perm:write
-	MarketListDeals(ctx context.Context) ([]types.MarketDeal, error)                                                                                                                       //perm:read
+	MarketListDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error)                                                                                              //perm:read
 	MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)                                                                                             //perm:read
 	MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error)                                                                                                      //perm:read
-	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)                                                                                                      //perm:read
-	MarketSetAsk(ctx context.Context, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error //perm:admin
-	MarketGetAsk(ctx context.Context) (*storagemarket.SignedStorageAsk, error)                                                                                                             //perm:read
+	MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]storagemarket.MinerDeal, error)                                                                                                      //perm:read
+	MarketSetAsk(ctx context.Context, mAddr address.Address, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error //perm:admin
+	MarketGetAsk(ctx context.Context, mAddr address.Address) (*storagemarket.SignedStorageAsk, error)                                                                                                             //perm:read
 	MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error                                                                                                            //perm:admin
 	MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error)                                                                                                               //perm:read
 	MarketListDataTransfers(ctx context.Context) ([]types.DataTransferChannel, error)                                                                                                      //perm:write
@@ -55,7 +56,6 @@ type MarketFullNode interface {
 	PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error)   //perm:read
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
-	DealsList(ctx context.Context) ([]types.MarketDeal, error)                   //perm:admin
 	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)               //perm:admin
 	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error              //perm:admin
 	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)             //perm:admin

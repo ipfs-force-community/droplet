@@ -3,8 +3,6 @@ package storageadapter
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/venus-market/sealer"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -15,10 +13,13 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+
+	"github.com/filecoin-project/venus-market/sealer"
 )
 
 type eventsCalledAPI interface {
