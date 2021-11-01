@@ -8,6 +8,7 @@ import (
 	mtypes "github.com/filecoin-project/venus-messager/types"
 	"golang.org/x/xerrors"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type storageAsk struct {
@@ -99,7 +100,10 @@ func (a *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 	if ask == nil || ask.Ask == nil {
 		return xerrors.Errorf("param is nil")
 	}
-	return a.DB.Save(fromStorageAsk(ask)).Error
+	return a.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "miner"}},
+		UpdateAll: true,
+	}).Save(fromStorageAsk(ask)).Error
 }
 
 // TODO:may casuse reduplicative closing?

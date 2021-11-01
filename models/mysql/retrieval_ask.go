@@ -16,10 +16,10 @@ import (
 )
 
 type TimeStampOrm struct {
-	ID        uint   `gorm:"primarykey"`
-	CreatedAt uint64 `gorm:"type:bigint"`
-	UpdatedAt uint64 `gorm:"type:bigint"`
-	DeleteAt  uint64 `gorm:"type:bigint;index;default:null"`
+	ID        uint   `gorm:"primary_key"`
+	CreatedAt uint64 `gorm:"type:bigint unsigned"`
+	UpdatedAt uint64 `gorm:"type:bigint unsigned"`
+	DeleteAt  uint64 `gorm:"type:bigint unsigned;index;default:null"`
 }
 
 type retrievalAskRepo struct {

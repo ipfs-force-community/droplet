@@ -47,18 +47,18 @@ type storageDeal struct {
 	TransferChannelId ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
 	SectorNumber      uint64    `gorm:"column:sector_number;type:bigint unsigned;"`
 
-	InboundCAR string `gorm:"column:addr;type:varchar(128);primary_key"`
+	InboundCAR string `gorm:"column:addr;type:varchar(128);"`
 
 	Offset uint64 `gorm:"column:offset;type:bigint"`
 	Length uint64 `gorm:"column:length;type:bigint"`
 }
 
 type ClientDealProposal struct {
-	PieceCID     string `gorm:"column:addr;type:varchar(128);"`
+	PieceCID     string `gorm:"column:piece_cid;type:varchar(128);index"`
 	PieceSize    uint64 `gorm:"column:piece_size;type:bigint unsigned;"`
 	VerifiedDeal bool   `gorm:"column:verified_deal;"`
 	Client       string `gorm:"column:client;type:varchar(128);"`
-	Provider     string `gorm:"column:provider;type:varchar(128);"`
+	Provider     string `gorm:"column:provider;type:varchar(128);index"`
 
 	// Label is an arbitrary client chosen label to apply to the deal
 	Label string `gorm:"column:label;type:varchar(256);"`
@@ -292,16 +292,16 @@ func (m *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error)
 	return toStorageDeal(&md)
 }
 
-// todo: mysql query with condition:
-//  select xxxx ... from xxxx where 'provider' = miner;
 func (m *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
-	if err := m.travelDeals(func(deal *types.MinerDeal) (err error) {
-		if deal.ClientDealProposal.Proposal.Provider == miner {
-			storageDeals = append(storageDeals, deal)
-		}
-		return
-	}); err != nil {
+	if err := m.travelDeals(
+		map[string]interface{}{"cdp_provider": miner.String()},
+		func(deal *types.MinerDeal) (err error) {
+			if deal.ClientDealProposal.Proposal.Provider == miner {
+				storageDeals = append(storageDeals, deal)
+			}
+			return
+		}); err != nil {
 		return nil, err
 	}
 	return storageDeals, nil
@@ -312,27 +312,25 @@ func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo,
 		PieceCID: pieceCID,
 		Deals:    nil,
 	}
-
-	if err := m.travelDeals(func(deal *types.MinerDeal) error {
-		if deal.ClientDealProposal.Proposal.PieceCID.Equals(pieceCID) {
+	if err := m.travelDeals(
+		map[string]interface{}{"cdp_piece_cid": pieceCID.String()},
+		func(deal *types.MinerDeal) error {
 			pieceInfo.Deals = append(pieceInfo.Deals, piecestore.DealInfo{
 				DealID:   deal.DealID,
 				SectorID: deal.SectorNumber,
 				Offset:   deal.Offset,
-				Length:   deal.Length,
-			})
-		}
-		return nil
-	}); err != nil {
+				Length:   deal.Length},
+			)
+			return nil
+		}); err != nil {
 		return nil, err
 	}
-
 	return &pieceInfo, nil
 }
 
-func (m *storageDealRepo) travelDeals(travelFn func(deal *types.MinerDeal) error) error {
+func (m *storageDealRepo) travelDeals(condition map[string]interface{}, travelFn func(deal *types.MinerDeal) error) error {
 	var mds []*storageDeal
-	if err := m.DB.Find(&mds).Error; err != nil {
+	if err := m.DB.Find(&mds, condition).Error; err != nil {
 		return err
 	}
 	for _, md := range mds {
