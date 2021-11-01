@@ -3,10 +3,12 @@ package impl
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/minermgr"
 	"os"
 	"sort"
 	"time"
+
+	"github.com/filecoin-project/venus-market/minermgr"
+	"github.com/filecoin-project/venus-market/retrievaladapter"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -48,17 +50,18 @@ type MarketNodeImpl struct {
 	MarketEventAPI
 	fx.In
 
-	FullNode          apiface.FullNode
-	Host              host.Host
-	StorageProvider   storageadapter2.StorageProviderV2
-	RetrievalProvider retrievalmarket.RetrievalProvider
-	DataTransfer      network.ProviderDataTransfer
-	DealPublisher     *storageadapter2.DealPublisher
-	PieceStore        piece.ExtendPieceStore
-	Messager          clients2.IMessager `optional:"true"`
-	DAGStore          *dagstore.DAGStore
-	PieceStorage      piece.PieceStorage
-	MinerMgr          minermgr.IMinerMgr
+	FullNode            apiface.FullNode
+	Host                host.Host
+	StorageProvider     storageadapter2.StorageProviderV2
+	RetrievalProvider   retrievaladapter.IRetrievalProvider
+	RetrievalAskHandler retrievaladapter.AskHandler
+	DataTransfer        network.ProviderDataTransfer
+	DealPublisher       *storageadapter2.DealPublisher
+	PieceStore          piece.ExtendPieceStore
+	Messager            clients2.IMessager `optional:"true"`
+	DAGStore            *dagstore.DAGStore
+	PieceStorage        piece.PieceStorage
+	MinerMgr            minermgr.IMinerMgr
 
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc
@@ -115,9 +118,12 @@ func (m MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Add
 	return m.listDeals(ctx, addrs)
 }
 
-func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error) {
+func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]retrievalmarket.ProviderDealState, error) {
 	var out []retrievalmarket.ProviderDealState
-	deals := m.RetrievalProvider.ListDeals()
+	deals, err := m.RetrievalProvider.ListDeals()
+	if err != nil {
+		return nil, err
+	}
 
 	for _, deal := range deals {
 		if deal.ChannelID != nil {
@@ -125,7 +131,7 @@ func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]retriev
 				deal.ChannelID = nil // don't try to push unparsable peer IDs over jsonrpc
 			}
 		}
-		out = append(out, deal)
+		// todo: 按miner过滤交易
 	}
 
 	return out, nil
@@ -164,13 +170,12 @@ func (m MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address)
 	return m.StorageProvider.GetAsk(mAddr)
 }
 
-func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, rask *retrievalmarket.Ask) error {
-	m.RetrievalProvider.SetAsk(rask)
-	return nil
+func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, ask *retrievalmarket.Ask) error {
+	return m.RetrievalAskHandler.SetAsk(mAddr, ask)
 }
 
-func (m MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error) {
-	return m.RetrievalProvider.GetAsk(), nil
+func (m MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error) {
+	return m.RetrievalAskHandler.GetAsk(mAddr)
 }
 
 func (m MarketNodeImpl) MarketListDataTransfers(ctx context.Context) ([]types.DataTransferChannel, error) {

@@ -3,21 +3,20 @@ package retrievaladapter
 import (
 	"context"
 	"errors"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
-	"github.com/filecoin-project/venus-market/models/repo"
 	"math"
 	"time"
 
-	"github.com/hannahhoward/go-pubsub"
-	"golang.org/x/xerrors"
-
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/dtutils"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/hannahhoward/go-pubsub"
+	"golang.org/x/xerrors"
 )
 
 var queryTimeout = 5 * time.Second
@@ -82,8 +81,7 @@ func NewProvider(node retrievalmarket.RetrievalProviderNode,
 	storageDealsRepo := repo.StorageDealRepo()
 	retrievalDealRepo := repo.RetrievalDealRepo()
 
-
-	pieceInfo := &PieceInfo{cidInfoRepo:repo.CidInfoRepo(), dealRepo: repo.StorageDealRepo()}
+	pieceInfo := &PieceInfo{cidInfoRepo: repo.CidInfoRepo(), dealRepo: repo.StorageDealRepo()}
 	p := &RetrievalProviderV2{
 		dataTransfer:           dataTransfer,
 		node:                   node,

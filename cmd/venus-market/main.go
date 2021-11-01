@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
 	"log"
 	"os"
+
+	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
 
 	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/api/clients"
@@ -59,7 +60,7 @@ var (
 	}
 	AuthTokeFlag = &cli.StringFlag{
 		Name:  "auth-token",
-		Usage: "token for connect venus componets",
+		Usage: "token for connect venus components",
 	}
 
 	MessagerUrlFlag = &cli.StringFlag{

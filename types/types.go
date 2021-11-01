@@ -117,4 +117,3 @@ type SignInfo struct {
 	Type wallet.MsgType
 	Addr address.Address
 }
-

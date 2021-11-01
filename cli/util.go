@@ -3,6 +3,15 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"os/signal"
+	"path"
+	"sort"
+	"strings"
+	"syscall"
+
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -17,15 +26,16 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
-	"io"
-	"io/ioutil"
-	"os"
-	"os/signal"
-	"path"
-	"sort"
-	"strings"
-	"syscall"
 )
+
+var minerFlag = &cli.StringFlag{
+	Name: "miner",
+}
+
+var requiredMinerFlag = &cli.StringFlag{
+	Name:     "miner",
+	Required: true,
+}
 
 func NewMarketNode(cctx *cli.Context) (api.MarketFullNode, jsonrpc.ClientCloser, error) {
 	homePath, err := homedir.Expand(cctx.String("repo"))

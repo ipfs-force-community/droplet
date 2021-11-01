@@ -2,6 +2,7 @@ package retrievaladapter
 
 import (
 	"context"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -83,5 +84,6 @@ func (d *DataTransferHandler) HandleErrorForDeal(ctx context.Context, identifier
 		deal.Status = rm.DealStatusErrored
 		return d.retrievalDealStore.SaveDeal(deal)
 	}
+	// TODO: deal 是nil会panic
 	return d.retrievalDealHandler.Error(ctx, deal, err)
 }
