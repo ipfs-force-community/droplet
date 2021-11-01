@@ -58,8 +58,8 @@ type FundManager struct {
 }
 
 // func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, repo repo.Repo) *FundManager {
-func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, repo repo.Repo) *FundManager {
-	fm := newFundManager(&api, repo.FundRepo())
+func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, repo repo.FundRepo) *FundManager {
+	fm := newFundManager(&api, repo)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return fm.Start()

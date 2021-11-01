@@ -167,7 +167,9 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 				}),
 			)
 		}
-		return builder.Options(commonOpts, opts)
+		return builder.Options(commonOpts, opts, builder.Override(new(repo.FundRepo), func(repo repo.Repo) repo.FundRepo {
+			return repo.FundRepo()
+		}))
 	} else {
 		return builder.Options(
 			builder.Override(new(repo.MetadataDS), NewMetadataDS),
@@ -179,8 +181,8 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 			builder.Override(new(repo.RetrievalClientDS), NewRetrievalClientDS),
 			builder.Override(new(repo.ImportClientDS), NewImportClientDS),
 			builder.Override(new(repo.ClientTransferDS), NewClientTransferDS),
-			builder.Override(new(repo.Repo), func() repo.Repo {
-				return nil
+			builder.Override(new(repo.FundRepo), func(fundDS repo.FundMgrDS) repo.FundRepo {
+				return badger_models.NewFundRepo(fundDS)
 			}),
 		)
 	}
