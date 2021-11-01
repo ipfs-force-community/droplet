@@ -269,7 +269,6 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			return storageDealPorcess.HandleError(deal, xerrors.Errorf("proposal CommP doesn't match calculated CommP"))
 		}
 
-		// 进入
 		deal.PiecePath = filestore.Path("")
 		deal.MetadataPath = metadataPath
 		deal.State = storagemarket.StorageDealReserveProviderFunds
@@ -283,6 +282,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 	}
 
 	// ReserveProviderFunds
+	node := storageDealPorcess.spn
 	if deal.State == storagemarket.StorageDealReserveProviderFunds {
 		tok, _, err := storageDealPorcess.spn.GetChainHead(ctx)
 		if err != nil {
@@ -306,16 +306,29 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		}
 
 		// if no message was sent, and there was no error, funds were already available
-		if mcid == cid.Undef {
-			deal.State = storagemarket.StorageDealPublish
-		} else {
+		if mcid != cid.Undef {
 			deal.AddFundsCid = &mcid
-			deal.State = storagemarket.StorageDealProviderFunding
-		}
-	}
 
-	// PublishDeal
-	if deal.State == storagemarket.StorageDealPublish {
+			deal.State = storagemarket.StorageDealProviderFunding // WaitForFunding
+			// TODO: 返回值处理
+			errW := node.WaitForMessage(ctx, *deal.AddFundsCid, func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error {
+				if err != nil {
+					return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds errored: %w", err))
+				}
+				if code != exitcode.Ok {
+					return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds exit code: %s", code.String()))
+				}
+				deal.State = storagemarket.StorageDealPublish
+
+				return nil
+			})
+
+			if errW != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("Wait AddFunds msg for Provider errored: %w", err))
+			}
+		}
+
+		deal.State = storagemarket.StorageDealPublish // PublishDeal
 		smDeal := storagemarket.MinerDeal{
 			Client:             deal.Client,
 			ClientDealProposal: deal.ClientDealProposal,
@@ -324,52 +337,14 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			Ref:                deal.Ref,
 		}
 
-		mcid, err := storageDealPorcess.spn.PublishDeals(ctx, smDeal)
+		pdMCid, err := node.PublishDeals(ctx, smDeal)
 		if err != nil {
 			return storageDealPorcess.HandleError(deal, xerrors.Errorf("publishing deal: %w", err))
 		}
 
-		deal.PublishCid = &mcid
-		deal.State = storagemarket.StorageDealPublishing
-	}
+		deal.PublishCid = &pdMCid
 
-	// WaitForFunding
-	if deal.State == storagemarket.StorageDealProviderFunding {
-		node := storageDealPorcess.spn
-
-		err := node.WaitForMessage(ctx, *deal.AddFundsCid, func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error {
-			if err != nil {
-				return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds errored: %w", err))
-			}
-			if code != exitcode.Ok {
-				return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds exit code: %w", err))
-			}
-
-			deal.State = storagemarket.StorageDealPublish
-
-			return nil
-		})
-
-		// StorageDealPublish(PublishDeal)
-		smDeal := storagemarket.MinerDeal{
-			Client:             deal.Client,
-			ClientDealProposal: deal.ClientDealProposal,
-			ProposalCid:        deal.ProposalCid,
-			State:              deal.State,
-			Ref:                deal.Ref,
-		}
-
-		mcid, err := storageDealPorcess.spn.PublishDeals(ctx, smDeal)
-		if err != nil {
-			return storageDealPorcess.HandleError(deal, xerrors.Errorf("publishing deal: %w", err))
-		}
-
-		deal.PublishCid = &mcid
-		deal.State = storagemarket.StorageDealPublishing
-	}
-
-	// WaitForPublish
-	if deal.State == storagemarket.StorageDealPublishing {
+		deal.State = storagemarket.StorageDealPublishing // WaitForPublish
 		res, err := storageDealPorcess.spn.WaitForPublishDeals(ctx, *deal.PublishCid, deal.Proposal)
 		if err != nil {
 			return storageDealPorcess.HandleError(deal, xerrors.Errorf("PublishStorageDeals errored: %w", err))
@@ -381,11 +356,8 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 		deal.DealID = res.DealID
 		deal.PublishCid = &res.FinalCid
-		deal.State = storagemarket.StorageDealStaged
-	}
 
-	// HandoffDeal
-	if deal.State == storagemarket.StorageDealStaged {
+		deal.State = storagemarket.StorageDealStaged // HandoffDeal
 		var carFilePath string
 		if deal.PiecePath != "" {
 			// Data for offline deals is stored on disk, so if PiecePath is set,
@@ -461,92 +433,84 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			// In either of these two cases, isActive will be true.
 			switch {
 			case err != nil:
-				storageDealPorcess.HandleError(deal, err) // TODO: ???
+				storageDealPorcess.HandleError(deal, err)
 			case isActive:
 				deal.State = storagemarket.StorageDealFinalizing
 			default:
-				deal.SectorNumber = sectorNumber
-				deal.State = storagemarket.StorageDealSealing
+				{
+					deal.SectorNumber = sectorNumber
+
+					deal.State = storagemarket.StorageDealSealing // VerifyDealActivated
+					// TODO: consider waiting for seal to happen
+					cbDSC := func(err error) {
+						if err != nil {
+							storageDealPorcess.HandleError(deal, err)
+						} else {
+							deal.State = storagemarket.StorageDealFinalizing // CleanupDeal
+							if deal.PiecePath != "" {
+								err := storageDealPorcess.fs.Delete(deal.PiecePath)
+								if err != nil {
+									log.Warnf("deleting piece at path %s: %w", deal.PiecePath, err)
+								}
+							}
+							if deal.MetadataPath != "" {
+								err := storageDealPorcess.fs.Delete(deal.MetadataPath)
+								if err != nil {
+									log.Warnf("deleting piece at path %s: %w", deal.MetadataPath, err)
+								}
+							}
+
+							if deal.InboundCAR != "" {
+								if err := storageDealPorcess.TerminateBlockstore(deal.ProposalCid, deal.InboundCAR); err != nil {
+									log.Warnf("failed to cleanup blockstore, car_path=%s: %s", deal.InboundCAR, err)
+								}
+							}
+
+							deal.State = storagemarket.StorageDealActive // WaitForDealCompletion
+							// At this point we have all the data so we can unprotect the connection
+							storageDealPorcess.peerTagger.UntagPeer(deal.Client, deal.ProposalCid.String())
+
+							node := storageDealPorcess.spn
+
+							// Called when the deal expires
+							expiredCb := func(err error) {
+								if err != nil {
+									storageDealPorcess.HandleError(deal, xerrors.Errorf("deal expiration err: %w", err))
+								} else {
+									deal.State = storagemarket.StorageDealExpired
+								}
+							}
+
+							// Called when the deal is slashed
+							slashedCb := func(slashEpoch abi.ChainEpoch, err error) {
+								if err != nil {
+									storageDealPorcess.HandleError(deal, xerrors.Errorf("deal slashing err: %w", err))
+								} else {
+									deal.SlashEpoch = slashEpoch
+									deal.State = storagemarket.StorageDealSlashed
+								}
+							}
+
+							if err := node.OnDealExpiredOrSlashed(ctx, deal.DealID, expiredCb, slashedCb); err != nil {
+								storageDealPorcess.HandleError(deal, err)
+							}
+						}
+					}
+
+					err := node.OnDealSectorCommitted(ctx, deal.Proposal.Provider, deal.DealID, deal.SectorNumber, deal.Proposal, deal.PublishCid, cbDSC)
+					if err != nil {
+						storageDealPorcess.HandleError(deal, err)
+					}
+				}
 			}
 		}
 
-		err := storageDealPorcess.spn.OnDealSectorPreCommitted(ctx, deal.Proposal.Provider, deal.DealID, deal.Proposal, deal.PublishCid, cb)
-		if err != nil {
-			return storageDealPorcess.HandleError(deal, err)
-		}
-	}
-
-	// VerifyDealActivated
-	if deal.State == storagemarket.StorageDealSealing {
-		// TODO: consider waiting for seal to happen
-		cb := func(err error) {
+		go func() {
+			err := storageDealPorcess.spn.OnDealSectorPreCommitted(ctx, deal.Proposal.Provider, deal.DealID, deal.Proposal, deal.PublishCid, cb)
 			if err != nil {
 				storageDealPorcess.HandleError(deal, err)
-			} else {
-				deal.State = storagemarket.StorageDealFinalizing
 			}
-		}
-
-		err := storageDealPorcess.spn.OnDealSectorCommitted(ctx, deal.Proposal.Provider, deal.DealID, deal.SectorNumber, deal.Proposal, deal.PublishCid, cb)
-		if err != nil {
-			return storageDealPorcess.HandleError(deal, err)
-		}
-		return nil
-	}
-
-	// CleanupDeal
-	if deal.State == storagemarket.StorageDealFinalizing {
-		if deal.PiecePath != "" {
-			err := storageDealPorcess.fs.Delete(deal.PiecePath)
-			if err != nil {
-				log.Warnf("deleting piece at path %s: %w", deal.PiecePath, err)
-			}
-		}
-		if deal.MetadataPath != "" {
-			err := storageDealPorcess.fs.Delete(deal.MetadataPath)
-			if err != nil {
-				log.Warnf("deleting piece at path %s: %w", deal.MetadataPath, err)
-			}
-		}
-
-		if deal.InboundCAR != "" {
-			if err := storageDealPorcess.TerminateBlockstore(deal.ProposalCid, deal.InboundCAR); err != nil {
-				log.Warnf("failed to cleanup blockstore, car_path=%s: %s", deal.InboundCAR, err)
-			}
-		}
-
-		deal.State = storagemarket.StorageDealActive
-	}
-
-	// WaitForDealCompletion
-	if deal.State == storagemarket.StorageDealActive {
-		// At this point we have all the data so we can unprotect the connection
-		storageDealPorcess.peerTagger.UntagPeer(deal.Client, deal.ProposalCid.String())
-
-		node := storageDealPorcess.spn
-
-		// Called when the deal expires
-		expiredCb := func(err error) {
-			if err != nil {
-				storageDealPorcess.HandleError(deal, xerrors.Errorf("deal expiration err: %w", err))
-			} else {
-				deal.State = storagemarket.StorageDealExpired
-			}
-		}
-
-		// Called when the deal is slashed
-		slashedCb := func(slashEpoch abi.ChainEpoch, err error) {
-			if err != nil {
-				storageDealPorcess.HandleError(deal, xerrors.Errorf("deal slashing err: %w", err))
-			} else {
-				deal.SlashEpoch = slashEpoch
-				deal.State = storagemarket.StorageDealSlashed
-			}
-		}
-
-		if err := node.OnDealExpiredOrSlashed(ctx, deal.DealID, expiredCb, slashedCb); err != nil {
-			storageDealPorcess.HandleError(deal, err)
-		}
+		}()
 	}
 
 	return nil
