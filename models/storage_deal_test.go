@@ -151,6 +151,10 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	assert.Nil(t, err)
 	assert.Equal(t, len(list), 1)
 	compareDeal(t, list[0], deal)
+
+	_, err = dealRepo.GetDeal(randCid(t))
+	require.Error(t, err, "recode shouldn't be found")
+
 }
 
 func compareDeal(t *testing.T, actual, excepted *types.MinerDeal) {
