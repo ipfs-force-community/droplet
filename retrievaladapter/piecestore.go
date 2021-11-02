@@ -2,10 +2,11 @@ package retrievaladapter
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
+	"golang.org/x/xerrors"
 )
 
 type PieceInfo struct {

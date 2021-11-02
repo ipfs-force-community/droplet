@@ -111,7 +111,7 @@ func (m *MinerMgrImpl) GetMinerFromVenusAuth(ctx context.Context, skip, limit in
 func (m *MinerMgrImpl) addAddress(addrs ...address.Address) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
-	var filter map[address.Address]struct{}
+	filter := make(map[address.Address]struct{}, len(m.miners))
 	for _, mAddr := range m.miners {
 		filter[mAddr] = struct{}{}
 	}
@@ -128,7 +128,7 @@ func (m *MinerMgrImpl) addAddress(addrs ...address.Address) error {
 func (m *MinerMgrImpl) addAddressStr(addrs ...string) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
-	var filter map[address.Address]struct{}
+	filter := make(map[address.Address]struct{}, len(m.miners))
 	for _, mAddr := range m.miners {
 		filter[mAddr] = struct{}{}
 	}

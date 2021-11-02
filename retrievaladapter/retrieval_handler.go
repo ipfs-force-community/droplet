@@ -3,6 +3,7 @@ package retrievaladapter
 import (
 	"context"
 	"errors"
+
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/providerstates"
 	"github.com/filecoin-project/go-statemachine"

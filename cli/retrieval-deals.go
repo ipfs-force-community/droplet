@@ -5,6 +5,8 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/docker/go-units"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -124,6 +126,9 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 var retrievalDealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all active retrieval deals for this miner",
+	Flags: []cli.Flag{
+		minerFlag,
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
@@ -131,7 +136,15 @@ var retrievalDealsListCmd = &cli.Command{
 		}
 		defer closer()
 
-		deals, err := api.MarketListRetrievalDeals(DaemonContext(cctx))
+		var mAddr address.Address
+		if cctx.IsSet("miner") {
+			mAddr, err = address.NewFromString(cctx.String("miner"))
+			if err != nil {
+				return err
+			}
+		}
+
+		deals, err := api.MarketListRetrievalDeals(DaemonContext(cctx), mAddr)
 		if err != nil {
 			return err
 		}
@@ -181,6 +194,7 @@ var retrievalSetAskCmd = &cli.Command{
 			Usage:       "Set the payment interval increase (in bytes) for retrieval",
 			DefaultText: "1MiB",
 		},
+		requiredMinerFlag,
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := DaemonContext(cctx)
@@ -191,7 +205,12 @@ var retrievalSetAskCmd = &cli.Command{
 		}
 		defer closer()
 
-		ask, err := api.MarketGetRetrievalAsk(ctx)
+		mAddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return err
+		}
+
+		ask, err := api.MarketGetRetrievalAsk(ctx, mAddr)
 		if err != nil {
 			return err
 		}
@@ -228,14 +247,16 @@ var retrievalSetAskCmd = &cli.Command{
 			ask.PaymentIntervalIncrease = uint64(v)
 		}
 
-		return api.MarketSetRetrievalAsk(ctx, ask)
+		return api.MarketSetRetrievalAsk(ctx, mAddr, ask)
 	},
 }
 
 var retrievalGetAskCmd = &cli.Command{
 	Name:  "get-ask",
 	Usage: "Get the provider's current retrieval ask",
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		requiredMinerFlag,
+	},
 	Action: func(cctx *cli.Context) error {
 		ctx := DaemonContext(cctx)
 
@@ -245,7 +266,12 @@ var retrievalGetAskCmd = &cli.Command{
 		}
 		defer closer()
 
-		ask, err := api.MarketGetRetrievalAsk(ctx)
+		mAddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return err
+		}
+
+		ask, err := api.MarketGetRetrievalAsk(ctx, mAddr)
 		if err != nil {
 			return err
 		}

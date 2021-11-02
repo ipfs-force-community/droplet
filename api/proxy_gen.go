@@ -4,6 +4,8 @@ package api
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -23,7 +25,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
-	"time"
 )
 
 type MarketClientNodeStruct struct {
@@ -171,7 +172,7 @@ type MarketFullNodeStruct struct {
 
 		MarketGetReserved func(p0 context.Context, p1 address.Address) (vTypes.BigInt, error) `perm:"sign"`
 
-		MarketGetRetrievalAsk func(p0 context.Context) (*retrievalmarket.Ask, error) `perm:"read"`
+		MarketGetRetrievalAsk func(p0 context.Context, p1 address.Address) (*retrievalmarket.Ask, error) `perm:"read"`
 
 		MarketImportDealData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"write"`
 
@@ -181,7 +182,7 @@ type MarketFullNodeStruct struct {
 
 		MarketListIncompleteDeals func(p0 context.Context, p1 address.Address) ([]storagemarket.MinerDeal, error) `perm:"read"`
 
-		MarketListRetrievalDeals func(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) `perm:"read"`
+		MarketListRetrievalDeals func(p0 context.Context, p1 address.Address) ([]retrievalmarket.ProviderDealState, error) `perm:"read"`
 
 		MarketPendingDeals func(p0 context.Context) (types.PendingDealInfo, error) `perm:"write"`
 
@@ -195,7 +196,7 @@ type MarketFullNodeStruct struct {
 
 		MarketSetAsk func(p0 context.Context, p1 address.Address, p2 vTypes.BigInt, p3 vTypes.BigInt, p4 abi.ChainEpoch, p5 abi.PaddedPieceSize, p6 abi.PaddedPieceSize) error `perm:"admin"`
 
-		MarketSetRetrievalAsk func(p0 context.Context, p1 *retrievalmarket.Ask) error `perm:"admin"`
+		MarketSetRetrievalAsk func(p0 context.Context, p1 address.Address, p2 *retrievalmarket.Ask) error `perm:"admin"`
 
 		MarketWithdraw func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) `perm:"sign"`
 
@@ -774,11 +775,11 @@ func (s *MarketFullNodeStub) MarketGetReserved(p0 context.Context, p1 address.Ad
 	return *new(vTypes.BigInt), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
-	return s.Internal.MarketGetRetrievalAsk(p0)
+func (s *MarketFullNodeStruct) MarketGetRetrievalAsk(p0 context.Context, p1 address.Address) (*retrievalmarket.Ask, error) {
+	return s.Internal.MarketGetRetrievalAsk(p0, p1)
 }
 
-func (s *MarketFullNodeStub) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
+func (s *MarketFullNodeStub) MarketGetRetrievalAsk(p0 context.Context, p1 address.Address) (*retrievalmarket.Ask, error) {
 	return nil, xerrors.New("method not supported")
 }
 
@@ -814,11 +815,11 @@ func (s *MarketFullNodeStub) MarketListIncompleteDeals(p0 context.Context, p1 ad
 	return *new([]storagemarket.MinerDeal), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MarketListRetrievalDeals(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) {
-	return s.Internal.MarketListRetrievalDeals(p0)
+func (s *MarketFullNodeStruct) MarketListRetrievalDeals(p0 context.Context, p1 address.Address) ([]retrievalmarket.ProviderDealState, error) {
+	return s.Internal.MarketListRetrievalDeals(p0, p1)
 }
 
-func (s *MarketFullNodeStub) MarketListRetrievalDeals(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) {
+func (s *MarketFullNodeStub) MarketListRetrievalDeals(p0 context.Context, p1 address.Address) ([]retrievalmarket.ProviderDealState, error) {
 	return *new([]retrievalmarket.ProviderDealState), xerrors.New("method not supported")
 }
 
@@ -870,11 +871,11 @@ func (s *MarketFullNodeStub) MarketSetAsk(p0 context.Context, p1 address.Address
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
-	return s.Internal.MarketSetRetrievalAsk(p0, p1)
+func (s *MarketFullNodeStruct) MarketSetRetrievalAsk(p0 context.Context, p1 address.Address, p2 *retrievalmarket.Ask) error {
+	return s.Internal.MarketSetRetrievalAsk(p0, p1, p2)
 }
 
-func (s *MarketFullNodeStub) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
+func (s *MarketFullNodeStub) MarketSetRetrievalAsk(p0 context.Context, p1 address.Address, p2 *retrievalmarket.Ask) error {
 	return xerrors.New("method not supported")
 }
 
