@@ -15,10 +15,8 @@ type BadgerRepo struct {
 	retrievalRepo    repo.IRetrievalDealRepo
 }
 
-func NewBadgerRepo(fundDS repo.FundMgrDS, dealDS repo.ProviderDealDS,
-	paychDS repo.PayChanDS, askDS repo.StorageAskDS, retrAskDs repo.RetrievalAskDS,
-	pieceDs repo.PieceInfoDS, cidInfoDs repo.CIDInfoDS,
-	retrievalDs repo.RetrievalProviderDS) (repo.Repo, error) {
+func NewBadgerRepo(fundDS repo.FundMgrDS, dealDS repo.ProviderDealDS, paychDS repo.PayChanDS, askDS repo.StorageAskDS,
+	retrAskDs repo.RetrievalAskDS, cidInfoDs repo.CIDInfoDS, retrievalDs repo.RetrievalProviderDS) (repo.Repo, error) {
 	pst := NewPaychRepo(paychDS)
 
 	return &BadgerRepo{

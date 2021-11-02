@@ -7,6 +7,7 @@ import (
 	mtypes "github.com/filecoin-project/venus-messager/types"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 	"gorm.io/gorm"
 )
 
@@ -25,7 +26,7 @@ type channelInfo struct {
 
 	VoucherInfo types.VoucherInfos `gorm:"column:voucher_info;type:blob;"`
 
-	IsDeleted int `gorm:"column:is_deleted;index;default:-1;NOT NULL"`
+	IsDeleted int `gorm:"column:is_deleted;index;default:0;NOT NULL;"`
 }
 
 func (c *channelInfo) TableName() string {
@@ -114,7 +115,7 @@ func (c *channelInfoRepo) CreateChannel(from address.Address, to address.Address
 	}
 
 	// Save a reference to the create message
-	err = c.DB.Create(fromMsgInfo(&types.MsgInfo{ChannelID: ci.ChannelID, MsgCid: createMsgCid})).Error
+	err = c.DB.Save(fromMsgInfo(&types.MsgInfo{ChannelID: ci.ChannelID, MsgCid: createMsgCid})).Error
 	if err != nil {
 		return nil, err
 	}
@@ -124,8 +125,11 @@ func (c *channelInfoRepo) CreateChannel(from address.Address, to address.Address
 
 func (c *channelInfoRepo) GetChannelByAddress(channel address.Address) (*types.ChannelInfo, error) {
 	var info channelInfo
-	err := c.DB.Take(&info, "channel = ? and is_deleted = -1", channel.String()).Error
+	err := c.DB.Take(&info, "channel = ? and is_deleted = 0", channel.String()).Error
 	if err != nil {
+		if xerrors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, types.ErrChannelNotFound
+		}
 		return nil, err
 	}
 
@@ -134,8 +138,11 @@ func (c *channelInfoRepo) GetChannelByAddress(channel address.Address) (*types.C
 
 func (c *channelInfoRepo) GetChannelByChannelID(channelID string) (*types.ChannelInfo, error) {
 	var info channelInfo
-	err := c.DB.Take(&info, "channel_id = ? and is_deleted = -1", channelID).Error
+	err := c.DB.Take(&info, "channel_id = ? and is_deleted = 0", channelID).Error
 	if err != nil {
+		if xerrors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, types.ErrChannelNotFound
+		}
 		return nil, err
 	}
 
@@ -153,7 +160,12 @@ func (c *channelInfoRepo) GetChannelByMessageCid(mcid cid.Cid) (*types.ChannelIn
 
 func (c *channelInfoRepo) OutboundActiveByFromTo(from address.Address, to address.Address) (*types.ChannelInfo, error) {
 	var ci channelInfo
-	if err := c.DB.Take(&ci, "direction = ? and settling = ? and control = ? and target = ?", types.DirOutbound, false, from.String(), to.String()).Error; err != nil {
+	err := c.DB.Take(&ci, "direction = ? and settling = ? and control = ? and target = ? and is_deleted = 0",
+		types.DirOutbound, false, from.String(), to.String()).Error
+	if err != nil {
+		if xerrors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, types.ErrChannelNotFound
+		}
 		return nil, err
 	}
 
@@ -162,7 +174,7 @@ func (c *channelInfoRepo) OutboundActiveByFromTo(from address.Address, to addres
 
 func (c *channelInfoRepo) WithPendingAddFunds() ([]*types.ChannelInfo, error) {
 	var cis []channelInfo
-	if err := c.DB.Find(&cis, "direction = ?", types.DirOutbound).Error; err != nil {
+	if err := c.DB.Find(&cis, "direction = ? and is_deleted = 0", types.DirOutbound).Error; err != nil {
 		return nil, err
 	}
 	list := make([]*types.ChannelInfo, 0, len(cis))
@@ -180,7 +192,7 @@ func (c *channelInfoRepo) WithPendingAddFunds() ([]*types.ChannelInfo, error) {
 
 func (c *channelInfoRepo) ListChannel() ([]address.Address, error) {
 	var infos []*channelInfo
-	err := c.DB.Find(&infos, "is_deleted = -1").Error
+	err := c.DB.Find(&infos, "channel != ? and is_deleted = 0", address.Undef.String()).Error
 	if err != nil {
 		return nil, err
 	}
@@ -202,12 +214,12 @@ func (c *channelInfoRepo) SaveChannel(ci *types.ChannelInfo) error {
 	if len(ci.ChannelID) == 0 {
 		ci.ChannelID = uuid.NewString()
 	}
-	return c.DB.Create(fromChannelInfo(ci)).Error
+	return c.DB.Save(fromChannelInfo(ci)).Error
 }
 
 func (c *channelInfoRepo) RemoveChannel(channelID string) error {
 	var info channelInfo
-	err := c.DB.Take(info, "channel_id = ? and is_deleted = -1", channelID).Error
+	err := c.DB.Take(&info, "channel_id = ? and is_deleted = 0", channelID).Error
 	if err != nil {
 		return err
 	}
@@ -269,9 +281,14 @@ func (m *msgInfoRepo) GetMessage(mcid cid.Cid) (*types.MsgInfo, error) {
 }
 
 func (m *msgInfoRepo) SaveMessage(info *types.MsgInfo) error {
-	return m.DB.Create(fromMsgInfo(info)).Error
+	return m.DB.Save(fromMsgInfo(info)).Error
 }
 
 func (m *msgInfoRepo) SaveMessageResult(mcid cid.Cid, msgErr error) error {
-	return m.DB.Model(&msgInfo{}).Where("msg_cid = ?", mcid.String()).Update("err", msgErr.Error()).Error
+	cols := make(map[string]interface{})
+	cols["received"] = true
+	if msgErr != nil {
+		cols["err"] = msgErr.Error()
+	}
+	return m.DB.Model(&msgInfo{}).Where("msg_cid = ?", mcid.String()).UpdateColumns(cols).Error
 }

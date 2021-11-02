@@ -2,28 +2,36 @@ package paychmgr
 
 import (
 	"context"
-	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/blockstore"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/state"
-	"github.com/filecoin-project/venus/pkg/types"
+	types2 "github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 )
 
+// stateManagerAPI defines the methods needed from StateManager
+type IStateManager interface {
+	resolveToKeyAddress(ctx context.Context, addr address.Address, ts *types2.TipSet) (address.Address, error)
+	getPaychState(ctx context.Context, addr address.Address, ts *types2.TipSet) (*types2.Actor, paych.State, error)
+	call(ctx context.Context, msg *types2.UnsignedMessage, ts *types2.TipSet) (*types2.InvocResult, error)
+	getMarketState(ctx context.Context, ts *types2.TipSet) (market.State, error)
+}
+
 type StateMgrAdapter struct {
 	bsstore  blockstore.Blockstore
 	fullNode apiface.FullNode
 }
 
-func NewStateMgrAdapter(fullNode apiface.FullNode) *StateMgrAdapter {
+func newStateMgrAdapter(fullNode apiface.FullNode) IStateManager {
 	return &StateMgrAdapter{bsstore: blockstore.NewAPIBlockstore(fullNode), fullNode: fullNode}
 }
 
-func (s StateMgrAdapter) ResolveToKeyAddress(ctx context.Context, addr address.Address, ts *types.TipSet) (address.Address, error) {
+func (s StateMgrAdapter) resolveToKeyAddress(ctx context.Context, addr address.Address, ts *types2.TipSet) (address.Address, error) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:
 		return addr, nil
@@ -42,8 +50,7 @@ func (s StateMgrAdapter) ResolveToKeyAddress(ctx context.Context, addr address.A
 	return state.ResolveToKeyAddr(ctx, addr)
 }
 
-func (s StateMgrAdapter) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {
-	fmt.Println("xxxxxxxxx,", addr, ts.Key())
+func (s StateMgrAdapter) getPaychState(ctx context.Context, addr address.Address, ts *types2.TipSet) (*types2.Actor, paych.State, error) {
 	var err error
 	if ts == nil {
 		ts, err = s.fullNode.ChainHead(ctx)
@@ -64,7 +71,7 @@ func (s StateMgrAdapter) GetPaychState(ctx context.Context, addr address.Address
 	return act, actState, nil
 }
 
-func (s StateMgrAdapter) Call(ctx context.Context, msg *types.UnsignedMessage, ts *types.TipSet) (*types.InvocResult, error) {
+func (s StateMgrAdapter) call(ctx context.Context, msg *types2.UnsignedMessage, ts *types2.TipSet) (*types2.InvocResult, error) {
 	var err error
 	if ts == nil {
 		ts, err = s.fullNode.ChainHead(ctx)
@@ -75,7 +82,7 @@ func (s StateMgrAdapter) Call(ctx context.Context, msg *types.UnsignedMessage, t
 	return s.fullNode.StateCall(ctx, msg, ts.Key())
 }
 
-func (s StateMgrAdapter) GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error) {
+func (s StateMgrAdapter) getMarketState(ctx context.Context, ts *types2.TipSet) (market.State, error) {
 	var err error
 	if ts == nil {
 		ts, err = s.fullNode.ChainHead(ctx)
