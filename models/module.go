@@ -163,7 +163,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 				builder.Override(new(repo.Repo), func(fundDS repo.FundMgrDS, dealDS repo.ProviderDealDS,
 					paychDS repo.PayChanDS, askDS repo.StorageAskDS, retrAskDs repo.RetrievalAskDS,
 					pieceDs repo.PieceInfoDS, cidInfoDs repo.CIDInfoDS, retrievalDs repo.RetrievalProviderDS) (repo.Repo, error) {
-					return badger_models.NewBadgerRepo(fundDS, dealDS, paychDS, askDS, retrAskDs, pieceDs, cidInfoDs, retrievalDs)
+					return badger_models.NewBadgerRepo(fundDS, dealDS, paychDS, askDS, retrAskDs, cidInfoDs, retrievalDs)
 				}),
 			)
 		}

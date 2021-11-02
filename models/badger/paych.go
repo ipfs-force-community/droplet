@@ -123,7 +123,7 @@ func (pr *paychRepo) WithPendingAddFunds() ([]*types.ChannelInfo, error) {
 }
 
 // findChan finds a single channel using the given filter.
-// If there isn't a channel that matches the filter, returns ErrChannelNotTracked
+// If there isn't a channel that matches the filter, returns ErrChannelNotFound
 func (pr *paychRepo) findChan(filter func(ci *types.ChannelInfo) bool) (*types.ChannelInfo, error) {
 	cis, err := pr.findChans(filter, 1)
 	if err != nil {
@@ -131,7 +131,7 @@ func (pr *paychRepo) findChan(filter func(ci *types.ChannelInfo) bool) (*types.C
 	}
 
 	if len(cis) == 0 {
-		return nil, types.ErrChannelNotTracked
+		return nil, types.ErrChannelNotFound
 	}
 
 	return cis[0], err

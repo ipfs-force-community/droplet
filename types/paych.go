@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	cborutil "github.com/filecoin-project/go-cbor-util"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -68,6 +70,78 @@ type ChannelInfo struct {
 	Settling bool
 }
 
+func (ci *ChannelInfo) From() address.Address {
+	if ci.Direction == DirOutbound {
+		return ci.Control
+	}
+	return ci.Target
+}
+
+func (ci *ChannelInfo) To() address.Address {
+	if ci.Direction == DirOutbound {
+		return ci.Target
+	}
+	return ci.Control
+}
+
+// infoForVoucher gets the VoucherInfo for the given voucher.
+// returns nil if the channel doesn't have the voucher.
+func (ci *ChannelInfo) InfoForVoucher(sv *paych.SignedVoucher) (*VoucherInfo, error) {
+	for _, v := range ci.Vouchers {
+		eq, err := cborutil.Equals(sv, v.Voucher)
+		if err != nil {
+			return nil, err
+		}
+		if eq {
+			return v, nil
+		}
+	}
+	return nil, nil
+}
+
+func (ci *ChannelInfo) HasVoucher(sv *paych.SignedVoucher) (bool, error) {
+	vi, err := ci.InfoForVoucher(sv)
+	return vi != nil, err
+}
+
+// markVoucherSubmitted marks the voucher, and any vouchers of lower nonce
+// in the same lane, as being submitted.
+// Note: This method doesn't write anything to the store.
+func (ci *ChannelInfo) MarkVoucherSubmitted(sv *paych.SignedVoucher) error {
+	vi, err := ci.InfoForVoucher(sv)
+	if err != nil {
+		return err
+	}
+	if vi == nil {
+		return xerrors.Errorf("cannot submit voucher that has not been added to channel")
+	}
+
+	// Mark the voucher as submitted
+	vi.Submitted = true
+
+	// Mark lower-nonce vouchers in the same lane as submitted (lower-nonce
+	// vouchers are superseded by the submitted voucher)
+	for _, vi := range ci.Vouchers {
+		if vi.Voucher.Lane == sv.Lane && vi.Voucher.Nonce < sv.Nonce {
+			vi.Submitted = true
+		}
+	}
+
+	return nil
+}
+
+// wasVoucherSubmitted returns true if the voucher has been submitted
+func (ci *ChannelInfo) WasVoucherSubmitted(sv *paych.SignedVoucher) (bool, error) {
+	vi, err := ci.InfoForVoucher(sv)
+	if err != nil {
+		return false, err
+	}
+	if vi == nil {
+		return false, xerrors.Errorf("cannot submit voucher that has not been added to channel")
+	}
+	return vi.Submitted, nil
+}
+
 // MsgInfo stores information about a create channel / add funds message
 // that has been sent
 type MsgInfo struct {
@@ -86,4 +160,4 @@ const (
 	DirOutbound = 2
 )
 
-var ErrChannelNotTracked = xerrors.New("channel not tracked")
+var ErrChannelNotFound = xerrors.New("channel not found")
