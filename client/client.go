@@ -5,12 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/imports"
-	types2 "github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/wallet"
 	"io"
 	"os"
 	"sort"
@@ -53,18 +47,23 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
-
-	"github.com/filecoin-project/venus-market/retrievaladapter"
-	"github.com/filecoin-project/venus-market/storageadapter"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/imports"
+	"github.com/filecoin-project/venus-market/paychmgr"
+	"github.com/filecoin-project/venus-market/retrievaladapter"
+	"github.com/filecoin-project/venus-market/storageadapter"
+	types2 "github.com/filecoin-project/venus-market/types"
+
 	marketNetwork "github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/utils"
-	"github.com/filecoin-project/venus/pkg/paychmgr"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)

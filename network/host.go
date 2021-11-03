@@ -35,7 +35,7 @@ func Host(mctx metrics.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (host.Host
 		libp2p.Peerstore(params.Peerstore),
 		libp2p.NoListenAddrs,
 		libp2p.Ping(true),
-		libp2p.UserAgent("lotus-" + version.UserVersion()),
+		libp2p.UserAgent("venus-" + version.UserVersion()),
 	}
 	for _, o := range params.Opts {
 		opts = append(opts, o...)

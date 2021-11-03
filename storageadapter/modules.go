@@ -63,7 +63,7 @@ func StorageProvider(
 	return storageimpl.NewProvider(net, providerDealsDs, store, dagStore, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
-func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h StorageProviderV2, j journal.Journal) {
+func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProviderV2, j journal.Journal) {
 	ctx := metrics.LifecycleCtx(mctx, lc)
 	//h.OnReady(utils.ReadyLogger("piecestorage provider"))
 	lc.Append(fx.Hook{

@@ -6,6 +6,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/host"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-data-transfer/channelmonitor"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
@@ -18,20 +22,19 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/retrievaladapter"
 	"github.com/filecoin-project/venus-market/storageadapter"
 	marketevents "github.com/filecoin-project/venus-market/utils"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
-	paych3 "github.com/filecoin-project/venus/app/submodule/paych"
-	"github.com/libp2p/go-libp2p-core/host"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 type StorageProviderEvt struct {
@@ -162,7 +165,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientData
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(lc fx.Lifecycle, h host.Host, dt network.ClientDataTransfer, payAPI *paych3.PaychAPI, resolver discovery.PeerResolver,
+func RetrievalClient(lc fx.Lifecycle, h host.Host, dt network.ClientDataTransfer, payAPI *paychmgr.PaychAPI, resolver discovery.PeerResolver,
 	ds repo.RetrievalClientDS, fullApi apiface.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 
 	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, fullApi)

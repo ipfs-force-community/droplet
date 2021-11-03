@@ -57,13 +57,13 @@ type MarketNodeImpl struct {
 	Host                host.Host
 	StorageProvider     storageadapter2.StorageProviderV2
 	RetrievalProvider   retrievaladapter.IRetrievalProvider
-	RetrievalAskHandler retrievaladapter.AskHandler
+	RetrievalAskHandler retrievaladapter.IAskHandler
 	DataTransfer        network.ProviderDataTransfer
 	DealPublisher       *storageadapter2.DealPublisher
 	PieceStore          piece.ExtendPieceStore
 	Messager            clients2.IMessager `optional:"true"`
 	DAGStore            *dagstore.DAGStore
-	PieceStorage        piece.PieceStorage
+	PieceStorage        piece.IPieceStorage
 	MinerMgr            minermgr.IMinerMgr
 	PaychAPI            paych3.PaychAPI
 

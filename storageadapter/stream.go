@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -26,7 +27,7 @@ type StorageDealStream struct {
 	conns       *connmanager.ConnManager
 	storedAsk   IStorageAsk
 	spn         StorageProviderNode
-	deals       StorageDealStore
+	deals       repo.StorageDealRepo
 	net         network.StorageMarketNetwork
 	fs          filestore.FileStore
 	dealProcess StorageDealProcess
@@ -37,7 +38,7 @@ func NewStorageDealStream(
 	conns *connmanager.ConnManager,
 	storedAsk IStorageAsk,
 	spn StorageProviderNode,
-	deals StorageDealStore,
+	deals repo.StorageDealRepo,
 	net network.StorageMarketNetwork,
 	fs filestore.FileStore,
 	dealProcess StorageDealProcess,
@@ -75,11 +76,8 @@ func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAsk
 
 	ask, err := storageDealStream.storedAsk.GetAsk(ar.Miner)
 	if err != nil {
-		if xerrors.Is(err, RecordNotFound) {
-			log.Warnf(" receive ask for miner with address %s", ar.Miner)
-		} else {
-			log.Errorf("failed to get ask for [%s]: %s", ar.Miner, err)
-		}
+		log.Errorf("failed to get ask for [%s]: %s", ar.Miner, err)
+		return
 	}
 
 	resp := network.AskResponse{
@@ -142,7 +140,7 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		path = string(tmp.OsPath())
 	}
 
-	deal := &storagemarket.MinerDeal{
+	deal := &types.MinerDeal{
 		Client:             s.RemotePeer(),
 		Miner:              storageDealStream.net.ID(),
 		ClientDealProposal: *proposal.DealProposal,
@@ -244,7 +242,7 @@ func (storageDealStream *StorageDealStream) HandleDealStatusStream(s network.Dea
 	}
 }
 
-func (storageDealStream *StorageDealStream) resendProposalResponse(s network.StorageDealStream, md *storagemarket.MinerDeal) error {
+func (storageDealStream *StorageDealStream) resendProposalResponse(s network.StorageDealStream, md *types.MinerDeal) error {
 	resp := &network.Response{State: md.State, Message: md.Message, Proposal: md.ProposalCid}
 	sig, err := storageDealStream.spn.Sign(context.TODO(), &types.SignInfo{
 		Data: resp,

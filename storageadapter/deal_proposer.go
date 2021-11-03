@@ -2,10 +2,6 @@ package storageadapter
 
 import (
 	"context"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
-	"github.com/filecoin-project/venus-market/piece"
 	"io"
 	"os"
 
@@ -17,6 +13,7 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/dtutils"
@@ -27,21 +24,26 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
+	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
+	"github.com/filecoin-project/venus-market/models/repo"
 	network2 "github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/piece"
+	"github.com/filecoin-project/venus-market/types"
 )
 
 // TODO: These are copied from spec-actors master, use spec-actors exports when we update
 const DealMaxLabelSize = 256
 
 type StorageDealProcess interface {
-	AcceptDeal(ctx context.Context, deal *storagemarket.MinerDeal) error
-	HandleOff(ctx context.Context, deal *storagemarket.MinerDeal) error
-	HandleError(deal *storagemarket.MinerDeal, err error) error
-	HandleReject(deal *storagemarket.MinerDeal, event storagemarket.StorageDealStatus, err error) error
+	AcceptDeal(ctx context.Context, deal *types.MinerDeal) error
+	HandleOff(ctx context.Context, deal *types.MinerDeal) error
+	HandleError(deal *types.MinerDeal, err error) error
+	HandleReject(deal *types.MinerDeal, event storagemarket.StorageDealStatus, err error) error
 }
 
 var _ StorageDealProcess = (*StorageDealProcessImpl)(nil)
@@ -50,7 +52,7 @@ type StorageDealProcessImpl struct {
 	conns      *connmanager.ConnManager
 	peerTagger network.PeerTagger
 	spn        StorageProviderNode
-	deals      StorageDealStore
+	deals      repo.StorageDealRepo
 	ask        IStorageAsk
 	fs         filestore.FileStore
 	stores     *stores.ReadWriteBlockstores
@@ -68,7 +70,7 @@ func NewStorageDealProcessImpl(
 	conns *connmanager.ConnManager,
 	peerTagger network.PeerTagger,
 	spn StorageProviderNode,
-	deals StorageDealStore,
+	deals repo.StorageDealRepo,
 	ask IStorageAsk,
 	fs filestore.FileStore,
 	minerMgr minermgr2.IMinerMgr,
@@ -105,7 +107,7 @@ func NewStorageDealProcessImpl(
 }
 
 // StorageDealUnknown->StorageDealValidating(ValidateDealProposal)->StorageDealAcceptWait(DecideOnProposal)->StorageDealWaitingForData
-func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context, minerDeal *storagemarket.MinerDeal) error {
+func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
 	storageDealPorcess.peerTagger.TagPeer(minerDeal.Client, minerDeal.ProposalCid.String())
 
 	tok, curEpoch, err := storageDealPorcess.spn.GetChainHead(ctx)
@@ -245,7 +247,7 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 	return storageDealPorcess.SaveState(minerDeal, storagemarket.StorageDealWaitingForData)
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context, deal *storagemarket.MinerDeal) error {
+func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context, deal *types.MinerDeal) error {
 	// VerifyData
 	if deal.State == storagemarket.StorageDealVerifyData {
 		// finalize the blockstore as we're done writing deal data to it.
@@ -329,7 +331,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		}
 
 		deal.State = storagemarket.StorageDealPublish // PublishDeal
-		smDeal := storagemarket.MinerDeal{
+		smDeal := types.MinerDeal{
 			Client:             deal.Client,
 			ClientDealProposal: deal.ClientDealProposal,
 			ProposalCid:        deal.ProposalCid,
@@ -516,7 +518,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 	return nil
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) savePieceMetadata(deal *storagemarket.MinerDeal) error {
+func (storageDealPorcess *StorageDealProcessImpl) savePieceMetadata(deal *types.MinerDeal) error {
 
 	var blockLocations map[cid.Cid]piecestore.BlockLocation
 	if deal.MetadataPath != filestore.Path("") {
@@ -538,7 +540,7 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceMetadata(deal *storag
 	return nil
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Context, deal *storagemarket.MinerDeal, reader io.Reader, payloadSize uint64) error {
+func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Context, deal *types.MinerDeal, reader io.Reader, payloadSize uint64) error {
 	// because we use the PadReader directly during AP we need to produce the
 	// correct amount of zeroes
 	// (alternative would be to keep precise track of sector offsets for each
@@ -593,7 +595,7 @@ func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context
 }
 
 // StorageDealRejecting(RejectDeal)->StorageDealFailing(FailDeal)
-func (storageDealPorcess *StorageDealProcessImpl) HandleReject(deal *storagemarket.MinerDeal, event storagemarket.StorageDealStatus, err error) error {
+func (storageDealPorcess *StorageDealProcessImpl) HandleReject(deal *types.MinerDeal, event storagemarket.StorageDealStatus, err error) error {
 	deal.State = event
 	deal.Message = err.Error()
 
@@ -618,7 +620,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleReject(deal *storagemark
 	return storageDealPorcess.deals.SaveDeal(deal)
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) HandleError(deal *storagemarket.MinerDeal, err error) error {
+func (storageDealPorcess *StorageDealProcessImpl) HandleError(deal *types.MinerDeal, err error) error {
 	deal.State = storagemarket.StorageDealFailing
 	deal.Message = err.Error()
 
@@ -654,7 +656,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleError(deal *storagemarke
 	return storageDealPorcess.deals.SaveDeal(deal)
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) releaseReservedFunds(ctx context.Context, deal *storagemarket.MinerDeal) {
+func (storageDealPorcess *StorageDealProcessImpl) releaseReservedFunds(ctx context.Context, deal *types.MinerDeal) {
 	if !deal.FundsReserved.Nil() && !deal.FundsReserved.IsZero() {
 		err := storageDealPorcess.spn.ReleaseFunds(ctx, deal.Proposal.Provider, deal.FundsReserved)
 		if err != nil {
@@ -666,7 +668,7 @@ func (storageDealPorcess *StorageDealProcessImpl) releaseReservedFunds(ctx conte
 	}
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) SaveState(deal *storagemarket.MinerDeal, event storagemarket.StorageDealStatus) error {
+func (storageDealPorcess *StorageDealProcessImpl) SaveState(deal *types.MinerDeal, event storagemarket.StorageDealStatus) error {
 	deal.State = event
 	return storageDealPorcess.deals.SaveDeal(deal)
 }

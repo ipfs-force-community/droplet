@@ -26,12 +26,12 @@ func NewProviderPieceStore(lc fx.Lifecycle, piecestore PieceStore, cidStore CIDS
 	return ps, nil
 }
 
-func NewPieceStorage(pieceStrorageCfg *config.PieceStorageString) (IPieceStorage, error) {
-	err := CheckValidate(string(*pieceStrorageCfg))
+func NewPieceStorage(pieceStoragePath *config.PieceStorageString) (IPieceStorage, error) {
+	err := CheckValidate(string(*pieceStoragePath))
 	if err != nil {
 		return nil, err
 	}
-	return &PieceStorage{string(*pieceStrorageCfg)}, nil
+	return &PieceStorage{string(*pieceStoragePath)}, nil
 }
 
 var PieceOpts = func(cfg *config.MarketConfig) builder.Option {

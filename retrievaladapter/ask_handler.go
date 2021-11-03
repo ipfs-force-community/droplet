@@ -2,13 +2,12 @@ package retrievaladapter
 
 import (
 	"context"
-
+	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/venus-market/models/repo"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -31,7 +30,7 @@ type AskHandler struct {
 	retrievalPricingFunc retrievalimpl.RetrievalPricingFunc
 }
 
-func NewAskHandler(r repo.Repo, node retrievalmarket.RetrievalProviderNode, retrievalPricingFunc retrievalimpl.RetrievalPricingFunc) *AskHandler {
+func NewAskHandler(r repo.Repo, node retrievalmarket.RetrievalProviderNode, retrievalPricingFunc retrievalimpl.RetrievalPricingFunc) IAskHandler {
 	return &AskHandler{askStore: r.RetrievalAskRepo(), node: node, retrievalPricingFunc: retrievalPricingFunc}
 }
 

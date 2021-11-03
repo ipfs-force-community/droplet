@@ -35,11 +35,11 @@ var DefaultMarketConfig = &MarketConfig{
 		Token: "",
 	},
 	Messager: Messager{
-		Url:   "/ip4/<ip>/tcp/39812",
+		Url:   "", // /ip4/<ip>/tcp/39812
 		Token: "",
 	},
 	Signer: Signer{
-		Url:   "/ip4/<ip>/tcp/5678",
+		Url:   "", // /ip4/<ip>/tcp/5678
 		Token: "",
 	},
 	//Mysql: Mysql{

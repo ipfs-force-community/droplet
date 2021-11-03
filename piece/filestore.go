@@ -2,9 +2,10 @@ package piece
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/abi"
 	"io"
 	"path"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 type IPieceStorage interface {

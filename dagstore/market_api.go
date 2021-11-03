@@ -19,17 +19,17 @@ type MarketAPI interface {
 }
 
 type marketAPI struct {
-	storage   piece.PieceStorage
+	pieceStorage   piece.IPieceStorage
 	pieceRepo repo.StorageDealRepo
 	throttle  throttle.Throttler
 }
 
 var _ MarketAPI = (*marketAPI)(nil)
 
-func NewMinerAPI(pieceRepo repo.StorageDealRepo, storage piece.PieceStorage, concurrency int) MarketAPI {
+func NewMinerAPI(repo repo.Repo, pieceStorage piece.IPieceStorage, concurrency int) MarketAPI {
 	return &marketAPI{
-		pieceRepo: pieceRepo,
-		storage:   storage,
+		pieceRepo: repo.StorageDealRepo(),
+		pieceStorage:   pieceStorage,
 		throttle:  throttle.Fixed(concurrency),
 	}
 }
@@ -39,17 +39,18 @@ func (m *marketAPI) Start(_ context.Context) error {
 }
 
 func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
-	return m.storage.Has(pieceCid.String())
+	return m.pieceStorage.Has(pieceCid.String())
 }
 
 func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
-	has, err := m.storage.Has(pieceCid.String())
+	has, err := m.pieceStorage.Has(pieceCid.String())
 	if err != nil {
 		return nil, err
 	}
 	if has {
-		return m.storage.Read(ctx, pieceCid.String())
+		return m.pieceStorage.Read(ctx, pieceCid.String())
 	}
+
 	// todo unseal  ask miner who have this data, send unseal cmd, and read and pay after receive data
 	// 1. select miner
 	// 2. send unseal request

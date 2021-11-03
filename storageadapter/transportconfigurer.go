@@ -7,14 +7,17 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/stores"
+
+	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/types"
 )
 
 type providerStoreGetter struct {
 	stores *stores.ReadWriteBlockstores
-	deals  StorageDealStore
+	deals  repo.StorageDealRepo
 }
 
-func newProviderStoreGetter(deals StorageDealStore, stores *stores.ReadWriteBlockstores) *providerStoreGetter {
+func newProviderStoreGetter(deals repo.StorageDealRepo, stores *stores.ReadWriteBlockstores) *providerStoreGetter {
 	return &providerStoreGetter{
 		deals:  deals,
 		stores: stores,
@@ -30,7 +33,35 @@ func (psg *providerStoreGetter) Get(proposalCid cid.Cid) (bstore.Blockstore, err
 }
 
 type providerPushDeals struct {
-	deals StorageDealStore
+	deals repo.StorageDealRepo
+}
+
+func convertMinerDealToFilMarketDeal(deal *types.MinerDeal) *storagemarket.MinerDeal {
+	return &storagemarket.MinerDeal{
+		ClientDealProposal:    deal.ClientDealProposal,
+		ProposalCid:           deal.ProposalCid,
+		AddFundsCid:           deal.AddFundsCid,
+		PublishCid:            deal.PublishCid,
+		Miner:                 deal.Miner,
+		Client:                deal.Client,
+		State:                 deal.State,
+		PiecePath:             deal.PiecePath,
+		MetadataPath:          deal.MetadataPath,
+		SlashEpoch:            deal.SlashEpoch,
+		FastRetrieval:         deal.FastRetrieval,
+		Message:               deal.Message,
+		FundsReserved:         deal.FundsReserved,
+		Ref:                   deal.Ref,
+		AvailableForRetrieval: deal.AvailableForRetrieval,
+
+		DealID:       deal.DealID,
+		CreationTime: deal.CreationTime,
+
+		TransferChannelId: deal.TransferChannelId,
+		SectorNumber:      deal.SectorNumber,
+
+		InboundCAR: deal.InboundCAR,
+	}
 }
 
 func (ppd *providerPushDeals) Get(proposalCid cid.Cid) (storagemarket.MinerDeal, error) {
@@ -38,5 +69,5 @@ func (ppd *providerPushDeals) Get(proposalCid cid.Cid) (storagemarket.MinerDeal,
 	if err != nil {
 		return storagemarket.MinerDeal{}, err
 	}
-	return *deal, nil
+	return *convertMinerDealToFilMarketDeal(deal), nil
 }

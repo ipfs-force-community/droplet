@@ -3,6 +3,7 @@ package sealer
 import (
 	"context"
 	"github.com/filecoin-project/dagstore"
+	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	dagstore2 "github.com/filecoin-project/venus-market/dagstore"
@@ -26,7 +27,7 @@ func NewAddressSelector(cfg *config.MarketConfig) (*AddressSelector, error) {
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func NewDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI dagstore2.MarketAPI) (*dagstore.DAGStore, *dagstore2.Wrapper, error) {
+func NewDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI dagstore2.MarketAPI) (*dagstore.DAGStore, stores.DAGStoreWrapper, error) {
 	// fall back to default root directory if not explicitly set in the config.
 	if cfg.RootDir == "" {
 		cfg.RootDir = filepath.Join(string(*homeDir), DefaultDAGStoreDir)

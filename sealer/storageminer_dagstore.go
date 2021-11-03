@@ -17,8 +17,8 @@ const (
 )
 
 // NewMinerAPI creates a new MarketAPI adaptor for the dagstore mounts.
-func NewMinerAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, pieceRepo repo.StorageDealRepo, pieceStorage piece.PieceStorage) (dagstore.MarketAPI, error) {
-	mountApi := dagstore.NewMinerAPI(pieceRepo, pieceStorage, r.MaxConcurrencyStorageCalls)
+func NewMinerAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage piece.IPieceStorage) (dagstore.MarketAPI, error) {
+	mountApi := dagstore.NewMinerAPI(repo, pieceStorage, r.MaxConcurrencyStorageCalls)
 	ready := make(chan error, 1)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

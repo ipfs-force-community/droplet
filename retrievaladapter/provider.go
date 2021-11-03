@@ -2,35 +2,36 @@ package retrievaladapter
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	paych3 "github.com/filecoin-project/venus/app/submodule/paych"
 
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
-
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
-	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/venus-market/paychmgr"
 )
 
 var log = logging.Logger("retrievaladapter")
 
 type retrievalProviderNode struct {
 	full   apiface.FullNode
-	payAPI *paych3.PaychAPI
+	payAPI *paychmgr.PaychAPI
 }
 
 var _ retrievalmarket.RetrievalProviderNode = (*retrievalProviderNode)(nil)
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(full apiface.FullNode, payAPI *paych3.PaychAPI) retrievalmarket.RetrievalProviderNode {
+func NewRetrievalProviderNode(full apiface.FullNode, payAPI *paychmgr.PaychAPI) retrievalmarket.RetrievalProviderNode {
 	return &retrievalProviderNode{full: full, payAPI: payAPI}
 }
 

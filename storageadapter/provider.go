@@ -83,7 +83,7 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 	}
 }
 
-func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (cid.Cid, error) {
+func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal types2.MinerDeal) (cid.Cid, error) {
 	return n.dealPublisher.Publish(ctx, deal.ClientDealProposal)
 }
 
@@ -437,7 +437,7 @@ type StorageProviderNode interface {
 	OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error
 
 	// PublishDeals publishes a deal on chain, returns the message cid, but does not wait for message to appear
-	PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (cid.Cid, error)
+	PublishDeals(ctx context.Context, deal types2.MinerDeal) (cid.Cid, error)
 
 	// WaitForPublishDeals waits for a deal publish message to land on chain.
 	WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error)

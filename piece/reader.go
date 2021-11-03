@@ -94,6 +94,9 @@ func CheckValidate(path string) error {
 	case "fs":
 		st, err := os.Stat(pieceStorage[1])
 		if err != nil {
+			if os.IsNotExist(err) {
+				return os.MkdirAll(pieceStorage[1], 0755)
+			}
 			return err
 		}
 

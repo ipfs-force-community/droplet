@@ -8,6 +8,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -16,10 +17,7 @@ import (
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/types"
 	logging "github.com/ipfs/go-log/v2"
-
-	"sync"
 
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/ipfs/go-cid"
@@ -102,15 +100,13 @@ type dsPieceStore struct {
 	pieces       datastore.Batching
 	pieceStorage *config.PieceStorageString
 	pieceLk      sync.Mutex
-	ssize        types.SectorSize
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func NewDsPieceStore(ds repo.PieceInfoDS, ssize types.SectorSize, pieceStorage *config.PieceStorageString) (PieceStore, error) {
+func NewDsPieceStore(ds repo.PieceInfoDS, pieceStorage *config.PieceStorageString) (PieceStore, error) {
 	return &dsPieceStore{
 		pieces:       ds,
 		pieceStorage: pieceStorage,
-		ssize:        ssize,
 		pieceLk:      sync.Mutex{},
 	}, nil
 }
@@ -267,9 +263,12 @@ func (ps *dsPieceStore) AssignUnPackedDeals(spec *GetDealSpec) ([]*DealInfoInclu
 
 	dealsBySize := [][]*DealInfoIncludePath{}
 	dealSizeIdxMap := map[abi.UnpaddedPieceSize]int{}
-	sectorCap := abi.PaddedPieceSize(ps.ssize).Unpadded()
 
 	// 按尺寸分组
+	// TODO: 从同步节点根求Provider的SectorSize ?
+	ssize, _ := abi.RegisteredSealProof_StackedDrg32GiBV1_1.SectorSize()
+	sectorCap := abi.PaddedPieceSize(ssize).Unpadded()
+
 	for di, deal := range deals {
 		if deal.PieceSize.Unpadded() > sectorCap {
 			log.Infow("deals too large are ignored", "count", len(deals[di:]), "gt", deal.PieceSize.Unpadded(), "max", sectorCap)
