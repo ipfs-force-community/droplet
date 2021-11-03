@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/venus-market/client"
 	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/piece"
@@ -207,6 +208,8 @@ type MarketFullNodeStruct struct {
 		MessagerWaitMessage func(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) `perm:"read"`
 
 		NetAddrsListen func(p0 context.Context) (peer.AddrInfo, error) `perm:"read"`
+
+		PaychVoucherList func(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error) `perm:"read"`
 
 		PiecesGetCIDInfo func(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) `perm:"read"`
 
@@ -917,6 +920,14 @@ func (s *MarketFullNodeStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo
 
 func (s *MarketFullNodeStub) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
 	return *new(peer.AddrInfo), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) PaychVoucherList(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error) {
+	return s.Internal.PaychVoucherList(p0, p1)
+}
+
+func (s *MarketFullNodeStub) PaychVoucherList(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error) {
+	return *new([]*paych.SignedVoucher), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {

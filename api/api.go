@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	"github.com/filecoin-project/venus-market/client"
 	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/piece"
@@ -143,6 +144,9 @@ type MarketFullNode interface {
 	//market event
 	ResponseMarketEvent(ctx context.Context, resp *types2.ResponseEvent) error                                            //perm:read
 	ListenMarketEvent(ctx context.Context, policy *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) //perm:read
+
+	// Paych
+	PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) //perm:read
 }
 
 type MarketClientNode interface {

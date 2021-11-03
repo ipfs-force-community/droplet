@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
 	"github.com/filecoin-project/venus-market/minermgr"
 	"github.com/filecoin-project/venus-market/retrievaladapter"
 
@@ -35,6 +37,7 @@ import (
 	"github.com/filecoin-project/venus-market/types"
 
 	mTypes "github.com/filecoin-project/venus-messager/types"
+	paych3 "github.com/filecoin-project/venus/app/submodule/paych"
 
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
@@ -62,6 +65,7 @@ type MarketNodeImpl struct {
 	DAGStore            *dagstore.DAGStore
 	PieceStorage        piece.PieceStorage
 	MinerMgr            minermgr.IMinerMgr
+	PaychAPI            paych3.PaychAPI
 
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc
@@ -657,4 +661,8 @@ func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid
 
 func (m MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*piece.DealInfo, error) {
 	return m.PieceStore.GetDeals(pageIndex, pageSize)
+}
+
+func (m MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
+	return m.PaychAPI.PaychVoucherList(ctx, pch)
 }
