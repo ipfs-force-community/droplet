@@ -3,6 +3,7 @@ package piece
 import (
 	"golang.org/x/xerrors"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -48,16 +49,17 @@ func ReWrite(path string, r io.Reader) (int64, error) {
 	}
 	switch pieceFile[0] {
 	case "fs":
-		fs, err := os.Create(pieceFile[1])
+		tempFile, err := ioutil.TempFile("", "piece-*")
 		if err != nil {
-			return -1, xerrors.Errorf("unbale to create file %s, %w", pieceFile[1], err)
+			return 0, err
 		}
-		defer fs.Close()
-		wlen, err := io.Copy(fs, r)
+		defer tempFile.Close()
+		wlen, err := io.Copy(tempFile, r)
 		if err != nil {
 			return -1, xerrors.Errorf("unable to write file to %s %w", pieceFile[1], err)
 		}
-		return wlen, nil
+		err = move(tempFile.Name(), pieceFile[1])
+		return wlen, err
 	default:
 		return -1, xerrors.Errorf("unsupport piece piecestorage type %s", path)
 	}
