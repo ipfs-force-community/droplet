@@ -2,6 +2,8 @@ package storageadapter
 
 import (
 	"context"
+	"fmt"
+	"github.com/filecoin-project/venus-market/types"
 	"io"
 	"time"
 
@@ -80,7 +82,7 @@ type StorageProviderV2Impl struct {
 
 	unsubDataTransfer datatransfer.Unsubscribe
 
-	dealStore           repo.StorageDealRepo
+	dealStore       repo.StorageDealRepo
 	dealProcess     StorageDealProcess
 	transferProcess TransferProcess
 	storageReceiver smnet.StorageReceiver
@@ -167,6 +169,50 @@ func (p *StorageProviderV2Impl) Start(ctx context.Context) error {
 		return err
 	}
 
+	go func() {
+		err := p.start(ctx)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}()
+
+	return nil
+}
+
+func (p *StorageProviderV2Impl) start(ctx context.Context) error {
+	// Run datastore and DAG store migrations
+	addrs, err := p.minerMgr.ActorAddress(ctx)
+	if err != nil {
+		return err
+	}
+
+	var deals []*types.MinerDeal
+	for _, addr := range addrs {
+		tdeals, err := p.dealStore.ListDeal(addr)
+		if err != nil {
+			return nil
+		}
+		deals = append(deals, tdeals...)
+	}
+
+	// Fire restart event on all active deals
+	if err := p.restartDeals(ctx, deals); err != nil {
+		return fmt.Errorf("failed to restart deals: %w", err)
+	}
+	return nil
+}
+
+func (p *StorageProviderV2Impl) restartDeals(ctx context.Context, deals []*types.MinerDeal) error {
+	for _, deal := range deals {
+		if deal.State == storagemarket.StorageDealSlashed || deal.State == storagemarket.StorageDealExpired || deal.State == storagemarket.StorageDealError {
+			continue
+		}
+
+		err := p.dealProcess.HandleOff(ctx, deal)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

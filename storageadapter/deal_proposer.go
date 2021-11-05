@@ -2,6 +2,7 @@ package storageadapter
 
 import (
 	"context"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"io"
 	"os"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
@@ -310,27 +310,43 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		// if no message was sent, and there was no error, funds were already available
 		if mcid != cid.Undef {
 			deal.AddFundsCid = &mcid
+			deal.State = storagemarket.StorageDealProviderFunding
 
-			deal.State = storagemarket.StorageDealProviderFunding // WaitForFunding
-			// TODO: 返回值处理
-			errW := node.WaitForMessage(ctx, *deal.AddFundsCid, func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error {
-				if err != nil {
-					return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds errored: %w", err))
-				}
-				if code != exitcode.Ok {
-					return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds exit code: %s", code.String()))
-				}
-				deal.State = storagemarket.StorageDealPublish
-
-				return nil
-			})
-
-			if errW != nil {
-				return storageDealPorcess.HandleError(deal, xerrors.Errorf("Wait AddFunds msg for Provider errored: %w", err))
-			}
+		} else {
+			deal.State = storagemarket.StorageDealPublish // PublishDeal
 		}
 
-		deal.State = storagemarket.StorageDealPublish // PublishDeal
+		err = storageDealPorcess.deals.SaveDeal(deal)
+		if err != nil {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+		}
+	}
+
+	if deal.State == storagemarket.StorageDealProviderFunding { // WaitForFunding
+		// TODO: 返回值处理
+		errW := node.WaitForMessage(ctx, *deal.AddFundsCid, func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error {
+			if err != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds errored: %w", err))
+			}
+			if code != exitcode.Ok {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds exit code: %s", code.String()))
+			}
+			deal.State = storagemarket.StorageDealPublish
+
+			err = storageDealPorcess.deals.SaveDeal(deal)
+			if err != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+			}
+
+			return nil
+		})
+
+		if errW != nil {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("Wait AddFunds msg for Provider errored: %w", errW))
+		}
+	}
+
+	if deal.State == storagemarket.StorageDealPublish {
 		smDeal := types.MinerDeal{
 			Client:             deal.Client,
 			ClientDealProposal: deal.ClientDealProposal,
@@ -346,7 +362,14 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 		deal.PublishCid = &pdMCid
 
-		deal.State = storagemarket.StorageDealPublishing // WaitForPublish
+		deal.State = storagemarket.StorageDealPublishing
+		err = storageDealPorcess.deals.SaveDeal(deal)
+		if err != nil {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+		}
+	}
+
+	if deal.State == storagemarket.StorageDealPublishing { // WaitForPublish
 		res, err := storageDealPorcess.spn.WaitForPublishDeals(ctx, *deal.PublishCid, deal.Proposal)
 		if err != nil {
 			return storageDealPorcess.HandleError(deal, xerrors.Errorf("PublishStorageDeals errored: %w", err))
@@ -358,8 +381,14 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 		deal.DealID = res.DealID
 		deal.PublishCid = &res.FinalCid
+		deal.State = storagemarket.StorageDealStaged
+		err = storageDealPorcess.deals.SaveDeal(deal)
+		if err != nil {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+		}
+	}
 
-		deal.State = storagemarket.StorageDealStaged // HandoffDeal
+	if deal.State == storagemarket.StorageDealStaged { // HandoffDeal
 		var carFilePath string
 		if deal.PiecePath != "" {
 			// Data for offline deals is stored on disk, so if PiecePath is set,
@@ -421,6 +450,9 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		log.Infow("successfully handed off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
 		deal.AvailableForRetrieval = true
 		deal.State = storagemarket.StorageDealAwaitingPreCommit
+		if err := storageDealPorcess.deals.SaveDeal(deal); err != nil {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+		}
 	}
 
 	//todo should be async to do
