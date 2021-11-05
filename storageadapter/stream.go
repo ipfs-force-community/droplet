@@ -84,7 +84,7 @@ func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAsk
 		Ask: ask,
 	}
 
-	if err := s.WriteAskResponse(resp, storageDealStream.spn.Sign); err != nil {
+	if err := s.WriteAskResponse(resp, storageDealStream.spn.SignWithGivenMiner(ar.Miner)); err != nil {
 		log.Errorf("failed to write ask response: %s", err)
 		return
 	}
@@ -151,18 +151,6 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		CreationTime:       curTime(),
 		InboundCAR:         path,
 	}
-
-	// 3. 判断deal是否存在
-	md, err = storageDealStream.deals.GetDeal(deal.ProposalCid)
-	if err != nil {
-		log.Errorf("failed to check if state for %v exists: %w", deal.ProposalCid, err)
-		return
-	}
-	if md != nil {
-		log.Errorf("deal `%v` that already exists", deal.ProposalCid)
-		return
-	}
-
 	err = storageDealStream.deals.SaveDeal(deal)
 	if err != nil {
 		log.Errorf("save miner deal to database %w", err)
@@ -236,7 +224,7 @@ func (storageDealStream *StorageDealStream) HandleDealStatusStream(s network.Dea
 		Signature: *signature,
 	}
 
-	if err := s.WriteDealStatusResponse(response, storageDealStream.spn.Sign); err != nil {
+	if err := s.WriteDealStatusResponse(response, storageDealStream.spn.SignWithGivenMiner(mAddr)); err != nil {
 		log.Warnf("failed to write deal status response: %s", err)
 		return
 	}
@@ -247,13 +235,13 @@ func (storageDealStream *StorageDealStream) resendProposalResponse(s network.Sto
 	sig, err := storageDealStream.spn.Sign(context.TODO(), &types.SignInfo{
 		Data: resp,
 		Type: wallet.MTUnknown,
-		Addr: address.Address{},
+		Addr: md.Proposal.Provider,
 	})
 	if err != nil {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}
 
-	return s.WriteDealResponse(network.SignedResponse{Response: *resp, Signature: sig}, storageDealStream.spn.Sign)
+	return s.WriteDealResponse(network.SignedResponse{Response: *resp, Signature: sig}, storageDealStream.spn.SignWithGivenMiner(md.Proposal.Provider))
 }
 
 func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context.Context, request *network.DealStatusRequest) (*storagemarket.ProviderDealState, address.Address, error) {

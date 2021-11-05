@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-auth/log"
 	"io"
 	"os"
 	"sort"
@@ -52,7 +53,6 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/imports"
-	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/retrievaladapter"
 	"github.com/filecoin-project/venus-market/storageadapter"
 	types2 "github.com/filecoin-project/venus-market/types"
@@ -76,7 +76,6 @@ type API struct {
 	fx.In
 
 	Full         apiface.FullNode
-	PayChManager *paychmgr.Manager
 
 	SMDealClient storagemarket.StorageClient
 	RetDiscovery discovery.PeerResolver
@@ -1078,6 +1077,7 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 	}
 
 	info := utils.NewStorageProviderInfo(miner, mi.Worker, mi.SectorSize, p, mi.Multiaddrs)
+	log.Infof("info: %v", info)
 	ask, err := a.SMDealClient.GetAsk(ctx, info)
 	if err != nil {
 		return nil, err

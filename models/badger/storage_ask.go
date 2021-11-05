@@ -26,6 +26,9 @@ func (ar *storageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedSt
 	key := statestore.ToKey(miner)
 	b, err := ar.ds.Get(key)
 	if err != nil {
+		if err == datastore.ErrNotFound {
+			return nil, nil
+		}
 		return nil, err
 	}
 

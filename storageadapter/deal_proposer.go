@@ -2,7 +2,6 @@ package storageadapter
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/exitcode"
 	"io"
 	"os"
 
@@ -10,6 +9,7 @@ import (
 	carv2 "github.com/ipld/go-car/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-commp-utils/writer"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
@@ -25,9 +25,12 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+
+	"github.com/filecoin-project/venus/pkg/wallet"
 
 	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -231,8 +234,8 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 
 	// TODO: RunCustomDecisionLogic ?
 
-	// Send intent to accept
-	err = storageDealPorcess.SendSignedResponse(ctx, &network.Response{
+	// DecideOnProposal
+	err = storageDealPorcess.SendSignedResponse(ctx, proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealWaitingForData,
 		Proposal: minerDeal.ProposalCid,
 	})
@@ -602,13 +605,18 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 	return nil
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context.Context, resp *network.Response) error {
+func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context.Context, mAddr address.Address, resp *network.Response) error {
 	s, err := storageDealPorcess.conns.DealStream(resp.Proposal)
 	if err != nil {
 		return xerrors.Errorf("couldn't send response: %w", err)
 	}
 
-	sig, err := storageDealPorcess.spn.Sign(ctx, resp)
+	respEx := &types.SignInfo{
+		Data: resp,
+		Type: wallet.MTUnknown,
+		Addr: mAddr,
+	}
+	sig, err := storageDealPorcess.spn.Sign(ctx, respEx)
 	if err != nil {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}
@@ -618,7 +626,8 @@ func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context
 		Signature: sig,
 	}
 
-	err = s.WriteDealResponse(signedResponse, storageDealPorcess.spn.Sign)
+	// TODO: review ???
+	err = s.WriteDealResponse(signedResponse, storageDealPorcess.spn.SignWithGivenMiner(mAddr))
 	if err != nil {
 		// Assume client disconnected
 		_ = storageDealPorcess.conns.Disconnect(resp.Proposal)
@@ -631,7 +640,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleReject(deal *types.Miner
 	deal.State = event
 	deal.Message = err.Error()
 
-	err = storageDealPorcess.SendSignedResponse(context.TODO(), &network.Response{
+	err = storageDealPorcess.SendSignedResponse(context.TODO(), deal.Proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealFailing,
 		Message:  deal.Message,
 		Proposal: deal.ProposalCid,

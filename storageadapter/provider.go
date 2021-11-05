@@ -4,6 +4,7 @@ package storageadapter
 
 import (
 	"context"
+
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
@@ -13,6 +14,7 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -134,6 +136,14 @@ func (n *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*cryp
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get chain head: %w", err)
 	}
+
+	switch data.(type) {
+	case *types2.SignInfo:
+
+	default:
+		return nil, xerrors.Errorf("data type is not SignInfo")
+	}
+
 	info := data.(*types2.SignInfo)
 	msgBytes, err := cborutil.Dump(info.Data)
 	if err != nil {
@@ -156,6 +166,38 @@ func (n *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*cryp
 		return nil, err
 	}
 	return localSignature, nil
+}
+
+//
+func (n *ProviderNodeAdapter) SignWithGivenMiner(mAddr address.Address)  network.ResigningFunc {
+	return func(ctx context.Context, data interface{}) (*crypto.Signature, error) {
+		tok, _, err := n.GetChainHead(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("couldn't get chain head: %w", err)
+		}
+
+		msgBytes, err := cborutil.Dump(data)
+		if err != nil {
+			return nil, xerrors.Errorf("serializing: %w", err)
+		}
+
+		worker, err := n.GetMinerWorkerAddress(ctx, mAddr, tok)
+		if err != nil {
+			return nil, err
+		}
+
+		signer, err := n.StateAccountKey(ctx, worker, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+		localSignature, err := n.WalletSign(ctx, signer, msgBytes, wallet.MsgMeta{
+			Type: wallet.MTUnknown,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return localSignature, nil
+	}
 }
 
 func (n *ProviderNodeAdapter) ReserveFunds(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
@@ -400,8 +442,11 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 
 // StorageProviderNode are common interfaces provided by a filecoin Node to both StorageClient and StorageProvider
 type StorageProviderNode interface {
-	// SignsBytes signs the given data with the given address's private key
+	// Sign sign the given data with the given address's private key
 	Sign(ctx context.Context, data interface{}) (*crypto.Signature, error)
+
+	// SignWithGivenMiner sign the data with the worker address of the given miner
+	SignWithGivenMiner(mAddr address.Address)  network.ResigningFunc
 
 	// GetChainHead returns a tipset token for the current chain head
 	GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error)

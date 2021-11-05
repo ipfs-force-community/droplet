@@ -233,8 +233,6 @@ var setAskCmd = &cli.Command{
 			return nil
 		}
 
-		// TODO: 判断miner在矿池中是否存在
-
 		ssize, err := api.ActorSectorSize(ctx, maddr)
 		if err != nil {
 			return err
@@ -282,8 +280,6 @@ var getAskCmd = &cli.Command{
 		if err != nil {
 			return nil
 		}
-
-		// TODO: 判断miner在矿池中是否存在
 
 		sask, err := smapi.MarketGetAsk(ctx, maddr)
 		if err != nil {
