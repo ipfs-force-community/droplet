@@ -68,6 +68,7 @@ type ICidInfoRepo interface {
 	AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error
 	GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error)
 	ListCidInfoKeys() ([]cid.Cid, error)
+	Close() error
 	// ListPieceInfoKeys() ([]cid.Cid, error)
 	// GetPieceInfoFromCid(ctx context.Context, payloadCID, pieceCID cid.Cid) (piecestore.PieceInfo, bool, error)
 }

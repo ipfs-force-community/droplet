@@ -16,7 +16,6 @@ import (
 )
 
 type TimeStampOrm struct {
-	ID        uint   `gorm:"primary_key"`
 	CreatedAt uint64 `gorm:"type:bigint unsigned"`
 	UpdatedAt uint64 `gorm:"type:bigint unsigned"`
 	DeleteAt  uint64 `gorm:"type:bigint unsigned;index;default:null"`
@@ -73,6 +72,7 @@ func (j mysqlRetrievalAsk) Value() (driver.Value, error) {
 }
 
 type modelRetrievalAsk struct {
+	ID      uint               `gorm:"primary_key"`
 	UIdx    string             `gorm:"column:uidx;uniqueIndex;type:varchar(128)"`
 	Address mysqlAddress       `gorm:"column:address;uniqueIndex;type:varchar(128)"`
 	Ask     *mysqlRetrievalAsk `gorm:"column:retrieval_ask;type:blob;size:2048"`

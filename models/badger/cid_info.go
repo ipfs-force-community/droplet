@@ -85,3 +85,7 @@ func (ps *baderCidInfoRepo) mutateCIDInfo(c cid.Cid, mutator interface{}) error 
 
 	return ps.cidInfos.Get(c).Mutate(mutator)
 }
+
+func (ps *baderCidInfoRepo) Close() error {
+	return nil
+}
