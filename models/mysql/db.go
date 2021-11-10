@@ -86,7 +86,7 @@ func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 
 	r := &MysqlRepo{DB: db}
 
-	return r, r.AutoMigrate(modelRetrievalAsk{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{})
+	return r, r.AutoMigrate(modelRetrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{})
 }
 
 func parseCid(str string) (cid.Cid, error) {

@@ -12,6 +12,7 @@ import (
 )
 
 type storageAsk struct {
+	ID            uint       `gorm:"primary_key"`
 	Miner         string     `gorm:"column:miner;type:varchar(128);uniqueIndex"`
 	Price         mtypes.Int `gorm:"column:price;type:varchar(256);"`
 	VerifiedPrice mtypes.Int `gorm:"column:verified_price;type:varchar(256);"`
