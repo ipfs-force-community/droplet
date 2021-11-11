@@ -8,8 +8,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/ipfs/go-datastore"
-	"golang.org/x/xerrors"
 )
 
 type retrievalAskRepo struct {
@@ -25,9 +23,6 @@ func NewRetrievalAskRepo(ds repo.RetrievalAskDS) repo.IRetrievalAskRepo {
 func (r *retrievalAskRepo) GetAsk(addr address.Address) (*retrievalmarket.Ask, error) {
 	data, err := r.ds.Get(statestore.ToKey(addr))
 	if err != nil {
-		if xerrors.Is(err, datastore.ErrNotFound) {
-			err = repo.ErrNotFound
-		}
 		return nil, err
 	}
 	var ask retrievalmarket.Ask
@@ -43,8 +38,4 @@ func (r *retrievalAskRepo) SetAsk(addr address.Address, ask *retrievalmarket.Ask
 		return err
 	}
 	return r.ds.Put(statestore.ToKey(addr), data)
-}
-
-func (r *retrievalAskRepo) Close() error {
-	return r.ds.Close()
 }

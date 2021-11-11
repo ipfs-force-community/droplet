@@ -106,12 +106,3 @@ func (repo *retrievalAskRepo) SetAsk(addr address.Address, ask *retrievalmarket.
 		Ask:     (*mysqlRetrievalAsk)(ask),
 	}).Error
 }
-
-// TODO:may casuse reduplicative closing?
-func (repo *retrievalAskRepo) Close() error {
-	db, err := repo.ds.DB()
-	if err != nil {
-		return err
-	}
-	return db.Close()
-}

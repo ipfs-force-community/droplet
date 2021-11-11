@@ -62,3 +62,8 @@ func (b *BadgerRepo) CidInfoRepo() repo.ICidInfoRepo {
 func (r *BadgerRepo) RetrievalDealRepo() repo.IRetrievalDealRepo {
 	return r.retrievalRepo
 }
+
+func (r *BadgerRepo) Close() error {
+	// todo: to implement
+	return nil
+}

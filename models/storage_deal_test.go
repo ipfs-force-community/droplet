@@ -25,7 +25,12 @@ func TestStorageDeal(t *testing.T) {
 	t.Run("MinerDealMarshal", testCborMarshal)
 
 	t.Run("mysql", func(t *testing.T) {
-		testStorageDeal(t, MysqlDB(t).StorageDealRepo())
+		repo := MysqlDB(t)
+		dealRepo := repo.StorageDealRepo()
+		defer func() {
+			_ = repo.Close()
+		}()
+		testStorageDeal(t, dealRepo)
 	})
 
 	t.Run("badger", func(t *testing.T) {

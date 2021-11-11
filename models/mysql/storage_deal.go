@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/xerrors"
 	"time"
 
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -294,6 +295,29 @@ func (m *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error)
 	return toStorageDeal(&md)
 }
 
+func (dsr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
+	var md []storageDeal
+
+	err := dsr.DB.Table((&storageDeal{}).TableName()).
+		Find(&md, "cdp_provider = ?", miner.String()).
+		Offset(pageIndex * pageSize).Limit(pageSize).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var deals = make([]*types.MinerDeal, len(md))
+
+	for idx, deal := range md {
+		if deals[idx], err = toStorageDeal(&deal); err != nil {
+			return nil, xerrors.Errorf("convert StorageDeal(%s) to a types.MinerDeal failed:%w",
+				deal.ProposalCid, err)
+		}
+	}
+
+	return deals, nil
+}
+
 func (m *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
 	if err := m.travelDeals(
@@ -330,7 +354,8 @@ func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo,
 	return &pieceInfo, nil
 }
 
-func (m *storageDealRepo) travelDeals(condition map[string]interface{}, travelFn func(deal *types.MinerDeal) error) error {
+func (m *storageDealRepo) travelDeals(condition map[string]interface{},
+	travelFn func(deal *types.MinerDeal) error) error {
 	var mds []*storageDeal
 	if err := m.DB.Find(&mds, condition).Error; err != nil {
 		return err
@@ -370,10 +395,6 @@ func (m *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.Deal
 		return nil, err
 	}
 	return deal, nil
-}
-
-func (m *storageDealRepo) GetDeals(mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
-	return nil, nil
 }
 
 func (m *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {

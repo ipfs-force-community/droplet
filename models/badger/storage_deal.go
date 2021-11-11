@@ -48,6 +48,37 @@ func (sdr *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, erro
 	return &deal, nil
 }
 
+func (sdr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
+	var startIdx, idx = pageIndex * pageSize, 0
+	var storageDeals []*types.MinerDeal
+	var err error
+	if err = sdr.travelDeals(func(deal *types.MinerDeal) (err error) {
+		if deal.ClientDealProposal.Proposal.Provider != miner {
+			return
+		}
+		idx++
+		if idx-1 < startIdx {
+			return
+		}
+		storageDeals = append(storageDeals, deal)
+		if len(storageDeals) >= pageSize {
+			return justWantStopTravelErr
+		}
+		return
+	}); err != nil {
+		if xerrors.Is(err, justWantStopTravelErr) {
+			return storageDeals, nil
+		}
+		return nil, err
+	}
+
+	if len(storageDeals) == 0 {
+		err = repo.ErrNotFound
+	}
+
+	return storageDeals, err
+}
+
 func (sdr *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
 	if err := sdr.travelDeals(func(deal *types.MinerDeal) (err error) {
@@ -143,12 +174,7 @@ func (dsr *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.De
 		}
 		return nil, err
 	}
-
 	return nil, repo.ErrNotFound
-}
-
-func (dsr *storageDealRepo) GetDeals(mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
-	return nil, nil
 }
 
 func (dsr *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {

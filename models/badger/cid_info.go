@@ -87,7 +87,3 @@ func (ps *badgerCidInfoRepo) mutateCIDInfo(c cid.Cid, mutator interface{}) error
 
 	return ps.cidInfos.Get(c).Mutate(mutator)
 }
-
-func (ps *badgerCidInfoRepo) Close() error {
-	return nil
-}
