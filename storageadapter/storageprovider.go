@@ -2,7 +2,7 @@ package storageadapter
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/minermgr"
+	"fmt"
 	"io"
 	"time"
 
@@ -23,13 +23,17 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/dagstore"
+	"github.com/filecoin-project/venus-market/minermgr"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/piece"
+	"github.com/filecoin-project/venus-market/types"
 )
 
 // StorageProviderV2 provides an interface to the storage market for a single
@@ -79,7 +83,7 @@ type StorageProviderV2Impl struct {
 
 	unsubDataTransfer datatransfer.Unsubscribe
 
-	deals           StorageDealStore
+	dealStore       repo.StorageDealRepo
 	dealProcess     StorageDealProcess
 	transferProcess TransferProcess
 	storageReceiver smnet.StorageReceiver
@@ -110,10 +114,11 @@ func NewStorageProviderV2(
 	h host.Host,
 	homeDir *config.HomeDir,
 	pieceStore piecestore.PieceStore,
+	pieceStorage piece.IPieceStorage,
 	dataTransfer network.ProviderDataTransfer,
 	spn StorageProviderNode,
-	dagStore *dagstore.Wrapper,
-	deals StorageDealStore,
+	dagStore stores.DAGStoreWrapper,
+	repo repo.Repo,
 	minerMgr minermgr.IMinerMgr,
 ) (StorageProviderV2, error) {
 	net := smnet.NewFromLibp2pHost(h)
@@ -133,22 +138,22 @@ func NewStorageProviderV2(
 
 		pubSub: pubsub.New(providerDispatcher),
 
-		deals: deals,
+		dealStore: repo.StorageDealRepo(),
 
 		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.deals, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, dataTransfer, dagStore)
+	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, pieceStorage, dataTransfer, dagStore)
 	if err != nil {
 		return nil, err
 	}
 	spV2.dealProcess = dealProcess
 
-	spV2.transferProcess = NewDataTransferProcess(dealProcess, spV2.deals)
+	spV2.transferProcess = NewDataTransferProcess(dealProcess, spV2.dealStore)
 	// register a data transfer event handler -- this will send events to the state machines based on DT events
 	spV2.unsubDataTransfer = dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(spV2.transferProcess)) // fsm.Group
 
-	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.deals, spV2.net, spV2.fs, dealProcess)
+	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.dealStore, spV2.net, spV2.fs, dealProcess)
 	if err != nil {
 		return nil, err
 	}
@@ -166,6 +171,50 @@ func (p *StorageProviderV2Impl) Start(ctx context.Context) error {
 		return err
 	}
 
+	go func() {
+		err := p.start(ctx)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}()
+
+	return nil
+}
+
+func (p *StorageProviderV2Impl) start(ctx context.Context) error {
+	// Run datastore and DAG store migrations
+	addrs, err := p.minerMgr.ActorAddress(ctx)
+	if err != nil {
+		return err
+	}
+
+	var deals []*types.MinerDeal
+	for _, addr := range addrs {
+		tdeals, err := p.dealStore.ListDeal(addr)
+		if err != nil {
+			return nil
+		}
+		deals = append(deals, tdeals...)
+	}
+
+	// Fire restart event on all active deals
+	if err := p.restartDeals(ctx, deals); err != nil {
+		return fmt.Errorf("failed to restart deals: %w", err)
+	}
+	return nil
+}
+
+func (p *StorageProviderV2Impl) restartDeals(ctx context.Context, deals []*types.MinerDeal) error {
+	for _, deal := range deals {
+		if deal.State == storagemarket.StorageDealSlashed || deal.State == storagemarket.StorageDealExpired || deal.State == storagemarket.StorageDealError {
+			continue
+		}
+
+		err := p.dealProcess.HandleOff(ctx, deal)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -181,7 +230,7 @@ func (p *StorageProviderV2Impl) Stop() error {
 // cid for the given deal or it will error
 func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error {
 	// TODO: be able to check if we have enough disk space
-	d, err := p.deals.GetDeal(propCid)
+	d, err := p.dealStore.GetDeal(propCid)
 	if err != nil {
 		return xerrors.Errorf("failed getting deal %s: %w", propCid, err)
 	}
@@ -313,12 +362,17 @@ func (p *StorageProviderV2Impl) GetStorageCollateral(ctx context.Context, mAddr 
 
 // ListLocalDeals lists deals processed by this storage provider
 func (p *StorageProviderV2Impl) ListLocalDeals(mAddr address.Address) ([]storagemarket.MinerDeal, error) {
-
-	deals, err := p.deals.ListDeal(mAddr)
+	deals, err := p.dealStore.ListDeal(mAddr)
 	if err != nil {
 		return nil, err
 	}
-	return deals, nil
+
+	resDeals := make([]storagemarket.MinerDeal, len(deals))
+	for idx, deal := range deals {
+		resDeals[idx] = *convertMinerDealToFilMarketDeal(deal)
+	}
+
+	return resDeals, nil
 }
 
 // SetAsk configures the storage miner's ask with the provided price,

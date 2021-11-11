@@ -2,23 +2,22 @@ package retrievaladapter
 
 import (
 	"context"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/venus-market/models/repo"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/libp2p/go-libp2p-core/host"
+	"go.uber.org/fx"
+
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dealfilter"
 	"github.com/filecoin-project/venus-market/journal"
-	"github.com/libp2p/go-libp2p-core/host"
-	"go.uber.org/fx"
+	_ "github.com/filecoin-project/venus-market/network"
 )
 
 var (
-	HandleRetrievalKey builder.Invoke = builder.NextInvoke()
+	HandleRetrievalKey = builder.NextInvoke()
 )
 
 func RetrievalDealFilter(userFilter config.RetrievalDealFilter) func(onlineOk config.ConsiderOnlineRetrievalDealsConfigFunc,
@@ -54,19 +53,9 @@ func RetrievalDealFilter(userFilter config.RetrievalDealFilter) func(onlineOk co
 	}
 }
 
-func RetrievalProvider(node retrievalmarket.RetrievalProviderNode,
-	network rmnet.RetrievalMarketNetwork,
-	dagStore stores.DAGStoreWrapper,
-	dataTransfer datatransfer.Manager,
-	retrievalPricingFunc retrievalimpl.RetrievalPricingFunc,
-	repo repo.Repo,
-) (IRetrievalProvider, error) {
-	return NewProvider(node, network, dagStore, dataTransfer, retrievalPricingFunc, repo)
-}
-
-func HandleRetrieval(host host.Host,
+func HandleRetrieval(
 	lc fx.Lifecycle,
-	m RetrievalProviderV2,
+	m IRetrievalProvider,
 	j journal.Journal,
 ) {
 	lc.Append(fx.Hook{
@@ -81,10 +70,10 @@ func HandleRetrieval(host host.Host,
 
 // RetrievalPricingFunc configures the pricing function to use for retrieval deals.
 func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ config.ConsiderOnlineRetrievalDealsConfigFunc,
-	_ config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalPricingFunc {
+	_ config.ConsiderOfflineRetrievalDealsConfigFunc) retrievalimpl.RetrievalPricingFunc {
 
 	return func(_ config.ConsiderOnlineRetrievalDealsConfigFunc,
-		_ config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalPricingFunc {
+		_ config.ConsiderOfflineRetrievalDealsConfigFunc) retrievalimpl.RetrievalPricingFunc {
 		if cfg.RetrievalPricing.Strategy == config.RetrievalPricingExternalMode {
 			return ExternalRetrievalPricingFunc(cfg.RetrievalPricing.External.Path)
 		}
@@ -102,11 +91,12 @@ var RetrievalProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 
 		builder.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
 		// Markets (retrieval deps)
-		builder.Override(new(config.RetrievalPricingFunc), RetrievalPricingFunc(cfg)),
+		builder.Override(new(retrievalimpl.RetrievalPricingFunc), RetrievalPricingFunc(cfg)),
 		// Markets (retrieval)
 		builder.Override(new(retrievalmarket.RetrievalProviderNode), NewRetrievalProviderNode),
 		builder.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
-		builder.Override(new(IRetrievalProvider), RetrievalProvider), // save to metadata /retrievals/provider
+		builder.Override(new(IAskHandler), NewAskHandler),
+		builder.Override(new(IRetrievalProvider), NewProvider), // save to metadata /retrievals/provider
 		builder.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(nil)),
 		builder.Override(HandleRetrievalKey, HandleRetrieval),
 		builder.If(cfg.RetrievalFilter != "",

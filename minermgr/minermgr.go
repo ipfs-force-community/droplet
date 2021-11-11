@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
@@ -93,11 +94,13 @@ func (m *MinerMgrImpl) GetMinerFromVenusAuth(ctx context.Context, skip, limit in
 		m.lk.Lock()
 		m.miners = make([]address.Address, 0)
 		for _, val := range res {
-			addr, err := address.NewFromString(val.Miner)
-			if err == nil {
-				m.miners = append(m.miners, addr)
-			} else {
-				log.Errorf("miner [%s] is error", val.Miner)
+			if strings.Index(val.Miner, "f") == 0 || strings.Index(val.Miner, "t") == 0 {
+				addr, err := address.NewFromString(val.Miner)
+				if err == nil {
+					m.miners = append(m.miners, addr)
+				} else {
+					log.Errorf("miner [%s] is error", val.Miner)
+				}
 			}
 		}
 		m.lk.Unlock()

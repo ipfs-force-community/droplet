@@ -4,6 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -11,19 +15,20 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
+
+	mTypes "github.com/filecoin-project/venus-messager/types"
+
+	"github.com/ipfs-force-community/venus-gateway/marketevent"
+	types2 "github.com/ipfs-force-community/venus-gateway/types"
+
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	vTypes "github.com/filecoin-project/venus/pkg/types"
+
 	"github.com/filecoin-project/venus-market/client"
 	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/piece"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
-	mTypes "github.com/filecoin-project/venus-messager/types"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	vTypes "github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs-force-community/venus-gateway/marketevent"
-	types2 "github.com/ipfs-force-community/venus-gateway/types"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"golang.org/x/xerrors"
 )
 
 //mock for gen
@@ -134,13 +139,13 @@ type MarketFullNode interface {
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]types.DagstoreShardResult, error) //perm:admin
 
-	//todo validate miner identify
-	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*piece.DealInfo, error)                                                          //perm:read
-	AssignUnPackedDeals(spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error)                                                                                //perm:write
-	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error)                                       //perm:read
-	MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                                          //perm:write
-	UpdateDealOnPacking(ctx context.Context, miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error //perm:write
-	UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status string) error                                                              //perm:write
+	MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error                                                             //perm:write
+	UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error      //perm:write
+	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error                                            //perm:write
+	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*piece.DealInfo, error)                                             //perm:read
+	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error)                          //perm:read
+	AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) //perm:write
+
 	//market event
 	ResponseMarketEvent(ctx context.Context, resp *types2.ResponseEvent) error                                            //perm:read
 	ListenMarketEvent(ctx context.Context, policy *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) //perm:read

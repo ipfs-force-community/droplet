@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/venus/pkg/wallet"
@@ -26,7 +27,7 @@ type StorageDealStream struct {
 	conns       *connmanager.ConnManager
 	storedAsk   IStorageAsk
 	spn         StorageProviderNode
-	deals       StorageDealStore
+	deals       repo.StorageDealRepo
 	net         network.StorageMarketNetwork
 	fs          filestore.FileStore
 	dealProcess StorageDealProcess
@@ -37,7 +38,7 @@ func NewStorageDealStream(
 	conns *connmanager.ConnManager,
 	storedAsk IStorageAsk,
 	spn StorageProviderNode,
-	deals StorageDealStore,
+	deals repo.StorageDealRepo,
 	net network.StorageMarketNetwork,
 	fs filestore.FileStore,
 	dealProcess StorageDealProcess,
@@ -75,18 +76,15 @@ func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAsk
 
 	ask, err := storageDealStream.storedAsk.GetAsk(ar.Miner)
 	if err != nil {
-		if xerrors.Is(err, RecordNotFound) {
-			log.Warnf(" receive ask for miner with address %s", ar.Miner)
-		} else {
-			log.Errorf("failed to get ask for [%s]: %s", ar.Miner, err)
-		}
+		log.Errorf("failed to get ask for [%s]: %s", ar.Miner, err)
+		return
 	}
 
 	resp := network.AskResponse{
 		Ask: ask,
 	}
 
-	if err := s.WriteAskResponse(resp, storageDealStream.spn.Sign); err != nil {
+	if err := s.WriteAskResponse(resp, storageDealStream.spn.SignWithGivenMiner(ar.Miner)); err != nil {
 		log.Errorf("failed to write ask response: %s", err)
 		return
 	}
@@ -142,7 +140,7 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		path = string(tmp.OsPath())
 	}
 
-	deal := &storagemarket.MinerDeal{
+	deal := &types.MinerDeal{
 		Client:             s.RemotePeer(),
 		Miner:              storageDealStream.net.ID(),
 		ClientDealProposal: *proposal.DealProposal,
@@ -153,18 +151,6 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		CreationTime:       curTime(),
 		InboundCAR:         path,
 	}
-
-	// 3. 判断deal是否存在
-	md, err = storageDealStream.deals.GetDeal(deal.ProposalCid)
-	if err != nil {
-		log.Errorf("failed to check if state for %v exists: %w", deal.ProposalCid, err)
-		return
-	}
-	if md != nil {
-		log.Errorf("deal `%v` that already exists", deal.ProposalCid)
-		return
-	}
-
 	err = storageDealStream.deals.SaveDeal(deal)
 	if err != nil {
 		log.Errorf("save miner deal to database %w", err)
@@ -238,24 +224,24 @@ func (storageDealStream *StorageDealStream) HandleDealStatusStream(s network.Dea
 		Signature: *signature,
 	}
 
-	if err := s.WriteDealStatusResponse(response, storageDealStream.spn.Sign); err != nil {
+	if err := s.WriteDealStatusResponse(response, storageDealStream.spn.SignWithGivenMiner(mAddr)); err != nil {
 		log.Warnf("failed to write deal status response: %s", err)
 		return
 	}
 }
 
-func (storageDealStream *StorageDealStream) resendProposalResponse(s network.StorageDealStream, md *storagemarket.MinerDeal) error {
+func (storageDealStream *StorageDealStream) resendProposalResponse(s network.StorageDealStream, md *types.MinerDeal) error {
 	resp := &network.Response{State: md.State, Message: md.Message, Proposal: md.ProposalCid}
 	sig, err := storageDealStream.spn.Sign(context.TODO(), &types.SignInfo{
 		Data: resp,
 		Type: wallet.MTUnknown,
-		Addr: address.Address{},
+		Addr: md.Proposal.Provider,
 	})
 	if err != nil {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}
 
-	return s.WriteDealResponse(network.SignedResponse{Response: *resp, Signature: sig}, storageDealStream.spn.Sign)
+	return s.WriteDealResponse(network.SignedResponse{Response: *resp, Signature: sig}, storageDealStream.spn.SignWithGivenMiner(md.Proposal.Provider))
 }
 
 func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context.Context, request *network.DealStatusRequest) (*storagemarket.ProviderDealState, address.Address, error) {

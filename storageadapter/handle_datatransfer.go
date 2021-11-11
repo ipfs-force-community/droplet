@@ -8,18 +8,20 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/venus-market/models/repo"
 )
 
 var _ TransferProcess = (*DataTransferProcess)(nil)
 
 type DataTransferProcess struct {
 	dealProcess StorageDealProcess
-	deals       StorageDealStore
+	deals       repo.StorageDealRepo
 }
 
 func NewDataTransferProcess(
 	dealProcess StorageDealProcess,
-	deals StorageDealStore,
+	deals repo.StorageDealRepo,
 ) TransferProcess {
 	return &DataTransferProcess{
 		dealProcess: dealProcess,

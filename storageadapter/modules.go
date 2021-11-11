@@ -7,27 +7,19 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
-	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
-	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/dealfilter"
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
-	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -39,31 +31,7 @@ var (
 	HandleDealsKey builder.Invoke = builder.NextInvoke()
 )
 
-// TODO: Call the version implemented by go-fil-markets, deprecated
-func StorageProvider(
-	homeDir *config.HomeDir,
-	minerAddress types2.MinerAddress,
-	storedAsk *storedask.StoredAsk,
-	h host.Host,
-	providerDealsDs repo.ProviderDealDS,
-	dagStore *dagstore.Wrapper,
-	pieceStore piecestore.PieceStore,
-	dataTransfer network.ProviderDataTransfer,
-	spn storagemarket.StorageProviderNode,
-	df config.StorageDealFilter,
-) (storagemarket.StorageProvider, error) {
-	net := smnet.NewFromLibp2pHost(h)
-	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(string(*homeDir)))
-	if err != nil {
-		return nil, err
-	}
-
-	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
-
-	return storageimpl.NewProvider(net, providerDealsDs, store, dagStore, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
-}
-
-func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h StorageProviderV2, j journal.Journal) {
+func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProviderV2, j journal.Journal) {
 	ctx := metrics.LifecycleCtx(mctx, lc)
 	//h.OnReady(utils.ReadyLogger("piecestorage provider"))
 	lc.Append(fx.Hook{

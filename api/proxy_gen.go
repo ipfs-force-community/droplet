@@ -109,7 +109,7 @@ type MarketFullNodeStruct struct {
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
-		AssignUnPackedDeals func(p0 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) `perm:"write"`
+		AssignUnPackedDeals func(p0 context.Context, p1 address.Address, p2 abi.SectorSize, p3 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) `perm:"write"`
 
 		DagstoreGC func(p0 context.Context) ([]types.DagstoreShardResult, error) `perm:"admin"`
 
@@ -225,7 +225,7 @@ type MarketFullNodeStruct struct {
 
 		SectorSetExpectedSealDuration func(p0 context.Context, p1 time.Duration) error `perm:"write"`
 
-		UpdateDealOnPacking func(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 abi.DealID, p4 abi.SectorNumber, p5 abi.PaddedPieceSize) error `perm:"write"`
+		UpdateDealOnPacking func(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 abi.SectorNumber, p4 abi.PaddedPieceSize) error `perm:"write"`
 
 		UpdateDealStatus func(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 string) error `perm:"write"`
 	}
@@ -522,11 +522,11 @@ func (s *MarketFullNodeStub) ActorSectorSize(p0 context.Context, p1 address.Addr
 	return *new(abi.SectorSize), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) AssignUnPackedDeals(p0 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
-	return s.Internal.AssignUnPackedDeals(p0)
+func (s *MarketFullNodeStruct) AssignUnPackedDeals(p0 context.Context, p1 address.Address, p2 abi.SectorSize, p3 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
+	return s.Internal.AssignUnPackedDeals(p0, p1, p2, p3)
 }
 
-func (s *MarketFullNodeStub) AssignUnPackedDeals(p0 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
+func (s *MarketFullNodeStub) AssignUnPackedDeals(p0 context.Context, p1 address.Address, p2 abi.SectorSize, p3 *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
 	return *new([]*piece.DealInfoIncludePath), xerrors.New("method not supported")
 }
 
@@ -690,7 +690,7 @@ func (s *MarketFullNodeStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) GetDeals(p0 context.Context, p1 address.Address, p2 int, p3 int) ([]*piece.DealInfo, error) {
+func (s *MarketFullNodeStruct) GetDeals(p0 context.Context, p1 address.Address, p2, p3 int) ([]*piece.DealInfo, error) {
 	return s.Internal.GetDeals(p0, p1, p2, p3)
 }
 
@@ -986,11 +986,11 @@ func (s *MarketFullNodeStub) SectorSetExpectedSealDuration(p0 context.Context, p
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) UpdateDealOnPacking(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 abi.DealID, p4 abi.SectorNumber, p5 abi.PaddedPieceSize) error {
-	return s.Internal.UpdateDealOnPacking(p0, p1, p2, p3, p4, p5)
+func (s *MarketFullNodeStruct) UpdateDealOnPacking(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 abi.SectorNumber, p4 abi.PaddedPieceSize) error {
+	return s.Internal.UpdateDealOnPacking(p0, p1, p2, p3, p4)
 }
 
-func (s *MarketFullNodeStub) UpdateDealOnPacking(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 abi.DealID, p4 abi.SectorNumber, p5 abi.PaddedPieceSize) error {
+func (s *MarketFullNodeStub) UpdateDealOnPacking(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 abi.SectorNumber, p4 abi.PaddedPieceSize) error {
 	return xerrors.New("method not supported")
 }
 

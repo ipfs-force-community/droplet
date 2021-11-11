@@ -57,13 +57,13 @@ type MarketNodeImpl struct {
 	Host                host.Host
 	StorageProvider     storageadapter2.StorageProviderV2
 	RetrievalProvider   retrievaladapter.IRetrievalProvider
-	RetrievalAskHandler retrievaladapter.AskHandler
+	RetrievalAskHandler retrievaladapter.IAskHandler
 	DataTransfer        network.ProviderDataTransfer
 	DealPublisher       *storageadapter2.DealPublisher
-	PieceStore          piece.ExtendPieceStore
+	PieceStore          piece.PieceStoreEx
 	Messager            clients2.IMessager `optional:"true"`
 	DAGStore            *dagstore.DAGStore
-	PieceStorage        piece.PieceStorage
+	PieceStorage        piece.IPieceStorage
 	MinerMgr            minermgr.IMinerMgr
 	PaychAPI            paych3.PaychAPI
 
@@ -630,23 +630,23 @@ func (m MarketNodeImpl) DagstoreGC(ctx context.Context) ([]types.DagstoreShardRe
 }
 
 func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
-	return m.PieceStore.GetUnPackedDeals(spec)
+	return m.PieceStore.GetUnPackedDeals(ctx, miner, spec)
 }
 
-func (m MarketNodeImpl) AssignUnPackedDeals(spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
-	return m.PieceStore.AssignUnPackedDeals(spec)
+func (m MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
+	return m.PieceStore.AssignUnPackedDeals(ctx, miner, ssize, spec)
 }
 
 func (m MarketNodeImpl) MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error {
-	return m.PieceStore.MarkDealsAsPacking(deals)
+	return m.PieceStore.MarkDealsAsPacking(ctx, miner, deals)
 }
 
-func (m MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.Address, pieceCID cid.Cid, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
-	return m.PieceStore.UpdateDealOnPacking(pieceCID, dealId, sectorid, offset)
+func (m MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.Address, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
+	return m.PieceStore.UpdateDealOnPacking(ctx, miner, dealId, sectorid, offset)
 }
 
 func (m MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status string) error {
-	return m.PieceStore.UpdateDealStatus(dealId, status)
+	return m.PieceStore.UpdateDealStatus(ctx, miner, dealId, status)
 }
 
 func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {
@@ -660,7 +660,7 @@ func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid
 }
 
 func (m MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*piece.DealInfo, error) {
-	return m.PieceStore.GetDeals(pageIndex, pageSize)
+	return m.PieceStore.GetDeals(ctx, miner, pageIndex, pageSize)
 }
 
 func (m MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {

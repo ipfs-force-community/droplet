@@ -3,16 +3,20 @@ package storageadapter
 import (
 	"context"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
-	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models/repo"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	"golang.org/x/xerrors"
 )
 
 type IStorageAsk interface {
@@ -89,9 +93,21 @@ func (repo *StorageAsk) signAsk(ask *storagemarket.StorageAsk) (*storagemarket.S
 	if err != nil {
 		return nil, err
 	}
-	sig, err := repo.fullNode.WalletSign(context.TODO(), ask.Miner, nil, wallet.MsgMeta{
-		Type:  wallet.MTStorageAsk,
-		Extra: askBytes,
+
+	// get worker address for miner
+	ctx := context.TODO()
+	tok, err := repo.fullNode.ChainHead(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	mi, err := repo.fullNode.StateMinerInfo(ctx, ask.Miner, tok.Key())
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := repo.fullNode.WalletSign(ctx, mi.Worker, askBytes, wallet.MsgMeta{
+		Type: wallet.MTStorageAsk,
 	})
 	if err != nil {
 		return nil, err

@@ -2,10 +2,6 @@ package storageadapter
 
 import (
 	"context"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
-	"github.com/filecoin-project/venus-market/piece"
 	"io"
 	"os"
 
@@ -13,10 +9,12 @@ import (
 	carv2 "github.com/ipld/go-car/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-commp-utils/writer"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/dtutils"
@@ -27,21 +25,28 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/actors/builtin/market"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
+	"github.com/filecoin-project/venus/pkg/wallet"
+
+	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
+	"github.com/filecoin-project/venus-market/models/repo"
 	network2 "github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/piece"
+	"github.com/filecoin-project/venus-market/types"
 )
 
 // TODO: These are copied from spec-actors master, use spec-actors exports when we update
 const DealMaxLabelSize = 256
 
 type StorageDealProcess interface {
-	AcceptDeal(ctx context.Context, deal *storagemarket.MinerDeal) error
-	HandleOff(ctx context.Context, deal *storagemarket.MinerDeal) error
-	HandleError(deal *storagemarket.MinerDeal, err error) error
-	HandleReject(deal *storagemarket.MinerDeal, event storagemarket.StorageDealStatus, err error) error
+	AcceptDeal(ctx context.Context, deal *types.MinerDeal) error
+	HandleOff(ctx context.Context, deal *types.MinerDeal) error
+	HandleError(deal *types.MinerDeal, err error) error
+	HandleReject(deal *types.MinerDeal, event storagemarket.StorageDealStatus, err error) error
 }
 
 var _ StorageDealProcess = (*StorageDealProcessImpl)(nil)
@@ -50,7 +55,7 @@ type StorageDealProcessImpl struct {
 	conns      *connmanager.ConnManager
 	peerTagger network.PeerTagger
 	spn        StorageProviderNode
-	deals      StorageDealStore
+	deals      repo.StorageDealRepo
 	ask        IStorageAsk
 	fs         filestore.FileStore
 	stores     *stores.ReadWriteBlockstores
@@ -59,8 +64,8 @@ type StorageDealProcessImpl struct {
 
 	dagStore stores.DAGStoreWrapper // TODO:检查是否遗漏
 
-	minerMgr minermgr2.IMinerMgr
-	storage  piece.IPieceStorage
+	minerMgr     minermgr2.IMinerMgr
+	pieceStorage piece.IPieceStorage
 }
 
 // NewStorageDealProcessImpl returns a new deal process instance
@@ -68,11 +73,12 @@ func NewStorageDealProcessImpl(
 	conns *connmanager.ConnManager,
 	peerTagger network.PeerTagger,
 	spn StorageProviderNode,
-	deals StorageDealStore,
+	deals repo.StorageDealRepo,
 	ask IStorageAsk,
 	fs filestore.FileStore,
 	minerMgr minermgr2.IMinerMgr,
 	pieceStore piecestore.PieceStore,
+	pieceStorage piece.IPieceStorage,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
 ) (StorageDealProcess, error) {
@@ -99,13 +105,15 @@ func NewStorageDealProcessImpl(
 
 		minerMgr: minerMgr,
 
+		pieceStorage: pieceStorage,
+
 		pieceStore: pieceStore,
 		dagStore:   dagStore,
 	}, nil
 }
 
 // StorageDealUnknown->StorageDealValidating(ValidateDealProposal)->StorageDealAcceptWait(DecideOnProposal)->StorageDealWaitingForData
-func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context, minerDeal *storagemarket.MinerDeal) error {
+func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
 	storageDealPorcess.peerTagger.TagPeer(minerDeal.Client, minerDeal.ProposalCid.String())
 
 	tok, curEpoch, err := storageDealPorcess.spn.GetChainHead(ctx)
@@ -229,8 +237,8 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 
 	// TODO: RunCustomDecisionLogic ?
 
-	// Send intent to accept
-	err = storageDealPorcess.SendSignedResponse(ctx, &network.Response{
+	// DecideOnProposal
+	err = storageDealPorcess.SendSignedResponse(ctx, proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealWaitingForData,
 		Proposal: minerDeal.ProposalCid,
 	})
@@ -245,7 +253,7 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 	return storageDealPorcess.SaveState(minerDeal, storagemarket.StorageDealWaitingForData)
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context, deal *storagemarket.MinerDeal) error {
+func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context, deal *types.MinerDeal) error {
 	// VerifyData
 	if deal.State == storagemarket.StorageDealVerifyData {
 		// finalize the blockstore as we're done writing deal data to it.
@@ -308,28 +316,44 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		// if no message was sent, and there was no error, funds were already available
 		if mcid != cid.Undef {
 			deal.AddFundsCid = &mcid
+			deal.State = storagemarket.StorageDealProviderFunding
 
-			deal.State = storagemarket.StorageDealProviderFunding // WaitForFunding
-			// TODO: 返回值处理
-			errW := node.WaitForMessage(ctx, *deal.AddFundsCid, func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error {
-				if err != nil {
-					return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds errored: %w", err))
-				}
-				if code != exitcode.Ok {
-					return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds exit code: %s", code.String()))
-				}
-				deal.State = storagemarket.StorageDealPublish
-
-				return nil
-			})
-
-			if errW != nil {
-				return storageDealPorcess.HandleError(deal, xerrors.Errorf("Wait AddFunds msg for Provider errored: %w", err))
-			}
+		} else {
+			deal.State = storagemarket.StorageDealPublish // PublishDeal
 		}
 
-		deal.State = storagemarket.StorageDealPublish // PublishDeal
-		smDeal := storagemarket.MinerDeal{
+		err = storageDealPorcess.deals.SaveDeal(deal)
+		if err != nil {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+		}
+	}
+
+	if deal.State == storagemarket.StorageDealProviderFunding { // WaitForFunding
+		// TODO: 返回值处理
+		errW := node.WaitForMessage(ctx, *deal.AddFundsCid, func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error {
+			if err != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds errored: %w", err))
+			}
+			if code != exitcode.Ok {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("AddFunds exit code: %s", code.String()))
+			}
+			deal.State = storagemarket.StorageDealPublish
+
+			err = storageDealPorcess.deals.SaveDeal(deal)
+			if err != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+			}
+
+			return nil
+		})
+
+		if errW != nil {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("Wait AddFunds msg for Provider errored: %w", errW))
+		}
+	}
+
+	if deal.State == storagemarket.StorageDealPublish {
+		smDeal := types.MinerDeal{
 			Client:             deal.Client,
 			ClientDealProposal: deal.ClientDealProposal,
 			ProposalCid:        deal.ProposalCid,
@@ -344,7 +368,14 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 		deal.PublishCid = &pdMCid
 
-		deal.State = storagemarket.StorageDealPublishing // WaitForPublish
+		deal.State = storagemarket.StorageDealPublishing
+		err = storageDealPorcess.deals.SaveDeal(deal)
+		if err != nil {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+		}
+	}
+
+	if deal.State == storagemarket.StorageDealPublishing { // WaitForPublish
 		res, err := storageDealPorcess.spn.WaitForPublishDeals(ctx, *deal.PublishCid, deal.Proposal)
 		if err != nil {
 			return storageDealPorcess.HandleError(deal, xerrors.Errorf("PublishStorageDeals errored: %w", err))
@@ -356,8 +387,14 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 		deal.DealID = res.DealID
 		deal.PublishCid = &res.FinalCid
+		deal.State = storagemarket.StorageDealStaged
+		err = storageDealPorcess.deals.SaveDeal(deal)
+		if err != nil {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+		}
+	}
 
-		deal.State = storagemarket.StorageDealStaged // HandoffDeal
+	if deal.State == storagemarket.StorageDealStaged { // HandoffDeal
 		var carFilePath string
 		if deal.PiecePath != "" {
 			// Data for offline deals is stored on disk, so if PiecePath is set,
@@ -403,7 +440,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			}
 		}
 
-		if err := storageDealPorcess.savePieceMetadata(deal); err != nil {
+		if err := storageDealPorcess.recordPiece(deal); err != nil {
 			err = xerrors.Errorf("failed to register deal data for piece %s for retrieval: %w", deal.Ref.PieceCid, err)
 			log.Error(err.Error())
 			return storageDealPorcess.HandleError(deal, err)
@@ -419,12 +456,23 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		log.Infow("successfully handed off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
 		deal.AvailableForRetrieval = true
 		deal.State = storagemarket.StorageDealAwaitingPreCommit
+		if err := storageDealPorcess.deals.SaveDeal(deal); err != nil {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+		}
 	}
 
 	//todo should be async to do
 	//add timer to check P2 C2 status
 	// VerifyDealPreCommitted
 	if deal.State == storagemarket.StorageDealAwaitingPreCommit {
+		// Asynchronously wait for pre-commit or prove-commit message to be uploaded to the chain
+		//ticker := time.NewTicker(time.Second * 30)
+		//go func() {
+		//	for range ticker.C {
+		//
+		//	}
+		//}()
+
 		cb := func(sectorNumber abi.SectorNumber, isActive bool, err error) {
 			// It's possible that
 			// - we miss the pre-commit message and have to wait for prove-commit
@@ -516,8 +564,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 	return nil
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) savePieceMetadata(deal *storagemarket.MinerDeal) error {
-
+func (storageDealPorcess *StorageDealProcessImpl) recordPiece(deal *types.MinerDeal) error {
 	var blockLocations map[cid.Cid]piecestore.BlockLocation
 	if deal.MetadataPath != filestore.Path("") {
 		var err error
@@ -535,10 +582,12 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceMetadata(deal *storag
 		return xerrors.Errorf("failed to add piece block locations: %s", err)
 	}
 
+	// TODO AddDealForPiece -> StorageDealRepo::SaveDeal
+
 	return nil
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Context, deal *storagemarket.MinerDeal, reader io.Reader, payloadSize uint64) error {
+func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Context, deal *types.MinerDeal, reader io.Reader, payloadSize uint64) error {
 	// because we use the PadReader directly during AP we need to produce the
 	// correct amount of zeroes
 	// (alternative would be to keep precise track of sector offsets for each
@@ -550,13 +599,13 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 	}
 
 	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
-	has, err := storageDealPorcess.storage.Has(pieceCid.String())
+	has, err := storageDealPorcess.pieceStorage.Has(pieceCid.String())
 	if err != nil {
 		return xerrors.Errorf("failed to get piece cid data %w", err)
 	}
 
 	if !has {
-		wLen, err := storageDealPorcess.storage.SaveTo(ctx, pieceCid.String(), paddedReader)
+		wLen, err := storageDealPorcess.pieceStorage.SaveTo(ctx, pieceCid.String(), paddedReader)
 		if err != nil {
 			return err
 		}
@@ -568,13 +617,18 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 	return nil
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context.Context, resp *network.Response) error {
+func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context.Context, mAddr address.Address, resp *network.Response) error {
 	s, err := storageDealPorcess.conns.DealStream(resp.Proposal)
 	if err != nil {
 		return xerrors.Errorf("couldn't send response: %w", err)
 	}
 
-	sig, err := storageDealPorcess.spn.Sign(ctx, resp)
+	respEx := &types.SignInfo{
+		Data: resp,
+		Type: wallet.MTUnknown,
+		Addr: mAddr,
+	}
+	sig, err := storageDealPorcess.spn.Sign(ctx, respEx)
 	if err != nil {
 		return xerrors.Errorf("failed to sign response message: %w", err)
 	}
@@ -584,7 +638,8 @@ func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context
 		Signature: sig,
 	}
 
-	err = s.WriteDealResponse(signedResponse, storageDealPorcess.spn.Sign)
+	// TODO: review ???
+	err = s.WriteDealResponse(signedResponse, storageDealPorcess.spn.SignWithGivenMiner(mAddr))
 	if err != nil {
 		// Assume client disconnected
 		_ = storageDealPorcess.conns.Disconnect(resp.Proposal)
@@ -593,11 +648,11 @@ func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context
 }
 
 // StorageDealRejecting(RejectDeal)->StorageDealFailing(FailDeal)
-func (storageDealPorcess *StorageDealProcessImpl) HandleReject(deal *storagemarket.MinerDeal, event storagemarket.StorageDealStatus, err error) error {
+func (storageDealPorcess *StorageDealProcessImpl) HandleReject(deal *types.MinerDeal, event storagemarket.StorageDealStatus, err error) error {
 	deal.State = event
 	deal.Message = err.Error()
 
-	err = storageDealPorcess.SendSignedResponse(context.TODO(), &network.Response{
+	err = storageDealPorcess.SendSignedResponse(context.TODO(), deal.Proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealFailing,
 		Message:  deal.Message,
 		Proposal: deal.ProposalCid,
@@ -618,7 +673,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleReject(deal *storagemark
 	return storageDealPorcess.deals.SaveDeal(deal)
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) HandleError(deal *storagemarket.MinerDeal, err error) error {
+func (storageDealPorcess *StorageDealProcessImpl) HandleError(deal *types.MinerDeal, err error) error {
 	deal.State = storagemarket.StorageDealFailing
 	deal.Message = err.Error()
 
@@ -654,7 +709,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleError(deal *storagemarke
 	return storageDealPorcess.deals.SaveDeal(deal)
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) releaseReservedFunds(ctx context.Context, deal *storagemarket.MinerDeal) {
+func (storageDealPorcess *StorageDealProcessImpl) releaseReservedFunds(ctx context.Context, deal *types.MinerDeal) {
 	if !deal.FundsReserved.Nil() && !deal.FundsReserved.IsZero() {
 		err := storageDealPorcess.spn.ReleaseFunds(ctx, deal.Proposal.Provider, deal.FundsReserved)
 		if err != nil {
@@ -666,7 +721,7 @@ func (storageDealPorcess *StorageDealProcessImpl) releaseReservedFunds(ctx conte
 	}
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) SaveState(deal *storagemarket.MinerDeal, event storagemarket.StorageDealStatus) error {
+func (storageDealPorcess *StorageDealProcessImpl) SaveState(deal *types.MinerDeal, event storagemarket.StorageDealStatus) error {
 	deal.State = event
 	return storageDealPorcess.deals.SaveDeal(deal)
 }

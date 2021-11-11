@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/venus-market/metrics"
 	"sync"
 
 	"github.com/filecoin-project/go-address"
@@ -87,8 +88,8 @@ type ManagerParams struct {
 	SM           IStateManager
 }
 
-func NewManager(ctx context.Context, repo repo.Repo, fullNode apiface.FullNode) (*Manager, error) {
-	ctx, shutdown := context.WithCancel(ctx)
+func NewManager(mctx metrics.MetricsCtx, repo repo.Repo, fullNode apiface.FullNode) (*Manager, error) {
+	ctx, shutdown := context.WithCancel(mctx)
 	impl := &managerAPIImpl{
 		IStateManager:      newStateMgrAdapter(fullNode),
 		paychDependencyAPI: newPaychDependencyAPI(fullNode, fullNode, fullNode),

@@ -20,9 +20,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/build"
 	api2 "github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/client"
 	"github.com/filecoin-project/venus-market/imports"
@@ -40,19 +37,20 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/network"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
 	"github.com/filecoin-project/venus-market/cli/tablewriter"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
 )
 
 var CidBaseFlag = cli.StringFlag{
@@ -62,6 +60,13 @@ var CidBaseFlag = cli.StringFlag{
 	Usage:       "Multibase encoding used for version 1 CIDs in output.",
 	DefaultText: "base32",
 }
+
+// TODO ???
+// Actor consts
+// TODO: pieceSize unused from actors
+var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
+
+const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
 
 // GetCidEncoder returns an encoder using the `cid-base` flag if provided, or
 // the default (Base32) encoder if not.
@@ -411,11 +416,11 @@ The minimum value is 518400 (6 months).`,
 			provCol = pc
 		}
 
-		if abi.ChainEpoch(dur) < build.MinDealDuration {
-			return xerrors.Errorf("minimum deal duration is %d blocks", build.MinDealDuration)
+		if abi.ChainEpoch(dur) < MinDealDuration {
+			return xerrors.Errorf("minimum deal duration is %d blocks", MinDealDuration)
 		}
-		if abi.ChainEpoch(dur) > build.MaxDealDuration {
-			return xerrors.Errorf("maximum deal duration is %d blocks", build.MaxDealDuration)
+		if abi.ChainEpoch(dur) > MaxDealDuration {
+			return xerrors.Errorf("maximum deal duration is %d blocks", MaxDealDuration)
 		}
 
 		var a address.Address
@@ -629,13 +634,13 @@ uiLoop:
 				continue
 			}
 
-			if days < int(build.MinDealDuration/builtin.EpochsInDay) {
-				printErr(xerrors.Errorf("minimum duration is %d days", int(build.MinDealDuration/builtin.EpochsInDay)))
+			if days < int(MinDealDuration/builtin.EpochsInDay) {
+				printErr(xerrors.Errorf("minimum duration is %d days", int(MinDealDuration/builtin.EpochsInDay)))
 				continue
 			}
 
 			dur = 24 * time.Hour * time.Duration(days)
-			epochs = abi.ChainEpoch(dur / (time.Duration(build.BlockDelaySecs) * time.Second))
+			epochs = abi.ChainEpoch(dur / (time.Duration(BlockDelaySecs) * time.Second))
 
 			state = "verified"
 		case "verified":
@@ -2272,7 +2277,7 @@ var clientWithdraw = &cli.Command{
 		&cli.IntFlag{
 			Name:  "confidence",
 			Usage: "number of block confirmations to wait for",
-			Value: int(build.MessageConfidence),
+			Value: int(constants.MessageConfidence),
 		},
 	},
 	Action: func(cctx *cli.Context) error {

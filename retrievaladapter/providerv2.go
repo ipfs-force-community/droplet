@@ -6,17 +6,15 @@ import (
 	"math"
 	"time"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/dtutils"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/network"
 	"github.com/hannahhoward/go-pubsub"
-	"golang.org/x/xerrors"
 )
 
 var queryTimeout = 5 * time.Second
@@ -29,7 +27,7 @@ type IRetrievalProvider interface {
 
 // RetrievalProviderV2 is the production implementation of the RetrievalProvider interface
 type RetrievalProviderV2 struct {
-	dataTransfer     datatransfer.Manager
+	dataTransfer     network.ProviderDataTransfer
 	node             retrievalmarket.RetrievalProviderNode
 	network          rmnet.RetrievalMarketNetwork
 	requestValidator *ProviderRequestValidator
@@ -67,17 +65,11 @@ func providerDispatcher(evt pubsub.Event, subscriberFn pubsub.SubscriberFn) erro
 // NewProvider returns a new retrieval Provider
 func NewProvider(node retrievalmarket.RetrievalProviderNode,
 	network rmnet.RetrievalMarketNetwork,
+	askHandler IAskHandler,
 	dagStore stores.DAGStoreWrapper,
-	dataTransfer datatransfer.Manager,
-	retrievalPricingFunc retrievalimpl.RetrievalPricingFunc,
+	dataTransfer network.ProviderDataTransfer,
 	repo repo.Repo,
 ) (*RetrievalProviderV2, error) {
-	if retrievalPricingFunc == nil {
-		return nil, xerrors.New("retrievalPricingFunc is nil")
-	}
-
-	askHandler := NewAskHandler(repo, node, retrievalPricingFunc)
-
 	storageDealsRepo := repo.StorageDealRepo()
 	retrievalDealRepo := repo.RetrievalDealRepo()
 

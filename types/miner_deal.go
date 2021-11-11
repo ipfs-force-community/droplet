@@ -37,8 +37,9 @@ type MinerDeal struct {
 	TransferChannelId *datatransfer.ChannelID
 	SectorNumber      abi.SectorNumber
 
-	Offset abi.PaddedPieceSize
-	Length abi.PaddedPieceSize
+	Offset      abi.PaddedPieceSize
+	Length      abi.PaddedPieceSize
+	PieceStatus string
 
 	InboundCAR string
 }
@@ -413,6 +414,21 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.PieceStatus (string) (string)
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("PieceStatus"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("PieceStatus")); err != nil {
+		return err
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len(t.PieceStatus))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.PieceStatus)); err != nil {
+		return err
+	}
+
 	// t.InboundCAR (string) (string)
 	if len("InboundCAR") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"InboundCAR\" was too long")
@@ -761,6 +777,17 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 				}
 				t.SectorNumber = abi.SectorNumber(extra)
 
+			}
+			// t.PieceStatus (string) (string)
+		case "PieceStatus":
+
+			{
+				sval, err := cbg.ReadStringBuf(br, scratch)
+				if err != nil {
+					return err
+				}
+
+				t.PieceStatus = string(sval)
 			}
 			// t.InboundCAR (string) (string)
 		case "InboundCAR":

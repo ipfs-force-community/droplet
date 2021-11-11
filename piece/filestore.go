@@ -2,9 +2,12 @@ package piece
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/abi"
 	"io"
 	"path"
+
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/venus-market/config"
 )
 
 type IPieceStorage interface {
@@ -18,6 +21,14 @@ var _ IPieceStorage = (*PieceStorage)(nil)
 
 type PieceStorage struct {
 	path string
+}
+
+func NewPieceStorage(pieceStoragePath *config.PieceStorageString) (IPieceStorage, error) {
+	err := CheckValidate(string(*pieceStoragePath))
+	if err != nil {
+		return nil, err
+	}
+	return &PieceStorage{string(*pieceStoragePath)}, nil
 }
 
 func (p *PieceStorage) SaveTo(ctx context.Context, s string, reader io.Reader) (int64, error) {

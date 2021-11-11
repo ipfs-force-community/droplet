@@ -223,9 +223,10 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	}
 
 	if cctx.IsSet("auth-url") {
-		cfg.Node.Url = cctx.String("auth-url")
+		cfg.AuthNode.Url = cctx.String("auth-url")
 	}
 	if cctx.IsSet("auth-token") {
+		cfg.AuthNode.Token = cctx.String("auth-token")
 		cfg.Node.Token = cctx.String("auth-token")
 	}
 

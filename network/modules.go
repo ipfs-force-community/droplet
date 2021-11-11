@@ -1,12 +1,13 @@
 package network
 
 import (
-	"github.com/filecoin-project/venus-market/builder"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+
+	"github.com/filecoin-project/venus-market/builder"
 )
 
 //nolint:golint
@@ -19,9 +20,10 @@ var (
 	SecurityKey          = builder.Special{ID: 6} // Libp2p option
 )
 
+// Invokes are called in the order they are defined.
 var (
-	PstoreAddSelfKeysKey builder.Invoke = builder.NextInvoke()
-	StartListeningKey    builder.Invoke = builder.NextInvoke()
+	PstoreAddSelfKeysKey = builder.NextInvoke()
+	StartListeningKey    = builder.NextInvoke()
 )
 
 var NetworkOpts = func(server bool, simultaneousTransfers uint64) builder.Option {

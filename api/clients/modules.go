@@ -210,14 +210,21 @@ func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent,
 
 var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Signer, mysqlCfg *config.Mysql) builder.Option {
 	opts := builder.Options(
-		builder.ApplyIf(func(s *builder.Settings) bool {
-			return len(mCfg.Url) > 0
-		}, builder.Override(new(IMessager), MessagerClient), builder.Override(ReplaceMpoolMethod, ConvertMpoolToMessager)),
+		builder.ApplyIf(
+			func(s *builder.Settings) bool {
+				return len(mCfg.Url) > 0
+			},
+			builder.Override(new(IMessager), MessagerClient),
+			builder.Override(ReplaceMpoolMethod, ConvertMpoolToMessager)),
 
-		builder.ApplyIf(func(s *builder.Settings) bool {
-			return len(signerCfg.Url) > 0
-		}, builder.Override(new(ISinger), NewWalletClient), builder.Override(ReplaceWalletMethod, ConvertWalletToISinge)),
+		builder.ApplyIf(
+			func(s *builder.Settings) bool {
+				return len(signerCfg.Url) > 0
+			},
+			builder.Override(new(ISinger), NewWalletClient),
+			builder.Override(ReplaceWalletMethod, ConvertWalletToISinge)),
 	)
+
 	if server {
 		return builder.Options(opts,
 			builder.Override(new(apiface.FullNode), NodeClient),

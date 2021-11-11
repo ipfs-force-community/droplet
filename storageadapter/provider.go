@@ -4,6 +4,7 @@ package storageadapter
 
 import (
 	"context"
+
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
@@ -13,6 +14,7 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -47,16 +49,15 @@ type ProviderNodeAdapter struct {
 
 	dealPublisher *DealPublisher
 
-	storage                     piece.IPieceStorage
-	extendPieceMeta             piece.ExtendPieceStore
+	extendPieceMeta             piece.PieceStoreEx
 	addBalanceSpec              *types.MessageSendSpec
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta piece.PieceStoreEx) StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta piece.PieceStoreEx) StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev, err := events.NewEvents(ctx, full)
@@ -69,7 +70,6 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 			ev:              ev,
 			dealPublisher:   dealPublisher,
 			dsMatcher:       newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
-			storage:         storage,
 			extendPieceMeta: extendPieceMeta,
 			fundMgr:         fundMgr,
 		}
@@ -83,7 +83,7 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 	}
 }
 
-func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (cid.Cid, error) {
+func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal types2.MinerDeal) (cid.Cid, error) {
 	return n.dealPublisher.Publish(ctx, deal.ClientDealProposal)
 }
 
@@ -134,6 +134,14 @@ func (n *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*cryp
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get chain head: %w", err)
 	}
+
+	switch data.(type) {
+	case *types2.SignInfo:
+
+	default:
+		return nil, xerrors.Errorf("data type is not SignInfo")
+	}
+
 	info := data.(*types2.SignInfo)
 	msgBytes, err := cborutil.Dump(info.Data)
 	if err != nil {
@@ -156,6 +164,38 @@ func (n *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*cryp
 		return nil, err
 	}
 	return localSignature, nil
+}
+
+//
+func (n *ProviderNodeAdapter) SignWithGivenMiner(mAddr address.Address) network.ResigningFunc {
+	return func(ctx context.Context, data interface{}) (*crypto.Signature, error) {
+		tok, _, err := n.GetChainHead(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("couldn't get chain head: %w", err)
+		}
+
+		msgBytes, err := cborutil.Dump(data)
+		if err != nil {
+			return nil, xerrors.Errorf("serializing: %w", err)
+		}
+
+		worker, err := n.GetMinerWorkerAddress(ctx, mAddr, tok)
+		if err != nil {
+			return nil, err
+		}
+
+		signer, err := n.StateAccountKey(ctx, worker, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+		localSignature, err := n.WalletSign(ctx, signer, msgBytes, wallet.MsgMeta{
+			Type: wallet.MTUnknown,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return localSignature, nil
+	}
 }
 
 func (n *ProviderNodeAdapter) ReserveFunds(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
@@ -249,7 +289,7 @@ func (n *ProviderNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, prov
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, market.DealProposal(proposal), *publishCid, func(err error) {
 		cb(err)
-		_Err := n.extendPieceMeta.UpdateDealStatus(dealID, "Proving")
+		_Err := n.extendPieceMeta.UpdateDealStatus(ctx, provider, dealID,"Proving")
 		if _Err != nil {
 			log.Errorw("update deal status %w", _Err)
 		}
@@ -400,8 +440,11 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 
 // StorageProviderNode are common interfaces provided by a filecoin Node to both StorageClient and StorageProvider
 type StorageProviderNode interface {
-	// SignsBytes signs the given data with the given address's private key
+	// Sign sign the given data with the given address's private key
 	Sign(ctx context.Context, data interface{}) (*crypto.Signature, error)
+
+	// SignWithGivenMiner sign the data with the worker address of the given miner
+	SignWithGivenMiner(mAddr address.Address) network.ResigningFunc
 
 	// GetChainHead returns a tipset token for the current chain head
 	GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error)
@@ -437,7 +480,7 @@ type StorageProviderNode interface {
 	OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error
 
 	// PublishDeals publishes a deal on chain, returns the message cid, but does not wait for message to appear
-	PublishDeals(ctx context.Context, deal storagemarket.MinerDeal) (cid.Cid, error)
+	PublishDeals(ctx context.Context, deal types2.MinerDeal) (cid.Cid, error)
 
 	// WaitForPublishDeals waits for a deal publish message to land on chain.
 	WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error)
