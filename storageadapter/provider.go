@@ -49,16 +49,15 @@ type ProviderNodeAdapter struct {
 
 	dealPublisher *DealPublisher
 
-	storage                     piece.IPieceStorage
-	extendPieceMeta             piece.ExtendPieceStore
+	extendPieceMeta             piece.PieceStoreEx
 	addBalanceSpec              *types.MessageSendSpec
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, storage piece.IPieceStorage, extendPieceMeta piece.ExtendPieceStore) StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta piece.PieceStoreEx) StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta piece.PieceStoreEx) StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev, err := events.NewEvents(ctx, full)
@@ -71,7 +70,6 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 			ev:              ev,
 			dealPublisher:   dealPublisher,
 			dsMatcher:       newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
-			storage:         storage,
 			extendPieceMeta: extendPieceMeta,
 			fundMgr:         fundMgr,
 		}
@@ -169,7 +167,7 @@ func (n *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*cryp
 }
 
 //
-func (n *ProviderNodeAdapter) SignWithGivenMiner(mAddr address.Address)  network.ResigningFunc {
+func (n *ProviderNodeAdapter) SignWithGivenMiner(mAddr address.Address) network.ResigningFunc {
 	return func(ctx context.Context, data interface{}) (*crypto.Signature, error) {
 		tok, _, err := n.GetChainHead(ctx)
 		if err != nil {
@@ -291,7 +289,7 @@ func (n *ProviderNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, prov
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, market.DealProposal(proposal), *publishCid, func(err error) {
 		cb(err)
-		_Err := n.extendPieceMeta.UpdateDealStatus(dealID, "Proving")
+		_Err := n.extendPieceMeta.UpdateDealStatus(ctx, provider, dealID,"Proving")
 		if _Err != nil {
 			log.Errorw("update deal status %w", _Err)
 		}
@@ -446,7 +444,7 @@ type StorageProviderNode interface {
 	Sign(ctx context.Context, data interface{}) (*crypto.Signature, error)
 
 	// SignWithGivenMiner sign the data with the worker address of the given miner
-	SignWithGivenMiner(mAddr address.Address)  network.ResigningFunc
+	SignWithGivenMiner(mAddr address.Address) network.ResigningFunc
 
 	// GetChainHead returns a tipset token for the current chain head
 	GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error)

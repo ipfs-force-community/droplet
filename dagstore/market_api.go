@@ -19,18 +19,18 @@ type MarketAPI interface {
 }
 
 type marketAPI struct {
-	pieceStorage   piece.IPieceStorage
-	pieceRepo repo.StorageDealRepo
-	throttle  throttle.Throttler
+	pieceStorage piece.IPieceStorage
+	pieceRepo    repo.StorageDealRepo
+	throttle     throttle.Throttler
 }
 
 var _ MarketAPI = (*marketAPI)(nil)
 
 func NewMinerAPI(repo repo.Repo, pieceStorage piece.IPieceStorage, concurrency int) MarketAPI {
 	return &marketAPI{
-		pieceRepo: repo.StorageDealRepo(),
-		pieceStorage:   pieceStorage,
-		throttle:  throttle.Fixed(concurrency),
+		pieceRepo:    repo.StorageDealRepo(),
+		pieceStorage: pieceStorage,
+		throttle:     throttle.Fixed(concurrency),
 	}
 }
 

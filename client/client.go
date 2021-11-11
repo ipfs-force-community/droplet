@@ -75,7 +75,7 @@ const DefaultDAGStoreDir = "dagstore"
 type API struct {
 	fx.In
 
-	Full         apiface.FullNode
+	Full apiface.FullNode
 
 	SMDealClient storagemarket.StorageClient
 	RetDiscovery discovery.PeerResolver

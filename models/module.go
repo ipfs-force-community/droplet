@@ -85,10 +85,6 @@ func NewCidInfoDs(ds repo.PieceMetaDs) repo.CIDInfoDS {
 	return namespace.Wrap(ds, datastore.NewKey(cidinfo))
 }
 
-func NewPieceInfoDs(ds repo.PieceMetaDs) repo.PieceInfoDS {
-	return namespace.Wrap(ds, datastore.NewKey(pieceinfo))
-}
-
 func NewRetrievalProviderDS(ds repo.MetadataDS) repo.RetrievalProviderDS {
 	return namespace.Wrap(ds, datastore.NewKey(retrievalProvider))
 }
@@ -153,7 +149,6 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 			})
 		} else {
 			opts = builder.Options(
-				builder.Override(new(repo.PieceInfoDS), NewPieceInfoDs),
 				builder.Override(new(repo.CIDInfoDS), NewCidInfoDs),
 				builder.Override(new(repo.RetrievalProviderDS), NewRetrievalProviderDS),
 				builder.Override(new(repo.RetrievalAskDS), NewRetrievalAskDS),
@@ -163,7 +158,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 				builder.Override(new(repo.FundMgrDS), NewFundMgrDS),
 				builder.Override(new(repo.Repo), func(fundDS repo.FundMgrDS, dealDS repo.ProviderDealDS,
 					paychDS repo.PayChanDS, askDS repo.StorageAskDS, retrAskDs repo.RetrievalAskDS,
-					pieceDs repo.PieceInfoDS, cidInfoDs repo.CIDInfoDS, retrievalDs repo.RetrievalProviderDS) (repo.Repo, error) {
+					cidInfoDs repo.CIDInfoDS, retrievalDs repo.RetrievalProviderDS) (repo.Repo, error) {
 					return badger_models.NewBadgerRepo(fundDS, dealDS, paychDS, askDS, retrAskDs, cidInfoDs, retrievalDs)
 				}),
 			)
@@ -179,7 +174,6 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 			})
 		} else {
 			opts = builder.Options(
-				builder.Override(new(repo.PieceInfoDS), NewPieceInfoDs),
 				builder.Override(new(repo.CIDInfoDS), NewCidInfoDs),
 				builder.Override(new(repo.RetrievalProviderDS), NewRetrievalProviderDS),
 				builder.Override(new(repo.RetrievalAskDS), NewRetrievalAskDS),
@@ -189,7 +183,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 				builder.Override(new(repo.FundMgrDS), NewFundMgrDS),
 				builder.Override(new(repo.Repo), func(fundDS repo.FundMgrDS, dealDS repo.ProviderDealDS,
 					paychDS repo.PayChanDS, askDS repo.StorageAskDS, retrAskDs repo.RetrievalAskDS,
-					pieceDs repo.PieceInfoDS, cidInfoDs repo.CIDInfoDS, retrievalDs repo.RetrievalProviderDS) (repo.Repo, error) {
+					cidInfoDs repo.CIDInfoDS, retrievalDs repo.RetrievalProviderDS) (repo.Repo, error) {
 					return badger_models.NewBadgerRepo(fundDS, dealDS, paychDS, askDS, retrAskDs, cidInfoDs, retrievalDs)
 				}),
 			)

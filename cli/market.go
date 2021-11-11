@@ -390,8 +390,6 @@ var dealsListCmd = &cli.Command{
 			return nil
 		}
 
-		// TODO: 判断miner在矿池中是否存在
-
 		ctx := DaemonContext(cctx)
 
 		deals, err := api.MarketListIncompleteDeals(ctx, maddr)

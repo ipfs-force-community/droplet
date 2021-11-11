@@ -120,5 +120,3 @@ func (m *mysqlCidInfoRepo) Close() error {
 	}
 	return db.Close()
 }
-
-var _ repo.ICidInfoRepo = (*mysqlCidInfoRepo)(nil)

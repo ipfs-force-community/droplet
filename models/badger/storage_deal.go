@@ -2,9 +2,12 @@ package badger
 
 import (
 	"bytes"
+	"errors"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/types"
+	xerrors "github.com/pkg/errors"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-statestore"
@@ -100,4 +103,70 @@ func (dsr *storageDealRepo) travelDeals(travelFn func(deal *types.MinerDeal) err
 		}
 	}
 	return nil
+}
+
+func (dsr *storageDealRepo) ListPieceInfoKeys() ([]cid.Cid, error) {
+	var cidsMap = make(map[cid.Cid]interface{})
+	err := dsr.travelDeals(
+		func(deal *types.MinerDeal) error {
+			cidsMap[deal.ClientDealProposal.Proposal.PieceCID] = nil
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	cids := make([]cid.Cid, len(cidsMap))
+	idx := 0
+	for cid, _ := range cidsMap {
+		cids[idx] = cid
+		idx++
+	}
+	return cids, nil
+}
+
+var justWantStopTravelErr = errors.New("stop travel")
+
+func (dsr *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error) {
+	var deal *types.MinerDeal
+	var err error
+	if err = dsr.travelDeals(
+		func(inDeal *types.MinerDeal) error {
+			if inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.DealID == dealID {
+				deal = inDeal
+				return xerrors.Errorf("find the deal, so stop:%w", justWantStopTravelErr)
+			}
+			return nil
+		}); err != nil {
+		if xerrors.Is(err, justWantStopTravelErr) {
+			return deal, nil
+		}
+		return nil, err
+	}
+
+	return nil, repo.ErrNotFound
+}
+
+func (dsr *storageDealRepo) GetDeals(mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
+	return nil, nil
+}
+
+func (dsr *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
+	var deals []*types.MinerDeal
+	var err error
+	if err = dsr.travelDeals(
+		func(inDeal *types.MinerDeal) error {
+			if inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.PieceStatus == pieceStatus {
+				deals = append(deals, inDeal)
+				return xerrors.Errorf("find the deal, so stop:%w", justWantStopTravelErr)
+			}
+			return nil
+		}); err != nil {
+		if xerrors.Is(err, justWantStopTravelErr) {
+			return deals, nil
+		}
+		return nil, err
+	}
+
+	return nil, repo.ErrNotFound
 }

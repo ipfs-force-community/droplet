@@ -50,8 +50,9 @@ type storageDeal struct {
 
 	InboundCAR string `gorm:"column:addr;type:varchar(128);"`
 
-	Offset uint64 `gorm:"column:offset;type:bigint"`
-	Length uint64 `gorm:"column:length;type:bigint"`
+	Offset      uint64 `gorm:"column:offset;type:bigint"`
+	Length      uint64 `gorm:"column:length;type:bigint"`
+	PieceStatus string `gorm:"column:piece_status;column:length;type:varchar(128)"`
 }
 
 type ClientDealProposal struct {
@@ -344,4 +345,43 @@ func (m *storageDealRepo) travelDeals(condition map[string]interface{}, travelFn
 		}
 	}
 	return nil
+}
+
+func (m *storageDealRepo) ListPieceInfoKeys() (cids []cid.Cid, err error) {
+	var cidsStr []string
+	defer func() {
+		size := len(cidsStr)
+		if size == 0 {
+			return
+		}
+		cids = make([]cid.Cid, size)
+		for idx, s := range cidsStr {
+			cids[idx], _ = cid.Decode(s)
+		}
+	}()
+	return cids, m.DB.Table((&storageDeal{}).TableName()).Distinct("cdp_piece_id").
+		Select("cdp_piece_id").Scan(&cidsStr).Error
+}
+
+func (m *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error) {
+	deal := &types.MinerDeal{}
+	err := m.DB.Model(deal).Find(deal, "cdp_provider = ? and deal_id = ?", mAddr.String(), dealID).Error
+	if err != nil {
+		return nil, err
+	}
+	return deal, nil
+}
+
+func (m *storageDealRepo) GetDeals(mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
+	return nil, nil
+}
+
+func (m *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
+	var deals []*types.MinerDeal
+
+	err := m.DB.Model(deals).Find(deals, "cdp_provider = ? and piece_status = ?", mAddr.String(), pieceStatus).Error
+	if err != nil {
+		return nil, err
+	}
+	return deals, nil
 }

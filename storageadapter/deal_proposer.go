@@ -64,8 +64,8 @@ type StorageDealProcessImpl struct {
 
 	dagStore stores.DAGStoreWrapper // TODO:检查是否遗漏
 
-	minerMgr minermgr2.IMinerMgr
-	storage  piece.IPieceStorage
+	minerMgr     minermgr2.IMinerMgr
+	pieceStorage piece.IPieceStorage
 }
 
 // NewStorageDealProcessImpl returns a new deal process instance
@@ -78,6 +78,7 @@ func NewStorageDealProcessImpl(
 	fs filestore.FileStore,
 	minerMgr minermgr2.IMinerMgr,
 	pieceStore piecestore.PieceStore,
+	pieceStorage piece.IPieceStorage,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
 ) (StorageDealProcess, error) {
@@ -103,6 +104,8 @@ func NewStorageDealProcessImpl(
 		stores:     stores,
 
 		minerMgr: minerMgr,
+
+		pieceStorage: pieceStorage,
 
 		pieceStore: pieceStore,
 		dagStore:   dagStore,
@@ -437,7 +440,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			}
 		}
 
-		if err := storageDealPorcess.savePieceMetadata(deal); err != nil {
+		if err := storageDealPorcess.recordPiece(deal); err != nil {
 			err = xerrors.Errorf("failed to register deal data for piece %s for retrieval: %w", deal.Ref.PieceCid, err)
 			log.Error(err.Error())
 			return storageDealPorcess.HandleError(deal, err)
@@ -462,6 +465,14 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 	//add timer to check P2 C2 status
 	// VerifyDealPreCommitted
 	if deal.State == storagemarket.StorageDealAwaitingPreCommit {
+		// Asynchronously wait for pre-commit or prove-commit message to be uploaded to the chain
+		//ticker := time.NewTicker(time.Second * 30)
+		//go func() {
+		//	for range ticker.C {
+		//
+		//	}
+		//}()
+
 		cb := func(sectorNumber abi.SectorNumber, isActive bool, err error) {
 			// It's possible that
 			// - we miss the pre-commit message and have to wait for prove-commit
@@ -553,8 +564,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 	return nil
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) savePieceMetadata(deal *types.MinerDeal) error {
-
+func (storageDealPorcess *StorageDealProcessImpl) recordPiece(deal *types.MinerDeal) error {
 	var blockLocations map[cid.Cid]piecestore.BlockLocation
 	if deal.MetadataPath != filestore.Path("") {
 		var err error
@@ -572,6 +582,8 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceMetadata(deal *types.
 		return xerrors.Errorf("failed to add piece block locations: %s", err)
 	}
 
+	// TODO AddDealForPiece -> StorageDealRepo::SaveDeal
+
 	return nil
 }
 
@@ -587,13 +599,13 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 	}
 
 	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
-	has, err := storageDealPorcess.storage.Has(pieceCid.String())
+	has, err := storageDealPorcess.pieceStorage.Has(pieceCid.String())
 	if err != nil {
 		return xerrors.Errorf("failed to get piece cid data %w", err)
 	}
 
 	if !has {
-		wLen, err := storageDealPorcess.storage.SaveTo(ctx, pieceCid.String(), paddedReader)
+		wLen, err := storageDealPorcess.pieceStorage.SaveTo(ctx, pieceCid.String(), paddedReader)
 		if err != nil {
 			return err
 		}

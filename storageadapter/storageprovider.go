@@ -3,7 +3,6 @@ package storageadapter
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/types"
 	"io"
 	"time"
 
@@ -33,6 +32,8 @@ import (
 	"github.com/filecoin-project/venus-market/minermgr"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/piece"
+	"github.com/filecoin-project/venus-market/types"
 )
 
 // StorageProviderV2 provides an interface to the storage market for a single
@@ -113,6 +114,7 @@ func NewStorageProviderV2(
 	h host.Host,
 	homeDir *config.HomeDir,
 	pieceStore piecestore.PieceStore,
+	pieceStorage piece.IPieceStorage,
 	dataTransfer network.ProviderDataTransfer,
 	spn StorageProviderNode,
 	dagStore stores.DAGStoreWrapper,
@@ -141,7 +143,7 @@ func NewStorageProviderV2(
 		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, dataTransfer, dagStore)
+	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, pieceStorage, dataTransfer, dagStore)
 	if err != nil {
 		return nil, err
 	}

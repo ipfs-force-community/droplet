@@ -2,6 +2,7 @@ package repo
 
 import (
 	"errors"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -22,8 +23,12 @@ type FundRepo interface {
 type StorageDealRepo interface {
 	SaveDeal(StorageDeal *types.MinerDeal) error
 	GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error)
+	GetDeals(mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error)
+	GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error)
+	GetDealByDealID(mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error)
 	ListDeal(mAddr address.Address) ([]*types.MinerDeal, error)
 	GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error)
+	ListPieceInfoKeys() ([]cid.Cid, error)
 }
 
 type IRetrievalDealRepo interface {
@@ -64,6 +69,10 @@ type IRetrievalAskRepo interface {
 }
 
 type ICidInfoRepo interface {
+	// use StorageDealRepo.SaveDeal with fields:
+	// 	Offset abi.PaddedPieceSize
+	//	Length abi.PaddedPieceSize
+	// TODO: add a 'AddDealForPiece' interface in StorageDealRepo ?
 	// AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error
 	AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error
 	GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error)

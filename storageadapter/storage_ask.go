@@ -107,7 +107,7 @@ func (repo *StorageAsk) signAsk(ask *storagemarket.StorageAsk) (*storagemarket.S
 	}
 
 	sig, err := repo.fullNode.WalletSign(ctx, mi.Worker, askBytes, wallet.MsgMeta{
-		Type:  wallet.MTStorageAsk,
+		Type: wallet.MTStorageAsk,
 	})
 	if err != nil {
 		return nil, err
