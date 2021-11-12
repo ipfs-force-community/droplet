@@ -3,11 +3,10 @@ package imports
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus-market/models/badger"
 	"os"
 	"path/filepath"
 	"strconv"
-
-	"github.com/filecoin-project/venus-market/models/repo"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
@@ -48,7 +47,7 @@ const (
 	LCAROwner = LabelKey("car_owner") // Owner of the CAR; "importmgr" is us; "user" or empty is them.
 )
 
-func NewManager(ds repo.ImportClientDS, rootDir string) *Manager {
+func NewManager(ds badger.ImportClientDS, rootDir string) *Manager {
 	m := &Manager{
 		ds:      ds,
 		rootDir: rootDir,

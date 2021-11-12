@@ -1,4 +1,4 @@
-package sealer
+package dagstore
 
 import (
 	"context"
@@ -6,9 +6,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
-	dagstore2 "github.com/filecoin-project/venus-market/dagstore"
+	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/piece"
+	xerrors "github.com/pkg/errors"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,16 +19,29 @@ var (
 	DAGStoreKey = builder.Special{ID: 1}
 )
 
-func NewAddressSelector(cfg *config.MarketConfig) (*AddressSelector, error) {
-	return &AddressSelector{
-		AddressConfig: cfg.AddressConfig,
-	}, nil
+const (
+	EnvDAGStoreCopyConcurrency = "LOTUS_DAGSTORE_COPY_CONCURRENCY"
+	DefaultDAGStoreDir         = "dagstore"
+)
+
+// NewMinerAPI creates a new MarketAPI adaptor for the dagstore mounts.
+func NewMarketAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage piece.IPieceStorage) (MarketAPI, error) {
+	mountApi := NewMinerAPI(repo, pieceStorage, r.MaxConcurrencyStorageCalls)
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return mountApi.Start(ctx)
+		},
+		OnStop: func(context.Context) error {
+			return nil
+		},
+	})
+	return mountApi, nil
 }
 
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func NewDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI dagstore2.MarketAPI) (*dagstore.DAGStore, stores.DAGStoreWrapper, error) {
+func NewWrapperDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI MarketAPI) (*dagstore.DAGStore, stores.DAGStoreWrapper, error) {
 	// fall back to default root directory if not explicitly set in the config.
 	if cfg.RootDir == "" {
 		cfg.RootDir = filepath.Join(string(*homeDir), DefaultDAGStoreDir)
@@ -41,7 +55,7 @@ func NewDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreC
 		}
 	}
 
-	dagst, w, err := dagstore2.NewDAGStore(cfg, minerAPI)
+	dagst, w, err := NewDAGStore(cfg, minerAPI)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
 	}
@@ -58,8 +72,7 @@ func NewDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreC
 	return dagst, w, nil
 }
 
-var SealerOpts = builder.Options(
-	builder.Override(new(*AddressSelector), NewAddressSelector),
-	builder.Override(new(dagstore2.MarketAPI), NewMinerAPI),
-	builder.Override(DAGStoreKey, NewDAGStore),
+var DagstoreOpts = builder.Options(
+	builder.Override(new(MarketAPI), NewMarketAPI),
+	builder.Override(DAGStoreKey, NewWrapperDAGStore),
 )

@@ -11,12 +11,12 @@ import (
 )
 
 type retrievalAskRepo struct {
-	ds repo.RetrievalAskDS
+	ds RetrievalAskDS
 }
 
 var _ repo.IRetrievalAskRepo = (*retrievalAskRepo)(nil)
 
-func NewRetrievalAskRepo(ds repo.RetrievalAskDS) repo.IRetrievalAskRepo {
+func NewRetrievalAskRepo(ds RetrievalAskDS) repo.IRetrievalAskRepo {
 	return &retrievalAskRepo{ds: ds}
 }
 

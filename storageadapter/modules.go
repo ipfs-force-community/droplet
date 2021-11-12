@@ -3,6 +3,7 @@ package storageadapter
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/models/badger"
 	"os"
 	"path/filepath"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/venus-market/dealfilter"
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/utils"
 
@@ -33,14 +33,8 @@ var (
 
 func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProviderV2, j journal.Journal) {
 	ctx := metrics.LifecycleCtx(mctx, lc)
-	//h.OnReady(utils.ReadyLogger("piecestorage provider"))
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
-			//h.SubscribeToEvents(utils.StorageProviderLogger)
-			//
-			//evtType := j.RegisterEventType("markets/piecestorage/provider", "state_change")
-			//h.SubscribeToEvents(utils.StorageProviderJournaler(j, evtType))
-
 			return h.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
@@ -51,7 +45,7 @@ func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProviderV2, 
 
 // NewProviderDAGServiceDataTransfer returns a data transfer manager that just
 // uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs repo.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync) (network.ProviderDataTransfer, error) {
+func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs badger.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync) (network.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
 
 	transport := dtgstransport.NewTransport(h.ID(), gs)
@@ -185,8 +179,15 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 	}
 }
 
+func NewAddressSelector(cfg *config.MarketConfig) (*AddressSelector, error) {
+	return &AddressSelector{
+		AddressConfig: cfg.AddressConfig,
+	}, nil
+}
+
 var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
+		builder.Override(new(*AddressSelector), NewAddressSelector),
 		builder.Override(new(IStorageAsk), NewStorageAsk),
 		builder.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), // save to metadata /datatransfer/provider/transfers
 		//   save to metadata /deals/provider/piecestorage-ask/latest

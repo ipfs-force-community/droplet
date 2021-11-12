@@ -11,9 +11,7 @@ var PieceOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
 		//piece
 		builder.Override(new(IPieceStorage), NewPieceStorage), //save read piece data
-		builder.Override(new(PieceStore), NewDsPieceStore),
-
-		builder.Override(new(PieceStoreEx), NewPieceStoreEx),
-		builder.Override(new(piecestore.PieceStore), builder.From(new(PieceStoreEx))), //save piece metadata(location)   save to metadata /storagemarket
+		builder.Override(new(DealAssiger), NewDealAssigner),
+		builder.Override(new(piecestore.PieceStore), builder.From(new(DealAssiger))), //save piece metadata(location)   save to metadata /storagemarket
 	)
 }

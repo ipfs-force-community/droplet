@@ -24,7 +24,8 @@ type IAskHandler interface {
 var _ IAskHandler = (*AskHandler)(nil)
 
 type AskHandler struct {
-	pieceStore           piecestore.PieceStore
+	storageRepo          repo.StorageDealRepo
+	cidInfoRepo          repo.ICidInfoRepo
 	askStore             repo.IRetrievalAskRepo
 	node                 retrievalmarket.RetrievalProviderNode
 	retrievalPricingFunc retrievalimpl.RetrievalPricingFunc
@@ -117,7 +118,7 @@ func (p *AskHandler) storageDealsForPiece(clientSpecificPiece bool, payloadCID c
 }
 
 func (p *AskHandler) getAllDealsContainingPayload(payloadCID cid.Cid) ([]abi.DealID, error) {
-	cidInfo, err := p.pieceStore.GetCIDInfo(payloadCID)
+	cidInfo, err := p.cidInfoRepo.GetCIDInfo(payloadCID)
 	if err != nil {
 		return nil, xerrors.Errorf("get cid info: %w", err)
 	}
@@ -126,7 +127,7 @@ func (p *AskHandler) getAllDealsContainingPayload(payloadCID cid.Cid) ([]abi.Dea
 
 	for _, pieceBlockLocation := range cidInfo.PieceBlockLocations {
 
-		pieceInfo, err := p.pieceStore.GetPieceInfo(pieceBlockLocation.PieceCID)
+		pieceInfo, err := p.storageRepo.GetPieceInfo(pieceBlockLocation.PieceCID)
 		if err != nil {
 			lastErr = err
 			continue

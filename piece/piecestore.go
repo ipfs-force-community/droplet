@@ -22,12 +22,11 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/utils"
 )
 
 var log = logging.Logger("piece")
 
-type PieceStore interface {
+type DealAssiger interface {
 	MarkDealsAsPacking(ctx context.Context, miner address.Address, dealIDs []abi.DealID) error
 	UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error
 	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error
@@ -36,71 +35,52 @@ type PieceStore interface {
 	ListPieceInfoKeys() ([]cid.Cid, error)
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *GetDealSpec) ([]*DealInfoIncludePath, error)
 	AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *GetDealSpec) ([]*DealInfoIncludePath, error)
-
-	// go-fil-markets:piecestore::PieceStore
-	Start(ctx context.Context) error
-	OnReady(ready shared.ReadyFunc)
-	AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error
 }
 
-type PieceStoreEx interface {
-	repo.ICidInfoRepo
-	PieceStore
-}
-
-var _ piecestore.PieceStore = (PieceStoreEx)(nil)
+var _ DealAssiger = (*dealAssigner)(nil)
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
 // shared by the piecestorage and retrieval providers
-func NewPieceStoreEx(lc fx.Lifecycle, r repo.Repo, pieceStore PieceStore) PieceStoreEx {
-	ps := struct {
-		repo.ICidInfoRepo
-		PieceStore
-	}{r.CidInfoRepo(), pieceStore}
-
-	ps.OnReady(utils.ReadyLogger("piecestore"))
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return ps.Start(ctx)
-		},
-	})
-
-	return ps
+func NewDealAssigner(lc fx.Lifecycle, pieceStorage *config.PieceStorageString, r repo.Repo) (DealAssiger, error) {
+	ps, err := newPieceStoreEx(pieceStorage, r.StorageDealRepo())
+	if err != nil {
+		return nil, xerrors.Errorf("construct extend piece store %w", err)
+	}
+	return ps, nil
 }
 
-type dsPieceStore struct {
-	pieceStorage config.PieceStorageString
-
-	dealRepo repo.StorageDealRepo
+type dealAssigner struct {
+	pieceStorage    config.PieceStorageString
+	StorageDealRepo repo.StorageDealRepo
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func NewDsPieceStore(pieceStorage *config.PieceStorageString, r repo.Repo) (PieceStore, error) {
-	return &dsPieceStore{
+func newPieceStoreEx(pieceStorage *config.PieceStorageString, storageDealRepo repo.StorageDealRepo) (DealAssiger, error) {
+	return &dealAssigner{
 		pieceStorage: *pieceStorage,
 
-		dealRepo: r.StorageDealRepo(),
+		StorageDealRepo: storageDealRepo,
 	}, nil
 }
 
-func (ps *dsPieceStore) Start(ctx context.Context) error {
+func (ps *dealAssigner) Start(ctx context.Context) error {
 	return nil
 }
 
-func (ps *dsPieceStore) OnReady(ready shared.ReadyFunc) {
+func (ps *dealAssigner) OnReady(ready shared.ReadyFunc) {
 	ready(nil)
 }
 
-// Store `dealInfo` in the PieceStore with key `pieceCID`.
+// Store `dealInfo` in the dealAssigner with key `pieceCID`.
 // piece的存取改为从StorageDealRepo获取
-func (ps *dsPieceStore) AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error {
+func (ps *dealAssigner) AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error {
 
 	return nil
 }
 
 // Retrieve the PieceInfo associated with `pieceCID` from the piece info store.
-func (ps *dsPieceStore) GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, error) {
-	pi, err := ps.dealRepo.GetPieceInfo(pieceCID)
+func (ps *dealAssigner) GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, error) {
+	pi, err := ps.StorageDealRepo.GetPieceInfo(pieceCID)
 	if err != nil {
 		return piecestore.PieceInfo{}, err
 	}
@@ -108,20 +88,20 @@ func (ps *dsPieceStore) GetPieceInfo(pieceCID cid.Cid) (piecestore.PieceInfo, er
 	return *pi, err
 }
 
-func (ps *dsPieceStore) ListPieceInfoKeys() ([]cid.Cid, error) {
-	return ps.dealRepo.ListPieceInfoKeys()
+func (ps *dealAssigner) ListPieceInfoKeys() ([]cid.Cid, error) {
+	return ps.StorageDealRepo.ListPieceInfoKeys()
 }
 
-func (ps *dsPieceStore) MarkDealsAsPacking(ctx context.Context, miner address.Address, dealIDs []abi.DealID) error {
+func (ps *dealAssigner) MarkDealsAsPacking(ctx context.Context, miner address.Address, dealIDs []abi.DealID) error {
 	for _, dealID := range dealIDs {
-		md, err := ps.dealRepo.GetDealByDealID(miner, dealID)
+		md, err := ps.StorageDealRepo.GetDealByDealID(miner, dealID)
 		if err != nil {
 			log.Error("get deal [%d] error for %s", dealID, miner)
 			return xerrors.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
 		}
 
 		md.PieceStatus = Assigned
-		if err := ps.dealRepo.SaveDeal(md); err != nil {
+		if err := ps.StorageDealRepo.SaveDeal(md); err != nil {
 			return xerrors.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 		}
 	}
@@ -130,8 +110,8 @@ func (ps *dsPieceStore) MarkDealsAsPacking(ctx context.Context, miner address.Ad
 }
 
 //
-func (ps *dsPieceStore) UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorID abi.SectorNumber, offset abi.PaddedPieceSize) error {
-	md, err := ps.dealRepo.GetDealByDealID(miner, dealID)
+func (ps *dealAssigner) UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorID abi.SectorNumber, offset abi.PaddedPieceSize) error {
+	md, err := ps.StorageDealRepo.GetDealByDealID(miner, dealID)
 	if err != nil {
 		log.Error("get deal [%d] error for %s", dealID, miner)
 		return xerrors.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
@@ -140,33 +120,33 @@ func (ps *dsPieceStore) UpdateDealOnPacking(ctx context.Context, miner address.A
 	md.PieceStatus = Assigned
 	md.Offset = offset
 	md.SectorNumber = sectorID
-	if err := ps.dealRepo.SaveDeal(md); err != nil {
+	if err := ps.StorageDealRepo.SaveDeal(md); err != nil {
 		return xerrors.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 	}
 
 	return nil
 }
 
-// Store `dealInfo` in the PieceStore with key `pieceCID`.
-func (ps *dsPieceStore) UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error {
-	md, err := ps.dealRepo.GetDealByDealID(miner, dealID)
+// Store `dealInfo` in the dealAssigner with key `pieceCID`.
+func (ps *dealAssigner) UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error {
+	md, err := ps.StorageDealRepo.GetDealByDealID(miner, dealID)
 	if err != nil {
 		log.Error("get deal [%d] error for %s", dealID, miner)
 		return xerrors.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
 	}
 
 	md.PieceStatus = pieceStatus
-	if err := ps.dealRepo.SaveDeal(md); err != nil {
+	if err := ps.StorageDealRepo.SaveDeal(md); err != nil {
 		return xerrors.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 	}
 
 	return nil
 }
 
-func (ps *dsPieceStore) GetDeals(ctx context.Context, mAddr address.Address, pageIndex, pageSize int) ([]*DealInfo, error) {
+func (ps *dealAssigner) GetDeals(ctx context.Context, mAddr address.Address, pageIndex, pageSize int) ([]*DealInfo, error) {
 	var dis []*DealInfo
 
-	mds, err := ps.dealRepo.GetDeals(mAddr, pageIndex, pageSize)
+	mds, err := ps.StorageDealRepo.GetDeals(mAddr, pageIndex, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +176,7 @@ var defaultGetDealSpec = &GetDealSpec{
 	MaxPieceSize: 0,
 }
 
-func (ps *dsPieceStore) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *GetDealSpec) ([]*DealInfoIncludePath, error) {
+func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *GetDealSpec) ([]*DealInfoIncludePath, error) {
 	if spec == nil {
 		spec = defaultGetDealSpec
 	}
@@ -204,7 +184,7 @@ func (ps *dsPieceStore) GetUnPackedDeals(ctx context.Context, miner address.Addr
 		spec.MaxPiece = defaultMaxPiece
 	}
 
-	mds, err := ps.dealRepo.GetDealsByPieceStatus(miner, Undefine)
+	mds, err := ps.StorageDealRepo.GetDealsByPieceStatus(miner, Undefine)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +207,7 @@ func (ps *dsPieceStore) GetUnPackedDeals(ctx context.Context, miner address.Addr
 				PublishCid:      *md.PublishCid,
 			})
 			md.PieceStatus = Assigned
-			if err := ps.dealRepo.SaveDeal(md); err != nil {
+			if err := ps.StorageDealRepo.SaveDeal(md); err != nil {
 				return nil, err
 			}
 
@@ -239,7 +219,7 @@ func (ps *dsPieceStore) GetUnPackedDeals(ctx context.Context, miner address.Addr
 	return result, nil
 }
 
-func (ps *dsPieceStore) AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *GetDealSpec) ([]*DealInfoIncludePath, error) {
+func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *GetDealSpec) ([]*DealInfoIncludePath, error) {
 	deals, err := ps.GetUnPackedDeals(ctx, miner, &GetDealSpec{MaxPiece: math.MaxInt32}) //TODO get all pending deals ???
 	if err != nil {
 		return nil, err
@@ -373,13 +353,13 @@ func (ps *dsPieceStore) AssignUnPackedDeals(ctx context.Context, miner address.A
 	}
 	// not atomic opration for deal
 	for _, piece := range pieces {
-		md, err := ps.dealRepo.GetDealByDealID(miner, piece.DealID)
+		md, err := ps.StorageDealRepo.GetDealByDealID(miner, piece.DealID)
 		if err != nil {
 			return nil, err
 		}
 
 		md.PieceStatus = Assigned
-		if err := ps.dealRepo.SaveDeal(md); err != nil {
+		if err := ps.StorageDealRepo.SaveDeal(md); err != nil {
 			return nil, err
 		}
 	}

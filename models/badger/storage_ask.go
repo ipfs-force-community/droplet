@@ -3,8 +3,6 @@ package badger
 import (
 	"bytes"
 
-	"github.com/filecoin-project/venus-market/models/repo"
-
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/ipfs/go-datastore"
@@ -18,7 +16,7 @@ type storageAskRepo struct {
 	ds datastore.Batching
 }
 
-func NewStorageAskRepo(ds repo.StorageAskDS) *storageAskRepo {
+func NewStorageAskRepo(ds StorageAskDS) *storageAskRepo {
 	return &storageAskRepo{ds: ds}
 }
 

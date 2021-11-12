@@ -18,7 +18,7 @@ type retrievalDealRepo struct {
 	ds datastore.Batching
 }
 
-func NewRetrievalDealRepo(ds repo.RetrievalProviderDS) repo.IRetrievalDealRepo {
+func NewRetrievalDealRepo(ds RetrievalProviderDS) repo.IRetrievalDealRepo {
 	return &retrievalDealRepo{ds}
 }
 

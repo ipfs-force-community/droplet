@@ -1,4 +1,4 @@
-package piece
+package utils
 
 import (
 	"bytes"
@@ -9,18 +9,18 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func move(from, to string) error {
+func Move(from, to string) error {
 	from, err := homedir.Expand(from)
 	if err != nil {
-		return xerrors.Errorf("move: expanding from: %w", err)
+		return xerrors.Errorf("Move: expanding from: %w", err)
 	}
 
 	to, err = homedir.Expand(to)
 	if err != nil {
-		return xerrors.Errorf("move: expanding to: %w", err)
+		return xerrors.Errorf("Move: expanding to: %w", err)
 	}
 
-	log.Debugw("move file", "from", from, "to", to)
+	log.Debugw("Move file", "from", from, "to", to)
 	var errOut bytes.Buffer
 	cmd := exec.Command("/usr/bin/env", "mv", from, to) // nolint
 	cmd.Stderr = &errOut

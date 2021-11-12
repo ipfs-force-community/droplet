@@ -8,7 +8,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
 
-	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/types"
 )
 
@@ -18,7 +17,7 @@ type fundRepo struct {
 	ds datastore.Batching
 }
 
-func NewFundRepo(ds repo.FundMgrDS) *fundRepo {
+func NewFundRepo(ds FundMgrDS) *fundRepo {
 	return &fundRepo{
 		ds: ds,
 	}

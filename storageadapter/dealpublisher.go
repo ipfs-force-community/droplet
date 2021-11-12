@@ -17,7 +17,6 @@ import (
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/sealer"
 	marketTypes "github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -48,7 +47,7 @@ type dealPublisherAPI interface {
 // publish message with all deals in the queue.
 type DealPublisher struct {
 	api dealPublisherAPI
-	as  *sealer.AddressSelector
+	as  *AddressSelector
 
 	ctx      context.Context
 	Shutdown context.CancelFunc
@@ -95,8 +94,8 @@ type PublishMsgConfig struct {
 
 func NewDealPublisher(
 	cfg *config.MarketConfig,
-) func(lc fx.Lifecycle, full apiface.FullNode, as *sealer.AddressSelector) *DealPublisher {
-	return func(lc fx.Lifecycle, full apiface.FullNode, as *sealer.AddressSelector) *DealPublisher {
+) func(lc fx.Lifecycle, full apiface.FullNode, as *AddressSelector) *DealPublisher {
+	return func(lc fx.Lifecycle, full apiface.FullNode, as *AddressSelector) *DealPublisher {
 		maxFee := abi.TokenAmount(cfg.MaxPublishDealsFee)
 		publishMsgConfig := PublishMsgConfig{
 			Period:         time.Duration(cfg.PublishMsgPeriod),
@@ -117,7 +116,7 @@ func NewDealPublisher(
 
 func newDealPublisher(
 	dpapi dealPublisherAPI,
-	as *sealer.AddressSelector,
+	as *AddressSelector,
 	publishMsgCfg PublishMsgConfig,
 	publishSpec *types.MessageSendSpec,
 ) *DealPublisher {

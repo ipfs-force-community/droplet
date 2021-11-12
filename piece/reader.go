@@ -1,6 +1,7 @@
 package piece
 
 import (
+	"github.com/filecoin-project/venus-market/utils"
 	"golang.org/x/xerrors"
 	"io"
 	"io/ioutil"
@@ -36,7 +37,7 @@ func ReadOffset(path string, offset, size int) (io.ReadCloser, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("unable to seek position to %din file %s %w", offset, pieceFile, err)
 		}
-		return NewLimitedBufferReader(fs, int(size)), nil
+		return utils.NewLimitedBufferReader(fs, int(size)), nil
 	default:
 		return nil, xerrors.Errorf("unsupport piece piecestorage type %s", path)
 	}
@@ -58,7 +59,7 @@ func ReWrite(path string, r io.Reader) (int64, error) {
 		if err != nil {
 			return -1, xerrors.Errorf("unable to write file to %s %w", pieceFile[1], err)
 		}
-		err = move(tempFile.Name(), pieceFile[1])
+		err = utils.Move(tempFile.Name(), pieceFile[1])
 		return wlen, err
 	default:
 		return -1, xerrors.Errorf("unsupport piece piecestorage type %s", path)
