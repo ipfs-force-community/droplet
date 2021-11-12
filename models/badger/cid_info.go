@@ -5,8 +5,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-statestore"
-
+	"github.com/filecoin-project/venus-market/models/badger/datastore"
 	"github.com/filecoin-project/venus-market/models/repo"
 )
 
