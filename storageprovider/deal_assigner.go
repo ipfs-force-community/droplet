@@ -124,11 +124,12 @@ func (ps *dealAssigner) GetDeals(ctx context.Context, mAddr address.Address, pag
 				Offset:   md.Offset,
 				Length:   md.Proposal.PieceSize,
 			},
-			TransferType:  md.Ref.TransferType,
-			Root:          md.Ref.Root,
-			PublishCid:    *md.PublishCid,
-			FastRetrieval: md.FastRetrieval,
-			Status:        md.PieceStatus,
+			ClientDealProposal: md.ClientDealProposal,
+			TransferType:       md.Ref.TransferType,
+			Root:               md.Ref.Root,
+			PublishCid:         *md.PublishCid,
+			FastRetrieval:      md.FastRetrieval,
+			Status:             md.PieceStatus,
 		})
 	}
 
