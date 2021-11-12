@@ -15,9 +15,10 @@ import (
 
 func TestStorageAsk(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
-		repo := MysqlDB(t).StorageAskRepo()
+		repo := MysqlDB(t)
+		askRepo := repo.StorageAskRepo()
 		defer func() { require.NoError(t, repo.Close()) }()
-		testStorageAsk(t, repo)
+		testStorageAsk(t, askRepo)
 	})
 	t.Run("badger", func(t *testing.T) {
 		path := "./badger_stoarage_ask_db"

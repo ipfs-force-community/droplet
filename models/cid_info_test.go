@@ -19,15 +19,15 @@ func TestCIDInfo(t *testing.T) {
 		defer func() {
 			assert.Nil(t, db.Close())
 			assert.Nil(t, os.RemoveAll(path))
-
 		}()
 		doTestCidinfo(t, badger.NewBadgerCidInfoRepo(db))
 	})
 
 	t.Run("mysql", func(t *testing.T) {
-		repo := MysqlDB(t).CidInfoRepo()
+		repo := MysqlDB(t)
+		cidInfoRepo := repo.CidInfoRepo()
 		defer func() { require.NoError(t, repo.Close()) }()
-		doTestCidinfo(t, MysqlDB(t).CidInfoRepo())
+		doTestCidinfo(t, cidInfoRepo)
 	})
 }
 
@@ -53,6 +53,7 @@ func doTestCidinfo(t *testing.T, repo repo.ICidInfoRepo) {
 	require.Equal(t, cidInfo.PieceBlockLocations[0].RelOffset, uint64(999))
 
 	cids, err := repo.ListCidInfoKeys()
+
 	require.NoError(t, err)
 	require.LessOrEqual(t, 2, len(cids))
 }

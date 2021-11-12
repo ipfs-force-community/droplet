@@ -37,10 +37,6 @@ type StorageAsk struct {
 	fullNode apiface.FullNode
 }
 
-func (repo *StorageAsk) Close() error {
-	return repo.repo.Close()
-}
-
 func (repo *StorageAsk) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {
 	return repo.repo.GetAsk(miner)
 }

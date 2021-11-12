@@ -106,12 +106,3 @@ func (a *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 		UpdateAll: true,
 	}).Save(fromStorageAsk(ask)).Error
 }
-
-// TODO:may casuse reduplicative closing?
-func (a *storageAskRepo) Close() error {
-	db, err := a.DB.DB()
-	if err != nil {
-		return err
-	}
-	return db.Close()
-}

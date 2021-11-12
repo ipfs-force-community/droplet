@@ -51,7 +51,3 @@ func (ar *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 
 	return ar.ds.Put(key, b)
 }
-
-func (ar *storageAskRepo) Close() error {
-	return ar.ds.Close()
-}

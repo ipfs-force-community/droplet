@@ -1,9 +1,8 @@
 package repo
 
 import (
-	"errors"
 	"github.com/filecoin-project/go-state-types/abi"
-
+	"github.com/ipfs/go-datastore"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -59,13 +58,11 @@ type PaychChannelInfoRepo interface {
 type IStorageAskRepo interface {
 	GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error)
 	SetAsk(ask *storagemarket.SignedStorageAsk) error
-	Close() error
 }
 
 type IRetrievalAskRepo interface {
 	GetAsk(addr address.Address) (*retrievalmarket.Ask, error)
 	SetAsk(addr address.Address, ask *retrievalmarket.Ask) error
-	Close() error
 }
 
 type ICidInfoRepo interface {
@@ -77,7 +74,6 @@ type ICidInfoRepo interface {
 	AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error
 	GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error)
 	ListCidInfoKeys() ([]cid.Cid, error)
-	Close() error
 	// ListPieceInfoKeys() ([]cid.Cid, error)
 	// GetPieceInfoFromCid(ctx context.Context, payloadCID, pieceCID cid.Cid) (piecestore.PieceInfo, bool, error)
 }
@@ -91,6 +87,7 @@ type Repo interface {
 	RetrievalAskRepo() IRetrievalAskRepo
 	CidInfoRepo() ICidInfoRepo
 	RetrievalDealRepo() IRetrievalDealRepo
+	Close() error
 }
 
-var ErrNotFound = errors.New("not found")
+var ErrNotFound = datastore.ErrNotFound

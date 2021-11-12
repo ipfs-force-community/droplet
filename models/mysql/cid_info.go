@@ -113,10 +113,4 @@ func (m *mysqlCidInfoRepo) ListCidInfoKeys() (cids []cid.Cid, err error) {
 
 }
 
-func (m *mysqlCidInfoRepo) Close() error {
-	db, err := m.ds.DB()
-	if err != nil {
-		return err
-	}
-	return db.Close()
-}
+var _ repo.ICidInfoRepo = (*mysqlCidInfoRepo)(nil)

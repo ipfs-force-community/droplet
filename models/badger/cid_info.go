@@ -5,8 +5,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-statestore"
-
+	"github.com/filecoin-project/venus-market/models/badger/datastore"
 	"github.com/filecoin-project/venus-market/models/repo"
 )
 
@@ -86,8 +85,4 @@ func (ps *badgerCidInfoRepo) mutateCIDInfo(c cid.Cid, mutator interface{}) error
 	}
 
 	return ps.cidInfos.Get(c).Mutate(mutator)
-}
-
-func (ps *badgerCidInfoRepo) Close() error {
-	return nil
 }
