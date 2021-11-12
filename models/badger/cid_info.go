@@ -11,7 +11,7 @@ import (
 
 var log = logging.Logger("badgerpieces")
 
-func NewBadgerCidInfoRepo(cidInfoDs repo.CIDInfoDS) repo.ICidInfoRepo {
+func NewBadgerCidInfoRepo(cidInfoDs CIDInfoDS) repo.ICidInfoRepo {
 	return &badgerCidInfoRepo{cidInfos: statestore.New(cidInfoDs)}
 }
 
@@ -21,7 +21,7 @@ type badgerCidInfoRepo struct {
 
 var _ repo.ICidInfoRepo = (*badgerCidInfoRepo)(nil)
 
-// Store the map of blockLocations in the PieceStore's CIDInfo store, with key `pieceCID`
+// Store the map of blockLocations in the dealAssigner's CIDInfo store, with key `pieceCID`
 func (ps *badgerCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
 	for c, blockLocation := range blockLocations {
 		err := ps.mutateCIDInfo(c, func(ci *piecestore.CIDInfo) error {
@@ -75,7 +75,7 @@ func (ps *badgerCidInfoRepo) ensureCIDInfo(c cid.Cid) error {
 	}
 
 	cidInfo := piecestore.CIDInfo{CID: c}
-	return ps.cidInfos.Begin(c, &cidInfo)
+	return ps.cidInfos.Save(c, &cidInfo)
 }
 
 func (ps *badgerCidInfoRepo) mutateCIDInfo(c cid.Cid, mutator interface{}) error {

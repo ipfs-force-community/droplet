@@ -49,15 +49,15 @@ type ProviderNodeAdapter struct {
 
 	dealPublisher *DealPublisher
 
-	extendPieceMeta             piece.PieceStoreEx
+	extendPieceMeta             piece.DealAssiger
 	addBalanceSpec              *types.MessageSendSpec
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta piece.PieceStoreEx) StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta piece.PieceStoreEx) StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta piece.DealAssiger) StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta piece.DealAssiger) StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev, err := events.NewEvents(ctx, full)
@@ -236,37 +236,6 @@ func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Addre
 	return utils.ToSharedBalance(bal), nil
 }
 
-// TODO: why doesnt this method take in a sector ID?
-func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (sectorID abi.SectorNumber, offset abi.PaddedPieceSize, length abi.PaddedPieceSize, err error) {
-	panic("depresated")
-	/*refs, err := n.secb.GetRefs(dealID)
-	if err != nil {
-		return 0, 0, 0, err
-	}
-	if len(refs) == 0 {
-		return 0, 0, 0, xerrors.New("no sector information for deal ID")
-	}
-
-	// TODO: better strategy (e.g. look for already unsealed)
-	var best marketTypes.SealedRef
-	var bestSi marketTypes.SectorInfo
-	for _, r := range refs {
-		si, err := n.secb.SectorBuilder.SectorsStatus(ctx, r.SectorID, false)
-		if err != nil {
-			return 0, 0, 0, xerrors.Errorf("getting sector info: %w", err)
-		}
-		if si.State == marketTypes.SectorState(sealing.Proving) {
-			best = r
-			bestSi = si
-			break
-		}
-	}
-	if bestSi.State == marketTypes.SectorState(sealing.UndefinedSectorState) {
-		return 0, 0, 0, xerrors.New("no sealed sector found")
-	}
-	return best.SectorID, best.Offset, best.Size.Padded(), nil*/
-}
-
 func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
 	bounds, err := n.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
 	if err != nil {
@@ -289,7 +258,7 @@ func (n *ProviderNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, prov
 func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, market.DealProposal(proposal), *publishCid, func(err error) {
 		cb(err)
-		_Err := n.extendPieceMeta.UpdateDealStatus(ctx, provider, dealID,"Proving")
+		_Err := n.extendPieceMeta.UpdateDealStatus(ctx, provider, dealID, "Proving")
 		if _Err != nil {
 			log.Errorw("update deal status %w", _Err)
 		}

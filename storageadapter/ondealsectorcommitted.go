@@ -18,8 +18,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-
-	"github.com/filecoin-project/venus-market/sealer"
 )
 
 type eventsCalledAPI interface {
@@ -27,7 +25,7 @@ type eventsCalledAPI interface {
 }
 
 type dealInfoAPI interface {
-	GetCurrentDealInfo(ctx context.Context, tok types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (sealer.CurrentDealInfo, error)
+	GetCurrentDealInfo(ctx context.Context, tok types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (CurrentDealInfo, error)
 }
 
 type diffPreCommitsAPI interface {
@@ -40,9 +38,9 @@ type SectorCommittedManager struct {
 	dpc      diffPreCommitsAPI
 }
 
-func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI sealer.CurrentDealInfoTskAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
-	dim := &sealer.CurrentDealInfoManager{
-		CDAPI: &sealer.CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: tskAPI},
+func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI CurrentDealInfoTskAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
+	dim := &CurrentDealInfoManager{
+		CDAPI: &CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: tskAPI},
 	}
 
 	return newSectorCommittedManager(ev, dim, dpcAPI)
@@ -262,7 +260,7 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 }
 
 // dealSectorInPreCommitMsg tries to find a sector containing the specified deal
-func dealSectorInPreCommitMsg(msg *types.Message, res sealer.CurrentDealInfo) (*abi.SectorNumber, error) {
+func dealSectorInPreCommitMsg(msg *types.Message, res CurrentDealInfo) (*abi.SectorNumber, error) {
 	switch msg.Method {
 	case miner.Methods.PreCommitSector:
 		var params miner.SectorPreCommitInfo
@@ -328,7 +326,7 @@ func sectorInCommitMsg(msg *types.Message, sectorNumber abi.SectorNumber) (bool,
 	}
 }
 
-func (mgr *SectorCommittedManager) checkIfDealAlreadyActive(ctx context.Context, ts *types.TipSet, proposal *market.DealProposal, publishCid cid.Cid) (sealer.CurrentDealInfo, bool, error) {
+func (mgr *SectorCommittedManager) checkIfDealAlreadyActive(ctx context.Context, ts *types.TipSet, proposal *market.DealProposal, publishCid cid.Cid) (CurrentDealInfo, bool, error) {
 	res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key(), proposal, publishCid)
 	if err != nil {
 		// TODO: This may be fine for some errors

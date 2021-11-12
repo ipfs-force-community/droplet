@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/dagstore"
+	"github.com/filecoin-project/venus-market/models"
 	"log"
 	"os"
 
@@ -16,13 +18,11 @@ import (
 	"github.com/filecoin-project/venus-market/fundmgr"
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/piece"
 	"github.com/filecoin-project/venus-market/retrievaladapter"
 	"github.com/filecoin-project/venus-market/rpc"
-	"github.com/filecoin-project/venus-market/sealer"
 	"github.com/filecoin-project/venus-market/storageadapter"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
@@ -192,7 +192,7 @@ func daemon(cctx *cli.Context) error {
 		network.NetworkOpts(true, cfg.SimultaneousTransfers),
 		piece.PieceOpts(cfg),
 		fundmgr.FundMgrOpts,
-		sealer.SealerOpts,
+		dagstore.DagstoreOpts,
 		paychmgr.PaychOpts,
 		// Markets
 		storageadapter.StorageProviderOpts(cfg),

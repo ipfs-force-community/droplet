@@ -23,7 +23,7 @@ type storageDealRepo struct {
 
 var _ (repo.StorageDealRepo) = (*storageDealRepo)(nil)
 
-func NewStorageDealRepo(ds repo.ProviderDealDS) *storageDealRepo {
+func NewStorageDealRepo(ds ProviderDealDS) *storageDealRepo {
 	return &storageDealRepo{ds}
 }
 

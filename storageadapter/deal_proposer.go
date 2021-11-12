@@ -60,7 +60,7 @@ type StorageDealProcessImpl struct {
 	fs         filestore.FileStore
 	stores     *stores.ReadWriteBlockstores
 
-	pieceStore piecestore.PieceStore // TODO:检查是否遗漏
+	cidInfoRepo repo.ICidInfoRepo // TODO:检查是否遗漏
 
 	dagStore stores.DAGStoreWrapper // TODO:检查是否遗漏
 
@@ -77,7 +77,7 @@ func NewStorageDealProcessImpl(
 	ask IStorageAsk,
 	fs filestore.FileStore,
 	minerMgr minermgr2.IMinerMgr,
-	pieceStore piecestore.PieceStore,
+	repo repo.Repo,
 	pieceStorage piece.IPieceStorage,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
@@ -107,8 +107,8 @@ func NewStorageDealProcessImpl(
 
 		pieceStorage: pieceStorage,
 
-		pieceStore: pieceStore,
-		dagStore:   dagStore,
+		cidInfoRepo: repo.CidInfoRepo(),
+		dagStore:    dagStore,
 	}, nil
 }
 
@@ -578,7 +578,7 @@ func (storageDealPorcess *StorageDealProcessImpl) recordPiece(deal *types.MinerD
 		}
 	}
 
-	if err := storageDealPorcess.pieceStore.AddPieceBlockLocations(deal.Proposal.PieceCID, blockLocations); err != nil {
+	if err := storageDealPorcess.cidInfoRepo.AddPieceBlockLocations(deal.Proposal.PieceCID, blockLocations); err != nil {
 		return xerrors.Errorf("failed to add piece block locations: %s", err)
 	}
 

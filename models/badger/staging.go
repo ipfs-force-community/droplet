@@ -1,4 +1,4 @@
-package models
+package badger
 
 import (
 	"github.com/ipfs/go-datastore"

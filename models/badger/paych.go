@@ -6,7 +6,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -23,7 +22,7 @@ type paychRepo struct {
 	ds datastore.Batching
 }
 
-func NewPaychRepo(ds repo.PayChanDS) *paychRepo {
+func NewPaychRepo(ds PayChanDS) *paychRepo {
 	return &paychRepo{ds}
 }
 

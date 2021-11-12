@@ -1,8 +1,150 @@
 package badger
 
 import (
+	"context"
+	"github.com/filecoin-project/venus-market/blockstore"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	badger "github.com/ipfs/go-ds-badger2"
+	"go.uber.org/fx"
+	"path"
 )
+
+const (
+	metadata = "metadata"
+
+	fundmgr           = "/fundmgr/"
+	piecemeta         = "/storagemarket"
+	cidinfo           = "/cid-infos"
+	pieceinfo         = "/pieces"
+	retrievalProvider = "/retrievals/provider"
+	retrievalAsk      = "/retrieval-ask"
+	dealProvider      = "/deals/provider"
+	storageAsk        = "storage-ask"
+	paych             = "/paych/"
+
+	// client
+	dealClient      = "/deals/client"
+	dealLocal       = "/deals/local"
+	retrievalClient = "/retrievals/client"
+	clientTransfer  = "/datatransfer/client/transfers"
+)
+
+// /metadata
+type MetadataDS datastore.Batching
+
+// /metadata/fundmgr
+type FundMgrDS datastore.Batching
+
+// /metadata/storagemarket
+type PieceMetaDs datastore.Batching
+
+//  /metadata/storagemarket/cid-infos
+type CIDInfoDS datastore.Batching
+
+//  /metadata/storagemarket/pieces
+type PieceInfoDS datastore.Batching
+
+// /metadata/retrievals/provider
+type RetrievalProviderDS datastore.Batching
+
+// /metadata/retrievals/provider/retrieval-ask
+type RetrievalAskDS datastore.Batching //key = latest
+
+// /metadata/datatransfer/provider/transfers
+type DagTransferDS datastore.Batching
+
+// /metadata/deals/provider
+type ProviderDealDS datastore.Batching
+
+//   /metadata/deals/provider/storage-ask
+type StorageAskDS datastore.Batching //key = latest
+
+// /metadata/paych/
+type PayChanDS datastore.Batching
+
+//*********************************client
+// /metadata/deals/client
+type ClientDatastore datastore.Batching
+
+// /metadata/deals/local
+type ClientDealsDS datastore.Batching
+
+// /metadata/retrievals/client
+type RetrievalClientDS datastore.Batching
+
+// /metadata/client
+type ImportClientDS datastore.Batching
+
+// /metadata/datatransfer/client/transfers
+type ClientTransferDS datastore.Batching
+
+func NewMetadataDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (MetadataDS, error) {
+	db, err := badger.NewDatastore(path.Join(string(*homeDir), metadata), &badger.DefaultOptions)
+	if err != nil {
+		return nil, err
+	}
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return db.Close()
+		},
+	})
+
+	return db, nil
+}
+
+func NewPieceMetaDs(ds MetadataDS) PieceMetaDs {
+	return namespace.Wrap(ds, datastore.NewKey(piecemeta))
+}
+
+func NewFundMgrDS(ds MetadataDS) FundMgrDS {
+	return namespace.Wrap(ds, datastore.NewKey(fundmgr))
+}
+
+func NewCidInfoDs(ds PieceMetaDs) CIDInfoDS {
+	return namespace.Wrap(ds, datastore.NewKey(cidinfo))
+}
+
+func NewRetrievalProviderDS(ds MetadataDS) RetrievalProviderDS {
+	return namespace.Wrap(ds, datastore.NewKey(retrievalProvider))
+}
+
+func NewRetrievalAskDS(ds RetrievalProviderDS) RetrievalAskDS {
+	return namespace.Wrap(ds, datastore.NewKey(retrievalAsk))
+}
+
+func NewProviderDealDS(ds MetadataDS) ProviderDealDS {
+	return namespace.Wrap(ds, datastore.NewKey(dealProvider))
+}
+
+func NewStorageAskDS(ds ProviderDealDS) StorageAskDS {
+	return namespace.Wrap(ds, datastore.NewKey(storageAsk))
+}
+
+func NewPayChanDS(ds MetadataDS) PayChanDS {
+	return namespace.Wrap(ds, datastore.NewKey(paych))
+}
+
+// NewClientDatastore creates a datastore for the client to store its deals
+func NewClientDatastore(ds MetadataDS) ClientDatastore {
+	return namespace.Wrap(ds, datastore.NewKey(dealClient))
+}
+
+// for discover
+func NewClientDealsDS(ds MetadataDS) ClientDealsDS {
+	return namespace.Wrap(ds, datastore.NewKey(dealLocal))
+}
+
+func NewRetrievalClientDS(ds MetadataDS) RetrievalClientDS {
+	return namespace.Wrap(ds, datastore.NewKey(retrievalClient))
+}
+
+func NewClientTransferDS(ds MetadataDS) ClientTransferDS {
+	return namespace.Wrap(ds, datastore.NewKey(clientTransfer))
+}
 
 type BadgerRepo struct {
 	fundRepo         repo.FundRepo
@@ -15,8 +157,8 @@ type BadgerRepo struct {
 	retrievalRepo    repo.IRetrievalDealRepo
 }
 
-func NewBadgerRepo(fundDS repo.FundMgrDS, dealDS repo.ProviderDealDS, paychDS repo.PayChanDS, askDS repo.StorageAskDS,
-	retrAskDs repo.RetrievalAskDS, cidInfoDs repo.CIDInfoDS, retrievalDs repo.RetrievalProviderDS) (repo.Repo, error) {
+func NewBadgerRepo(fundDS FundMgrDS, dealDS ProviderDealDS, paychDS PayChanDS, askDS StorageAskDS,
+	retrAskDs RetrievalAskDS, cidInfoDs CIDInfoDS, retrievalDs RetrievalProviderDS) (repo.Repo, error) {
 	pst := NewPaychRepo(paychDS)
 
 	return &BadgerRepo{
@@ -66,4 +208,39 @@ func (r *BadgerRepo) RetrievalDealRepo() repo.IRetrievalDealRepo {
 func (r *BadgerRepo) Close() error {
 	// todo: to implement
 	return nil
+}
+
+//not metadata, just raw data between file transfer
+
+const (
+	staging  = "staging"
+	transfer = "transfers"
+
+	// client
+	client = "/client"
+)
+
+func NewDagTransferDS(ds MetadataDS) DagTransferDS {
+	return namespace.Wrap(ds, datastore.NewKey(transfer))
+}
+
+func NewStagingDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (StagingDS, error) {
+	db, err := badger.NewDatastore(path.Join(string(*homeDir), staging), &badger.DefaultOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			return db.Close()
+		},
+	})
+	return db, nil
+}
+func NewStagingBlockStore(lc fx.Lifecycle, stagingDs StagingDS) (StagingBlockstore, error) {
+	return blockstore.FromDatastore(stagingDs), nil
+}
+
+func NewImportClientDS(ds MetadataDS) ImportClientDS {
+	return namespace.Wrap(ds, datastore.NewKey(client))
 }

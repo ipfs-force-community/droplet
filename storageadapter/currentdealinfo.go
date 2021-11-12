@@ -1,4 +1,4 @@
-package sealer
+package storageadapter
 
 import (
 	"bytes"

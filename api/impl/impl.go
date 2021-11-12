@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"os"
 	"sort"
 	"time"
@@ -60,13 +61,14 @@ type MarketNodeImpl struct {
 	RetrievalAskHandler retrievaladapter.IAskHandler
 	DataTransfer        network.ProviderDataTransfer
 	DealPublisher       *storageadapter2.DealPublisher
-	PieceStore          piece.PieceStoreEx
-	Messager            clients2.IMessager `optional:"true"`
-	DAGStore            *dagstore.DAGStore
-	PieceStorage        piece.IPieceStorage
-	MinerMgr            minermgr.IMinerMgr
-	PaychAPI            paych3.PaychAPI
+	DealAssigner        piece.DealAssiger
 
+	Messager                                    clients2.IMessager `optional:"true"`
+	DAGStore                                    *dagstore.DAGStore
+	PieceStorage                                piece.IPieceStorage
+	MinerMgr                                    minermgr.IMinerMgr
+	PaychAPI                                    paych3.PaychAPI
+	Repo                                        repo.Repo
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc
 	ConsiderOnlineRetrievalDealsConfigFunc      config.ConsiderOnlineRetrievalDealsConfigFunc
@@ -241,15 +243,15 @@ func (m MarketNodeImpl) MarketPublishPendingDeals(ctx context.Context) error {
 }
 
 func (m MarketNodeImpl) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
-	return m.PieceStore.ListPieceInfoKeys()
+	return m.DealAssigner.ListPieceInfoKeys()
 }
 
 func (m MarketNodeImpl) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
-	return m.PieceStore.ListCidInfoKeys()
+	return m.Repo.CidInfoRepo().ListCidInfoKeys()
 }
 
 func (m MarketNodeImpl) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
-	pi, err := m.PieceStore.GetPieceInfo(pieceCid)
+	pi, err := m.DealAssigner.GetPieceInfo(pieceCid)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +259,7 @@ func (m MarketNodeImpl) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid
 }
 
 func (m MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
-	ci, err := m.PieceStore.GetCIDInfo(payloadCid)
+	ci, err := m.Repo.CidInfoRepo().GetCIDInfo(payloadCid)
 	if err != nil {
 		return nil, err
 	}
@@ -630,23 +632,23 @@ func (m MarketNodeImpl) DagstoreGC(ctx context.Context) ([]types.DagstoreShardRe
 }
 
 func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
-	return m.PieceStore.GetUnPackedDeals(ctx, miner, spec)
+	return m.DealAssigner.GetUnPackedDeals(ctx, miner, spec)
 }
 
 func (m MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
-	return m.PieceStore.AssignUnPackedDeals(ctx, miner, ssize, spec)
+	return m.DealAssigner.AssignUnPackedDeals(ctx, miner, ssize, spec)
 }
 
 func (m MarketNodeImpl) MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error {
-	return m.PieceStore.MarkDealsAsPacking(ctx, miner, deals)
+	return m.DealAssigner.MarkDealsAsPacking(ctx, miner, deals)
 }
 
 func (m MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.Address, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
-	return m.PieceStore.UpdateDealOnPacking(ctx, miner, dealId, sectorid, offset)
+	return m.DealAssigner.UpdateDealOnPacking(ctx, miner, dealId, sectorid, offset)
 }
 
 func (m MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status string) error {
-	return m.PieceStore.UpdateDealStatus(ctx, miner, dealId, status)
+	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, status)
 }
 
 func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {
@@ -660,7 +662,7 @@ func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid
 }
 
 func (m MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*piece.DealInfo, error) {
-	return m.PieceStore.GetDeals(ctx, miner, pageIndex, pageSize)
+	return m.DealAssigner.GetDeals(ctx, miner, pageIndex, pageSize)
 }
 
 func (m MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {

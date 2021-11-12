@@ -31,16 +31,8 @@ func ToKey(k interface{}) datastore.Key {
 	}
 }
 
-func (st *StateStore) Begin(i interface{}, state interface{}) error {
+func (st *StateStore) Save(i interface{}, state interface{}) error {
 	k := ToKey(i)
-	has, err := st.ds.Has(k)
-	if err != nil {
-		return err
-	}
-	if has {
-		return xerrors.Errorf("already tracking state for %v", i)
-	}
-
 	b, err := cborutil.Dump(state)
 	if err != nil {
 		return err

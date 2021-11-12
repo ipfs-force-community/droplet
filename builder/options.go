@@ -54,6 +54,17 @@ func ApplyIf(check func(s *Settings) bool, opts ...Option) Option {
 	}
 }
 
+func ApplyIfElse(check func(s *Settings) bool, ifOpt Option, elseOpt Option) Option {
+	return func(s *Settings) error {
+		if check(s) {
+			return Options(ifOpt)(s)
+		} else {
+			return Options(ifOpt)(s)
+		}
+		return nil
+	}
+}
+
 func If(b bool, opts ...Option) Option {
 	return ApplyIf(func(s *Settings) bool {
 		return b

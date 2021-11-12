@@ -3,6 +3,7 @@ package storageadapter
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/utils"
 	"io"
 	"time"
 
@@ -13,12 +14,10 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
@@ -113,7 +112,6 @@ func NewStorageProviderV2(
 	storedAsk IStorageAsk,
 	h host.Host,
 	homeDir *config.HomeDir,
-	pieceStore piecestore.PieceStore,
 	pieceStorage piece.IPieceStorage,
 	dataTransfer network.ProviderDataTransfer,
 	spn StorageProviderNode,
@@ -143,7 +141,7 @@ func NewStorageProviderV2(
 		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, pieceStore, pieceStorage, dataTransfer, dagStore)
+	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, repo, pieceStorage, dataTransfer, dagStore)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +268,7 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 	}
 	log.Debugw("fetched proof type", "propCid", propCid)
 
-	pieceCid, err := generatePieceCommitment(proofType, tempfi, carSize)
+	pieceCid, err := utils.GeneratePieceCommitment(proofType, tempfi, carSize)
 	if err != nil {
 		cleanup()
 		return xerrors.Errorf("failed to generate commP: %w", err)
@@ -307,15 +305,6 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 	d.State = storagemarket.StorageDealReserveProviderFunds
 
 	return p.dealProcess.HandleOff(ctx, d)
-}
-
-func generatePieceCommitment(rt abi.RegisteredSealProof, rd io.Reader, pieceSize uint64) (cid.Cid, error) {
-	paddedReader, paddedSize := padreader.New(rd, pieceSize)
-	commitment, err := ffiwrapper.GeneratePieceCIDFromFile(rt, paddedReader, paddedSize)
-	if err != nil {
-		return cid.Undef, err
-	}
-	return commitment, nil
 }
 
 // GetAsk returns the storage miner's ask, or nil if one does not exist.
@@ -369,7 +358,7 @@ func (p *StorageProviderV2Impl) ListLocalDeals(mAddr address.Address) ([]storage
 
 	resDeals := make([]storagemarket.MinerDeal, len(deals))
 	for idx, deal := range deals {
-		resDeals[idx] = *convertMinerDealToFilMarketDeal(deal)
+		resDeals[idx] = *deal.FilMarketMinerDeal()
 	}
 
 	return resDeals, nil

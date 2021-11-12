@@ -834,3 +834,31 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 
 	return nil
 }
+
+func (deal *MinerDeal) FilMarketMinerDeal() *storagemarket.MinerDeal {
+	return &storagemarket.MinerDeal{
+		ClientDealProposal:    deal.ClientDealProposal,
+		ProposalCid:           deal.ProposalCid,
+		AddFundsCid:           deal.AddFundsCid,
+		PublishCid:            deal.PublishCid,
+		Miner:                 deal.Miner,
+		Client:                deal.Client,
+		State:                 deal.State,
+		PiecePath:             deal.PiecePath,
+		MetadataPath:          deal.MetadataPath,
+		SlashEpoch:            deal.SlashEpoch,
+		FastRetrieval:         deal.FastRetrieval,
+		Message:               deal.Message,
+		FundsReserved:         deal.FundsReserved,
+		Ref:                   deal.Ref,
+		AvailableForRetrieval: deal.AvailableForRetrieval,
+
+		DealID:       deal.DealID,
+		CreationTime: deal.CreationTime,
+
+		TransferChannelId: deal.TransferChannelId,
+		SectorNumber:      deal.SectorNumber,
+
+		InboundCAR: deal.InboundCAR,
+	}
+}
