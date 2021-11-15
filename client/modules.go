@@ -30,8 +30,8 @@ import (
 	"github.com/filecoin-project/venus-market/journal"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/paychmgr"
-	"github.com/filecoin-project/venus-market/retrievaladapter"
-	"github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/retrievalprovider"
+	"github.com/filecoin-project/venus-market/storageprovider"
 	marketevents "github.com/filecoin-project/venus-market/utils"
 
 	"github.com/filecoin-project/venus/app/client/apiface"
@@ -123,7 +123,7 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Gra
 // StorageBlockstoreAccessor returns the default storage blockstore accessor
 // from the import manager.
 func StorageBlockstoreAccessor(importmgr ClientImportMgr) storagemarket.BlockstoreAccessor {
-	return storageadapter.NewImportsBlockstoreAccessor(importmgr)
+	return storageprovider.NewImportsBlockstoreAccessor(importmgr)
 }
 
 // RetrievalBlockstoreAccessor returns the default retrieval blockstore accessor
@@ -133,7 +133,7 @@ func RetrievalBlockstoreAccessor(r *config.HomeDir) (retrievalmarket.BlockstoreA
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, xerrors.Errorf("failed to create directory %s: %w", dir, err)
 	}
-	return retrievaladapter.NewCARBlockstoreAccessor(dir), nil
+	return retrievalprovider.NewCARBlockstoreAccessor(dir), nil
 }
 
 func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientDataTransfer, discovery *discoveryimpl.Local,
@@ -168,7 +168,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientData
 func RetrievalClient(lc fx.Lifecycle, h host.Host, dt network.ClientDataTransfer, payAPI *paychmgr.PaychAPI, resolver discovery.PeerResolver,
 	ds badger.RetrievalClientDS, fullApi apiface.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 
-	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, fullApi)
+	adapter := retrievalprovider.NewRetrievalClientNode(payAPI, fullApi)
 	libP2pHost := rmnet.NewFromLibp2pHost(h)
 	client, err := retrievalimpl.NewClient(libP2pHost, dt, adapter, resolver, ds, accessor)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/venus-market/minermgr"
-	"github.com/filecoin-project/venus-market/retrievaladapter"
+	"github.com/filecoin-project/venus-market/retrievalprovider"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -33,8 +33,8 @@ import (
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/piece"
-	storageadapter2 "github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/piecestorage"
+	storageadapter2 "github.com/filecoin-project/venus-market/storageprovider"
 	"github.com/filecoin-project/venus-market/types"
 
 	mTypes "github.com/filecoin-project/venus-messager/types"
@@ -57,15 +57,15 @@ type MarketNodeImpl struct {
 	FullNode            apiface.FullNode
 	Host                host.Host
 	StorageProvider     storageadapter2.StorageProviderV2
-	RetrievalProvider   retrievaladapter.IRetrievalProvider
-	RetrievalAskHandler retrievaladapter.IAskHandler
+	RetrievalProvider   retrievalprovider.IRetrievalProvider
+	RetrievalAskHandler retrievalprovider.IAskHandler
 	DataTransfer        network.ProviderDataTransfer
 	DealPublisher       *storageadapter2.DealPublisher
-	DealAssigner        piece.DealAssiger
+	DealAssigner        storageadapter2.DealAssiger
 
 	Messager                                    clients2.IMessager `optional:"true"`
 	DAGStore                                    *dagstore.DAGStore
-	PieceStorage                                piece.IPieceStorage
+	PieceStorage                                piecestorage.IPieceStorage
 	MinerMgr                                    minermgr.IMinerMgr
 	PaychAPI                                    paych3.PaychAPI
 	Repo                                        repo.Repo
@@ -243,7 +243,7 @@ func (m MarketNodeImpl) MarketPublishPendingDeals(ctx context.Context) error {
 }
 
 func (m MarketNodeImpl) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
-	return m.DealAssigner.ListPieceInfoKeys()
+	return m.Repo.StorageDealRepo().ListPieceInfoKeys()
 }
 
 func (m MarketNodeImpl) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
@@ -251,11 +251,11 @@ func (m MarketNodeImpl) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, erro
 }
 
 func (m MarketNodeImpl) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
-	pi, err := m.DealAssigner.GetPieceInfo(pieceCid)
+	pi, err := m.Repo.StorageDealRepo().GetPieceInfo(pieceCid)
 	if err != nil {
 		return nil, err
 	}
-	return &pi, nil
+	return pi, nil
 }
 
 func (m MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
@@ -631,11 +631,11 @@ func (m MarketNodeImpl) DagstoreGC(ctx context.Context) ([]types.DagstoreShardRe
 	return ret, nil
 }
 
-func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
+func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
 	return m.DealAssigner.GetUnPackedDeals(ctx, miner, spec)
 }
 
-func (m MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *piece.GetDealSpec) ([]*piece.DealInfoIncludePath, error) {
+func (m MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
 	return m.DealAssigner.AssignUnPackedDeals(ctx, miner, ssize, spec)
 }
 
@@ -661,7 +661,7 @@ func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid
 	return m.StorageProvider.ImportDataForDeal(ctx, dealPropCid, fi)
 }
 
-func (m MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*piece.DealInfo, error) {
+func (m MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error) {
 	return m.DealAssigner.GetDeals(ctx, miner, pageIndex, pageSize)
 }
 

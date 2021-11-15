@@ -20,10 +20,10 @@ import (
 	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/paychmgr"
-	"github.com/filecoin-project/venus-market/piece"
-	"github.com/filecoin-project/venus-market/retrievaladapter"
+	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/retrievalprovider"
 	"github.com/filecoin-project/venus-market/rpc"
-	"github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/storageprovider"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -190,13 +190,13 @@ func daemon(cctx *cli.Context) error {
 		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, &cfg.Mysql),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfers),
-		piece.PieceOpts(cfg),
+		piecestorage.PieceStorageOpts(cfg),
 		fundmgr.FundMgrOpts,
 		dagstore.DagstoreOpts,
 		paychmgr.PaychOpts,
 		// Markets
-		storageadapter.StorageProviderOpts(cfg),
-		retrievaladapter.RetrievalProviderOpts(cfg),
+		storageprovider.StorageProviderOpts(cfg),
+		retrievalprovider.RetrievalProviderOpts(cfg),
 
 		func(s *builder.Settings) error {
 			s.Invokes[ExtractApiKey] = builder.InvokeOption{

@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus-market/imports"
-	"github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/storageprovider"
 )
 
 //go:embed testdata/*
@@ -37,7 +37,7 @@ func TestImportLocal(t *testing.T) {
 
 	a := &API{
 		Imports:                   im,
-		StorageBlockstoreAccessor: storageadapter.NewImportsBlockstoreAccessor(im),
+		StorageBlockstoreAccessor: storageprovider.NewImportsBlockstoreAccessor(im),
 	}
 
 	b, err := testdata.ReadFile("testdata/payload.txt")

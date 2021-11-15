@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/piece"
+	"github.com/filecoin-project/venus-market/piecestorage"
 	xerrors "github.com/pkg/errors"
 	"go.uber.org/fx"
 	"os"
@@ -25,7 +25,7 @@ const (
 )
 
 // NewMinerAPI creates a new MarketAPI adaptor for the dagstore mounts.
-func NewMarketAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage piece.IPieceStorage) (MarketAPI, error) {
+func NewMarketAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage piecestorage.IPieceStorage) (MarketAPI, error) {
 	mountApi := NewMinerAPI(repo, pieceStorage, r.MaxConcurrencyStorageCalls)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

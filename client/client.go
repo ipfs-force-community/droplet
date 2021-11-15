@@ -53,8 +53,8 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/imports"
-	"github.com/filecoin-project/venus-market/retrievaladapter"
-	"github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/retrievalprovider"
+	"github.com/filecoin-project/venus-market/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/types"
 
 	marketNetwork "github.com/filecoin-project/venus-market/network"
@@ -840,8 +840,8 @@ func (a *API) clientRetrieve(ctx context.Context, order RetrievalOrder, ref *Fil
 	//    the CARv1 (with ExtractV1File) or UnixFS export from it.
 
 	// this indicates we're proxying to IPFS.
-	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
-	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
+	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievalprovider.ProxyBlockstoreAccessor)
+	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievalprovider.CARBlockstoreAccessor)
 
 	carPath := order.FromLocalCAR
 	if carPath == "" {
@@ -1296,7 +1296,7 @@ func (a *API) ClientGetDealStatus(ctx context.Context, statusCode uint64) (strin
 // must be called when done.
 func (a *API) dealBlockstore(root cid.Cid) (bstore.Blockstore, func(), error) {
 	switch acc := a.StorageBlockstoreAccessor.(type) {
-	case *storageadapter.ImportsBlockstoreAccessor:
+	case *storageprovider.ImportsBlockstoreAccessor:
 		bs, err := acc.Get(root)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("no import found for root %s: %w", root, err)
@@ -1307,7 +1307,7 @@ func (a *API) dealBlockstore(root cid.Cid) (bstore.Blockstore, func(), error) {
 		}
 		return bs, doneFn, nil
 
-	case *storageadapter.ProxyBlockstoreAccessor:
+	case *storageprovider.ProxyBlockstoreAccessor:
 		return acc.Blockstore, func() {}, nil
 
 	default:

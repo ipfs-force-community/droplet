@@ -3,7 +3,7 @@ package dagstore
 import (
 	"context"
 	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/piece"
+	"github.com/filecoin-project/venus-market/piecestorage"
 	"io"
 
 	"github.com/filecoin-project/dagstore/throttle"
@@ -19,14 +19,14 @@ type MarketAPI interface {
 }
 
 type marketAPI struct {
-	pieceStorage piece.IPieceStorage
+	pieceStorage piecestorage.IPieceStorage
 	pieceRepo    repo.StorageDealRepo
 	throttle     throttle.Throttler
 }
 
 var _ MarketAPI = (*marketAPI)(nil)
 
-func NewMinerAPI(repo repo.Repo, pieceStorage piece.IPieceStorage, concurrency int) MarketAPI {
+func NewMinerAPI(repo repo.Repo, pieceStorage piecestorage.IPieceStorage, concurrency int) MarketAPI {
 	return &marketAPI{
 		pieceRepo:    repo.StorageDealRepo(),
 		pieceStorage: pieceStorage,
