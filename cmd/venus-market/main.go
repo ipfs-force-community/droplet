@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/models"
 	"log"
@@ -84,6 +85,10 @@ var (
 		Name:  "mysql-dsn",
 		Usage: "mysql connection string",
 	}
+	MinerListFlag = &cli.StringSliceFlag{
+		Name:  "miner",
+		Usage: "support miner",
+	}
 )
 
 func main() {
@@ -108,6 +113,7 @@ func main() {
 					SignerTokenFlag,
 					PieceStorageFlag,
 					MysqlDsnFlag,
+					MinerListFlag,
 				},
 				Action: daemon,
 			},
@@ -250,6 +256,17 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 
 	if cctx.IsSet("mysql-dsn") {
 		cfg.Mysql.ConnectionString = cctx.String("mysql-dsn")
+	}
+
+	if cctx.IsSet("miner") {
+		addrStrs := cctx.StringSlice("miner")
+		for _, addrStr := range addrStrs {
+			addr, err := address.NewFromString(addrStr)
+			if err != nil {
+				return xerrors.Errorf("flag provide a wrong address %s %w", addrStr, err)
+			}
+			cfg.MinerAddress = append(cfg.MinerAddress, addr)
+		}
 	}
 	return nil
 }

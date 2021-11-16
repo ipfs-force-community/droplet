@@ -157,19 +157,28 @@ type BadgerRepo struct {
 	retrievalRepo    repo.IRetrievalDealRepo
 }
 
-func NewBadgerRepo(fundDS FundMgrDS, dealDS ProviderDealDS, paychDS PayChanDS, askDS StorageAskDS,
-	retrAskDs RetrievalAskDS, cidInfoDs CIDInfoDS, retrievalDs RetrievalProviderDS) (repo.Repo, error) {
-	pst := NewPaychRepo(paychDS)
+type BadgerDSParams struct {
+	fx.In
+	FundDS      FundMgrDS           `optional:"true"`
+	DealDS      ProviderDealDS      `optional:"true"`
+	PaychDS     PayChanDS           `optional:"true"`
+	AskDS       StorageAskDS        `optional:"true"`
+	RetrAskDs   RetrievalAskDS      `optional:"true"`
+	CidInfoDs   CIDInfoDS           `optional:"true"`
+	RetrievalDs RetrievalProviderDS `optional:"true"`
+}
 
+func NewBadgerRepo(params BadgerDSParams) (repo.Repo, error) {
+	pst := NewPaychRepo(params.PaychDS)
 	return &BadgerRepo{
-		fundRepo:         NewFundRepo(fundDS),
-		storageDealRepo:  NewStorageDealRepo(dealDS),
+		fundRepo:         NewFundRepo(params.FundDS),
+		storageDealRepo:  NewStorageDealRepo(params.DealDS),
 		msgInfoRepo:      pst,
 		channelInfoRepo:  pst,
-		storageAskRepo:   NewStorageAskRepo(askDS),
-		retrievalAskRepo: NewRetrievalAskRepo(retrAskDs),
-		piecesRepo:       NewBadgerCidInfoRepo(cidInfoDs),
-		retrievalRepo:    NewRetrievalDealRepo(retrievalDs),
+		storageAskRepo:   NewStorageAskRepo(params.AskDS),
+		retrievalAskRepo: NewRetrievalAskRepo(params.RetrAskDs),
+		piecesRepo:       NewBadgerCidInfoRepo(params.CidInfoDs),
+		retrievalRepo:    NewRetrievalDealRepo(params.RetrievalDs),
 	}, nil
 }
 

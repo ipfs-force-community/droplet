@@ -59,7 +59,7 @@ func ApplyIfElse(check func(s *Settings) bool, ifOpt Option, elseOpt Option) Opt
 		if check(s) {
 			return Options(ifOpt)(s)
 		} else {
-			return Options(ifOpt)(s)
+			return Options(elseOpt)(s)
 		}
 		return nil
 	}
