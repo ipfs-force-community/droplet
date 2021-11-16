@@ -318,6 +318,32 @@ func (dsr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize 
 	return deals, nil
 }
 
+func (dsr *storageDealRepo) GetDealbyAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+	var md []storageDeal
+
+	err := dsr.DB.Table((&storageDeal{}).TableName()).
+		Find(&md, "cdp_provider = ? AND state = ?", addr.String(), status).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var deals = make([]*types.MinerDeal, len(md))
+
+	for idx, deal := range md {
+		if deals[idx], err = toStorageDeal(&deal); err != nil {
+			return nil, xerrors.Errorf("convert StorageDeal(%s) to a types.MinerDeal failed:%w",
+				deal.ProposalCid, err)
+		}
+	}
+
+	return deals, nil
+}
+
+func (dsr *storageDealRepo) UpdateDealStatus(proposalCid cid.Cid, status storagemarket.StorageDealStatus) error {
+	return dsr.DB.Model(storageDeal{}).Where("proposal_cid = ?", proposalCid.String()).Update("state", status).Error
+}
+
 func (m *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
 	if err := m.travelDeals(

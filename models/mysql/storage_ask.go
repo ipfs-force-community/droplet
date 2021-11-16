@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/venus-market/models/repo"
 	mtypes "github.com/filecoin-project/venus-messager/types"
 	"golang.org/x/xerrors"
 	"gorm.io/gorm"
@@ -92,7 +93,9 @@ func (a *storageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedSto
 	var res storageAsk
 	err := a.DB.Take(&res, "miner = ?", miner.String()).Error
 	if err != nil {
-		return nil, err
+		if err == gorm.ErrRecordNotFound {
+			return nil, repo.ErrNotFound
+		}
 	}
 	return toStorageAsk(&res)
 }

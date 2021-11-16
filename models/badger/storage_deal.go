@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/types"
 	xerrors "github.com/pkg/errors"
@@ -77,6 +78,38 @@ func (sdr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize 
 	}
 
 	return storageDeals, err
+}
+
+func (sdr *storageDealRepo) GetDealbyAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+	var storageDeals []*types.MinerDeal
+	var err error
+	if err = sdr.travelDeals(func(deal *types.MinerDeal) (err error) {
+		if deal.ClientDealProposal.Proposal.Provider != addr && deal.State == status {
+			return
+		}
+		storageDeals = append(storageDeals, deal)
+		return
+	}); err != nil {
+		if xerrors.Is(err, justWantStopTravelErr) {
+			return storageDeals, nil
+		}
+		return nil, err
+	}
+
+	if len(storageDeals) == 0 {
+		err = repo.ErrNotFound
+	}
+
+	return storageDeals, err
+}
+
+func (sdr *storageDealRepo) UpdateDealStatus(proposalCid cid.Cid, status storagemarket.StorageDealStatus) error {
+	deal, err := sdr.GetDeal(proposalCid)
+	if err != nil {
+		return err
+	}
+	deal.State = status
+	return sdr.SaveDeal(deal)
 }
 
 func (sdr *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {

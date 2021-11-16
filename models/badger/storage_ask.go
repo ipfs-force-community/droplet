@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"github.com/filecoin-project/venus-market/models/repo"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-statestore"
@@ -25,7 +26,7 @@ func (ar *storageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedSt
 	b, err := ar.ds.Get(key)
 	if err != nil {
 		if err == datastore.ErrNotFound {
-			return nil, nil
+			return nil, repo.ErrNotFound
 		}
 		return nil, err
 	}
