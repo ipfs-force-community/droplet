@@ -22,6 +22,8 @@ type FundRepo interface {
 type StorageDealRepo interface {
 	SaveDeal(StorageDeal *types.MinerDeal) error
 	GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error)
+	GetDealbyAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
+	UpdateDealStatus(proposalCid cid.Cid, status storagemarket.StorageDealStatus) error
 	GetDeals(mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error)
 	GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error)
 	GetDealByDealID(mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error)

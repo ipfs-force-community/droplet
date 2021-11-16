@@ -2,7 +2,6 @@ package storageprovider
 
 import (
 	"context"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -102,7 +101,12 @@ func (repo *StorageAsk) signAsk(ask *storagemarket.StorageAsk) (*storagemarket.S
 		return nil, err
 	}
 
-	sig, err := repo.fullNode.WalletSign(ctx, mi.Worker, askBytes, wallet.MsgMeta{
+	addr, err := repo.fullNode.StateAccountKey(ctx, mi.Worker, tok.Key())
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := repo.fullNode.WalletSign(ctx, addr, askBytes, wallet.MsgMeta{
 		Type: wallet.MTStorageAsk,
 	})
 	if err != nil {

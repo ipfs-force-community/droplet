@@ -47,16 +47,6 @@ type StorageProviderV2 interface {
 	// Stop terminates processing of deals on a StorageProvider
 	Stop() error
 
-	// SetAsk configures the storage miner's ask with the provided prices (for unverified and verified deals),
-	// duration, and options. Any previously-existing ask is replaced.
-	SetAsk(mAddr address.Address, price abi.TokenAmount, verifiedPrice abi.TokenAmount, duration abi.ChainEpoch, options ...storagemarket.StorageAskOption) error
-
-	// GetAsk returns the storage miner's ask, or nil if one does not exist.
-	GetAsk(mAddr address.Address) (*storagemarket.SignedStorageAsk, error)
-
-	// ListLocalDeals lists deals processed by this storage provider
-	ListLocalDeals(mAddr address.Address) ([]storagemarket.MinerDeal, error)
-
 	// AddStorageCollateral adds storage collateral
 	AddStorageCollateral(ctx context.Context, mAddr address.Address, amount abi.TokenAmount) error
 
@@ -307,11 +297,6 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 	return p.dealProcess.HandleOff(ctx, d)
 }
 
-// GetAsk returns the storage miner's ask, or nil if one does not exist.
-func (p *StorageProviderV2Impl) GetAsk(mAddr address.Address) (*storagemarket.SignedStorageAsk, error) {
-	return p.storedAsk.GetAsk(mAddr)
-}
-
 // AddStorageCollateral adds storage collateral
 func (p *StorageProviderV2Impl) AddStorageCollateral(ctx context.Context, mAddr address.Address, amount abi.TokenAmount) error {
 	done := make(chan error, 1)
@@ -347,27 +332,6 @@ func (p *StorageProviderV2Impl) GetStorageCollateral(ctx context.Context, mAddr 
 	}
 
 	return p.spn.GetBalance(ctx, mAddr, tok)
-}
-
-// ListLocalDeals lists deals processed by this storage provider
-func (p *StorageProviderV2Impl) ListLocalDeals(mAddr address.Address) ([]storagemarket.MinerDeal, error) {
-	deals, err := p.dealStore.ListDeal(mAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	resDeals := make([]storagemarket.MinerDeal, len(deals))
-	for idx, deal := range deals {
-		resDeals[idx] = *deal.FilMarketMinerDeal()
-	}
-
-	return resDeals, nil
-}
-
-// SetAsk configures the storage miner's ask with the provided price,
-// duration, and options. Any previously-existing ask is replaced.
-func (p *StorageProviderV2Impl) SetAsk(mAddr address.Address, price abi.TokenAmount, verifiedPrice abi.TokenAmount, duration abi.ChainEpoch, options ...storagemarket.StorageAskOption) error {
-	return p.storedAsk.SetAsk(mAddr, price, verifiedPrice, duration, options...)
 }
 
 // SubscribeToEvents allows another component to listen for events on the StorageProvider

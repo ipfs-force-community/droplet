@@ -34,7 +34,7 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piecestorage"
-	storageadapter2 "github.com/filecoin-project/venus-market/storageprovider"
+	"github.com/filecoin-project/venus-market/storageprovider"
 	"github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/venus-market/paychmgr"
@@ -56,14 +56,16 @@ type MarketNodeImpl struct {
 
 	FullNode            apiface.FullNode
 	Host                host.Host
-	StorageProvider     storageadapter2.StorageProviderV2
+	StorageProvider     storageprovider.StorageProviderV2
 	RetrievalProvider   retrievalprovider.IRetrievalProvider
 	RetrievalAskHandler retrievalprovider.IAskHandler
 	DataTransfer        network.ProviderDataTransfer
-	DealPublisher       *storageadapter2.DealPublisher
-	DealAssigner        storageadapter2.DealAssiger
+	DealPublisher       *storageprovider.DealPublisher
+	DealAssigner        storageprovider.DealAssiger
 
 	Messager                                    clients2.IMessager `optional:"true"`
+	StorageAsk                                  storageprovider.IStorageAsk
+	RetrievalAsk                                retrievalprovider.IAskHandler
 	DAGStore                                    *dagstore.DAGStore
 	PieceStorage                                piecestorage.IPieceStorage
 	MinerMgr                                    minermgr.IMinerMgr
@@ -160,7 +162,17 @@ func (m MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan storag
 }
 
 func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]storagemarket.MinerDeal, error) {
-	return m.StorageProvider.ListLocalDeals(mAddr)
+	deals, err := m.Repo.StorageDealRepo().ListDeal(mAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	resDeals := make([]storagemarket.MinerDeal, len(deals))
+	for idx, deal := range deals {
+		resDeals[idx] = *deal.FilMarketMinerDeal()
+	}
+
+	return resDeals, nil
 }
 
 func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
@@ -169,11 +181,11 @@ func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address,
 		storagemarket.MaxPieceSize(maxPieceSize),
 	}
 
-	return m.StorageProvider.SetAsk(mAddr, price, verifiedPrice, duration, options...)
+	return m.StorageAsk.SetAsk(mAddr, price, verifiedPrice, duration, options...)
 }
 
 func (m MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*storagemarket.SignedStorageAsk, error) {
-	return m.StorageProvider.GetAsk(mAddr)
+	return m.StorageAsk.GetAsk(mAddr)
 }
 
 func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, ask *retrievalmarket.Ask) error {
