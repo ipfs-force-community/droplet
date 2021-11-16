@@ -37,8 +37,8 @@ import (
 	storageadapter2 "github.com/filecoin-project/venus-market/storageprovider"
 	"github.com/filecoin-project/venus-market/types"
 
+	"github.com/filecoin-project/venus-market/paychmgr"
 	mTypes "github.com/filecoin-project/venus-messager/types"
-	paych3 "github.com/filecoin-project/venus/app/submodule/paych"
 
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
@@ -67,7 +67,7 @@ type MarketNodeImpl struct {
 	DAGStore                                    *dagstore.DAGStore
 	PieceStorage                                piecestorage.IPieceStorage
 	MinerMgr                                    minermgr.IMinerMgr
-	PaychAPI                                    paych3.PaychAPI
+	PaychAPI                                    *paychmgr.PaychAPI
 	Repo                                        repo.Repo
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc

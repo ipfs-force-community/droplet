@@ -27,8 +27,8 @@ type IMinerMgr interface {
 }
 
 type MinerMgrImpl struct {
-	cli   *resty.Client
-	token string
+	authCfg config.AuthNode
+	token   string
 
 	miners []address.Address
 	lk     sync.Mutex
@@ -36,9 +36,8 @@ type MinerMgrImpl struct {
 
 func NewMinerMgrImpl(cfg *config.MarketConfig) func() (IMinerMgr, error) {
 	return func() (IMinerMgr, error) {
-		cli := resty.New().SetHostURL(cfg.AuthNode.Url).SetHeader("Accept", "application/json")
-		m := &MinerMgrImpl{cli: cli, token: cfg.AuthNode.Token}
-		err := m.addAddressStr(cfg.MinerAddress...)
+		m := &MinerMgrImpl{authCfg: cfg.AuthNode, token: cfg.AuthNode.Token}
+		err := m.distAddress(cfg.MinerAddress...)
 		if err != nil {
 			return nil, err
 		}
@@ -46,7 +45,7 @@ func NewMinerMgrImpl(cfg *config.MarketConfig) func() (IMinerMgr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return m, m.addAddress(miners...)
+		return m, m.distAddress(miners...)
 	}
 }
 
@@ -71,11 +70,14 @@ func (m *MinerMgrImpl) Has(ctx context.Context, addr address.Address) bool {
 }
 
 func (m *MinerMgrImpl) GetMinerFromVenusAuth(ctx context.Context, skip, limit int64) ([]address.Address, error) {
+	if len(m.authCfg.Url) > 0 {
+		return []address.Address{}, nil
+	}
 	if limit == 0 {
 		limit = CoMinersLimit
 	}
-
-	response, err := m.cli.R().SetQueryParams(map[string]string{
+	cli := resty.New().SetHostURL(m.authCfg.Url).SetHeader("Accept", "application/json")
+	response, err := cli.R().SetQueryParams(map[string]string{
 		"token": m.token,
 		"skip":  fmt.Sprintf("%d", skip),
 		"limit": fmt.Sprintf("%d", limit),
@@ -111,7 +113,7 @@ func (m *MinerMgrImpl) GetMinerFromVenusAuth(ctx context.Context, skip, limit in
 	}
 }
 
-func (m *MinerMgrImpl) addAddress(addrs ...address.Address) error {
+func (m *MinerMgrImpl) distAddress(addrs ...address.Address) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 	filter := make(map[address.Address]struct{}, len(m.miners))
@@ -120,27 +122,6 @@ func (m *MinerMgrImpl) addAddress(addrs ...address.Address) error {
 	}
 
 	for _, addr := range addrs {
-		if _, ok := filter[addr]; !ok {
-			filter[addr] = struct{}{}
-			m.miners = append(m.miners, addr)
-		}
-	}
-	return nil
-}
-
-func (m *MinerMgrImpl) addAddressStr(addrs ...string) error {
-	m.lk.Lock()
-	defer m.lk.Unlock()
-	filter := make(map[address.Address]struct{}, len(m.miners))
-	for _, mAddr := range m.miners {
-		filter[mAddr] = struct{}{}
-	}
-
-	for _, addrStr := range addrs {
-		addr, err := address.NewFromString(addrStr)
-		if err != nil {
-			return err
-		}
 		if _, ok := filter[addr]; !ok {
 			filter[addr] = struct{}{}
 			m.miners = append(m.miners, addr)

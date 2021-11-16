@@ -19,7 +19,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 		}, builder.Options(
 			builder.Override(new(badger2.StagingDS), badger2.NewStagingDS),
 			builder.Override(new(badger2.StagingBlockstore), badger2.NewStagingBlockStore),
-
+			builder.Override(new(badger2.DagTransferDS), badger2.NewDagTransferDS),
 			builder.ApplyIfElse(func(s *builder.Settings) bool {
 				return len(mysqlCfg.ConnectionString) > 0
 			}, builder.Options(
@@ -37,11 +37,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 					builder.Override(new(badger2.PayChanDS), badger2.NewPayChanDS),
 					builder.Override(new(badger2.FundMgrDS), badger2.NewFundMgrDS),
 
-					builder.Override(new(repo.Repo), func(fundDS badger2.FundMgrDS, dealDS badger2.ProviderDealDS,
-						paychDS badger2.PayChanDS, askDS badger2.StorageAskDS, retrAskDs badger2.RetrievalAskDS,
-						cidInfoDs badger2.CIDInfoDS, retrievalDs badger2.RetrievalProviderDS) (repo.Repo, error) {
-						return badger2.NewBadgerRepo(fundDS, dealDS, paychDS, askDS, retrAskDs, cidInfoDs, retrievalDs)
-					}),
+					builder.Override(new(repo.Repo), badger2.NewBadgerRepo),
 				),
 			),
 		),
@@ -56,6 +52,8 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 				builder.Override(new(badger2.RetrievalClientDS), badger2.NewRetrievalClientDS),
 				builder.Override(new(badger2.ImportClientDS), badger2.NewImportClientDS),
 				builder.Override(new(badger2.ClientTransferDS), badger2.NewClientTransferDS),
+
+				builder.Override(new(repo.Repo), badger2.NewBadgerRepo),
 			),
 		),
 	)

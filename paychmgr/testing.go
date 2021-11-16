@@ -8,7 +8,10 @@ import (
 )
 
 func newRepo() repo.Repo {
-	r, err := badger.NewBadgerRepo(nil, nil, ds_sync.MutexWrap(ds.NewMapDatastore()), nil, nil, nil, nil)
+	params := badger.BadgerDSParams{
+		PaychDS: ds_sync.MutexWrap(ds.NewMapDatastore()),
+	}
+	r, err := badger.NewBadgerRepo(params)
 	if err != nil {
 		panic("new badger repo failed: " + err.Error())
 	}
