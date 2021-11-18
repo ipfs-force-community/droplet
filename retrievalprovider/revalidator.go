@@ -132,14 +132,14 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 }
 
 func (pr *ProviderRevalidator) processPayment(ctx context.Context, dealID rm.ProviderDealIdentifier, payment *rm.DealPayment) (*retrievalmarket.DealResponse, error) {
-
+	fmt.Println("receive payment funx 1")
 	deal, err := pr.deals.GetDeal(dealID.Receiver, dealID.DealID)
 	if err != nil {
 		//todo if getdeal fail, cancel deal fail too. how to resolve this issue, need to think
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
 		return errorDealResponse(dealID, err), err
 	}
-	fmt.Println("receive payment funx")
+	fmt.Println("receive payment funx 2")
 	tok, _, err := pr.node.GetChainHead(context.TODO())
 	if err != nil {
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
@@ -180,13 +180,11 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, dealID rm.Pro
 	}
 
 	// resume deal
-	var sumPayment = func() {
-		deal.FundsReceived = big.Add(deal.FundsReceived, received)
-		fmt.Println("receive fee ", big.Div(deal.FundsReceived, deal.PricePerByte))
-		// only update interval if the payment is for bytes and not for unsealing.
-		if deal.Status != rm.DealStatusFundsNeededUnseal {
-			deal.CurrentInterval = deal.NextInterval()
-		}
+	deal.FundsReceived = big.Add(deal.FundsReceived, received)
+	fmt.Println("receive fee ", big.Div(deal.FundsReceived, deal.PricePerByte))
+	// only update interval if the payment is for bytes and not for unsealing.
+	if deal.Status != rm.DealStatusFundsNeededUnseal {
+		deal.CurrentInterval = deal.NextInterval()
 	}
 
 	fmt.Println("receive payment ", deal.Status.String())
@@ -195,10 +193,8 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, dealID rm.Pro
 	err = datatransfer.ErrResume
 	switch deal.Status {
 	case rm.DealStatusFundsNeeded:
-		sumPayment()
 		deal.Status = rm.DealStatusOngoing
 	case rm.DealStatusFundsNeededLastPayment:
-		sumPayment()
 		deal.Status = rm.DealStatusFinalizing
 		log.Infof("provider: funds needed: last payment")
 		resp = &rm.DealResponse{
@@ -208,7 +204,6 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, dealID rm.Pro
 	//not start transfer data is unsealing
 	case rm.DealStatusFundsNeededUnseal:
 		//pay for unseal goto unseal
-		sumPayment()
 		deal.Status = rm.DealStatusUnsealing
 		defer func() {
 			go pr.retrievalDealHandler.UnsealData(ctx, deal)
@@ -305,21 +300,19 @@ func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, addit
 	log.Debugf("provider: owed %d = (total sent %d - paid for %d) * price per byte %d: sending payment request",
 		paymentOwed, channel.totalSent, channel.totalPaidFor, channel.pricePerByte)
 
+	deal.TotalSent = channel.totalSent
 	// Request payment
 	switch deal.Status {
 	case rm.DealStatusOngoing, rm.DealStatusUnsealed:
 		deal.Status = rm.DealStatusFundsNeeded
-		deal.TotalSent = channel.totalSent
 	case rm.DealStatusFundsNeeded:
 		//doing nothing
 	case rm.DealStatusBlocksComplete:
 		deal.Status = rm.DealStatusFundsNeededLastPayment
-		deal.TotalSent = channel.totalSent
 	case rm.DealStatusNew:
 		//todo will come here?
 		log.Errorf("receive status new on data pull sent")
 		deal.Status = rm.DealStatusFundsNeededUnseal
-		deal.TotalSent = channel.totalSent // total sent may not need, not unseal, send nothing
 		err = pr.retrievalDealHandler.TrackTransfer(ctx, deal)
 		if err != nil {
 			return true, nil, err

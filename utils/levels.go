@@ -1,11 +1,12 @@
 package utils
 
 import (
+	logging "github.com/ipfs/go-log/v2"
 	"os"
 )
 
 func SetupLogLevels() {
-	if _, set := os.LookupEnv("GOLOG_LOG_LEVEL"); !set {
+	if val, set := os.LookupEnv("GOLOG_LOG_LEVEL"); !set {
 		/*	_ = logging.SetLogLevel("*", "DEBUG")
 			_ = logging.SetLogLevel("addrutil", "INFO")
 			_ = logging.SetLogLevel("rpc", "INFO")
@@ -15,5 +16,7 @@ func SetupLogLevels() {
 			_ = logging.SetLogLevel("fsm", "INFO")
 			_ = logging.SetLogLevel("evtsm", "INFO")
 			_ = logging.SetLogLevel("dagstore/upgrader", "INFO")*/
+	} else {
+		_ = logging.SetLogLevel("*", val)
 	}
 }
