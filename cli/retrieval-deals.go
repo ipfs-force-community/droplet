@@ -148,22 +148,23 @@ var retrievalDealsListCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 
-		_, _ = fmt.Fprintf(w, "Receiver\tDealID\tPayload\tState\tPricePerByte\tBytesSent\tMessage\n")
+		_, _ = fmt.Fprintf(w, "Receiver\tDealID\tPayload\tState\tPricePerByte\tBytesSent\tPaied\tInterval\tMessage\n")
 
 		for _, deal := range deals {
 			payloadCid := deal.PayloadCID.String()
 
 			_, _ = fmt.Fprintf(w,
-				"%s\t%d\t%s\t%s\t%s\t%d\t%s\n",
+				"%s\t%d\t%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
 				deal.Receiver.String(),
 				deal.ID,
 				"..."+payloadCid[len(payloadCid)-8:],
 				retrievalmarket.DealStatuses[deal.Status],
 				deal.PricePerByte.String(),
 				deal.TotalSent,
+				deal.FundsReceived,
+				deal.CurrentInterval,
 				deal.Message,
 			)
 		}
@@ -212,7 +213,10 @@ var retrievalSetAskCmd = &cli.Command{
 
 		ask, err := api.MarketGetRetrievalAsk(ctx, mAddr)
 		if err != nil {
-			return err
+			if err.Error() != "record not found" {
+				return err
+			}
+			ask = &retrievalmarket.Ask{}
 		}
 
 		if cctx.IsSet("price") {

@@ -45,9 +45,6 @@ func (d *DataTransferHandler) HandleAcceptFor(ctx context.Context, identifier rm
 		deal.Status = rm.DealStatusErrored
 		return d.retrievalDealStore.SaveDeal(deal)
 	}
-	defer func() {
-		go d.retrievalDealHandler.UnsealData(ctx, deal)
-	}()
 	deal.ChannelID = &channelId
 	return d.retrievalDealHandler.UnsealData(ctx, deal)
 }

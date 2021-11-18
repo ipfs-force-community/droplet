@@ -36,7 +36,7 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *rm.Provider
 		return err
 	}
 
-	if err := p.env.PrepareBlockstore(ctx, deal.ID, deal.PieceInfo.PieceCID); err != nil {
+	if err := p.env.PrepareBlockstore(ctx, deal.ID, *deal.PieceCID); err != nil {
 		return p.CancelDeal(ctx, deal)
 	}
 	log.Debugf("blockstore prepared successfully, firing unseal complete for deal %d", deal.ID)

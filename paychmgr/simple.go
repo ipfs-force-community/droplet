@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus/pkg/constants"
 	types2 "github.com/filecoin-project/venus/pkg/types"
 )
 
@@ -411,7 +410,7 @@ func (ca *channelAccessor) waitForPaychCreateMsg(channelID string, mcid cid.Cid)
 }
 
 func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) error {
-	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, constants.MessageConfidence)
+	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, 1)
 	if err != nil {
 		log.Errorf("wait msg: %w", err)
 		return err
@@ -498,7 +497,7 @@ func (ca *channelAccessor) waitForAddFundsMsg(channelID string, mcid cid.Cid) {
 }
 
 func (ca *channelAccessor) waitAddFundsMsg(channelID string, mcid cid.Cid) error {
-	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, constants.MessageConfidence)
+	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, 1)
 	if err != nil {
 		log.Error(err)
 		return err

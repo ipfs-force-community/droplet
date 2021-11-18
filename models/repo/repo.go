@@ -9,8 +9,8 @@ import (
 	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"golang.org/x/xerrors"
 )
 
 type FundRepo interface {
@@ -22,6 +22,7 @@ type FundRepo interface {
 type StorageDealRepo interface {
 	SaveDeal(StorageDeal *types.MinerDeal) error
 	GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error)
+	GetDealsByPieceCidAndStatus(piececid cid.Cid, statues []storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
 	GetDealbyAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
 	UpdateDealStatus(proposalCid cid.Cid, status storagemarket.StorageDealStatus) error
 	GetDeals(mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error)
@@ -92,4 +93,4 @@ type Repo interface {
 	Close() error
 }
 
-var ErrNotFound = datastore.ErrNotFound
+var ErrNotFound = xerrors.New("record not found")

@@ -2,7 +2,7 @@ package badger
 
 import (
 	"bytes"
-
+	"fmt"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-statestore"
@@ -28,22 +28,27 @@ func (r retrievalDealRepo) SaveDeal(deal *retrievalmarket.ProviderDealState) err
 		return err
 	}
 
+	fmt.Println("save deal ", deal.Identifier(), deal.Status.String())
+
 	return r.ds.Put(statestore.ToKey(deal.Identifier()), b)
 }
 
 func (r retrievalDealRepo) GetDeal(id peer.ID, id2 retrievalmarket.DealID) (*retrievalmarket.ProviderDealState, error) {
-	value, err := r.ds.Get(statestore.ToKey(retrievalmarket.ProviderDealIdentifier{
+	key := statestore.ToKey(retrievalmarket.ProviderDealIdentifier{
 		Receiver: id,
 		DealID:   id2,
-	}))
+	})
+
+	value, err := r.ds.Get(key)
 	if err != nil {
 		return nil, err
 	}
 	var retrievalDeal retrievalmarket.ProviderDealState
-	if err := retrievalDeal.UnmarshalCBOR(bytes.NewReader(value)); err != nil {
+	if err := cborrpc.ReadCborRPC(bytes.NewReader(value), &retrievalDeal); err != nil {
 		return nil, err
 	}
 
+	fmt.Println("get deal ", key.String(), retrievalDeal.Status.String())
 	return &retrievalDeal, nil
 }
 
@@ -68,7 +73,7 @@ func (r retrievalDealRepo) ListDeals(pageIndex, pageSize int) ([]*retrievalmarke
 			return nil, err
 		}
 		var deal retrievalmarket.ProviderDealState
-		if err := deal.UnmarshalCBOR(bytes.NewReader(res.Value)); err != nil {
+		if err := cborrpc.ReadCborRPC(bytes.NewReader(res.Value), &deal); err != nil {
 			return nil, err
 		}
 		retrievalDeals = append(retrievalDeals, &deal)

@@ -193,7 +193,7 @@ func daemon(cctx *cli.Context) error {
 		minermgr2.MinerMgrOpts(cfg),
 
 		//clients
-		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, &cfg.Mysql),
+		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfers),
 		piecestorage.PieceStorageOpts(cfg),
@@ -265,7 +265,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 			if err != nil {
 				return xerrors.Errorf("flag provide a wrong address %s %w", addrStr, err)
 			}
-			cfg.MinerAddress = append(cfg.MinerAddress, addr)
+			cfg.MinerAddress = append(cfg.MinerAddress, config.Address(addr))
 		}
 	}
 	return nil

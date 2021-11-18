@@ -99,7 +99,7 @@ type RetrievalPricingDefault struct {
 }
 
 type AddressConfig struct {
-	DealPublishControl []address.Address
+	DealPublishControl []Address
 
 	// DisableOwnerFallback disables usage of the owner address for messages
 	// sent automatically
@@ -165,7 +165,8 @@ type MarketConfig struct {
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
 
-	MinerAddress []address.Address
+	MinerAddress            []Address
+	RetrievalPaymentAddress Address
 	// When enabled, the miner can accept online deals
 	ConsiderOnlineStorageDeals bool
 	// When enabled, the miner can accept offline deals
@@ -265,4 +266,12 @@ func (addr *Address) UnmarshalText(text []byte) error {
 
 func (dur Address) MarshalText() ([]byte, error) {
 	return []byte(address.Address(dur).String()), nil
+}
+
+func ConvertConfigAddress(addrs []Address) []address.Address {
+	addrs2 := make([]address.Address, len(addrs))
+	for index, addr := range addrs {
+		addrs2[index] = address.Address(addr)
+	}
+	return addrs2
 }

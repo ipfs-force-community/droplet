@@ -2,7 +2,8 @@ package retrievalprovider
 
 import (
 	"context"
-	"errors"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus-market/config"
 	"math"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
-	"github.com/hannahhoward/go-pubsub"
 )
 
 var queryTimeout = 5 * time.Second
@@ -43,25 +43,6 @@ type RetrievalProviderV2 struct {
 	retrievalStreamHandler *RetrievalStreamHandler
 }
 
-type internalProviderEvent struct {
-	evt   retrievalmarket.ProviderEvent
-	state retrievalmarket.ProviderDealState
-}
-
-func providerDispatcher(evt pubsub.Event, subscriberFn pubsub.SubscriberFn) error {
-	ie, ok := evt.(internalProviderEvent)
-	if !ok {
-		return errors.New("wrong type of event")
-	}
-	cb, ok := subscriberFn.(retrievalmarket.ProviderSubscriber)
-	if !ok {
-		return errors.New("wrong type of event")
-	}
-	log.Debugw("process retrieval provider] listeners", "name", retrievalmarket.ProviderEvents[ie.evt], "proposal cid", ie.state.ID)
-	cb(ie.evt, ie.state)
-	return nil
-}
-
 // NewProvider returns a new retrieval Provider
 func NewProvider(node retrievalmarket.RetrievalProviderNode,
 	network rmnet.RetrievalMarketNetwork,
@@ -69,6 +50,7 @@ func NewProvider(node retrievalmarket.RetrievalProviderNode,
 	dagStore stores.DAGStoreWrapper,
 	dataTransfer network.ProviderDataTransfer,
 	repo repo.Repo,
+	cfg *config.MarketConfig,
 ) (*RetrievalProviderV2, error) {
 	storageDealsRepo := repo.StorageDealRepo()
 	retrievalDealRepo := repo.RetrievalDealRepo()
@@ -80,11 +62,13 @@ func NewProvider(node retrievalmarket.RetrievalProviderNode,
 		network:                network,
 		dagStore:               dagStore,
 		askHandler:             askHandler,
+		retrievalDealRepo:      repo.RetrievalDealRepo(),
+		storageDealRepo:        repo.StorageDealRepo(),
 		stores:                 stores.NewReadOnlyBlockstores(),
-		retrievalStreamHandler: NewRetrievalStreamHandler(askHandler, retrievalDealRepo, storageDealsRepo, pieceInfo),
+		retrievalStreamHandler: NewRetrievalStreamHandler(askHandler, retrievalDealRepo, storageDealsRepo, pieceInfo, address.Address(cfg.RetrievalPaymentAddress)),
 	}
 	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo)
-	p.requestValidator = NewProviderRequestValidator(storageDealsRepo, retrievalDealRepo, pieceInfo, askHandler)
+	p.requestValidator = NewProviderRequestValidator(address.Address(cfg.RetrievalPaymentAddress), storageDealsRepo, retrievalDealRepo, pieceInfo, askHandler)
 	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{retrievalDealRepo, p.stores})
 	p.reValidator = NewProviderRevalidator(p.node, retrievalDealRepo, retrievalHandler)
 

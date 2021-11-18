@@ -144,7 +144,7 @@ type MarketFullNode interface {
 	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error)                                             //perm:read
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)                          //perm:read
 	AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) //perm:write
-
+	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus) error                                   //perm:write
 	//market event
 	ResponseMarketEvent(ctx context.Context, resp *types2.ResponseEvent) error                                            //perm:read
 	ListenMarketEvent(ctx context.Context, policy *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) //perm:read

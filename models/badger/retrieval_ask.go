@@ -2,7 +2,6 @@ package badger
 
 import (
 	"bytes"
-
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -18,6 +17,10 @@ var _ repo.IRetrievalAskRepo = (*retrievalAskRepo)(nil)
 
 func NewRetrievalAskRepo(ds RetrievalAskDS) repo.IRetrievalAskRepo {
 	return &retrievalAskRepo{ds: ds}
+}
+
+func (r *retrievalAskRepo) HasAsk(addr address.Address) bool {
+	panic("implement me")
 }
 
 func (r *retrievalAskRepo) GetAsk(addr address.Address) (*retrievalmarket.Ask, error) {

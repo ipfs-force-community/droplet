@@ -80,6 +80,39 @@ func (sdr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize 
 	return storageDeals, err
 }
 
+func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statues []storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+	filter := map[storagemarket.StorageDealStatus]struct{}{}
+	for _, status := range statues {
+		filter[status] = struct{}{}
+	}
+
+	var storageDeals []*types.MinerDeal
+	var err error
+	if err = sdr.travelDeals(func(deal *types.MinerDeal) (err error) {
+		if deal.ClientDealProposal.Proposal.PieceCID != piececid {
+			return
+		}
+
+		if _, ok := filter[deal.State]; !ok {
+			return
+		}
+
+		storageDeals = append(storageDeals, deal)
+		return
+	}); err != nil {
+		if xerrors.Is(err, justWantStopTravelErr) {
+			return storageDeals, nil
+		}
+		return nil, err
+	}
+
+	if len(storageDeals) == 0 {
+		err = repo.ErrNotFound
+	}
+
+	return storageDeals, err
+}
+
 func (sdr *storageDealRepo) GetDealbyAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	var storageDeals []*types.MinerDeal
 	var err error

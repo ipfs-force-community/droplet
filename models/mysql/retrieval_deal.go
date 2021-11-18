@@ -74,6 +74,9 @@ func fromProviderDealState(deal *rm.ProviderDealState) *retrievalDeal {
 			ID:        uint64(deal.ChannelID.ID),
 		}
 	}
+	if deal.PieceCID != nil {
+		newdeal.PieceCID = deal.PieceCID.String()
+	}
 	return newdeal
 }
 

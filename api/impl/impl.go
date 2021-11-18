@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"os"
@@ -140,6 +141,19 @@ func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr addr
 			}
 		}
 		// todo: 按miner过滤交易
+		out = append(out, *deal)
+	}
+	for _, mm := range deals {
+		xxxx, err := json.Marshal(mm)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		var dd retrievalmarket.ProviderDealState
+		err = json.Unmarshal(xxxx, &dd)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 
 	return out, nil
@@ -173,6 +187,10 @@ func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr add
 	}
 
 	return resDeals, nil
+}
+
+func (m MarketNodeImpl) UpdateStorageDealStatus(ctx context.Context, dealProposal cid.Cid, state storagemarket.StorageDealStatus) error {
+	return m.Repo.StorageDealRepo().UpdateDealStatus(dealProposal, state)
 }
 
 func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {

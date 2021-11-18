@@ -4,8 +4,6 @@ package api
 
 import (
 	"context"
-	"time"
-
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -25,6 +23,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
+	"time"
 )
 
 type MarketClientNodeStruct struct {
@@ -227,6 +226,8 @@ type MarketFullNodeStruct struct {
 		UpdateDealOnPacking func(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 abi.SectorNumber, p4 abi.PaddedPieceSize) error `perm:"write"`
 
 		UpdateDealStatus func(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 string) error `perm:"write"`
+
+		UpdateStorageDealStatus func(p0 context.Context, p1 cid.Cid, p2 storagemarket.StorageDealStatus) error `perm:"write"`
 	}
 }
 
@@ -689,7 +690,7 @@ func (s *MarketFullNodeStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) GetDeals(p0 context.Context, p1 address.Address, p2, p3 int) ([]*types.DealInfo, error) {
+func (s *MarketFullNodeStruct) GetDeals(p0 context.Context, p1 address.Address, p2 int, p3 int) ([]*types.DealInfo, error) {
 	return s.Internal.GetDeals(p0, p1, p2, p3)
 }
 
@@ -998,6 +999,14 @@ func (s *MarketFullNodeStruct) UpdateDealStatus(p0 context.Context, p1 address.A
 }
 
 func (s *MarketFullNodeStub) UpdateDealStatus(p0 context.Context, p1 address.Address, p2 abi.DealID, p3 string) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) UpdateStorageDealStatus(p0 context.Context, p1 cid.Cid, p2 storagemarket.StorageDealStatus) error {
+	return s.Internal.UpdateStorageDealStatus(p0, p1, p2)
+}
+
+func (s *MarketFullNodeStub) UpdateStorageDealStatus(p0 context.Context, p1 cid.Cid, p2 storagemarket.StorageDealStatus) error {
 	return xerrors.New("method not supported")
 }
 

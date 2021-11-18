@@ -8,8 +8,6 @@ import (
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
 )
 
 type IRetrievalStream interface {
@@ -23,10 +21,11 @@ type RetrievalStreamHandler struct {
 	retrievalDealStore repo.IRetrievalDealRepo
 	storageDealStore   repo.StorageDealRepo
 	pieceInfo          *PieceInfo
+	paymentAddr        address.Address
 }
 
-func NewRetrievalStreamHandler(askHandler IAskHandler, retrievalDealStore repo.IRetrievalDealRepo, storageDealStore repo.StorageDealRepo, pieceInfo *PieceInfo) *RetrievalStreamHandler {
-	return &RetrievalStreamHandler{askHandler: askHandler, retrievalDealStore: retrievalDealStore, storageDealStore: storageDealStore, pieceInfo: pieceInfo}
+func NewRetrievalStreamHandler(askHandler IAskHandler, retrievalDealStore repo.IRetrievalDealRepo, storageDealStore repo.StorageDealRepo, pieceInfo *PieceInfo, paymentAddr address.Address) *RetrievalStreamHandler {
+	return &RetrievalStreamHandler{askHandler: askHandler, retrievalDealStore: retrievalDealStore, storageDealStore: storageDealStore, pieceInfo: pieceInfo, paymentAddr: paymentAddr}
 }
 
 /*
@@ -67,8 +66,42 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		UnsealPrice:     big.Zero(),
 	}
 
-	// get chain head to query actor states.
-	/*tok, _, err := p.node.GetChainHead(ctx)
+	minerDeals, err := p.pieceInfo.GetPieceInfoFromCid(ctx, query.PayloadCID, query.PieceCID)
+	if err != nil || len(minerDeals) == 0 {
+		log.Errorf("Retrieval query: query ready data: %s", err)
+		answer.Status = retrievalmarket.QueryResponseError
+		answer.Message = fmt.Sprintf("failed to fetch piece to retrieve from: %s", err)
+		sendResp(answer)
+		return
+	}
+
+	answer.Status = retrievalmarket.QueryResponseAvailable
+	//todo payload size maybe different with real piece size.
+	answer.Size = uint64(minerDeals[0].Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
+	answer.PieceCIDFound = retrievalmarket.QueryItemAvailable
+	answer.PaymentAddress = p.paymentAddr
+
+	//todo check if unseal
+	ask, err := p.askHandler.GetAskForPayload(ctx, p.paymentAddr, query.PayloadCID, minerDeals, true, stream.RemotePeer())
+	if err != nil {
+		log.Errorf("Retrieval query: GetAsk: %s", err)
+		answer.Status = retrievalmarket.QueryResponseError
+		answer.Message = fmt.Sprintf("failed to price deal: %s", err)
+		sendResp(answer)
+		return
+	}
+
+	answer.MinPricePerByte = ask.PricePerByte
+	answer.MaxPaymentInterval = ask.PaymentInterval
+	answer.MaxPaymentIntervalIncrease = ask.PaymentIntervalIncrease
+	answer.UnsealPrice = ask.UnsealPrice
+	sendResp(answer)
+
+}
+
+//query.PieceCID
+// get chain head to query actor states.
+/*tok, _, err := p.node.GetChainHead(ctx)
 	if err != nil {
 		log.Errorf("Retrieval query: GetChainHead: %s", err)
 		return
@@ -82,7 +115,7 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		answer.Message = fmt.Sprintf("failed to look up payment address: %s", err)
 		sendResp(answer)
 		return
-	}*/
+	}
 	//todo payment address
 	answer.PaymentAddress = address.Undef
 
@@ -124,3 +157,5 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	answer.UnsealPrice = ask.UnsealPrice
 	sendResp(answer)
 }
+
+*/

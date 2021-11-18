@@ -28,7 +28,8 @@ import (
 )
 
 var (
-	HandleDealsKey builder.Invoke = builder.NextInvoke()
+	HandleDealsKey   builder.Invoke = builder.NextInvoke()
+	StartDealTracker builder.Invoke = builder.NextInvoke()
 )
 
 func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProviderV2, j journal.Journal) {
@@ -47,8 +48,7 @@ func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProviderV2, 
 // uses the provider's Staging DAG service for transfers
 func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs badger.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync) (network.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
-
-	transport := dtgstransport.NewTransport(h.ID(), gs)
+	transport := dtgstransport.NewTransport(h.ID(), gs, net)
 	err := os.MkdirAll(filepath.Join(string(*homeDir), "data-transfer"), 0755) // nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err
@@ -201,6 +201,7 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(*DealPublisher), NewDealPublisher(cfg)),
 		builder.Override(new(StorageProviderNode), NewProviderNodeAdapter(cfg)),
 		builder.Override(new(DealAssiger), NewDealAssigner),
+		builder.Override(new(*DealTracker), NewDealTracker),
 	)
 }
 

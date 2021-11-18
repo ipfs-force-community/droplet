@@ -78,7 +78,7 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Gra
 	dtRetryParams := dtnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
 	net := dtnet.NewFromLibp2pHost(h, dtRetryParams)
 
-	transport := dtgstransport.NewTransport(h.ID(), gs)
+	transport := dtgstransport.NewTransport(h.ID(), gs, net)
 	err := os.MkdirAll(filepath.Join(string(*homeDir), "data-transfer"), 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err
