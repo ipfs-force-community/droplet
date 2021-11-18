@@ -112,6 +112,6 @@ func (repo *StorageAsk) signAsk(ask *storagemarket.StorageAsk) (*storagemarket.S
 	if err != nil {
 		return nil, err
 	}
-	return &storagemarket.SignedStorageAsk{Ask: ask, Signature: sig}, nil
 
+	return &storagemarket.SignedStorageAsk{Ask: ask, Signature: sig}, nil
 }

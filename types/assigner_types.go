@@ -7,6 +7,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
 )
 
 const (
@@ -19,6 +21,7 @@ const (
 
 type DealInfo struct {
 	piecestore.DealInfo
+	market.ClientDealProposal
 
 	TransferType  string
 	Root          cid.Cid
