@@ -37,7 +37,7 @@ type MinerMgrImpl struct {
 func NewMinerMgrImpl(cfg *config.MarketConfig) func() (IMinerMgr, error) {
 	return func() (IMinerMgr, error) {
 		m := &MinerMgrImpl{authCfg: cfg.AuthNode, token: cfg.AuthNode.Token}
-		err := m.distAddress(cfg.MinerAddress...)
+		err := m.distAddress(config.ConvertConfigAddress(cfg.MinerAddress)...)
 		if err != nil {
 			return nil, err
 		}

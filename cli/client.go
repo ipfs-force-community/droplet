@@ -1202,6 +1202,12 @@ var clientRetrieveCmd = &cli.Command{
 			IsCAR: cctx.Bool("car"),
 		}
 
+		fmt.Println("Size:", order.Size)
+		fmt.Println("Unseal Price:", order.UnsealPrice)
+		fmt.Println("Total Fee:", order.Total)
+
+		data, _ := json.MarshalIndent(order, " ", "\t")
+		fmt.Println(string(data))
 		updates, err := mapi.ClientRetrieveWithEvents(ctx, *order, ref)
 		if err != nil {
 			return xerrors.Errorf("error setting up retrieval: %w", err)

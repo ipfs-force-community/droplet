@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"time"
@@ -33,6 +34,7 @@ func init() {
 
 // ProviderRequestValidator validates incoming requests for the Retrieval Provider
 type ProviderRequestValidator struct {
+	paymentAddr   address.Address
 	storageDeals  repo.StorageDealRepo
 	pieceInfo     *PieceInfo
 	retrievalDeal repo.IRetrievalDealRepo
@@ -40,8 +42,8 @@ type ProviderRequestValidator struct {
 }
 
 // NewProviderRequestValidator returns a new instance of the ProviderRequestValidator
-func NewProviderRequestValidator(storageDeals repo.StorageDealRepo, retrievalDeal repo.IRetrievalDealRepo, pieceInfo *PieceInfo, askHandler IAskHandler) *ProviderRequestValidator {
-	return &ProviderRequestValidator{storageDeals: storageDeals, retrievalDeal: retrievalDeal, pieceInfo: pieceInfo, askHandler: askHandler}
+func NewProviderRequestValidator(paymentAddr address.Address, storageDeals repo.StorageDealRepo, retrievalDeal repo.IRetrievalDealRepo, pieceInfo *PieceInfo, askHandler IAskHandler) *ProviderRequestValidator {
+	return &ProviderRequestValidator{paymentAddr: paymentAddr, storageDeals: storageDeals, retrievalDeal: retrievalDeal, pieceInfo: pieceInfo, askHandler: askHandler}
 }
 
 // ValidatePush validates a push request received from the peer that will send data
@@ -157,11 +159,7 @@ func (rv *ProviderRequestValidator) validatePull(ctx context.Context, isRestart 
 }
 
 func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *retrievalmarket.ProviderDealState) (retrievalmarket.DealStatus, error) {
-	inPieceCid := cid.Undef
-	if deal.PieceCID != nil {
-		inPieceCid = *deal.PieceCID
-	}
-	pieceInfo, isUnsealed, err := rv.pieceInfo.GetPieceInfoFromCid(ctx, deal.PayloadCID, inPieceCid)
+	minerdeals, err := rv.pieceInfo.GetPieceInfoFromCid(ctx, deal.PayloadCID, deal.PieceCID)
 	if err != nil {
 		if err == retrievalmarket.ErrNotFound { //todo use db not found
 			return retrievalmarket.DealStatusDealNotFound, err
@@ -172,7 +170,9 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *retrie
 	ctx, cancel := context.WithTimeout(context.TODO(), askTimeout)
 	defer cancel()
 
-	ask, err := rv.askHandler.GetAskForPayload(ctx, deal.PayloadCID, deal.PieceCID, pieceInfo, isUnsealed, deal.Receiver)
+	deal.PieceCID = &minerdeals[0].Proposal.PieceCID
+	//todo check if unseal
+	ask, err := rv.askHandler.GetAskForPayload(ctx, rv.paymentAddr, deal.PayloadCID, minerdeals, true, deal.Receiver)
 	if err != nil {
 		return retrievalmarket.DealStatusErrored, err
 	}
@@ -183,8 +183,6 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *retrie
 	if err != nil {
 		return retrievalmarket.DealStatusRejected, err
 	}
-
-	deal.PieceInfo = &pieceInfo
 
 	if deal.UnsealPrice.GreaterThan(big.Zero()) {
 		return retrievalmarket.DealStatusFundsNeededUnseal, nil

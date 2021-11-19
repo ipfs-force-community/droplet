@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus-market/storageprovider"
 	"io"
 	"log"
 	"os"
@@ -321,6 +322,7 @@ var StorageDealsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
 		dealsListCmd,
+		updateStorageDealStateCmd,
 		storageDealSelectionCmd,
 		setAskCmd,
 		getAskCmd,
@@ -437,6 +439,36 @@ var dealsListCmd = &cli.Command{
 		}
 
 		return outputStorageDeals(os.Stdout, deals, verbose)
+	},
+}
+
+var updateStorageDealStateCmd = &cli.Command{
+	Name:  "update",
+	Usage: "update deal status",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "proposalcid",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "state",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := DaemonContext(cctx)
+		proposalCid, err := cid.Decode(cctx.String("proposalcid"))
+		if err != nil {
+			return err
+		}
+		state := storageprovider.StringToStorageState[cctx.String("state")]
+		return api.UpdateStorageDealStatus(ctx, proposalCid, state)
 	},
 }
 

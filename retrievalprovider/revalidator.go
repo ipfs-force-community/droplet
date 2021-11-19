@@ -3,12 +3,11 @@ package retrievalprovider
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/venus-market/models/repo"
-	"sync"
-
+	"fmt"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus-market/models/repo"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -31,8 +30,6 @@ type ProviderRevalidator struct {
 	node                 rm.RetrievalProviderNode
 	deals                repo.IRetrievalDealRepo
 	retrievalDealHandler IRetrievalHandler
-	trackedChannelsLk    sync.RWMutex
-	trackedChannels      map[datatransfer.ChannelID]*channelData
 }
 
 // NewProviderRevalidator returns a new instance of a ProviderRevalidator
@@ -41,74 +38,11 @@ func NewProviderRevalidator(node rm.RetrievalProviderNode, deals repo.IRetrieval
 		node:                 node,
 		deals:                deals,
 		retrievalDealHandler: retrievalDealHandler,
-		trackedChannels:      make(map[datatransfer.ChannelID]*channelData),
 	}
-}
-
-// TrackChannel indicates a retrieval deal tracked by this provider. It associates
-// a given channel ID with a retrieval deal, so that checks run for data sent
-// on the channel
-func (pr *ProviderRevalidator) TrackChannel(deal rm.ProviderDealState) {
-	if deal.ChannelID == nil {
-		return
-	}
-
-	pr.trackedChannelsLk.Lock()
-	defer pr.trackedChannelsLk.Unlock()
-	pr.trackedChannels[*deal.ChannelID] = &channelData{
-		dealID: deal.Identifier(),
-	}
-	pr.writeDealState(&deal)
-}
-
-// UntrackChannel indicates a retrieval deal is finish and no longer is tracked
-// by this provider
-func (pr *ProviderRevalidator) UntrackChannel(deal rm.ProviderDealState) {
-	// Sanity check
-	if deal.ChannelID == nil {
-		log.Errorf("cannot untrack deal %s: channel ID is nil", deal.ID)
-		return
-	}
-
-	pr.trackedChannelsLk.Lock()
-	defer pr.trackedChannelsLk.Unlock()
-	delete(pr.trackedChannels, *deal.ChannelID)
-}
-
-func (pr *ProviderRevalidator) loadDealState(channel *channelData) error {
-	if !channel.reload {
-		return nil
-	}
-	deal, err := pr.deals.GetDeal(channel.dealID.Receiver, channel.dealID.DealID)
-	if err != nil {
-		return err
-	}
-	pr.writeDealState(deal)
-	channel.reload = false
-	return nil
-}
-
-func (pr *ProviderRevalidator) writeDealState(deal *rm.ProviderDealState) {
-	channel := pr.trackedChannels[*deal.ChannelID]
-	channel.totalSent = deal.TotalSent
-	if !deal.PricePerByte.IsZero() {
-		channel.totalPaidFor = big.Div(big.Max(big.Sub(deal.FundsReceived, deal.UnsealPrice), big.Zero()), deal.PricePerByte).Uint64()
-	}
-	channel.interval = deal.CurrentInterval
-	channel.pricePerByte = deal.PricePerByte
-	channel.legacyProtocol = deal.LegacyProtocol
 }
 
 // Revalidate revalidates a request with a new voucher
 func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, voucher datatransfer.Voucher) (datatransfer.VoucherResult, error) {
-	pr.trackedChannelsLk.RLock()
-	defer pr.trackedChannelsLk.RUnlock()
-	ctx := context.TODO()
-	channel, ok := pr.trackedChannels[channelID]
-	if !ok {
-		return nil, nil
-	}
-
 	// read payment, or fail
 	payment, ok := voucher.(*rm.DealPayment)
 	var legacyProtocol bool
@@ -121,33 +55,34 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 		payment = &newPayment
 		legacyProtocol = true
 	}
-
-	response, err := pr.processPayment(ctx, channel.dealID, payment)
-	if err == nil || err == datatransfer.ErrResume {
-		channel.reload = true
+	ctx := context.TODO()
+	log.Infof("receive payment %s", payment.ID)
+	deal, err := pr.deals.GetDeal(channelID.Initiator, payment.ID)
+	if err != nil {
+		if err == repo.ErrNotFound {
+			return nil, nil
+		} else {
+			_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
+			return finalResponse(errorDealResponse(retrievalmarket.ProviderDealIdentifier{channelID.Initiator, payment.ID}, err), legacyProtocol), err
+		}
 	}
+
+	response, err := pr.processPayment(ctx, deal, payment)
 	return finalResponse(response, legacyProtocol), err
 }
 
-func (pr *ProviderRevalidator) processPayment(ctx context.Context, dealID rm.ProviderDealIdentifier, payment *rm.DealPayment) (*retrievalmarket.DealResponse, error) {
-	deal, err := pr.deals.GetDeal(dealID.Receiver, dealID.DealID)
-	if err != nil {
-		//todo if getdeal fail, cancel deal fail too. how to resolve this issue, need to think
-		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
-		return errorDealResponse(dealID, err), err
-	}
-
+func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *retrievalmarket.ProviderDealState, payment *rm.DealPayment) (*retrievalmarket.DealResponse, error) {
 	tok, _, err := pr.node.GetChainHead(context.TODO())
 	if err != nil {
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
-		return errorDealResponse(dealID, err), err
+		return errorDealResponse(deal.Identifier(), err), err
 	}
 
 	// Save voucher
 	received, err := pr.node.SavePaymentVoucher(context.TODO(), payment.PaymentChannel, payment.PaymentVoucher, nil, big.Zero(), tok)
 	if err != nil {
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
-		return errorDealResponse(dealID, err), err
+		return errorDealResponse(deal.Identifier(), err), err
 	}
 
 	totalPaid := big.Add(deal.FundsReceived, received)
@@ -161,12 +96,13 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, dealID rm.Pro
 	if owed.GreaterThan(big.Zero()) {
 		log.Debugf("provider: owed %d: sending partial payment request", owed)
 		deal.FundsReceived = big.Add(deal.FundsReceived, received)
+		fmt.Println("receive fee ", big.Div(deal.FundsReceived, deal.PricePerByte))
 		err := pr.deals.SaveDeal(deal)
 		if err != nil {
 			//todo  receive voucher save success, but track deal status failed
 			//give error here may client send more funds than fact
 			_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
-			return errorDealResponse(dealID, err), err
+			return errorDealResponse(deal.Identifier(), err), err
 		}
 		return &rm.DealResponse{
 			ID:          deal.ID,
@@ -176,45 +112,44 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, dealID rm.Pro
 	}
 
 	// resume deal
-	var sumPayment = func() {
-		deal.FundsReceived = big.Add(deal.FundsReceived, received)
-
-		// only update interval if the payment is for bytes and not for unsealing.
-		if deal.Status != rm.DealStatusFundsNeededUnseal {
-			deal.CurrentInterval = deal.NextInterval()
-		}
+	deal.FundsReceived = big.Add(deal.FundsReceived, received)
+	fmt.Println("receive fee ", big.Div(deal.FundsReceived, deal.PricePerByte))
+	// only update interval if the payment is for bytes and not for unsealing.
+	if deal.Status != rm.DealStatusFundsNeededUnseal {
+		deal.CurrentInterval = deal.NextInterval()
 	}
+
+	fmt.Println("receive payment ", deal.Status.String())
+
 	var resp *retrievalmarket.DealResponse
+	err = datatransfer.ErrResume
 	switch deal.Status {
 	case rm.DealStatusFundsNeeded:
-		sumPayment()
 		deal.Status = rm.DealStatusOngoing
 	case rm.DealStatusFundsNeededLastPayment:
-		sumPayment()
 		deal.Status = rm.DealStatusFinalizing
-		log.Debugf("provider: funds needed: last payment")
+		log.Infof("provider: funds needed: last payment")
 		resp = &rm.DealResponse{
 			ID:     deal.ID,
 			Status: rm.DealStatusCompleted,
 		}
-		err = datatransfer.ErrResume
+	//not start transfer data is unsealing
 	case rm.DealStatusFundsNeededUnseal:
-		sumPayment()
+		//pay for unseal goto unseal
 		deal.Status = rm.DealStatusUnsealing
 		defer func() {
 			go pr.retrievalDealHandler.UnsealData(ctx, deal)
 		}()
-	case rm.DealStatusBlocksComplete, rm.DealStatusOngoing, rm.DealStatusFinalizing:
 		err = nil
-	default:
-		err = datatransfer.ErrResume
+	case rm.DealStatusUnsealing:
+		err = nil
 	}
 
-	err = pr.deals.SaveDeal(deal)
-	if err != nil {
+	dErr := pr.deals.SaveDeal(deal)
+	if dErr != nil {
 		// todo can recover from storage error?
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
-		return errorDealResponse(dealID, err), err
+		return errorDealResponse(deal.Identifier(), dErr), err
 	}
 	return resp, err
 }
@@ -262,58 +197,46 @@ func errorDealResponse(dealID rm.ProviderDealIdentifier, err error) *rm.DealResp
 // request revalidation or nil to continue uninterrupted,
 // other errors will terminate the request
 func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, additionalBytesSent uint64) (bool, datatransfer.VoucherResult, error) {
-	ctx := context.TODO()
-	pr.trackedChannelsLk.RLock()
-	defer pr.trackedChannelsLk.RUnlock()
-	channel, ok := pr.trackedChannels[chid]
-	if !ok {
-		return false, nil, nil
-	}
-	deal, err := pr.deals.GetDeal(channel.dealID.Receiver, channel.dealID.DealID)
+	fmt.Println("receive OnPullDataSent funx")
+	deal, err := pr.deals.GetDealByTransferId(chid)
 	if err != nil {
+		if err == repo.ErrNotFound {
+			return false, nil, nil
+		}
 		return true, nil, err
 	}
 
-	err = pr.loadDealState(channel)
-	if err != nil {
-		return true, nil, err
-	}
-
+	totalSent := deal.TotalSent
+	totalPaidFor := big.Div(big.Max(big.Sub(deal.FundsReceived, deal.UnsealPrice), big.Zero()), deal.PricePerByte).Uint64()
 	// Calculate how much data has been sent in total
-	channel.totalSent += additionalBytesSent
-	if channel.pricePerByte.IsZero() || channel.totalSent < channel.interval {
-		if !channel.pricePerByte.IsZero() {
-			log.Debugf("provider: total sent %d < interval %d, sending block", channel.totalSent, channel.interval)
+	totalSent += additionalBytesSent
+	if deal.PricePerByte.IsZero() || totalSent < deal.CurrentInterval {
+		if !deal.PricePerByte.IsZero() {
+			log.Debugf("provider: total sent %d < interval %d, sending block", totalSent, deal.CurrentInterval)
 		}
 		deal.Status = rm.DealStatusOngoing
-		deal.TotalSent = channel.totalSent
+		deal.TotalSent = totalSent
 		return true, nil, pr.deals.SaveDeal(deal)
 	}
 
 	// Calculate the payment owed
-	paymentOwed := big.Mul(abi.NewTokenAmount(int64(channel.totalSent-channel.totalPaidFor)), channel.pricePerByte)
+	paymentOwed := big.Mul(abi.NewTokenAmount(int64(totalSent-totalPaidFor)), deal.PricePerByte)
 	log.Debugf("provider: owed %d = (total sent %d - paid for %d) * price per byte %d: sending payment request",
-		paymentOwed, channel.totalSent, channel.totalPaidFor, channel.pricePerByte)
+		paymentOwed, totalSent, totalPaidFor, deal.PricePerByte)
 
+	deal.TotalSent = totalSent
 	// Request payment
 	switch deal.Status {
 	case rm.DealStatusOngoing, rm.DealStatusUnsealed:
 		deal.Status = rm.DealStatusFundsNeeded
-		deal.TotalSent = channel.totalSent
 	case rm.DealStatusFundsNeeded:
 		//doing nothing
 	case rm.DealStatusBlocksComplete:
 		deal.Status = rm.DealStatusFundsNeededLastPayment
-		deal.TotalSent = channel.totalSent
 	case rm.DealStatusNew:
 		//todo will come here?
 		log.Errorf("receive status new on data pull sent")
 		deal.Status = rm.DealStatusFundsNeededUnseal
-		deal.TotalSent = channel.totalSent // total sent may not need, not unseal, send nothing
-		err = pr.retrievalDealHandler.TrackTransfer(ctx, deal)
-		if err != nil {
-			return true, nil, err
-		}
 	}
 
 	err = pr.deals.SaveDeal(deal)
@@ -322,10 +245,10 @@ func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, addit
 	}
 
 	return true, finalResponse(&rm.DealResponse{
-		ID:          channel.dealID.DealID,
+		ID:          deal.DealProposal.ID,
 		Status:      rm.DealStatusFundsNeeded,
 		PaymentOwed: paymentOwed,
-	}, channel.legacyProtocol), datatransfer.ErrPause
+	}, deal.LegacyProtocol), datatransfer.ErrPause
 }
 
 // OnPushDataReceived is called on the responder side when more bytes are received
@@ -341,19 +264,12 @@ func (pr *ProviderRevalidator) OnPushDataReceived(chid datatransfer.ChannelID, a
 // if VoucherResult is non nil, the request will enter a settlement phase awaiting
 // a final update
 func (pr *ProviderRevalidator) OnComplete(chid datatransfer.ChannelID) (bool, datatransfer.VoucherResult, error) {
-	pr.trackedChannelsLk.RLock()
-	defer pr.trackedChannelsLk.RUnlock()
-	channel, ok := pr.trackedChannels[chid]
-	if !ok {
-		return false, nil, nil
-	}
-	deal, err := pr.deals.GetDeal(channel.dealID.Receiver, channel.dealID.DealID)
+	fmt.Println("receive oncomplete func")
+	deal, err := pr.deals.GetDealByTransferId(chid)
 	if err != nil {
-		return true, nil, err
-	}
-
-	err = pr.loadDealState(channel)
-	if err != nil {
+		if err == repo.ErrNotFound {
+			return false, nil, nil
+		}
 		return true, nil, err
 	}
 
@@ -363,30 +279,33 @@ func (pr *ProviderRevalidator) OnComplete(chid datatransfer.ChannelID) (bool, da
 		return true, nil, err
 	}
 
+	totalSent := deal.TotalSent
+	totalPaidFor := big.Div(big.Max(big.Sub(deal.FundsReceived, deal.UnsealPrice), big.Zero()), deal.PricePerByte).Uint64()
 	// Calculate how much payment is owed
-	paymentOwed := big.Mul(abi.NewTokenAmount(int64(channel.totalSent-channel.totalPaidFor)), channel.pricePerByte)
+	paymentOwed := big.Mul(abi.NewTokenAmount(int64(totalSent-totalPaidFor)), deal.PricePerByte)
 	if paymentOwed.Equals(big.Zero()) {
+		log.Infof("OnComplete  xxxx")
 		return true, finalResponse(&rm.DealResponse{
-			ID:     channel.dealID.DealID,
+			ID:     deal.DealProposal.ID,
 			Status: rm.DealStatusCompleted,
-		}, channel.legacyProtocol), nil
+		}, deal.LegacyProtocol), nil
 	}
 
 	// Send a request for payment
 	log.Debugf("provider: last payment owed %d = (total sent %d - paid for %d) * price per byte %d",
-		paymentOwed, channel.totalSent, channel.totalPaidFor, channel.pricePerByte)
+		paymentOwed, totalSent, totalPaidFor, deal.PricePerByte)
 	deal.Status = rm.DealStatusFundsNeededLastPayment
-	deal.TotalSent = channel.totalSent
+	deal.TotalSent = totalSent
 	err = pr.deals.SaveDeal(deal)
 	if err != nil {
 		return true, nil, err
 	}
 
 	return true, finalResponse(&rm.DealResponse{
-		ID:          channel.dealID.DealID,
+		ID:          deal.DealProposal.ID,
 		Status:      rm.DealStatusFundsNeededLastPayment,
 		PaymentOwed: paymentOwed,
-	}, channel.legacyProtocol), datatransfer.ErrPause
+	}, deal.LegacyProtocol), datatransfer.ErrPause
 }
 
 func finalResponse(response *rm.DealResponse, legacyProtocol bool) datatransfer.Voucher {

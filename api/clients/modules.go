@@ -208,7 +208,7 @@ func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent,
 	return stream, nil
 }
 
-var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Signer, mysqlCfg *config.Mysql) builder.Option {
+var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Signer) builder.Option {
 	opts := builder.Options(
 		builder.ApplyIf(
 			func(s *builder.Settings) bool {

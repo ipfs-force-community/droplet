@@ -2,8 +2,9 @@ package badger
 
 import (
 	"bytes"
-
+	"fmt"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -28,23 +29,38 @@ func (r retrievalDealRepo) SaveDeal(deal *retrievalmarket.ProviderDealState) err
 		return err
 	}
 
+	fmt.Println("save deal ", deal.Identifier(), deal.Status.String())
+
 	return r.ds.Put(statestore.ToKey(deal.Identifier()), b)
 }
 
 func (r retrievalDealRepo) GetDeal(id peer.ID, id2 retrievalmarket.DealID) (*retrievalmarket.ProviderDealState, error) {
-	value, err := r.ds.Get(statestore.ToKey(retrievalmarket.ProviderDealIdentifier{
+	key := statestore.ToKey(retrievalmarket.ProviderDealIdentifier{
 		Receiver: id,
 		DealID:   id2,
-	}))
+	})
+
+	value, err := r.ds.Get(key)
 	if err != nil {
 		return nil, err
 	}
 	var retrievalDeal retrievalmarket.ProviderDealState
-	if err := retrievalDeal.UnmarshalCBOR(bytes.NewReader(value)); err != nil {
+	if err := cborrpc.ReadCborRPC(bytes.NewReader(value), &retrievalDeal); err != nil {
 		return nil, err
 	}
 
+	fmt.Println("get deal ", key.String(), retrievalDeal.Status.String())
 	return &retrievalDeal, nil
+}
+
+func (r retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*retrievalmarket.ProviderDealState, error) {
+	var result *retrievalmarket.ProviderDealState
+	return result, r.travelDeals(func(deal *retrievalmarket.ProviderDealState) error {
+		if deal.ChannelID != nil && deal.ChannelID.Initiator == chid.Initiator && deal.ChannelID.Responder == chid.Responder && deal.ChannelID.ID == chid.ID {
+			result = deal
+		}
+		return nil
+	})
 }
 
 func (r retrievalDealRepo) HasDeal(id peer.ID, id2 retrievalmarket.DealID) (bool, error) {
@@ -68,11 +84,32 @@ func (r retrievalDealRepo) ListDeals(pageIndex, pageSize int) ([]*retrievalmarke
 			return nil, err
 		}
 		var deal retrievalmarket.ProviderDealState
-		if err := deal.UnmarshalCBOR(bytes.NewReader(res.Value)); err != nil {
+		if err := cborrpc.ReadCborRPC(bytes.NewReader(res.Value), &deal); err != nil {
 			return nil, err
 		}
 		retrievalDeals = append(retrievalDeals, &deal)
 	}
 
 	return retrievalDeals, nil
+}
+
+func (r retrievalDealRepo) travelDeals(travelFn func(deal *retrievalmarket.ProviderDealState) error) error {
+	result, err := r.ds.Query(query.Query{})
+	if err != nil {
+		return err
+	}
+	defer result.Close() //nolint:errcheck
+	for res := range result.Next() {
+		if res.Error != nil {
+			return err
+		}
+		var deal retrievalmarket.ProviderDealState
+		if err = cborrpc.ReadCborRPC(bytes.NewReader(res.Value), &deal); err != nil {
+			return err
+		}
+		if err = travelFn(&deal); err != nil {
+			return err
+		}
+	}
+	return nil
 }

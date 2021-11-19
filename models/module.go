@@ -21,7 +21,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 			builder.Override(new(badger2.StagingBlockstore), badger2.NewStagingBlockStore),
 			builder.Override(new(badger2.DagTransferDS), badger2.NewDagTransferDS),
 			builder.ApplyIfElse(func(s *builder.Settings) bool {
-				return len(mysqlCfg.ConnectionString) > 0
+				return mysqlCfg != nil && len(mysqlCfg.ConnectionString) > 0
 			}, builder.Options(
 				builder.Override(new(repo.Repo), func() (repo.Repo, error) {
 					return mysql.InitMysql(mysqlCfg)
@@ -36,6 +36,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 					builder.Override(new(badger2.StorageAskDS), badger2.NewStorageAskDS),
 					builder.Override(new(badger2.PayChanDS), badger2.NewPayChanDS),
 					builder.Override(new(badger2.FundMgrDS), badger2.NewFundMgrDS),
+					builder.Override(new(badger2.RetrievalDealsDS), badger2.NewRetrievalDealsDS),
 
 					builder.Override(new(repo.Repo), badger2.NewBadgerRepo),
 				),

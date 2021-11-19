@@ -35,7 +35,7 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 	var addrs []address.Address
 	switch use {
 	case marketTypes.DealPublishAddr:
-		addrs = append(addrs, as.DealPublishControl...)
+		addrs = append(addrs, config.ConvertConfigAddress(as.DealPublishControl)...)
 	default:
 		defaultCtl := map[address.Address]struct{}{}
 		for _, a := range mi.ControlAddresses {
@@ -44,7 +44,7 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 		delete(defaultCtl, mi.Owner)
 		delete(defaultCtl, mi.Worker)
 
-		configCtl := append([]address.Address{}, as.DealPublishControl...)
+		configCtl := append([]address.Address{}, config.ConvertConfigAddress(as.DealPublishControl)...)
 
 		for _, addr := range configCtl {
 			if addr.Protocol() != address.ID {

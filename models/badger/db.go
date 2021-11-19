@@ -22,6 +22,7 @@ const (
 	pieceinfo         = "/pieces"
 	retrievalProvider = "/retrievals/provider"
 	retrievalAsk      = "/retrieval-ask"
+	retrievalDeals    = "/deals"
 	dealProvider      = "/deals/provider"
 	storageAsk        = "storage-ask"
 	paych             = "/paych/"
@@ -50,6 +51,9 @@ type PieceInfoDS datastore.Batching
 
 // /metadata/retrievals/provider
 type RetrievalProviderDS datastore.Batching
+
+// /metadata/retrievals/provider/deals
+type RetrievalDealsDS datastore.Batching
 
 // /metadata/retrievals/provider/retrieval-ask
 type RetrievalAskDS datastore.Batching //key = latest
@@ -83,6 +87,7 @@ type ImportClientDS datastore.Batching
 type ClientTransferDS datastore.Batching
 
 func NewMetadataDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (MetadataDS, error) {
+	datastore.ErrNotFound = repo.ErrNotFound
 	db, err := badger.NewDatastore(path.Join(string(*homeDir), metadata), &badger.DefaultOptions)
 	if err != nil {
 		return nil, err
@@ -110,6 +115,10 @@ func NewCidInfoDs(ds PieceMetaDs) CIDInfoDS {
 
 func NewRetrievalProviderDS(ds MetadataDS) RetrievalProviderDS {
 	return namespace.Wrap(ds, datastore.NewKey(retrievalProvider))
+}
+
+func NewRetrievalDealsDS(ds RetrievalProviderDS) RetrievalDealsDS {
+	return namespace.Wrap(ds, datastore.NewKey(retrievalDeals))
 }
 
 func NewRetrievalAskDS(ds RetrievalProviderDS) RetrievalAskDS {
@@ -159,13 +168,13 @@ type BadgerRepo struct {
 
 type BadgerDSParams struct {
 	fx.In
-	FundDS      FundMgrDS           `optional:"true"`
-	DealDS      ProviderDealDS      `optional:"true"`
-	PaychDS     PayChanDS           `optional:"true"`
-	AskDS       StorageAskDS        `optional:"true"`
-	RetrAskDs   RetrievalAskDS      `optional:"true"`
-	CidInfoDs   CIDInfoDS           `optional:"true"`
-	RetrievalDs RetrievalProviderDS `optional:"true"`
+	FundDS           FundMgrDS        `optional:"true"`
+	DealDS           ProviderDealDS   `optional:"true"`
+	PaychDS          PayChanDS        `optional:"true"`
+	AskDS            StorageAskDS     `optional:"true"`
+	RetrAskDs        RetrievalAskDS   `optional:"true"`
+	CidInfoDs        CIDInfoDS        `optional:"true"`
+	RetrievalDealsDs RetrievalDealsDS `optional:"true"`
 }
 
 func NewBadgerRepo(params BadgerDSParams) (repo.Repo, error) {
@@ -178,7 +187,7 @@ func NewBadgerRepo(params BadgerDSParams) (repo.Repo, error) {
 		storageAskRepo:   NewStorageAskRepo(params.AskDS),
 		retrievalAskRepo: NewRetrievalAskRepo(params.RetrAskDs),
 		piecesRepo:       NewBadgerCidInfoRepo(params.CidInfoDs),
-		retrievalRepo:    NewRetrievalDealRepo(params.RetrievalDs),
+		retrievalRepo:    NewRetrievalDealRepo(params.RetrievalDealsDs),
 	}, nil
 }
 

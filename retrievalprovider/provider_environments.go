@@ -14,7 +14,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/dtutils"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/providerstates"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
 )
@@ -36,7 +35,18 @@ func CheckDealParams(ask retrievalmarket.Ask, pricePerByte abi.TokenAmount, paym
 	return nil
 }
 
-var _ providerstates.ProviderDealEnvironment = new(providerDealEnvironment)
+// ProviderDealEnvironment is a bridge to the environment a provider deal is executing in
+// It provides access to relevant functionality on the retrieval provider
+type ProviderDealEnvironment interface {
+	// Node returns the node interface for this deal
+	Node() retrievalmarket.RetrievalProviderNode
+	PrepareBlockstore(ctx context.Context, dealID retrievalmarket.DealID, pieceCid cid.Cid) error
+	DeleteStore(dealID retrievalmarket.DealID) error
+	ResumeDataTransfer(context.Context, datatransfer.ChannelID) error
+	CloseDataTransfer(context.Context, datatransfer.ChannelID) error
+}
+
+var _ ProviderDealEnvironment = new(providerDealEnvironment)
 
 type providerDealEnvironment struct {
 	p *RetrievalProviderV2
@@ -60,16 +70,6 @@ func (pde *providerDealEnvironment) PrepareBlockstore(ctx context.Context, dealI
 	_, err = pde.p.stores.Track(dealID.String(), bs)
 	log.Debugf("added blockstore for deal %d to tracker", dealID)
 	return err
-}
-
-func (pde *providerDealEnvironment) TrackTransfer(deal retrievalmarket.ProviderDealState) error {
-	pde.p.reValidator.TrackChannel(deal)
-	return nil
-}
-
-func (pde *providerDealEnvironment) UntrackTransfer(deal retrievalmarket.ProviderDealState) error {
-	pde.p.reValidator.UntrackChannel(deal)
-	return nil
 }
 
 func (pde *providerDealEnvironment) ResumeDataTransfer(ctx context.Context, chid datatransfer.ChannelID) error {

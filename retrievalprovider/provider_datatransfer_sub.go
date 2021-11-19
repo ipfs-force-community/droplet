@@ -25,6 +25,7 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 		identify := rm.ProviderDealIdentifier{DealID: dealProposal.ID, Receiver: channelState.Recipient()}
 		if channelState.Status() == datatransfer.Completed {
 			//rm.ProviderEventComplete
+			log.Errorf("receive datatransfer completed status")
 			err := deals.HandleCompleteFor(ctx, identify)
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)

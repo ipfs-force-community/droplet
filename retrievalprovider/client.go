@@ -37,12 +37,10 @@ func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, c
 	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
 	// queryi
 	//ng the chain
-	fmt.Println("GetOrCreatePaymentChannel start")
 	ci, err := rcn.payAPI.PaychGet(ctx, clientAddress, minerAddress, clientFundsAvailable)
 	if err != nil {
 		return address.Undef, cid.Undef, err
 	}
-	fmt.Println("GetOrCreatePaymentChannel finish")
 	return ci.Channel, ci.WaitSentinel, nil
 }
 
@@ -50,7 +48,6 @@ func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, c
 // CreatePaymentVoucher will automatically make vouchers only for the difference
 // in total
 func (rcn *retrievalClientNode) AllocateLane(ctx context.Context, paymentChannel address.Address) (uint64, error) {
-	fmt.Println("AllocateLane start")
 	return rcn.payAPI.PaychAllocateLane(ctx, paymentChannel)
 }
 
@@ -82,12 +79,10 @@ func (rcn *retrievalClientNode) GetChainHead(ctx context.Context) (shared.TipSet
 }
 
 func (rcn *retrievalClientNode) WaitForPaymentChannelReady(ctx context.Context, messageCID cid.Cid) (address.Address, error) {
-	fmt.Println("WaitForPaymentChannelReady finish")
 	return rcn.payAPI.PaychGetWaitReady(ctx, messageCID)
 }
 
 func (rcn *retrievalClientNode) CheckAvailableFunds(ctx context.Context, paymentChannel address.Address) (retrievalmarket.ChannelAvailableFunds, error) {
-	fmt.Println("CheckAvailableFunds start")
 	channelAvailableFunds, err := rcn.payAPI.PaychAvailableFunds(ctx, paymentChannel)
 	if err != nil {
 		return retrievalmarket.ChannelAvailableFunds{}, err
