@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	None     = ""
 	Undefine = "Undefine"
 	Assigned = "Assigned"
 	Packing  = "Packing"

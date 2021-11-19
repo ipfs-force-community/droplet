@@ -149,7 +149,7 @@ func marketClient(cctx *cli.Context) error {
 	_, err = builder.New(ctx,
 		// defaults
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
-		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, component string, disabled journal.DisabledEvents) (journal.Journal, error) {
+		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
 			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "market-client", disabled)
 		}),
 

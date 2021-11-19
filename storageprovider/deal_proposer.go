@@ -279,6 +279,8 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 		deal.PiecePath = filestore.Path("")
 		deal.MetadataPath = metadataPath
+		deal.PieceStatus= types.Undefine
+
 		deal.State = storagemarket.StorageDealReserveProviderFunds
 
 		err = storageDealPorcess.deals.SaveDeal(deal)
@@ -322,6 +324,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			deal.State = storagemarket.StorageDealPublish // PublishDeal
 		}
 
+		deal.PieceStatus= types.Undefine
 		err = storageDealPorcess.deals.SaveDeal(deal)
 		if err != nil {
 			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))

@@ -3,10 +3,12 @@ package storageprovider
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/models/badger"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/libp2p/go-libp2p-core/host"
+	"go.uber.org/fx"
 
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
@@ -16,20 +18,20 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dealfilter"
+	"github.com/filecoin-project/venus-market/models/badger"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/utils"
+
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/libp2p/go-libp2p-core/host"
-	"go.uber.org/fx"
 )
 
 var (
-	HandleDealsKey   builder.Invoke = builder.NextInvoke()
-	StartDealTracker builder.Invoke = builder.NextInvoke()
+	HandleDealsKey    = builder.NextInvoke()
+	StartDealTracker  = builder.NextInvoke()
 )
 
 func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProviderV2, j journal.Journal) {
@@ -198,10 +200,10 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.If(cfg.Filter != "",
 			builder.Override(new(config.StorageDealFilter), BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Filter))),
 		),
-		builder.Override(new(*DealPublisher), NewDealPublisher(cfg)),
+		//builder.Override(new(*DealPublisher), NewDealPublisher(cfg)),
 		builder.Override(new(StorageProviderNode), NewProviderNodeAdapter(cfg)),
 		builder.Override(new(DealAssiger), NewDealAssigner),
-		builder.Override(new(*DealTracker), NewDealTracker),
+		builder.Override(StartDealTracker, NewDealTracker),
 	)
 }
 

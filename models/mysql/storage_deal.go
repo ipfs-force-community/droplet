@@ -151,7 +151,7 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 		InboundCAR:            src.InboundCAR,
 
 		Offset: uint64(src.Offset),
-		Length: uint64(src.Length),
+		Length: uint64(src.Proposal.PieceSize),
 	}
 
 	if src.Ref != nil {
@@ -210,7 +210,6 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		SectorNumber:          abi.SectorNumber(src.SectorNumber),
 		InboundCAR:            src.InboundCAR,
 		Offset:                abi.PaddedPieceSize(src.Offset),
-		Length:                abi.PaddedPieceSize(src.Length),
 	}
 	var err error
 	md.ClientDealProposal.Proposal.PieceCID, err = parseCid(src.ClientDealProposal.PieceCID)
@@ -340,7 +339,7 @@ func (dsr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 	return deals, nil
 }
 
-func (dsr *storageDealRepo) GetDealbyAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (dsr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	var md []storageDeal
 
 	err := dsr.DB.Table((&storageDeal{}).TableName()).
@@ -393,7 +392,7 @@ func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo,
 				DealID:   deal.DealID,
 				SectorID: deal.SectorNumber,
 				Offset:   deal.Offset,
-				Length:   deal.Length},
+				Length:   deal.Proposal.PieceSize},
 			)
 			return nil
 		}); err != nil {
