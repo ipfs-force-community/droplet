@@ -2,6 +2,7 @@ package repo
 
 import (
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -36,6 +37,7 @@ type StorageDealRepo interface {
 type IRetrievalDealRepo interface {
 	SaveDeal(deal *retrievalmarket.ProviderDealState) error
 	GetDeal(peer.ID, retrievalmarket.DealID) (*retrievalmarket.ProviderDealState, error)
+	GetDealByTransferId(chid datatransfer.ChannelID) (*retrievalmarket.ProviderDealState, error)
 	HasDeal(peer.ID, retrievalmarket.DealID) (bool, error)
 	ListDeals(pageIndex, pageSize int) ([]*retrievalmarket.ProviderDealState, error)
 }

@@ -5,14 +5,12 @@ import (
 	"errors"
 
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/providerstates"
 	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/venus-market/models/repo"
 )
 
 type IRetrievalHandler interface {
 	UnsealData(ctx context.Context, deal *rm.ProviderDealState) error
-	TrackTransfer(ctx context.Context, deal *rm.ProviderDealState) error
 	CancelDeal(ctx context.Context, deal *rm.ProviderDealState) error
 	CleanupDeal(ctx context.Context, deal *rm.ProviderDealState) error
 	Error(ctx context.Context, deal *rm.ProviderDealState, err error) error
@@ -21,11 +19,11 @@ type IRetrievalHandler interface {
 var _ IRetrievalHandler = (*RetrievalDealHandler)(nil)
 
 type RetrievalDealHandler struct {
-	env                providerstates.ProviderDealEnvironment
+	env                ProviderDealEnvironment
 	retrievalDealStore repo.IRetrievalDealRepo
 }
 
-func NewRetrievalDealHandler(env providerstates.ProviderDealEnvironment, retrievalDealStore repo.IRetrievalDealRepo) IRetrievalHandler {
+func NewRetrievalDealHandler(env ProviderDealEnvironment, retrievalDealStore repo.IRetrievalDealRepo) IRetrievalHandler {
 	return &RetrievalDealHandler{env: env, retrievalDealStore: retrievalDealStore}
 }
 
@@ -47,10 +45,7 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *rm.Provider
 	}
 
 	log.Debugf("unpausing data transfer for deal %d", deal.ID)
-	err = p.env.TrackTransfer(*deal)
-	if err != nil {
-		return p.Error(ctx, deal, nil)
-	}
+
 	if deal.ChannelID != nil {
 		log.Debugf("resuming data transfer for deal %d", deal.ID)
 		err = p.env.ResumeDataTransfer(ctx, *deal.ChannelID)
@@ -61,22 +56,9 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *rm.Provider
 	return p.retrievalDealStore.SaveDeal(deal)
 }
 
-// TrackTransfer resumes a deal so we can start sending data after its unsealed
-func (p *RetrievalDealHandler) TrackTransfer(ctx context.Context, deal *rm.ProviderDealState) error {
-	err := p.env.TrackTransfer(*deal)
-	if err != nil {
-		deal.Status = rm.DealStatusErrored
-	}
-	return p.retrievalDealStore.SaveDeal(deal)
-}
-
 func (p *RetrievalDealHandler) CancelDeal(ctx context.Context, deal *rm.ProviderDealState) error {
 	// Read next response (or fail)
-	err := p.env.UntrackTransfer(*deal)
-	if err != nil {
-		return p.Error(ctx, deal, nil)
-	}
-	err = p.env.DeleteStore(deal.ID)
+	err := p.env.DeleteStore(deal.ID)
 	if err != nil {
 		return p.Error(ctx, deal, nil)
 	}
@@ -92,12 +74,7 @@ func (p *RetrievalDealHandler) CancelDeal(ctx context.Context, deal *rm.Provider
 
 // CleanupDeal runs to do memory cleanup for an in progress deal
 func (p *RetrievalDealHandler) CleanupDeal(ctx context.Context, deal *rm.ProviderDealState) error {
-	err := p.env.UntrackTransfer(*deal)
-	if err != nil {
-		return p.Error(ctx, deal, nil)
-	}
-
-	err = p.env.DeleteStore(deal.ID)
+	err := p.env.DeleteStore(deal.ID)
 	if err != nil {
 		return p.Error(ctx, deal, nil)
 	}

@@ -154,7 +154,16 @@ func (r *retrievalDealRepo) SaveDeal(deal *rm.ProviderDealState) error {
 
 func (r *retrievalDealRepo) GetDeal(id peer.ID, id2 rm.DealID) (*rm.ProviderDealState, error) {
 	deal := &retrievalDeal{}
-	err := r.Take(RetrievalDealTableName).Take(deal, "cdp_proposal_id=? and receiver=? ", id2, id.String()).Error
+	err := r.Take(RetrievalDealTableName).Take(deal, "cdp_proposal_id=? AND receiver=? ", id2, id.String()).Error
+	if err != nil {
+		return nil, err
+	}
+	return toProviderDealState(deal)
+}
+
+func (r *retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*rm.ProviderDealState, error) {
+	deal := &retrievalDeal{}
+	err := r.Take(RetrievalDealTableName).Take(deal, "ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ?", chid.Initiator, chid.Responder, chid.ID).Error
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +172,7 @@ func (r *retrievalDealRepo) GetDeal(id peer.ID, id2 rm.DealID) (*rm.ProviderDeal
 
 func (r *retrievalDealRepo) HasDeal(id peer.ID, id2 rm.DealID) (bool, error) {
 	var count int64
-	err := r.DB.Table(RetrievalDealTableName).Where("cdp_proposal_id=? and receiver=? ", id2, id.String()).Count(&count).Error
+	err := r.DB.Table(RetrievalDealTableName).Where("cdp_proposal_id=? AND receiver=? ", id2, id.String()).Count(&count).Error
 	if err != nil {
 		return false, err
 	}
