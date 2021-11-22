@@ -279,7 +279,7 @@ func (m MarketNodeImpl) MarketCancelDataTransfer(ctx context.Context, transferID
 	return m.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: otherPeer, Responder: selfPeer, ID: transferID})
 }
 
-func (m MarketNodeImpl) MarketPendingDeals(ctx context.Context) (types.PendingDealInfo, error) {
+func (m MarketNodeImpl) MarketPendingDeals(ctx context.Context) ([]types.PendingDealInfo, error) {
 	return m.DealPublisher.PendingDeals(), nil
 }
 

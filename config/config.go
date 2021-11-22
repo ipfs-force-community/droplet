@@ -101,9 +101,6 @@ type RetrievalPricingDefault struct {
 type AddressConfig struct {
 	DealPublishControl []Address
 
-	// DisableOwnerFallback disables usage of the owner address for messages
-	// sent automatically
-	DisableOwnerFallback bool
 	// DisableWorkerFallback disables usage of the worker address for messages
 	// sent automatically, if control addresses are configured.
 	// A control address that doesn't have enough funds will still be chosen
@@ -147,6 +144,11 @@ type DAGStoreConfig struct {
 
 type PieceStorageString string
 
+type Miner struct {
+	Addr    Address
+	Account string
+}
+
 // StorageMiner is a miner config
 type MarketConfig struct {
 	Home `toml:"-"`
@@ -165,8 +167,9 @@ type MarketConfig struct {
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
 
-	MinerAddress            []Address
+	StorageMiners           []Miner
 	RetrievalPaymentAddress Address
+
 	// When enabled, the miner can accept online deals
 	ConsiderOnlineStorageDeals bool
 	// When enabled, the miner can accept offline deals

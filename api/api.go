@@ -53,7 +53,7 @@ type MarketFullNode interface {
 	MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
 	// MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
-	MarketPendingDeals(ctx context.Context) (types.PendingDealInfo, error)                                                       //perm:write
+	MarketPendingDeals(ctx context.Context) ([]types.PendingDealInfo, error)                                                     //perm:write
 	MarketPublishPendingDeals(ctx context.Context) error                                                                         //perm:admin
 
 	PiecesListPieces(ctx context.Context) ([]cid.Cid, error)                                 //perm:read

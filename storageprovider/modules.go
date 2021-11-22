@@ -195,12 +195,11 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		//   save to metadata /deals/provider/piecestorage-ask/latest
 		builder.Override(new(config.StorageDealFilter), BasicDealFilter(nil)),
 		builder.Override(new(StorageProviderV2), NewStorageProviderV2),
-		builder.Override(new(*DealPublisher), NewDealPublisher(cfg)),
+		builder.Override(new(*DealPublisher), NewDealPublisherWrapper(cfg)),
 		builder.Override(HandleDealsKey, HandleDeals),
 		builder.If(cfg.Filter != "",
 			builder.Override(new(config.StorageDealFilter), BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Filter))),
 		),
-		//builder.Override(new(*DealPublisher), NewDealPublisher(cfg)),
 		builder.Override(new(StorageProviderNode), NewProviderNodeAdapter(cfg)),
 		builder.Override(new(DealAssiger), NewDealAssigner),
 		builder.Override(StartDealTracker, NewDealTracker),

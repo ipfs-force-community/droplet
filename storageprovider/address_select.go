@@ -67,9 +67,6 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 	if len(addrs) == 0 || !as.DisableWorkerFallback {
 		addrs = append(addrs, mi.Worker)
 	}
-	if !as.DisableOwnerFallback {
-		addrs = append(addrs, mi.Owner)
-	}
 
 	return pickAddress(ctx, a, mi, goodFunds, minFunds, addrs)
 }

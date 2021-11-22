@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
@@ -93,7 +94,7 @@ var (
 	}
 	MinerListFlag = &cli.StringSliceFlag{
 		Name:  "miner",
-		Usage: "support miner",
+		Usage: "support miner( f01000:jimmy)",
 	}
 )
 
@@ -268,12 +269,20 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 
 	if cctx.IsSet("miner") {
 		addrStrs := cctx.StringSlice("miner")
-		for _, addrStr := range addrStrs {
-			addr, err := address.NewFromString(addrStr)
+		for _, miners := range addrStrs {
+			addrStr := strings.Split(miners, ":")
+			addr, err := address.NewFromString(addrStr[0])
 			if err != nil {
 				return xerrors.Errorf("flag provide a wrong address %s %w", addrStr, err)
 			}
-			cfg.MinerAddress = append(cfg.MinerAddress, config.Address(addr))
+			account := ""
+			if len(addrStr) > 2 {
+				account = addrStr[1]
+			}
+			cfg.StorageMiners = append(cfg.StorageMiners, config.Miner{
+				Addr:    config.Address(addr),
+				Account: account,
+			})
 		}
 	}
 	return nil

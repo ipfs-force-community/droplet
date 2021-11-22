@@ -183,7 +183,7 @@ type MarketFullNodeStruct struct {
 
 		MarketListRetrievalDeals func(p0 context.Context, p1 address.Address) ([]types.ProviderDealState, error) `perm:"read"`
 
-		MarketPendingDeals func(p0 context.Context) (types.PendingDealInfo, error) `perm:"write"`
+		MarketPendingDeals func(p0 context.Context) ([]types.PendingDealInfo, error) `perm:"write"`
 
 		MarketPublishPendingDeals func(p0 context.Context) error `perm:"admin"`
 
@@ -826,12 +826,12 @@ func (s *MarketFullNodeStub) MarketListRetrievalDeals(p0 context.Context, p1 add
 	return *new([]types.ProviderDealState), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MarketPendingDeals(p0 context.Context) (types.PendingDealInfo, error) {
+func (s *MarketFullNodeStruct) MarketPendingDeals(p0 context.Context) ([]types.PendingDealInfo, error) {
 	return s.Internal.MarketPendingDeals(p0)
 }
 
-func (s *MarketFullNodeStub) MarketPendingDeals(p0 context.Context) (types.PendingDealInfo, error) {
-	return *new(types.PendingDealInfo), xerrors.New("method not supported")
+func (s *MarketFullNodeStub) MarketPendingDeals(p0 context.Context) ([]types.PendingDealInfo, error) {
+	return *new([]types.PendingDealInfo), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) MarketPublishPendingDeals(p0 context.Context) error {
