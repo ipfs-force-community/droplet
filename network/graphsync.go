@@ -2,8 +2,8 @@ package network
 
 import (
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/models/badger"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"

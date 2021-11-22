@@ -6,8 +6,8 @@ import (
 
 	"github.com/filecoin-project/venus-market/models/mysql"
 
-	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/ipfs-force-community/venus-common-utils/builder"
 )
 
 // TODO: 这里没有考虑client和server的数据表是不一样的

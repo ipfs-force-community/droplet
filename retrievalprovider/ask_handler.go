@@ -61,7 +61,7 @@ func (p *AskHandler) GetDynamicAsk(ctx context.Context, paymentAddr address.Addr
 	// currAsk cannot be nil as we initialize the ask store with a default ask.
 	// Users can then change the values in the ask store using SetAsk but not remove it.
 	currAsk, err := p.GetAsk(paymentAddr) //todo use market payment address
-	if currAsk == nil {
+	if err != nil || currAsk == nil {
 		return retrievalmarket.Ask{}, xerrors.New("no ask configured in ask-store")
 	}
 

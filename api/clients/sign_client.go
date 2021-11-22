@@ -5,10 +5,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/metrics"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"go.uber.org/fx"
 )
 

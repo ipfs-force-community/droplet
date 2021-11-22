@@ -1,7 +1,7 @@
 package paychmgr
 
 import (
-	"github.com/filecoin-project/venus-market/builder"
+	"github.com/ipfs-force-community/venus-common-utils/builder"
 )
 
 var PaychOpts = builder.Options(

@@ -1,15 +1,11 @@
 package badger
 
 import (
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/models/badger/datastore"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/ipfs/go-cid"
 )
-
-var log = logging.Logger("badgerpieces")
 
 func NewBadgerCidInfoRepo(cidInfoDs CIDInfoDS) repo.ICidInfoRepo {
 	return &badgerCidInfoRepo{cidInfos: statestore.New(cidInfoDs)}

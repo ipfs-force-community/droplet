@@ -49,13 +49,14 @@ func (d *DataTransferHandler) HandleAcceptFor(ctx context.Context, identifier rm
 	return d.retrievalDealHandler.UnsealData(ctx, deal)
 }
 
-func (d *DataTransferHandler) HandleDisconnectFor(ctx context.Context, identifier rm.ProviderDealIdentifier, err error) error {
+func (d *DataTransferHandler) HandleDisconnectFor(ctx context.Context, identifier rm.ProviderDealIdentifier, errIn error) error {
 	deal, err := d.retrievalDealStore.GetDeal(identifier.Receiver, identifier.DealID)
 	if err != nil {
 		deal.Status = rm.DealStatusErrored
+		deal.Message = err.Error()
 		return d.retrievalDealStore.SaveDeal(deal)
 	}
-	return d.retrievalDealHandler.Error(ctx, deal, err)
+	return d.retrievalDealHandler.Error(ctx, deal, errIn)
 }
 
 func (d *DataTransferHandler) HandleCancelForDeal(ctx context.Context, identifier rm.ProviderDealIdentifier) error {
@@ -75,12 +76,13 @@ func (d *DataTransferHandler) HandleCancelForDeal(ctx context.Context, identifie
 	return d.retrievalDealStore.SaveDeal(deal)
 }
 
-func (d *DataTransferHandler) HandleErrorForDeal(ctx context.Context, identifier rm.ProviderDealIdentifier, err error) error {
+func (d *DataTransferHandler) HandleErrorForDeal(ctx context.Context, identifier rm.ProviderDealIdentifier, errIn error) error {
 	deal, err := d.retrievalDealStore.GetDeal(identifier.Receiver, identifier.DealID)
 	if err != nil {
 		deal.Status = rm.DealStatusErrored
+		deal.Message = err.Error()
 		return d.retrievalDealStore.SaveDeal(deal)
 	}
 	// TODO: deal 是nil会panic
-	return d.retrievalDealHandler.Error(ctx, deal, err)
+	return d.retrievalDealHandler.Error(ctx, deal, errIn)
 }

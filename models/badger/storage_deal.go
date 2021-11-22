@@ -215,7 +215,7 @@ func (dsr *storageDealRepo) ListPieceInfoKeys() ([]cid.Cid, error) {
 
 	cids := make([]cid.Cid, len(cidsMap))
 	idx := 0
-	for cid, _ := range cidsMap {
+	for cid := range cidsMap {
 		cids[idx] = cid
 		idx++
 	}

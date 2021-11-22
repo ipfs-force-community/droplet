@@ -3,9 +3,9 @@ package clients
 import (
 	"context"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/metrics"
 	client2 "github.com/filecoin-project/venus-messager/api/client"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 )

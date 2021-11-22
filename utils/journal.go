@@ -5,7 +5,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/venus-market/types"
 
-	"github.com/filecoin-project/venus-market/journal"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
 )
 
 // StorageProviderJournaler records journal events from the piecestorage provider.

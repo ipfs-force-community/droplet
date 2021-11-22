@@ -40,7 +40,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/hashicorp/go-multierror v1.1.0
-	github.com/ipfs-force-community/venus-common-utils v0.0.0-20210924063144-1d3a5b30de87
+	github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab79c62a
 	github.com/ipfs-force-community/venus-gateway v1.1.2-0.20210924083450-c55d3300dfc9
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.1.5
@@ -92,11 +92,10 @@ require (
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/xlab/c-for-go v0.0.0-20201223145653-3ba5db515dcb // indirect
 	go.opencensus.io v0.23.0
-	go.uber.org/fx v1.13.1
+	go.uber.org/fx v1.15.0
 	go.uber.org/multierr v1.7.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/tools v0.1.5 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12

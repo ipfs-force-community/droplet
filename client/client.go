@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus-auth/log"
+	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	"io"
 	"os"
 	"sort"
@@ -44,7 +45,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
@@ -877,7 +877,7 @@ func (a *API) clientRetrieve(ctx context.Context, order RetrievalOrder, ref *Fil
 
 		ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
 
-		params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, shared.AllSelector(), order.Piece, order.UnsealPrice)
+		params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, selectorparse.CommonSelector_ExploreAllRecursively, order.Piece, order.UnsealPrice)
 		if err != nil {
 			finish(xerrors.Errorf("Error in retrieval params: %s", err))
 			return

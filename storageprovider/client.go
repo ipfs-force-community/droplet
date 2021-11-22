@@ -24,8 +24,8 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/fundmgr"
-	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/utils"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"

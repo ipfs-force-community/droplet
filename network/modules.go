@@ -7,7 +7,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 
-	"github.com/filecoin-project/venus-market/builder"
+	"github.com/ipfs-force-community/venus-common-utils/builder"
 )
 
 //nolint:golint
