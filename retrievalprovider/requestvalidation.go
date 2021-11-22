@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/types"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -114,7 +115,7 @@ func (rv *ProviderRequestValidator) validatePull(ctx context.Context, isRestart 
 	}
 
 	// This is a new graphsync request (not a restart)
-	pds := retrievalmarket.ProviderDealState{
+	pds := types.ProviderDealState{
 		DealProposal:    *proposal,
 		Receiver:        receiver,
 		LegacyProtocol:  legacyProtocol,
@@ -158,7 +159,7 @@ func (rv *ProviderRequestValidator) validatePull(ctx context.Context, isRestart 
 	return &response, datatransfer.ErrPause
 }
 
-func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *retrievalmarket.ProviderDealState) (retrievalmarket.DealStatus, error) {
+func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.ProviderDealState) (retrievalmarket.DealStatus, error) {
 	minerdeals, err := rv.pieceInfo.GetPieceInfoFromCid(ctx, deal.PayloadCID, deal.PieceCID)
 	if err != nil {
 		if err == retrievalmarket.ErrNotFound { //todo use db not found

@@ -40,7 +40,7 @@ type MarketFullNode interface {
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                                                 //perm:write
 	MarketListDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error)                                                                                                                     //perm:read
-	MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]retrievalmarket.ProviderDealState, error)                                                                                             //perm:read
+	MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]types.ProviderDealState, error)                                                                                                       //perm:read
 	MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error)                                                                                                                             //perm:read
 	MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]storagemarket.MinerDeal, error)                                                                                                      //perm:read
 	MarketSetAsk(ctx context.Context, mAddr address.Address, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error //perm:admin

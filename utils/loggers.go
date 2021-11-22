@@ -5,6 +5,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus-market/types"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -26,7 +27,7 @@ func RetrievalClientLogger(event retrievalmarket.ClientEvent, deal retrievalmark
 }
 
 // RetrievalProviderLogger logs events from the retrieval provider
-func RetrievalProviderLogger(event retrievalmarket.ProviderEvent, deal retrievalmarket.ProviderDealState) {
+func RetrievalProviderLogger(event retrievalmarket.ProviderEvent, deal types.ProviderDealState) {
 	log.Infow("retrieval provider event", "name", retrievalmarket.ProviderEvents[event], "deal ID", deal.ID, "receiver", deal.Receiver, "state", retrievalmarket.DealStatuses[deal.Status], "message", deal.Message)
 }
 

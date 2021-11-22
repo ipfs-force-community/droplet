@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -69,9 +70,10 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 
 	response, err := pr.processPayment(ctx, deal, payment)
 	return finalResponse(response, legacyProtocol), err
+
 }
 
-func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *retrievalmarket.ProviderDealState, payment *rm.DealPayment) (*retrievalmarket.DealResponse, error) {
+func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.ProviderDealState, payment *rm.DealPayment) (*retrievalmarket.DealResponse, error) {
 	tok, _, err := pr.node.GetChainHead(context.TODO())
 	if err != nil {
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
@@ -154,7 +156,7 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *retriev
 	return resp, err
 }
 
-func paymentOwed(deal *rm.ProviderDealState, totalPaid big.Int) big.Int {
+func paymentOwed(deal *types.ProviderDealState, totalPaid big.Int) big.Int {
 	// Check if the payment covers unsealing
 	if totalPaid.LessThan(deal.UnsealPrice) {
 		log.Debugf("provider: total paid %d < unseal price %d", totalPaid, deal.UnsealPrice)

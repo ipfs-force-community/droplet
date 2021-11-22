@@ -127,8 +127,8 @@ func (m MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Add
 	return m.listDeals(ctx, addrs)
 }
 
-func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]retrievalmarket.ProviderDealState, error) {
-	var out []retrievalmarket.ProviderDealState
+func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]types.ProviderDealState, error) {
+	var out []types.ProviderDealState
 	deals, err := m.RetrievalProvider.ListDeals()
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr addr
 			fmt.Println(err)
 		}
 
-		var dd retrievalmarket.ProviderDealState
+		var dd types.ProviderDealState
 		err = json.Unmarshal(xxxx, &dd)
 		if err != nil {
 			fmt.Println(err)
