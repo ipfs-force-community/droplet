@@ -41,7 +41,7 @@ func (d *DataTransferProcess) HandleCompleteFor(proposalid cid.Cid) error {
 	if err != nil {
 		return xerrors.Errorf("save deal while transfer completed %w", err)
 	}
-	go d.dealProcess.HandleOff(ctx, deal)
+	go d.dealProcess.HandleOff(ctx, deal) //nolint
 	return nil
 }
 

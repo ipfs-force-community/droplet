@@ -15,16 +15,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
 )
 
-type channelData struct {
-	dealID         rm.ProviderDealIdentifier
-	totalSent      uint64
-	totalPaidFor   uint64
-	interval       uint64
-	pricePerByte   abi.TokenAmount
-	reload         bool
-	legacyProtocol bool
-}
-
 // ProviderRevalidator defines data transfer revalidation logic in the context of
 // a provider for a retrieval deal
 type ProviderRevalidator struct {
@@ -64,7 +54,7 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 			return nil, nil
 		} else {
 			_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
-			return finalResponse(errorDealResponse(retrievalmarket.ProviderDealIdentifier{channelID.Initiator, payment.ID}, err), legacyProtocol), err
+			return finalResponse(errorDealResponse(retrievalmarket.ProviderDealIdentifier{Receiver: channelID.Initiator, DealID: payment.ID}, err), legacyProtocol), err
 		}
 	}
 
@@ -140,7 +130,7 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 		//pay for unseal goto unseal
 		deal.Status = rm.DealStatusUnsealing
 		defer func() {
-			go pr.retrievalDealHandler.UnsealData(ctx, deal)
+			go pr.retrievalDealHandler.UnsealData(ctx, deal) //nolint
 		}()
 		err = nil
 	case rm.DealStatusUnsealing:

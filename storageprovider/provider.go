@@ -32,9 +32,9 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/fundmgr"
-	"github.com/filecoin-project/venus-market/metrics"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 )
 
 var defaultMaxProviderCollateralMultiplier = uint64(2)

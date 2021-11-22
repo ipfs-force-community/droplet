@@ -10,11 +10,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dealfilter"
-	"github.com/filecoin-project/venus-market/journal"
 	_ "github.com/filecoin-project/venus-market/network"
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
 )
 
 var (

@@ -13,12 +13,9 @@ import (
 	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/api/impl"
-	"github.com/filecoin-project/venus-market/builder"
 	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/fundmgr"
-	"github.com/filecoin-project/venus-market/journal"
-	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/piecestorage"
@@ -30,6 +27,9 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
@@ -180,7 +180,9 @@ func daemon(cctx *cli.Context) error {
 	_, err = builder.New(ctx,
 		//defaults
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
-		builder.Override(new(journal.Journal), journal.OpenFilesystemJournal),
+		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, component string, disabled journal.DisabledEvents) (journal.Journal, error) {
+			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)
+		}),
 
 		builder.Override(new(metrics.MetricsCtx), func() context.Context {
 			return metrics2.CtxScope(context.Background(), "venus-market")
