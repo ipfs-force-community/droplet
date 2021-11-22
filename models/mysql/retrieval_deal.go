@@ -6,6 +6,7 @@ import (
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/types"
 	mtypes "github.com/filecoin-project/venus-messager/types"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -43,7 +44,7 @@ func (m *retrievalDeal) TableName() string {
 	return RetrievalDealTableName
 }
 
-func fromProviderDealState(deal *rm.ProviderDealState) *retrievalDeal {
+func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 	newdeal := &retrievalDeal{
 		DealProposal: DealProposal{
 			PayloadCID:              deal.PayloadCID.String(),
@@ -80,8 +81,8 @@ func fromProviderDealState(deal *rm.ProviderDealState) *retrievalDeal {
 	return newdeal
 }
 
-func toProviderDealState(deal *retrievalDeal) (*rm.ProviderDealState, error) {
-	newdeal := &rm.ProviderDealState{
+func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) {
+	newdeal := &types.ProviderDealState{
 		DealProposal: rm.DealProposal{
 			ID: rm.DealID(deal.DealProposal.ID),
 			Params: rm.Params{
@@ -147,12 +148,12 @@ type retrievalDealRepo struct {
 	*gorm.DB
 }
 
-func (r *retrievalDealRepo) SaveDeal(deal *rm.ProviderDealState) error {
+func (r *retrievalDealRepo) SaveDeal(deal *types.ProviderDealState) error {
 	dbDeal := fromProviderDealState(deal)
 	return r.Save(dbDeal).Error
 }
 
-func (r *retrievalDealRepo) GetDeal(id peer.ID, id2 rm.DealID) (*rm.ProviderDealState, error) {
+func (r *retrievalDealRepo) GetDeal(id peer.ID, id2 rm.DealID) (*types.ProviderDealState, error) {
 	deal := &retrievalDeal{}
 	err := r.Take(RetrievalDealTableName).Take(deal, "cdp_proposal_id=? AND receiver=? ", id2, id.String()).Error
 	if err != nil {
@@ -161,7 +162,7 @@ func (r *retrievalDealRepo) GetDeal(id peer.ID, id2 rm.DealID) (*rm.ProviderDeal
 	return toProviderDealState(deal)
 }
 
-func (r *retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*rm.ProviderDealState, error) {
+func (r *retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*types.ProviderDealState, error) {
 	deal := &retrievalDeal{}
 	err := r.Take(RetrievalDealTableName).Take(deal, "ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ?", chid.Initiator, chid.Responder, chid.ID).Error
 	if err != nil {
@@ -179,7 +180,7 @@ func (r *retrievalDealRepo) HasDeal(id peer.ID, id2 rm.DealID) (bool, error) {
 	return count > 0, nil
 }
 
-func (r *retrievalDealRepo) ListDeals(pageIndex, pageSize int) ([]*rm.ProviderDealState, error) {
+func (r *retrievalDealRepo) ListDeals(pageIndex, pageSize int) ([]*types.ProviderDealState, error) {
 	query := r.DB.Table(RetrievalDealTableName).Offset((pageIndex - 1) * pageSize).Limit(pageSize)
 
 	var sqlMsgs []*retrievalDeal
@@ -188,7 +189,7 @@ func (r *retrievalDealRepo) ListDeals(pageIndex, pageSize int) ([]*rm.ProviderDe
 		return nil, err
 	}
 
-	result := make([]*rm.ProviderDealState, len(sqlMsgs))
+	result := make([]*types.ProviderDealState, len(sqlMsgs))
 	for index, sqlMsg := range sqlMsgs {
 		result[index], err = toProviderDealState(sqlMsg)
 		if err != nil {

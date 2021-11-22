@@ -3,6 +3,7 @@ package retrievalprovider
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/venus-market/types"
 
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-statemachine"
@@ -10,10 +11,10 @@ import (
 )
 
 type IRetrievalHandler interface {
-	UnsealData(ctx context.Context, deal *rm.ProviderDealState) error
-	CancelDeal(ctx context.Context, deal *rm.ProviderDealState) error
-	CleanupDeal(ctx context.Context, deal *rm.ProviderDealState) error
-	Error(ctx context.Context, deal *rm.ProviderDealState, err error) error
+	UnsealData(ctx context.Context, deal *types.ProviderDealState) error
+	CancelDeal(ctx context.Context, deal *types.ProviderDealState) error
+	CleanupDeal(ctx context.Context, deal *types.ProviderDealState) error
+	Error(ctx context.Context, deal *types.ProviderDealState, err error) error
 }
 
 var _ IRetrievalHandler = (*RetrievalDealHandler)(nil)
@@ -27,7 +28,7 @@ func NewRetrievalDealHandler(env ProviderDealEnvironment, retrievalDealStore rep
 	return &RetrievalDealHandler{env: env, retrievalDealStore: retrievalDealStore}
 }
 
-func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *rm.ProviderDealState) error {
+func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *types.ProviderDealState) error {
 	deal.Status = rm.DealStatusUnsealing
 	err := p.retrievalDealStore.SaveDeal(deal)
 	if err != nil {
@@ -56,7 +57,7 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *rm.Provider
 	return p.retrievalDealStore.SaveDeal(deal)
 }
 
-func (p *RetrievalDealHandler) CancelDeal(ctx context.Context, deal *rm.ProviderDealState) error {
+func (p *RetrievalDealHandler) CancelDeal(ctx context.Context, deal *types.ProviderDealState) error {
 	// Read next response (or fail)
 	err := p.env.DeleteStore(deal.ID)
 	if err != nil {
@@ -73,7 +74,7 @@ func (p *RetrievalDealHandler) CancelDeal(ctx context.Context, deal *rm.Provider
 }
 
 // CleanupDeal runs to do memory cleanup for an in progress deal
-func (p *RetrievalDealHandler) CleanupDeal(ctx context.Context, deal *rm.ProviderDealState) error {
+func (p *RetrievalDealHandler) CleanupDeal(ctx context.Context, deal *types.ProviderDealState) error {
 	err := p.env.DeleteStore(deal.ID)
 	if err != nil {
 		return p.Error(ctx, deal, nil)
@@ -82,7 +83,7 @@ func (p *RetrievalDealHandler) CleanupDeal(ctx context.Context, deal *rm.Provide
 	return p.retrievalDealStore.SaveDeal(deal)
 }
 
-func (p *RetrievalDealHandler) Error(ctx context.Context, deal *rm.ProviderDealState, err error) error {
+func (p *RetrievalDealHandler) Error(ctx context.Context, deal *types.ProviderDealState, err error) error {
 	deal.Status = rm.DealStatusErrored
 	if err != nil {
 		deal.Message = err.Error()

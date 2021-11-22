@@ -49,7 +49,7 @@ type ProviderDealEnvironment interface {
 var _ ProviderDealEnvironment = new(providerDealEnvironment)
 
 type providerDealEnvironment struct {
-	p *RetrievalProviderV2
+	p *RetrievalProvider
 }
 
 // Node returns the node interface for this deal

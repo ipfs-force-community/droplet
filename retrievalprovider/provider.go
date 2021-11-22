@@ -2,110 +2,169 @@ package retrievalprovider
 
 import (
 	"context"
-
-	"github.com/hashicorp/go-multierror"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/types"
+	"math"
+	"time"
+
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/shared"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
-
-	"github.com/filecoin-project/venus-market/paychmgr"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/dtutils"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
+	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/network"
 )
 
-var log = logging.Logger("retrievaladapter")
+var queryTimeout = 5 * time.Second
 
-type retrievalProviderNode struct {
-	full   apiface.FullNode
-	payAPI *paychmgr.PaychAPI
+type IRetrievalProvider interface {
+	Stop() error
+	Start(ctx context.Context) error
+	ListDeals() (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error)
 }
 
-var _ retrievalmarket.RetrievalProviderNode = (*retrievalProviderNode)(nil)
+// RetrievalProvider is the production implementation of the RetrievalProvider interface
+type RetrievalProvider struct {
+	dataTransfer     network.ProviderDataTransfer
+	node             retrievalmarket.RetrievalProviderNode
+	network          rmnet.RetrievalMarketNetwork
+	requestValidator *ProviderRequestValidator
+	reValidator      *ProviderRevalidator
+	disableNewDeals  bool
+	dagStore         stores.DAGStoreWrapper
+	stores           *stores.ReadOnlyBlockstores
 
-// NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
-// Lotus Node
-func NewRetrievalProviderNode(full apiface.FullNode, payAPI *paychmgr.PaychAPI) retrievalmarket.RetrievalProviderNode {
-	return &retrievalProviderNode{full: full, payAPI: payAPI}
+	retrievalDealRepo repo.IRetrievalDealRepo
+	storageDealRepo   repo.StorageDealRepo
+
+	askHandler             IAskHandler
+	retrievalStreamHandler *RetrievalStreamHandler
 }
 
-func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
-	tsk, err := types.TipSetKeyFromBytes(tok)
-	if err != nil {
-		return address.Undef, err
+// NewProvider returns a new retrieval Provider
+func NewProvider(node retrievalmarket.RetrievalProviderNode,
+	network rmnet.RetrievalMarketNetwork,
+	askHandler IAskHandler,
+	dagStore stores.DAGStoreWrapper,
+	dataTransfer network.ProviderDataTransfer,
+	repo repo.Repo,
+	cfg *config.MarketConfig,
+) (*RetrievalProvider, error) {
+	storageDealsRepo := repo.StorageDealRepo()
+	retrievalDealRepo := repo.RetrievalDealRepo()
+
+	pieceInfo := &PieceInfo{cidInfoRepo: repo.CidInfoRepo(), dealRepo: repo.StorageDealRepo()}
+	p := &RetrievalProvider{
+		dataTransfer:           dataTransfer,
+		node:                   node,
+		network:                network,
+		dagStore:               dagStore,
+		askHandler:             askHandler,
+		retrievalDealRepo:      repo.RetrievalDealRepo(),
+		storageDealRepo:        repo.StorageDealRepo(),
+		stores:                 stores.NewReadOnlyBlockstores(),
+		retrievalStreamHandler: NewRetrievalStreamHandler(askHandler, retrievalDealRepo, storageDealsRepo, pieceInfo, address.Address(cfg.RetrievalPaymentAddress)),
 	}
+	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo)
+	p.requestValidator = NewProviderRequestValidator(address.Address(cfg.RetrievalPaymentAddress), storageDealsRepo, retrievalDealRepo, pieceInfo, askHandler)
+	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{retrievalDealRepo, p.stores})
+	p.reValidator = NewProviderRevalidator(p.node, retrievalDealRepo, retrievalHandler)
 
-	mi, err := rpn.full.StateMinerInfo(ctx, miner, tsk)
-	return mi.Worker, err
-}
-
-func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount, tok shared.TipSetToken) (abi.TokenAmount, error) {
-	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
-	// querying the chain
-	added, err := rpn.payAPI.PaychVoucherAdd(ctx, paymentChannel, voucher, proof, expectedAmount)
-	return added, err
-}
-
-func (rpn *retrievalProviderNode) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	head, err := rpn.full.ChainHead(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return head.Key().Bytes(), head.Height(), nil
-}
-
-// GetRetrievalPricingInput takes a set of candidate storage deals that can serve a retrieval request,
-// and returns an minimally populated PricingInput. This PricingInput should be enhanced
-// with more data, and passed to the pricing function to determine the final quoted price.
-func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, pieceCID cid.Cid, storageDeals []abi.DealID) (retrievalmarket.PricingInput, error) {
-	resp := retrievalmarket.PricingInput{}
-
-	head, err := rpn.full.ChainHead(ctx)
-	if err != nil {
-		return resp, xerrors.Errorf("failed to get chain head: %w", err)
-	}
-	tsk := head.Key()
-
-	var mErr error
-
-	for _, dealID := range storageDeals {
-		ds, err := rpn.full.StateMarketStorageDeal(ctx, dealID, tsk)
+	var err error
+	if p.disableNewDeals {
+		err = p.dataTransfer.RegisterVoucherType(&migrations.DealProposal0{}, p.requestValidator)
 		if err != nil {
-			log.Warnf("failed to look up deal %d on chain: err=%w", dealID, err)
-			mErr = multierror.Append(mErr, err)
-			continue
+			return nil, err
 		}
-		if ds.Proposal.VerifiedDeal {
-			resp.VerifiedDeal = true
+		err = p.dataTransfer.RegisterRevalidator(&migrations.DealPayment0{}, p.reValidator)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err = p.dataTransfer.RegisterVoucherType(&retrievalmarket.DealProposal{}, p.requestValidator)
+		if err != nil {
+			return nil, err
+		}
+		err = p.dataTransfer.RegisterVoucherType(&migrations.DealProposal0{}, p.requestValidator)
+		if err != nil {
+			return nil, err
 		}
 
-		if ds.Proposal.PieceCID.Equals(pieceCID) {
-			resp.PieceSize = ds.Proposal.PieceSize.Unpadded()
+		err = p.dataTransfer.RegisterRevalidator(&retrievalmarket.DealPayment{}, p.reValidator)
+		if err != nil {
+			return nil, err
+		}
+		err = p.dataTransfer.RegisterRevalidator(&migrations.DealPayment0{}, NewLegacyRevalidator(p.reValidator))
+		if err != nil {
+			return nil, err
 		}
 
-		// If we've discovered a verified deal with the required PieceCID, we don't need
-		// to lookup more deals and we're done.
-		if resp.VerifiedDeal && resp.PieceSize != 0 {
-			break
+		err = p.dataTransfer.RegisterVoucherResultType(&retrievalmarket.DealResponse{})
+		if err != nil {
+			return nil, err
+		}
+
+		err = p.dataTransfer.RegisterTransportConfigurer(&retrievalmarket.DealProposal{}, transportConfigurer)
+		if err != nil {
+			return nil, err
 		}
 	}
+	err = p.dataTransfer.RegisterVoucherResultType(&migrations.DealResponse0{})
+	if err != nil {
+		return nil, err
+	}
+	err = p.dataTransfer.RegisterTransportConfigurer(&migrations.DealProposal0{}, transportConfigurer)
+	if err != nil {
+		return nil, err
+	}
+	datatransferProcess := NewDataTransferHandler(retrievalHandler, retrievalDealRepo)
+	dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(datatransferProcess))
+	return p, nil
+}
 
-	// Note: The piece size can never actually be zero. We only use it to here
-	// to assert that we didn't find a matching piece.
-	if resp.PieceSize == 0 {
-		if mErr == nil {
-			return resp, xerrors.New("failed to find matching piece")
-		}
+// Stop stops handling incoming requests.
+func (p *RetrievalProvider) Stop() error {
+	return p.network.StopHandlingRequests()
+}
 
-		return resp, xerrors.Errorf("failed to fetch storage deal state: %w", mErr)
+// Start begins listening for deals on the given host.
+// Start must be called in order to accept incoming deals.
+func (p *RetrievalProvider) Start(ctx context.Context) error {
+	return p.network.SetDelegate(p.retrievalStreamHandler)
+}
+
+// ListDeals lists all known retrieval deals
+func (p *RetrievalProvider) ListDeals() (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error) {
+	deals, err := p.retrievalDealRepo.ListDeals(0, math.MaxInt32)
+	if err != nil {
+		return nil, err
 	}
 
-	return resp, nil
+	dealMap := make(map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState)
+	for _, deal := range deals {
+		dealMap[retrievalmarket.ProviderDealIdentifier{Receiver: deal.Receiver, DealID: deal.ID}] = deal
+	}
+	return dealMap, nil
+}
+
+// DefaultPricingFunc is the default pricing policy that will be used to price retrieval deals.
+var DefaultPricingFunc = func(VerifiedDealsFreeTransfer bool) func(ctx context.Context, pricingInput retrievalmarket.PricingInput) (retrievalmarket.Ask, error) {
+	return func(ctx context.Context, pricingInput retrievalmarket.PricingInput) (retrievalmarket.Ask, error) {
+		ask := pricingInput.CurrentAsk
+
+		// don't charge for Unsealing if we have an Unsealed copy.
+		if pricingInput.Unsealed {
+			ask.UnsealPrice = big.Zero()
+		}
+
+		// don't charge for data transfer for verified deals if it's been configured to do so.
+		if pricingInput.VerifiedDeal && VerifiedDealsFreeTransfer {
+			ask.PricePerByte = big.Zero()
+		}
+
+		return ask, nil
+	}
 }

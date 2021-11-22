@@ -2,6 +2,7 @@ package retrievalprovider
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
@@ -24,7 +25,7 @@ func RetrievalDealFilter(userFilter config.RetrievalDealFilter) func(onlineOk co
 	offlineOk config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalDealFilter {
 	return func(onlineOk config.ConsiderOnlineRetrievalDealsConfigFunc,
 		offlineOk config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalDealFilter {
-		return func(ctx context.Context, state retrievalmarket.ProviderDealState) (bool, string, error) {
+		return func(ctx context.Context, state types.ProviderDealState) (bool, string, error) {
 			b, err := onlineOk()
 			if err != nil {
 				return false, "miner error", err

@@ -35,11 +35,11 @@ type StorageDealRepo interface {
 }
 
 type IRetrievalDealRepo interface {
-	SaveDeal(deal *retrievalmarket.ProviderDealState) error
-	GetDeal(peer.ID, retrievalmarket.DealID) (*retrievalmarket.ProviderDealState, error)
-	GetDealByTransferId(chid datatransfer.ChannelID) (*retrievalmarket.ProviderDealState, error)
+	SaveDeal(deal *types.ProviderDealState) error
+	GetDeal(peer.ID, retrievalmarket.DealID) (*types.ProviderDealState, error)
+	GetDealByTransferId(chid datatransfer.ChannelID) (*types.ProviderDealState, error)
 	HasDeal(peer.ID, retrievalmarket.DealID) (bool, error)
-	ListDeals(pageIndex, pageSize int) ([]*retrievalmarket.ProviderDealState, error)
+	ListDeals(pageIndex, pageSize int) ([]*types.ProviderDealState, error)
 }
 
 type PaychMsgInfoRepo interface {
