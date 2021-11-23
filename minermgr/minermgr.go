@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 	"strings"
 	"sync"
@@ -28,7 +27,6 @@ type IMinerMgr interface {
 
 type MinerMgrImpl struct {
 	authCfg config.AuthNode
-	token   string
 
 	miners []address.Address
 	lk     sync.Mutex
@@ -36,12 +34,12 @@ type MinerMgrImpl struct {
 
 func NewMinerMgrImpl(cfg *config.MarketConfig) func() (IMinerMgr, error) {
 	return func() (IMinerMgr, error) {
-		m := &MinerMgrImpl{authCfg: cfg.AuthNode, token: cfg.AuthNode.Token}
+		m := &MinerMgrImpl{authCfg: cfg.AuthNode}
 		err := m.distAddress(config.ConvertConfigAddress(cfg.MinerAddress)...)
 		if err != nil {
 			return nil, err
 		}
-		miners, err := m.GetMinerFromVenusAuth(context.TODO(), 0, math.MaxInt32)
+		miners, err := m.GetMinerFromVenusAuth(context.TODO(), 0, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +68,8 @@ func (m *MinerMgrImpl) Has(ctx context.Context, addr address.Address) bool {
 }
 
 func (m *MinerMgrImpl) GetMinerFromVenusAuth(ctx context.Context, skip, limit int64) ([]address.Address, error) {
-	if len(m.authCfg.Url) > 0 {
+	log.Infof("request miners from auth: %v ...", m.authCfg)
+	if len(m.authCfg.Url) == 0 {
 		return []address.Address{}, nil
 	}
 	if limit == 0 {
@@ -78,13 +77,14 @@ func (m *MinerMgrImpl) GetMinerFromVenusAuth(ctx context.Context, skip, limit in
 	}
 	cli := resty.New().SetHostURL(m.authCfg.Url).SetHeader("Accept", "application/json")
 	response, err := cli.R().SetQueryParams(map[string]string{
-		"token": m.token,
+		"token": m.authCfg.Token,
 		"skip":  fmt.Sprintf("%d", skip),
 		"limit": fmt.Sprintf("%d", limit),
 	}).Get("/user/list")
 	if err != nil {
 		return nil, err
 	}
+
 	switch response.StatusCode() {
 	case http.StatusOK:
 		var res []User

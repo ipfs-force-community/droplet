@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/types"
-	xerrors "github.com/pkg/errors"
+	"golang.org/x/xerrors"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-statestore"
@@ -113,24 +113,20 @@ func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 	return storageDeals, err
 }
 
-func (sdr *storageDealRepo) GetDealbyAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	var storageDeals []*types.MinerDeal
 	var err error
-	if err = sdr.travelDeals(func(deal *types.MinerDeal) (err error) {
-		if deal.ClientDealProposal.Proposal.Provider != addr && deal.State == status {
-			return
+	if err = sdr.travelDeals(
+		func(deal *types.MinerDeal) (err error) {
+		if deal.ClientDealProposal.Proposal.Provider == addr && deal.State == status {
+			storageDeals = append(storageDeals, deal)
 		}
-		storageDeals = append(storageDeals, deal)
-		return
+		return nil
 	}); err != nil {
 		if xerrors.Is(err, justWantStopTravelErr) {
 			return storageDeals, nil
 		}
 		return nil, err
-	}
-
-	if len(storageDeals) == 0 {
-		err = repo.ErrNotFound
 	}
 
 	return storageDeals, err
@@ -170,7 +166,7 @@ func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo,
 				DealID:   deal.DealID,
 				SectorID: deal.SectorNumber,
 				Offset:   deal.Offset,
-				Length:   deal.Length,
+				Length:   deal.Proposal.PieceSize,
 			})
 		}
 		return nil
@@ -250,15 +246,11 @@ func (dsr *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceSt
 		func(inDeal *types.MinerDeal) error {
 			if inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.PieceStatus == pieceStatus {
 				deals = append(deals, inDeal)
-				return xerrors.Errorf("find the deal, so stop:%w", justWantStopTravelErr)
 			}
 			return nil
 		}); err != nil {
-		if xerrors.Is(err, justWantStopTravelErr) {
-			return deals, nil
-		}
 		return nil, err
 	}
 
-	return nil, repo.ErrNotFound
+	return deals, nil
 }

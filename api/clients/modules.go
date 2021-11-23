@@ -4,30 +4,36 @@ import (
 	"context"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/venus-market/config"
+
 	types2 "github.com/filecoin-project/venus-messager/types"
+
 	"github.com/filecoin-project/venus/app/client"
 	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/wallet"
+
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
+
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
 	types3 "github.com/ipfs-force-community/venus-gateway/types"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("clients")
 
 var (
-	ReplaceMpoolMethod  builder.Invoke = builder.NextInvoke()
-	ReplaceWalletMethod builder.Invoke = builder.NextInvoke()
+	ReplaceMpoolMethod   = builder.NextInvoke()
+	ReplaceWalletMethod  = builder.NextInvoke()
 )
 
 func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error {

@@ -38,7 +38,6 @@ type MinerDeal struct {
 	SectorNumber      abi.SectorNumber
 
 	Offset      abi.PaddedPieceSize
-	Length      abi.PaddedPieceSize
 	PieceStatus string
 
 	InboundCAR string
@@ -467,21 +466,6 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len("Length") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Length\" was too long")
-	}
-
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Length"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("Length")); err != nil {
-		return err
-	}
-
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.Length)); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -811,18 +795,6 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 					return fmt.Errorf("wrong type for uint64 field")
 				}
 				t.Offset = abi.PaddedPieceSize(extra)
-
-			}
-		case "Length":
-			{
-				maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
-				if err != nil {
-					return err
-				}
-				if maj != cbg.MajUnsignedInt {
-					return fmt.Errorf("wrong type for uint64 field")
-				}
-				t.Length = abi.PaddedPieceSize(extra)
 
 			}
 

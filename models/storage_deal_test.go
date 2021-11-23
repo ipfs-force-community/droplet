@@ -97,7 +97,6 @@ func getTestMinerDeal(t *testing.T) *types.MinerDeal {
 		SectorNumber:          10,
 		InboundCAR:            "InboundCAR",
 		Offset:                1022222,
-		Length:                555,
 	}
 }
 
@@ -127,7 +126,6 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 
 	// test update
 	deal.Offset = 90000
-	deal.Length = 18908
 	assert.Nil(t, dealRepo.SaveDeal(deal))
 
 	deal2, err = dealRepo.GetDeal(deal.ProposalCid)
@@ -183,5 +181,4 @@ func compareDeal(t *testing.T, actual, excepted *types.MinerDeal) {
 	assert.Equal(t, excepted.SectorNumber, actual.SectorNumber)
 	assert.Equal(t, excepted.InboundCAR, actual.InboundCAR)
 	assert.Equal(t, excepted.Offset, actual.Offset)
-	assert.Equal(t, excepted.Length, actual.Length)
 }

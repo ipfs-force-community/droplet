@@ -2,20 +2,30 @@ package main
 
 import (
 	"context"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/dagstore"
-	"github.com/filecoin-project/venus-market/models"
 	"log"
 	"os"
 
-	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
+	"github.com/urfave/cli/v2"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+
+	metrics2 "github.com/ipfs/go-metrics-interface"
+
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
 	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/dagstore"
 	"github.com/filecoin-project/venus-market/fundmgr"
+	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
+	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/piecestorage"
@@ -24,23 +34,19 @@ import (
 	"github.com/filecoin-project/venus-market/storageprovider"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
+
+	_ "github.com/filecoin-project/venus-market/network"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	"github.com/ipfs-force-community/venus-common-utils/builder"
-	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
-	metrics2 "github.com/ipfs/go-metrics-interface"
-	"github.com/urfave/cli/v2"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 // Invokes are called in the order they are defined.
 //nolint:golint
 var (
-	InitJournalKey builder.Invoke = builder.NextInvoke() //nolint
-	ExtractApiKey  builder.Invoke = builder.NextInvoke()
+	InitJournalKey  = builder.NextInvoke() //nolint
+	ExtractApiKey   = builder.NextInvoke()
 )
 
 var (
@@ -180,7 +186,7 @@ func daemon(cctx *cli.Context) error {
 	_, err = builder.New(ctx,
 		//defaults
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
-		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, component string, disabled journal.DisabledEvents) (journal.Journal, error) {
+		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
 			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)
 		}),
 

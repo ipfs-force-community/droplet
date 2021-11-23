@@ -103,7 +103,6 @@ require (
 
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-	github.com/filecoin-project/go-fil-markets => /Users/lijunlong/code/go-fil-markets
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21
 	github.com/ipfs/go-ipfs-cmds => github.com/ipfs-force-community/go-ipfs-cmds v0.6.1-0.20210521090123-4587df7fa0ab
 )

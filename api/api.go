@@ -142,7 +142,6 @@ type MarketFullNode interface {
 	UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error      //perm:write
 	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error                                            //perm:write
 	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error)                                             //perm:read
-	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)                          //perm:read
 	AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) //perm:write
 	UpdateStorageDealStatus(ctx context.Context, dealProposalCid cid.Cid, state storagemarket.StorageDealStatus) error                                   //perm:write
 	//market event

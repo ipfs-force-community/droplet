@@ -63,6 +63,7 @@ type MarketNodeImpl struct {
 	DataTransfer        network.ProviderDataTransfer
 	DealPublisher       *storageprovider.DealPublisher
 	DealAssigner        storageprovider.DealAssiger
+	DealTracker         *storageprovider.DealTracker
 
 	Messager                                    clients2.IMessager `optional:"true"`
 	StorageAsk                                  storageprovider.IStorageAsk

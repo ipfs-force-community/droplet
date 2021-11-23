@@ -2,8 +2,6 @@ package storageprovider
 
 import (
 	"context"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/types"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 	"math"
@@ -11,6 +9,7 @@ import (
 	"path"
 	"sort"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/types"
 )
 
 type DealAssiger interface {
@@ -161,11 +161,11 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 		curPieceSize uint64
 	)
 	for _, md := range mds {
-		if uint64(md.Length)+curPieceSize < spec.MaxPieceSize && numberPiece+1 < spec.MaxPiece {
+		if ((spec.MaxPieceSize > 0 && uint64(md.Proposal.PieceSize)+curPieceSize < spec.MaxPieceSize) || spec.MaxPieceSize == 0) && numberPiece+1 < spec.MaxPiece {
 			result = append(result, &types.DealInfoIncludePath{
 				DealProposal:    md.Proposal,
 				Offset:          md.Offset,
-				Length:          md.Length,
+				Length:          md.Proposal.PieceSize,
 				DealID:          md.DealID,
 				TotalStorageFee: md.Proposal.TotalStorageFee(),
 				PieceStorage:    path.Join(string(ps.pieceStorage), md.Proposal.PieceCID.String()),
@@ -177,7 +177,7 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 				return nil, err
 			}
 
-			curPieceSize += uint64(md.Length)
+			curPieceSize += uint64(md.Proposal.PieceSize)
 			numberPiece++
 		}
 	}
