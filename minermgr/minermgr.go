@@ -24,6 +24,7 @@ type IMinerMgr interface {
 	ActorAddress(ctx context.Context) ([]address.Address, error)
 	Has(ctx context.Context, addr address.Address) bool
 	GetAccount(ctx context.Context, addr address.Address) (string, error)
+	AddAddress(ctx context.Context, miner Miner) error
 	GetMinerFromVenusAuth(ctx context.Context, skip, limit int64) ([]Miner, error)
 }
 
@@ -50,6 +51,20 @@ func NewMinerMgrImpl(cfg *config.MarketConfig) func() (IMinerMgr, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		err = m.distAddress(Miner{
+			Addr:    address.Address(cfg.RetrievalPaymentAddress.Addr),
+			Account: cfg.RetrievalPaymentAddress.Account,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		err = m.distAddress(convertConfigAddress(cfg.AddressConfig.DealPublishControl)...)
+		if err != nil {
+			return nil, err
+		}
+
 		return m, m.distAddress(miners...)
 	}
 }
@@ -144,6 +159,10 @@ func (m *MinerMgrImpl) GetMinerFromVenusAuth(ctx context.Context, skip, limit in
 	}
 }
 
+func (m *MinerMgrImpl) AddAddress(ctx context.Context, miner Miner) error {
+	return m.distAddress(miner)
+}
+
 func (m *MinerMgrImpl) distAddress(addrs ...Miner) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
@@ -161,7 +180,7 @@ func (m *MinerMgrImpl) distAddress(addrs ...Miner) error {
 	return nil
 }
 
-func convertConfigAddress(addrs []config.Miner) []Miner {
+func convertConfigAddress(addrs []config.User) []Miner {
 	addrs2 := make([]Miner, len(addrs))
 	for index, miner := range addrs {
 		addrs2[index] = Miner{

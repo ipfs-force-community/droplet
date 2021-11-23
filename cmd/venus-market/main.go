@@ -279,7 +279,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 			if len(addrStr) > 2 {
 				account = addrStr[1]
 			}
-			cfg.StorageMiners = append(cfg.StorageMiners, config.Miner{
+			cfg.StorageMiners = append(cfg.StorageMiners, config.User{
 				Addr:    config.Address(addr),
 				Account: account,
 			})

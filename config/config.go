@@ -99,13 +99,21 @@ type RetrievalPricingDefault struct {
 }
 
 type AddressConfig struct {
-	DealPublishControl []Address
+	DealPublishControl []User
 
 	// DisableWorkerFallback disables usage of the worker address for messages
 	// sent automatically, if control addresses are configured.
 	// A control address that doesn't have enough funds will still be chosen
 	// over the worker address if this flag is set.
 	DisableWorkerFallback bool
+}
+
+func (ac AddressConfig) Address() []address.Address {
+	addrs := make([]address.Address, len(ac.DealPublishControl))
+	for index, miner := range ac.DealPublishControl {
+		addrs[index] = address.Address(miner.Addr)
+	}
+	return addrs
 }
 
 type DAGStoreConfig struct {
@@ -144,7 +152,7 @@ type DAGStoreConfig struct {
 
 type PieceStorageString string
 
-type Miner struct {
+type User struct {
 	Addr    Address
 	Account string
 }
@@ -167,8 +175,8 @@ type MarketConfig struct {
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
 
-	StorageMiners           []Miner
-	RetrievalPaymentAddress Address
+	StorageMiners           []User
+	RetrievalPaymentAddress User
 
 	// When enabled, the miner can accept online deals
 	ConsiderOnlineStorageDeals bool

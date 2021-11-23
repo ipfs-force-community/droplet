@@ -66,10 +66,10 @@ func NewProvider(node retrievalmarket.RetrievalProviderNode,
 		retrievalDealRepo:      repo.RetrievalDealRepo(),
 		storageDealRepo:        repo.StorageDealRepo(),
 		stores:                 stores.NewReadOnlyBlockstores(),
-		retrievalStreamHandler: NewRetrievalStreamHandler(askHandler, retrievalDealRepo, storageDealsRepo, pieceInfo, address.Address(cfg.RetrievalPaymentAddress)),
+		retrievalStreamHandler: NewRetrievalStreamHandler(askHandler, retrievalDealRepo, storageDealsRepo, pieceInfo, address.Address(cfg.RetrievalPaymentAddress.Addr)),
 	}
 	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo)
-	p.requestValidator = NewProviderRequestValidator(address.Address(cfg.RetrievalPaymentAddress), storageDealsRepo, retrievalDealRepo, pieceInfo, askHandler)
+	p.requestValidator = NewProviderRequestValidator(address.Address(cfg.RetrievalPaymentAddress.Addr), storageDealsRepo, retrievalDealRepo, pieceInfo, askHandler)
 	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{retrievalDealRepo, p.stores})
 	p.reValidator = NewProviderRevalidator(p.node, retrievalDealRepo, retrievalHandler)
 

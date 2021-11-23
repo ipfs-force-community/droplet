@@ -2,6 +2,8 @@ package clients
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/minermgr"
+	"go.uber.org/fx"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -36,20 +38,42 @@ var (
 	ReplaceWalletMethod  = builder.NextInvoke()
 )
 
-func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error {
-	fullNodeStruct := fullNode.(*client.FullNodeStruct)
+type MPoolReplaceParams struct {
+	fx.In
+	FullNode apiface.FullNode
+	Messager IMessager
+	Mgr      minermgr.IMinerMgr `optional:"true"`
+}
+
+func ConvertMpoolToMessager(params MPoolReplaceParams) error {
+	fullNodeStruct := params.FullNode.(*client.FullNodeStruct)
 
 	fullNodeStruct.IMessagePoolStruct.Internal.MpoolPushMessage = func(ctx context.Context, p1 *types.UnsignedMessage, p2 *types.MessageSendSpec) (*types.SignedMessage, error) {
 		//todo use MpoolPushSignedMessage to replace MpoolPushMessage.
 		// but due to louts mpool, cannt repub messager not in local, so may stuck in daemon pool
 		// if this issue was fixed, should changed it
-		uid, err := messager.PushMessage(ctx, p1, nil)
-		if err != nil {
-			return nil, err
+		var uid string
+		var err error
+		if params.Mgr != nil {
+			account, err := params.Mgr.GetAccount(ctx, p1.From)
+			if err != nil {
+				return nil, err
+			}
+			uid, err = params.Messager.ForcePushMessage(ctx, account, p1, nil)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			//for client , accout has in token
+			uid, err = params.Messager.PushMessage(ctx, p1, nil)
+			if err != nil {
+				return nil, err
+			}
 		}
+
 		var showLog bool
 		for {
-			msgDetail, err := messager.GetMessageByUid(ctx, uid)
+			msgDetail, err := params.Messager.GetMessageByUid(ctx, uid)
 			if err != nil {
 				log.Errorf("get message detail from messager %w", err)
 				return nil, err
@@ -83,7 +107,7 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 		for {
 			select {
 			case <-doneCh:
-				msg, err := messager.GetMessageByCid(ctx, mCid)
+				msg, err := params.Messager.GetMessageByCid(ctx, mCid)
 				if err != nil {
 					log.Warnw("get message fail while wait %w", err)
 					time.Sleep(time.Second * 5)
@@ -134,7 +158,7 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 	}
 
 	fullNodeStruct.IChainInfoStruct.Internal.StateSearchMsg = func(ctx context.Context, from types.TipSetKey, mCid cid.Cid, _ abi.ChainEpoch, _ bool) (*apitypes.MsgLookup, error) {
-		msg, err := messager.GetMessageByCid(ctx, mCid)
+		msg, err := params.Messager.GetMessageByCid(ctx, mCid)
 		if err != nil {
 			log.Warnw("get message fail while wait %w", err)
 			time.Sleep(time.Second * 5)
@@ -176,7 +200,7 @@ func ConvertMpoolToMessager(fullNode apiface.FullNode, messager IMessager) error
 	}
 
 	fullNodeStruct.IChainInfoStruct.Internal.ChainGetMessage = func(ctx context.Context, mid cid.Cid) (*types.UnsignedMessage, error) {
-		msg, err := messager.GetMessageByCid(ctx, mid)
+		msg, err := params.Messager.GetMessageByCid(ctx, mid)
 		if err != nil {
 			return fullNodeStruct.ChainGetMessage(ctx, mid)
 		}
