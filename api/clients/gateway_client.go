@@ -23,7 +23,7 @@ func newGatewayWalletClient(mctx metrics.MetricsCtx, mgr minermgr.IMinerMgr, nod
 	}
 
 	var client gateway.WalletClient
-	closer, err := jsonrpc.NewClient(mctx, dialAddr, "Gateway", client, info.AuthHeader())
+	closer, err := jsonrpc.NewClient(mctx, dialAddr, "Gateway", &client, info.AuthHeader())
 
 	return &GatewayClient{
 		innerClient: client,

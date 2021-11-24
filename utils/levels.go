@@ -15,7 +15,6 @@ func SetupLogLevels() {
 		_ = logging.SetLogLevel("events", "INFO")
 		_ = logging.SetLogLevel("fsm", "INFO")
 		_ = logging.SetLogLevel("evtsm", "INFO")
-		_ = logging.SetLogLevel("storageadapter", "INFO")
 		_ = logging.SetLogLevel("dagstore/upgrader", "INFO")
 	} else {
 		_ = logging.SetLogLevel("*", val)
