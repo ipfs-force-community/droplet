@@ -5,11 +5,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/minermgr"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 )
 
 type MsgMeta struct {
@@ -39,16 +41,34 @@ func (walletClient *WalletClient) WalletSign(ctx context.Context, k address.Addr
 	return walletClient.Internal.WalletSign(ctx, k, msg, meta)
 }
 
-func NewWalletClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, cfg *config.Signer) (ISinger, error) {
-	client, closer, err := newWalletClient(context.Background(), cfg.Token, cfg.Url)
+type SignerParams struct {
+	fx.In
+	SignerCfg *config.Signer
+	Mgr       minermgr.IMinerMgr `optional:"true"`
+}
+
+func NewISignerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, params SignerParams) (ISinger, error) {
+	var signer ISinger
+	var closer jsonrpc.ClientCloser
+	var err error
+	switch params.SignerCfg.SignerType {
+	case "local":
+		signer, closer, err = newWalletClient(context.Background(), params.SignerCfg.Token, params.SignerCfg.Url)
+	case "gateway":
+		signer, closer, err = newGatewayWalletClient(context.Background(), params.Mgr, params.SignerCfg)
+	default:
+		return nil, xerrors.Errorf("unsupport sign type %s", params.SignerCfg.SignerType)
+	}
+
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {
-			closer()
+			if closer != nil {
+				closer()
+			}
 			return nil
 		},
 	})
-
-	return client, err
+	return signer, err
 }
 
 func newWalletClient(ctx context.Context, token, url string) (*WalletClient, jsonrpc.ClientCloser, error) {

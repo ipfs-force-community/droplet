@@ -53,8 +53,9 @@ type Common struct {
 }
 
 type Signer struct {
-	Url   string
-	Token string
+	SignerType string `toml:"Type"` //remote wallet/gategory
+	Url        string
+	Token      string
 }
 
 type Mysql struct {
