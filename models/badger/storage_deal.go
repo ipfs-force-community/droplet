@@ -4,18 +4,17 @@ import (
 	"bytes"
 	"errors"
 	"github.com/filecoin-project/go-address"
+	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/types"
-	"golang.org/x/xerrors"
-
-	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	"golang.org/x/xerrors"
 )
 
 type storageDealRepo struct {
@@ -118,11 +117,11 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status 
 	var err error
 	if err = sdr.travelDeals(
 		func(deal *types.MinerDeal) (err error) {
-		if deal.ClientDealProposal.Proposal.Provider == addr && deal.State == status {
-			storageDeals = append(storageDeals, deal)
-		}
-		return nil
-	}); err != nil {
+			if deal.ClientDealProposal.Proposal.Provider == addr && deal.State == status {
+				storageDeals = append(storageDeals, deal)
+			}
+			return nil
+		}); err != nil {
 		if xerrors.Is(err, justWantStopTravelErr) {
 			return storageDeals, nil
 		}
@@ -143,7 +142,7 @@ func (sdr *storageDealRepo) UpdateDealStatus(proposalCid cid.Cid, status storage
 
 func (sdr *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
-	if err := sdr.travelDeals(func(deal *types.MinerDeal) (err error) {
+	if err := travelDeals(sdr.ds, func(deal *types.MinerDeal) (err error) {
 		if deal.ClientDealProposal.Proposal.Provider == miner {
 			storageDeals = append(storageDeals, deal)
 		}
@@ -223,14 +222,13 @@ var justWantStopTravelErr = errors.New("stop travel")
 func (dsr *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error) {
 	var deal *types.MinerDeal
 	var err error
-	if err = dsr.travelDeals(
-		func(inDeal *types.MinerDeal) error {
-			if inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.DealID == dealID {
-				deal = inDeal
-				return xerrors.Errorf("find the deal, so stop:%w", justWantStopTravelErr)
-			}
-			return nil
-		}); err != nil {
+	if err = travelDeals(dsr.ds, func(inDeal *types.MinerDeal) (err error) {
+		if inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.DealID == dealID {
+			deal = inDeal
+			return xerrors.Errorf("find the deal, so stop:%w", justWantStopTravelErr)
+		}
+		return nil
+	}); err != nil {
 		if xerrors.Is(err, justWantStopTravelErr) {
 			return deal, nil
 		}
@@ -239,7 +237,7 @@ func (dsr *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.De
 	return nil, repo.ErrNotFound
 }
 
-func (dsr *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
+func (dsr *storageDealRepo) GetDealsByPieceStatusV0(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
 	var deals []*types.MinerDeal
 	var err error
 	if err = dsr.travelDeals(
@@ -253,4 +251,15 @@ func (dsr *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceSt
 	}
 
 	return deals, nil
+}
+
+func (dsr *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
+	var deals []*types.MinerDeal
+
+	return deals, travelDeals(dsr.ds, func(inDeal *types.MinerDeal) (err error) {
+		if inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.PieceStatus == pieceStatus {
+			deals = append(deals, inDeal)
+		}
+		return nil
+	})
 }
