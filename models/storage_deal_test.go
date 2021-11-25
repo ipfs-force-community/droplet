@@ -2,11 +2,11 @@ package models
 
 import (
 	"bytes"
-	"github.com/filecoin-project/venus-market/types"
-	"github.com/stretchr/testify/require"
-	"os"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/venus-market/types"
+	"github.com/stretchr/testify/require"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -34,13 +34,7 @@ func TestStorageDeal(t *testing.T) {
 	})
 
 	t.Run("badger", func(t *testing.T) {
-		path := "./badger_storage_deal_db"
-		db := BadgerDB(t, path)
-		defer func() {
-			assert.Nil(t, db.Close())
-			assert.Nil(t, os.RemoveAll(path))
-
-		}()
+		db := BadgerDB(t)
 		testStorageDeal(t, repo.StorageDealRepo(badger.NewStorageDealRepo(db)))
 	})
 }

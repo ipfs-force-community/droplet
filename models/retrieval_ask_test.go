@@ -1,7 +1,6 @@
 package models
 
 import (
-	"os"
 	"testing"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -22,13 +21,7 @@ func TestRetrievalAsk(t *testing.T) {
 	})
 
 	t.Run("badger", func(t *testing.T) {
-		path := "./badger_retrieval_ask_db"
-		db := BadgerDB(t, path)
-		defer func() {
-			assert.Nil(t, db.Close())
-			assert.Nil(t, os.RemoveAll(path))
-
-		}()
+		db := BadgerDB(t)
 		testRetrievalAsk(t, badger.NewRetrievalAskRepo(db))
 	})
 }
@@ -36,7 +29,7 @@ func TestRetrievalAsk(t *testing.T) {
 func testRetrievalAsk(t *testing.T, rtAskRepo repo.IRetrievalAskRepo) {
 	addr := randAddress(t)
 	_, err := rtAskRepo.GetAsk(addr)
-	assert.ErrorIs(t, err, repo.ErrNotFound, "must be an not found error")
+	assert.Equal(t, err.Error(), "datastore: key not found", "must be an not found error")
 
 	ask1 := &retrievalmarket.Ask{
 		PricePerByte:            abi.NewTokenAmount(1024),

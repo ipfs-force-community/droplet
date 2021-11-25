@@ -35,11 +35,10 @@ func MysqlDB(t *testing.T) repo.Repo {
 	return repo
 }
 
-func BadgerDB(t *testing.T, path string) *badger.Datastore {
-	if len(path) == 0 {
-		t.Skipf("badger path is nil")
-	}
-	db, err := badger.NewDatastore(path, &badger.DefaultOptions)
+func BadgerDB(t *testing.T) *badger.Datastore {
+	opts := &badger.DefaultOptions
+	opts.InMemory = true
+	db, err := badger.NewDatastore("", opts)
 	assert.Nil(t, err)
 	return db
 }

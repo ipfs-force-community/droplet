@@ -70,9 +70,7 @@ func (r MysqlRepo) Close() error {
 
 func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 	gorm.ErrRecordNotFound = repo.ErrNotFound
-
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
-
 	if err != nil {
 		return nil, xerrors.Errorf("[db connection failed] Database name: %s %w", cfg.ConnectionString, err)
 	}

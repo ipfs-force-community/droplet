@@ -1,25 +1,20 @@
 package models
 
 import (
+	"testing"
+
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/models/badger"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCIDInfo(t *testing.T) {
 	t.Run("badger", func(t *testing.T) {
-		path := "./badger_cid_info"
-		db := BadgerDB(t, path)
-		defer func() {
-			assert.Nil(t, db.Close())
-			assert.Nil(t, os.RemoveAll(path))
-		}()
+		db := BadgerDB(t)
 		doTestCidinfo(t, badger.NewBadgerCidInfoRepo(db))
 	})
 
