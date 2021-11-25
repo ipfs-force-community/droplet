@@ -61,12 +61,6 @@ var (
 		Usage: "token for connect venus messager， if specify this flag ,override token set by venus-auth flag ",
 	}
 
-	SignerTypeFlag = &cli.StringFlag{
-		Name:        "signer-type",
-		Usage:       "signer service type（remote, gateway）",
-		DefaultText: "remote",
-	}
-
 	SignerUrlFlag = &cli.StringFlag{
 		Name:  "signer-url",
 		Usage: "used to connect signer service for sign",
@@ -211,9 +205,6 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 		cfg.Messager.Token = cctx.String("auth-token")
 	}
 
-	if cctx.IsSet("signer-type") {
-		cfg.Signer.SignerType = cctx.String("signer-type")
-	}
 	if cctx.IsSet("signer-url") {
 		cfg.Signer.Url = cctx.String("signer-url")
 	}

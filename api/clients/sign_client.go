@@ -52,7 +52,7 @@ func NewISignerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, params SignerPar
 	var closer jsonrpc.ClientCloser
 	var err error
 	switch params.SignerCfg.SignerType {
-	case "local":
+	case "wallet":
 		signer, closer, err = newWalletClient(context.Background(), params.SignerCfg.Token, params.SignerCfg.Url)
 	case "gateway":
 		signer, closer, err = newGatewayWalletClient(context.Background(), params.Mgr, params.SignerCfg)

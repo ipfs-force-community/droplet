@@ -61,6 +61,10 @@ var (
 		Name:  "node-url",
 		Usage: "url to connect to daemon service",
 	}
+	NodeTokenFlag = &cli.StringFlag{
+		Name:  "node-token",
+		Usage: "node token",
+	}
 
 	AuthUrlFlag = &cli.StringFlag{
 		Name:  "auth-url",
@@ -75,7 +79,17 @@ var (
 		Name:  "messager-url",
 		Usage: "url to connect messager service",
 	}
+	MessagerTokenFlag = &cli.StringFlag{
+		Name:   "messager-token",
+		Usage:  "messager token",
+		Hidden: true,
+	}
 
+	SignerTypeFlag = &cli.StringFlag{
+		Name:        "signer-type",
+		Usage:       "signer service type（wallet, gateway）",
+		DefaultText: "wallet",
+	}
 	SignerUrlFlag = &cli.StringFlag{
 		Name:  "signer-url",
 		Usage: "used to connect signer service for sign",
@@ -113,9 +127,12 @@ func main() {
 				Usage: "run market daemon",
 				Flags: []cli.Flag{
 					NodeUrlFlag,
+					NodeTokenFlag,
 					AuthUrlFlag,
 					AuthTokeFlag,
 					MessagerUrlFlag,
+					MessagerTokenFlag,
+					SignerTypeFlag,
 					SignerUrlFlag,
 					SignerTokenFlag,
 					PieceStorageFlag,
@@ -233,28 +250,50 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	if cctx.IsSet("repo") {
 		cfg.HomeDir = cctx.String("repo")
 	}
+
 	if cctx.IsSet("node-url") {
 		cfg.Node.Url = cctx.String("node-url")
-	}
-
-	if cctx.IsSet("auth-url") {
-		cfg.AuthNode.Url = cctx.String("auth-url")
-	}
-	if cctx.IsSet("auth-token") {
-		cfg.AuthNode.Token = cctx.String("auth-token")
-		cfg.Node.Token = cctx.String("auth-token")
 	}
 
 	if cctx.IsSet("messager-url") {
 		cfg.Messager.Url = cctx.String("messager-url")
 	}
-	if cctx.IsSet("auth-token") {
-		cfg.Messager.Token = cctx.String("auth-token")
+
+	if cctx.IsSet("auth-url") {
+		cfg.AuthNode.Url = cctx.String("auth-url")
+	}
+
+	if cctx.IsSet("signer-type") {
+		cfg.Signer.SignerType = cctx.String("signer-type")
 	}
 
 	if cctx.IsSet("signer-url") {
 		cfg.Signer.Url = cctx.String("signer-url")
 	}
+
+	if cctx.IsSet("auth-token") {
+		cfg.Node.Token = cctx.String("auth-token")
+		if len(cfg.AuthNode.Url) > 0 {
+			cfg.AuthNode.Token = cctx.String("auth-token")
+		}
+
+		if len(cfg.Messager.Url) > 0 {
+			cfg.Messager.Token = cctx.String("auth-token")
+		}
+
+		if cfg.Signer.SignerType == "gateway" {
+			cfg.Signer.Token = cctx.String("auth-token")
+		}
+	}
+
+	if cctx.IsSet("node-token") {
+		cfg.Node.Token = cctx.String("node-token")
+	}
+
+	if cctx.IsSet("messager-token") {
+		cfg.Messager.Token = cctx.String("messager-token")
+	}
+
 	if cctx.IsSet("signer-token") {
 		cfg.Signer.Token = cctx.String("signer-token")
 	}
