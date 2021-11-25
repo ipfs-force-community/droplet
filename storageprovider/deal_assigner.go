@@ -2,6 +2,7 @@ package storageprovider
 
 import (
 	"context"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 	"math"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -117,20 +117,24 @@ func (ps *dealAssigner) GetDeals(ctx context.Context, mAddr address.Address, pag
 	}
 
 	for _, md := range mds {
-		dis = append(dis, &types.DealInfo{
-			DealInfo: piecestore.DealInfo{
-				DealID:   md.DealID,
-				SectorID: md.SectorNumber,
-				Offset:   md.Offset,
-				Length:   md.Proposal.PieceSize,
-			},
-			ClientDealProposal: md.ClientDealProposal,
-			TransferType:       md.Ref.TransferType,
-			Root:               md.Ref.Root,
-			PublishCid:         *md.PublishCid,
-			FastRetrieval:      md.FastRetrieval,
-			Status:             md.PieceStatus,
-		})
+		// TODO: 要排除不可密封状态的订单?
+		if md.DealID > 0 && !isTerminateState(md) {
+			dis = append(dis, &types.DealInfo{
+
+				DealInfo: piecestore.DealInfo{
+					DealID:   md.DealID,
+					SectorID: md.SectorNumber,
+					Offset:   md.Offset,
+					Length:   md.Proposal.PieceSize,
+				},
+				ClientDealProposal: md.ClientDealProposal,
+				TransferType:       md.Ref.TransferType,
+				Root:               md.Ref.Root,
+				PublishCid:         *md.PublishCid,
+				FastRetrieval:      md.FastRetrieval,
+				Status:             md.PieceStatus,
+			})
+		}
 	}
 
 	return dis, nil
@@ -161,6 +165,10 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 		curPieceSize uint64
 	)
 	for _, md := range mds {
+		// TODO: 要排除不可密封状态的订单?
+		if md.DealID == 0 || isTerminateState(md) {
+			continue
+		}
 		if ((spec.MaxPieceSize > 0 && uint64(md.Proposal.PieceSize)+curPieceSize < spec.MaxPieceSize) || spec.MaxPieceSize == 0) && numberPiece+1 < spec.MaxPiece {
 			result = append(result, &types.DealInfoIncludePath{
 				DealProposal:    md.Proposal,

@@ -80,6 +80,7 @@ func (dealTracker *DealTracker) checkPreCommit(ctx metrics.MetricsCtx, addr addr
 		_, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
 		if err != nil {
 			log.Errorf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+			continue
 		}
 		err = dealTracker.storageRepo.UpdateDealStatus(deal.ProposalCid, storagemarket.StorageDealSealing)
 		if err != nil {
@@ -98,6 +99,7 @@ func (dealTracker *DealTracker) checkCommit(ctx metrics.MetricsCtx, addr address
 		dealProposal, err := dealTracker.fullNode.StateMarketStorageDeal(ctx, deal.DealID, tsk)
 		if err != nil {
 			log.Errorf("get market deal for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+			continue
 		}
 		if dealProposal.State.SectorStartEpoch > -1 { //include in sector
 			err = dealTracker.storageRepo.UpdateDealStatus(deal.ProposalCid, storagemarket.StorageDealActive)
@@ -118,6 +120,7 @@ func (dealTracker *DealTracker) checkSlash(ctx metrics.MetricsCtx, addr address.
 		dealProposal, err := dealTracker.fullNode.StateMarketStorageDeal(ctx, deal.DealID, tsk)
 		if err != nil {
 			log.Errorf("get market deal info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+			continue
 		}
 		if dealProposal.State.SlashEpoch > -1 { //include in sector
 			err = dealTracker.storageRepo.UpdateDealStatus(deal.ProposalCid, storagemarket.StorageDealSlashed)
