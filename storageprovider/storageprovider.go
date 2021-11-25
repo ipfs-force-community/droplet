@@ -206,10 +206,12 @@ func (p *StorageProviderV2Impl) restartDeals(ctx context.Context, deals []*types
 			continue
 		}
 
-		err := p.dealProcess.HandleOff(ctx, deal)
-		if err != nil {
-			return err
-		}
+		go func() {
+			err := p.dealProcess.HandleOff(ctx, deal)
+			if err != nil {
+				log.Errorf("deal %s handle off err: %s", deal.ProposalCid, err)
+			}
+		}()
 	}
 	return nil
 }
@@ -311,7 +313,13 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 
 	d.State = storagemarket.StorageDealReserveProviderFunds
 
-	return p.dealProcess.HandleOff(ctx, d)
+	go func() {
+		err := p.dealProcess.HandleOff(ctx, d)
+		if err != nil {
+			log.Errorf("deal %s handle off err: %s", propCid, err)
+		}
+	}()
+	return nil
 }
 
 // AddStorageCollateral adds storage collateral
