@@ -192,9 +192,17 @@ func (p *StorageProviderV2Impl) start(ctx context.Context) error {
 	return nil
 }
 
+func isTerminateState(deal *types.MinerDeal) bool {
+	if deal.State == storagemarket.StorageDealSlashed || deal.State == storagemarket.StorageDealExpired || deal.State == storagemarket.StorageDealError {
+		return true
+	}
+
+	return false
+}
+
 func (p *StorageProviderV2Impl) restartDeals(ctx context.Context, deals []*types.MinerDeal) error {
 	for _, deal := range deals {
-		if deal.State == storagemarket.StorageDealSlashed || deal.State == storagemarket.StorageDealExpired || deal.State == storagemarket.StorageDealError {
+		if isTerminateState(deal) {
 			continue
 		}
 
@@ -221,6 +229,15 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 	d, err := p.dealStore.GetDeal(propCid)
 	if err != nil {
 		return xerrors.Errorf("failed getting deal %s: %w", propCid, err)
+	}
+
+	// TODO: Check the deal status
+	if isTerminateState(d) {
+		return xerrors.Errorf("deal %s is terminate state", propCid)
+	}
+
+	if d.State > storagemarket.StorageDealWaitingForData {
+		return xerrors.Errorf("deal %s does not support offline data", propCid)
 	}
 
 	tempfi, err := p.fs.CreateTemp()
@@ -286,9 +303,9 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 		return xerrors.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, d.Proposal.PieceCID)
 	}
 
-	log.Debugw("will fire ProviderEventVerifiedData for imported file", "propCid", propCid)
+	log.Debugw("will fire ReserveProviderFunds for imported file", "propCid", propCid)
 
-	// TODO: 实现 ProviderEventVerifiedData 后的状态机逻辑
+	// "will fire VerifiedData for imported file
 	d.PiecePath = filestore.Path("")
 	d.MetadataPath = tempfi.Path()
 
