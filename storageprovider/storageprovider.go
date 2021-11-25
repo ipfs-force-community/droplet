@@ -193,7 +193,8 @@ func (p *StorageProviderV2Impl) start(ctx context.Context) error {
 }
 
 func isTerminateState(deal *types.MinerDeal) bool {
-	if deal.State == storagemarket.StorageDealSlashed || deal.State == storagemarket.StorageDealExpired || deal.State == storagemarket.StorageDealError {
+	if deal.State == storagemarket.StorageDealSlashed || deal.State == storagemarket.StorageDealExpired ||
+		deal.State == storagemarket.StorageDealError || deal.State == storagemarket.StorageDealFailing  {
 		return true
 	}
 
@@ -308,13 +309,14 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 	log.Debugw("will fire ReserveProviderFunds for imported file", "propCid", propCid)
 
 	// "will fire VerifiedData for imported file
-	d.PiecePath = filestore.Path("")
-	d.MetadataPath = tempfi.Path()
+	d.PiecePath = tempfi.Path()
+	d.MetadataPath = filestore.Path("")
+	log.Infof("deal %s piece path: %s", propCid, d.PiecePath)
 
 	d.State = storagemarket.StorageDealReserveProviderFunds
 
 	go func() {
-		err := p.dealProcess.HandleOff(ctx, d)
+		err := p.dealProcess.HandleOff(context.TODO(), d)
 		if err != nil {
 			log.Errorf("deal %s handle off err: %s", propCid, err)
 		}
