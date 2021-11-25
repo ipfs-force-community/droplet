@@ -56,11 +56,11 @@ func (r retrievalDealRepo) GetDeal(id peer.ID, id2 retrievalmarket.DealID) (*typ
 
 func (r retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*types.ProviderDealState, error) {
 	var result *types.ProviderDealState
-	err := r.travelDeals(func(deal *types.ProviderDealState) error {
+	err := travelDeals(r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
 		if deal.ChannelID != nil && deal.ChannelID.Initiator == chid.Initiator && deal.ChannelID.Responder == chid.Responder && deal.ChannelID.ID == chid.ID {
 			result = deal
 		}
-		return nil
+		return true, nil
 	})
 	if err != nil {
 		return nil, err
@@ -99,25 +99,4 @@ func (r retrievalDealRepo) ListDeals(pageIndex, pageSize int) ([]*types.Provider
 	}
 
 	return retrievalDeals, nil
-}
-
-func (r retrievalDealRepo) travelDeals(travelFn func(deal *types.ProviderDealState) error) error {
-	result, err := r.ds.Query(query.Query{})
-	if err != nil {
-		return err
-	}
-	defer result.Close() //nolint:errcheck
-	for res := range result.Next() {
-		if res.Error != nil {
-			return err
-		}
-		var deal types.ProviderDealState
-		if err = cborrpc.ReadCborRPC(bytes.NewReader(res.Value), &deal); err != nil {
-			return err
-		}
-		if err = travelFn(&deal); err != nil {
-			return err
-		}
-	}
-	return nil
 }
