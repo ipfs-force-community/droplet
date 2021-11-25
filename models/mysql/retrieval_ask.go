@@ -29,7 +29,7 @@ func NewRetrievalAskRepo(ds *gorm.DB) repo.IRetrievalAskRepo {
 
 type modelRetrievalAsk struct {
 	ID                      uint       `gorm:"primary_key"`
-	Address                 Address    `gorm:"column:address;uniqueIndex;type:varchar(128)"`
+	Address                 DBAddress  `gorm:"column:address;uniqueIndex;type:varchar(128)"`
 	PricePerByte            mtypes.Int `gorm:"column:price_per_byte;type:varchar(256);"`
 	UnsealPrice             mtypes.Int `gorm:"column:unseal_price;type:varchar(256);"`
 	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;"`
@@ -43,7 +43,7 @@ func (a *modelRetrievalAsk) TableName() string {
 
 func (r *retrievalAskRepo) GetAsk(addr address.Address) (*retrievalmarket.Ask, error) {
 	var mAsk modelRetrievalAsk
-	if err := r.ds.Take(&mAsk, "address = ?", cutPrefix(addr)).Error; err != nil {
+	if err := r.ds.Take(&mAsk, "address = ?", DBAddress(addr).String()).Error; err != nil {
 		if xerrors.Is(err, gorm.ErrRecordNotFound) {
 			err = repo.ErrNotFound
 		}
@@ -62,7 +62,7 @@ func (r *retrievalAskRepo) SetAsk(addr address.Address, ask *retrievalmarket.Ask
 		Columns:   []clause.Column{{Name: "address"}},
 		UpdateAll: true,
 	}).Save(&modelRetrievalAsk{
-		Address:                 toAddress(addr),
+		Address:                 DBAddress(addr),
 		PricePerByte:            convertBigInt(ask.PricePerByte),
 		UnsealPrice:             convertBigInt(ask.UnsealPrice),
 		PaymentInterval:         ask.PaymentInterval,

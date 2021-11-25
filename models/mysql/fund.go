@@ -9,7 +9,7 @@ import (
 )
 
 type fundedAddressState struct {
-	Addr        Address    `gorm:"column:addr;type:varchar(128);primary_key"`
+	Addr        DBAddress  `gorm:"column:addr;type:varchar(128);primary_key"`
 	AmtReserved mtypes.Int `gorm:"column:amt_reserved;type:varchar(256);"`
 	MsgCid      string     `gorm:"column:msg_cid;type:varchar(128);"`
 }
@@ -20,7 +20,7 @@ func (fas *fundedAddressState) TableName() string {
 
 func fromFundedAddressState(src *types.FundedAddressState) *fundedAddressState {
 	fds := &fundedAddressState{
-		Addr:        toAddress(src.Addr),
+		Addr:        DBAddress(src.Addr),
 		MsgCid:      decodeCidPtr(src.MsgCid),
 		AmtReserved: convertBigInt(src.AmtReserved),
 	}
@@ -57,7 +57,7 @@ func (f *fundedAddressStateRepo) SaveFundedAddressState(fds *types.FundedAddress
 
 func (f *fundedAddressStateRepo) GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error) {
 	var fas fundedAddressState
-	err := f.DB.Take(&fas, "addr = ?", cutPrefix(addr)).Error
+	err := f.DB.Take(&fas, "addr = ?", DBAddress(addr).String()).Error
 	if err != nil {
 		return nil, err
 	}

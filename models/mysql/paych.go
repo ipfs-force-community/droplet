@@ -13,9 +13,9 @@ import (
 
 type channelInfo struct {
 	ChannelID     string     `gorm:"column:channel_id;type:varchar(128);primary_key;"`
-	Channel       *Address   `gorm:"column:channel;type:varchar(128);"`
-	Control       Address    `gorm:"column:control;type:varchar(128);"`
-	Target        Address    `gorm:"column:target;type:varchar(128);"`
+	Channel       DBAddress  `gorm:"column:channel;type:varchar(128);"`
+	Control       DBAddress  `gorm:"column:control;type:varchar(128);"`
+	Target        DBAddress  `gorm:"column:target;type:varchar(128);"`
 	Direction     uint64     `gorm:"column:direction;type:bigint unsigned;"`
 	NextLane      uint64     `gorm:"column:next_lane;type:bigint unsigned;"`
 	Amount        mtypes.Int `gorm:"column:amount;type:varchar(256);"`
@@ -36,9 +36,8 @@ func (c *channelInfo) TableName() string {
 func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 	info := &channelInfo{
 		ChannelID:     src.ChannelID,
-		Channel:       toAddressPtr(src.Channel),
-		Control:       toAddress(src.Control),
-		Target:        toAddress(src.Target),
+		Control:       DBAddress(src.Control),
+		Target:        DBAddress(src.Target),
 		Direction:     src.Direction,
 		NextLane:      src.NextLane,
 		Amount:        convertBigInt(src.Amount),
@@ -47,6 +46,11 @@ func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 		AddFundsMsg:   decodeCidPtr(src.AddFundsMsg),
 		Settling:      src.Settling,
 		VoucherInfo:   src.Vouchers,
+	}
+	if src.Channel == nil {
+		info.Channel = DBAddress{}
+	} else {
+		info.Channel = DBAddress(*src.Channel)
 	}
 
 	return info
@@ -115,7 +119,7 @@ func (c *channelInfoRepo) CreateChannel(from address.Address, to address.Address
 
 func (c *channelInfoRepo) GetChannelByAddress(channel address.Address) (*types.ChannelInfo, error) {
 	var info channelInfo
-	err := c.DB.Take(&info, "channel = ? and is_deleted = 0", cutPrefix(channel)).Error
+	err := c.DB.Take(&info, "channel = ? and is_deleted = 0", DBAddress(channel).String()).Error
 	if err != nil {
 		if xerrors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, types.ErrChannelNotFound
@@ -151,7 +155,7 @@ func (c *channelInfoRepo) GetChannelByMessageCid(mcid cid.Cid) (*types.ChannelIn
 func (c *channelInfoRepo) OutboundActiveByFromTo(from address.Address, to address.Address) (*types.ChannelInfo, error) {
 	var ci channelInfo
 	err := c.DB.Take(&ci, "direction = ? and settling = ? and control = ? and target = ? and is_deleted = 0",
-		types.DirOutbound, false, cutPrefix(from), cutPrefix(to)).Error
+		types.DirOutbound, false, DBAddress(from).String(), DBAddress(to).String()).Error
 	if err != nil {
 		if xerrors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, types.ErrChannelNotFound
@@ -182,16 +186,16 @@ func (c *channelInfoRepo) WithPendingAddFunds() ([]*types.ChannelInfo, error) {
 
 func (c *channelInfoRepo) ListChannel() ([]address.Address, error) {
 	var infos []*channelInfo
-	err := c.DB.Find(&infos, "channel != ? and is_deleted = 0", cutPrefix(address.Undef)).Error
+	err := c.DB.Find(&infos, "channel != ? and is_deleted = 0", UndefDBAddress.String()).Error
 	if err != nil {
 		return nil, err
 	}
 	list := make([]address.Address, 0, len(infos))
 	for _, info := range infos {
-		if info.Channel == nil {
+		if info.Channel == UndefDBAddress {
 			continue
 		}
-		list = append(list, (*info.Channel).addr())
+		list = append(list, info.Channel.addr())
 	}
 	return list, nil
 }

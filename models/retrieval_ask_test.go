@@ -29,7 +29,7 @@ func TestRetrievalAsk(t *testing.T) {
 func testRetrievalAsk(t *testing.T, rtAskRepo repo.IRetrievalAskRepo) {
 	addr := randAddress(t)
 	_, err := rtAskRepo.GetAsk(addr)
-	assert.Equal(t, err.Error(), "datastore: key not found", "must be an not found error")
+	assert.Equal(t, err.Error(), repo.ErrNotFound.Error(), "must be an not found error")
 
 	ask1 := &retrievalmarket.Ask{
 		PricePerByte:            abi.NewTokenAmount(1024),

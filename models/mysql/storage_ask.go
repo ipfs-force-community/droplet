@@ -14,7 +14,7 @@ import (
 
 type storageAsk struct {
 	ID            uint       `gorm:"primary_key"`
-	Miner         Address    `gorm:"column:miner;type:varchar(128);uniqueIndex"`
+	Miner         DBAddress  `gorm:"column:miner;type:varchar(128);uniqueIndex"`
 	Price         mtypes.Int `gorm:"column:price;type:varchar(256);"`
 	VerifiedPrice mtypes.Int `gorm:"column:verified_price;type:varchar(256);"`
 	MinPieceSize  int64      `gorm:"column:min_piece_size;type:bigint;"`
@@ -33,7 +33,7 @@ func (a *storageAsk) TableName() string {
 func fromStorageAsk(src *storagemarket.SignedStorageAsk) *storageAsk {
 	ask := &storageAsk{}
 	if src.Ask != nil {
-		ask.Miner = toAddress(src.Ask.Miner)
+		ask.Miner = DBAddress(src.Ask.Miner)
 		ask.Price = convertBigInt(src.Ask.Price)
 		ask.VerifiedPrice = convertBigInt(src.Ask.VerifiedPrice)
 		ask.MinPieceSize = int64(src.Ask.MinPieceSize)
@@ -85,7 +85,7 @@ func NewStorageAskRepo(db *gorm.DB) *storageAskRepo {
 
 func (a *storageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {
 	var res storageAsk
-	err := a.DB.Take(&res, "miner = ?", cutPrefix(miner)).Error
+	err := a.DB.Take(&res, "miner = ?", DBAddress(miner).String()).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, repo.ErrNotFound

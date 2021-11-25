@@ -142,69 +142,48 @@ func decodePeerId(str string) (peer.ID, error) {
 	return peer.Decode(str)
 }
 
-type Address address.Address
+type DBAddress address.Address
 
-var UndefAddress = Address{}
+var UndefDBAddress = DBAddress{}
 
-func (a *Address) Scan(value interface{}) error {
+func (a *DBAddress) Scan(value interface{}) error {
 	val, ok := value.([]byte)
 	if !ok {
 		return xerrors.New("address should be a `[]byte`")
 	}
-	v := string(val)
-	if v == address.UndefAddressString {
-		*a = UndefAddress
+	if len(val) == 0 {
+		*a = UndefDBAddress
 		return nil
 	}
-	addr, err := address.NewFromString(address.MainnetPrefix + v)
+	addr, err := address.NewFromString(address.MainnetPrefix + string(val))
 	if err != nil {
 		return err
 	}
-	*a = toAddress(addr)
+	*a = DBAddress(addr)
 
 	return nil
 }
 
-func (a Address) Value() (driver.Value, error) {
-	if a == UndefAddress {
-		return []byte(address.UndefAddressString), nil
+func (a DBAddress) Value() (driver.Value, error) {
+	return a.String(), nil
+}
+
+func (a DBAddress) String() string {
+	if a == UndefDBAddress {
+		return ""
 	}
 	// Remove the prefix identifying the network type，eg. change `f01000` to `01000`
-	return a.String()[1:], nil
+	return address.Address(a).String()[1:]
 }
 
-func (a Address) String() string {
-	return a.addr().String()
-}
-
-func (a Address) addr() address.Address {
+func (a DBAddress) addr() address.Address {
 	return address.Address(a)
 }
 
-func (a *Address) addrPtr() *address.Address {
-	if a == nil {
+func (a DBAddress) addrPtr() *address.Address {
+	if a == UndefDBAddress {
 		return nil
 	}
-	addr := address.Address(*a)
+	addr := address.Address(a)
 	return &addr
-}
-
-func toAddress(addr address.Address) Address {
-	return Address(addr)
-}
-
-func toAddressPtr(addrPtr *address.Address) *Address {
-	if addrPtr == nil {
-		return nil
-	}
-	addr := toAddress(*addrPtr)
-	return &addr
-}
-
-func cutPrefix(addr address.Address) string {
-	if addr == address.Undef {
-		return address.UndefAddressString
-	}
-	// Remove the prefix identifying the network type，eg. change `f01000` to `01000`
-	return addr.String()[1:]
 }
