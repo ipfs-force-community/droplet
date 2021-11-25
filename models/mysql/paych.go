@@ -13,9 +13,9 @@ import (
 
 type channelInfo struct {
 	ChannelID     string     `gorm:"column:channel_id;type:varchar(128);primary_key;"`
-	Channel       string     `gorm:"column:channel;type:varchar(128);"`
-	Control       string     `gorm:"column:control;type:varchar(128);"`
-	Target        string     `gorm:"column:target;type:varchar(128);"`
+	Channel       *Address   `gorm:"column:channel;type:varchar(128);"`
+	Control       Address    `gorm:"column:control;type:varchar(128);"`
+	Target        Address    `gorm:"column:target;type:varchar(128);"`
 	Direction     uint64     `gorm:"column:direction;type:bigint unsigned;"`
 	NextLane      uint64     `gorm:"column:next_lane;type:bigint unsigned;"`
 	Amount        mtypes.Int `gorm:"column:amount;type:varchar(256);"`
@@ -36,9 +36,9 @@ func (c *channelInfo) TableName() string {
 func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 	info := &channelInfo{
 		ChannelID:     src.ChannelID,
-		Channel:       decodeAddrPtr(src.Channel),
-		Control:       src.Control.String(),
-		Target:        src.Target.String(),
+		Channel:       toAddressPtr(src.Channel),
+		Control:       toAddress(src.Control),
+		Target:        toAddress(src.Target),
 		Direction:     src.Direction,
 		NextLane:      src.NextLane,
 		Amount:        convertBigInt(src.Amount),
@@ -55,6 +55,9 @@ func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 func toChannelInfo(src *channelInfo) (*types.ChannelInfo, error) {
 	info := &types.ChannelInfo{
 		ChannelID:     src.ChannelID,
+		Channel:       src.Channel.addrPtr(),
+		Control:       src.Control.addr(),
+		Target:        src.Target.addr(),
 		Direction:     src.Direction,
 		Vouchers:      src.VoucherInfo,
 		NextLane:      src.NextLane,
@@ -62,21 +65,8 @@ func toChannelInfo(src *channelInfo) (*types.ChannelInfo, error) {
 		PendingAmount: fbig.Int{Int: src.PendingAmount.Int},
 		Settling:      src.Settling,
 	}
+
 	var err error
-	info.Channel, err = parseAddrPtr(src.Channel)
-	if err != nil {
-		return nil, err
-	}
-
-	info.Control, err = address.NewFromString(src.Control)
-	if err != nil {
-		return nil, err
-	}
-	info.Target, err = address.NewFromString(src.Target)
-	if err != nil {
-		return nil, err
-	}
-
 	info.CreateMsg, err = parseCidPtr(src.CreateMsg)
 	if err != nil {
 		return nil, err
@@ -125,7 +115,7 @@ func (c *channelInfoRepo) CreateChannel(from address.Address, to address.Address
 
 func (c *channelInfoRepo) GetChannelByAddress(channel address.Address) (*types.ChannelInfo, error) {
 	var info channelInfo
-	err := c.DB.Take(&info, "channel = ? and is_deleted = 0", channel.String()).Error
+	err := c.DB.Take(&info, "channel = ? and is_deleted = 0", cutPrefix(channel)).Error
 	if err != nil {
 		if xerrors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, types.ErrChannelNotFound
@@ -161,7 +151,7 @@ func (c *channelInfoRepo) GetChannelByMessageCid(mcid cid.Cid) (*types.ChannelIn
 func (c *channelInfoRepo) OutboundActiveByFromTo(from address.Address, to address.Address) (*types.ChannelInfo, error) {
 	var ci channelInfo
 	err := c.DB.Take(&ci, "direction = ? and settling = ? and control = ? and target = ? and is_deleted = 0",
-		types.DirOutbound, false, from.String(), to.String()).Error
+		types.DirOutbound, false, cutPrefix(from), cutPrefix(to)).Error
 	if err != nil {
 		if xerrors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, types.ErrChannelNotFound
@@ -192,20 +182,16 @@ func (c *channelInfoRepo) WithPendingAddFunds() ([]*types.ChannelInfo, error) {
 
 func (c *channelInfoRepo) ListChannel() ([]address.Address, error) {
 	var infos []*channelInfo
-	err := c.DB.Find(&infos, "channel != ? and is_deleted = 0", address.Undef.String()).Error
+	err := c.DB.Find(&infos, "channel != ? and is_deleted = 0", cutPrefix(address.Undef)).Error
 	if err != nil {
 		return nil, err
 	}
 	list := make([]address.Address, 0, len(infos))
 	for _, info := range infos {
-		if len(info.Channel) == 0 {
+		if info.Channel == nil {
 			continue
 		}
-		addr, err := address.NewFromString(info.Channel)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, addr)
+		list = append(list, (*info.Channel).addr())
 	}
 	return list, nil
 }

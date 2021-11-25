@@ -80,10 +80,10 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 	addr2 := randAddress(t)
 	msgCid2 := randCid(t)
 	ci2 := &types.ChannelInfo{
-		ChannelID:     uuid.NewString(),
-		Channel:       &addr2,
-		Control:       randAddress(t),
-		Target:        randAddress(t),
+		ChannelID: uuid.NewString(),
+		Channel:   &addr2,
+		//Control:       randAddress(t),
+		//Target:        randAddress(t),
 		Direction:     types.DirInbound,
 		Vouchers:      nil,
 		NextLane:      102,
@@ -94,8 +94,14 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 		Settling:      true,
 	}
 
+	ci3 := &types.ChannelInfo{}
+	*ci3 = *ci2
+	ci3.Channel = nil
+	ci3.ChannelID = uuid.NewString()
+
 	assert.Nil(t, channelRepo.SaveChannel(ci))
 	assert.Nil(t, channelRepo.SaveChannel(ci2))
+	assert.Nil(t, channelRepo.SaveChannel(ci3))
 
 	res, err := channelRepo.GetChannelByChannelID(ci.ChannelID)
 	assert.Nil(t, err)
@@ -103,6 +109,9 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 	res2, err := channelRepo.GetChannelByChannelID(ci2.ChannelID)
 	assert.Nil(t, err)
 	assert.Equal(t, res2, ci2)
+	res_3, err := channelRepo.GetChannelByChannelID(ci3.ChannelID)
+	assert.Nil(t, err)
+	assert.Equal(t, res_3, ci3)
 
 	res3, err := channelRepo.GetChannelByAddress(*ci.Channel)
 	assert.Nil(t, err)

@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"database/sql/driver"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -132,26 +133,6 @@ func decodeCidPtr(c *cid.Cid) string {
 	return c.String()
 }
 
-var undefAddrStr = address.Undef.String()
-
-func parseAddrPtr(str string) (*address.Address, error) {
-	if str == undefAddrStr {
-		return nil, nil
-	}
-	addr, err := address.NewFromString(str)
-	if err != nil {
-		return nil, err
-	}
-	return &addr, nil
-}
-
-func decodeAddrPtr(addr *address.Address) string {
-	if addr == nil {
-		return address.Undef.String()
-	}
-	return addr.String()
-}
-
 func convertBigInt(v big.Int) mtypes.Int {
 	if v.Nil() {
 		return mtypes.Zero()
@@ -161,4 +142,71 @@ func convertBigInt(v big.Int) mtypes.Int {
 
 func decodePeerId(str string) (peer.ID, error) {
 	return peer.Decode(str)
+}
+
+type Address address.Address
+
+var UndefAddress = Address{}
+
+func (a *Address) Scan(value interface{}) error {
+	val, ok := value.([]byte)
+	if !ok {
+		return xerrors.New("address should be a `[]byte`")
+	}
+	v := string(val)
+	if v == address.UndefAddressString {
+		*a = UndefAddress
+		return nil
+	}
+	addr, err := address.NewFromString(address.MainnetPrefix + v)
+	if err != nil {
+		return err
+	}
+	*a = toAddress(addr)
+
+	return nil
+}
+
+func (a Address) Value() (driver.Value, error) {
+	if a == UndefAddress {
+		return []byte(address.UndefAddressString), nil
+	}
+	// Remove the prefix identifying the network type，eg. change `f01000` to `01000`
+	return a.String()[1:], nil
+}
+
+func (a Address) String() string {
+	return a.addr().String()
+}
+
+func (a Address) addr() address.Address {
+	return address.Address(a)
+}
+
+func (a *Address) addrPtr() *address.Address {
+	if a == nil {
+		return nil
+	}
+	addr := address.Address(*a)
+	return &addr
+}
+
+func toAddress(addr address.Address) Address {
+	return Address(addr)
+}
+
+func toAddressPtr(addrPtr *address.Address) *Address {
+	if addrPtr == nil {
+		return nil
+	}
+	addr := toAddress(*addrPtr)
+	return &addr
+}
+
+func cutPrefix(addr address.Address) string {
+	if addr == address.Undef {
+		return address.UndefAddressString
+	}
+	// Remove the prefix identifying the network type，eg. change `f01000` to `01000`
+	return addr.String()[1:]
 }

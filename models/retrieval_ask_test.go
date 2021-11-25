@@ -16,9 +16,9 @@ import (
 func TestRetrievalAsk(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
 		repo := MysqlDB(t)
-		retrivevalAskRepo := repo.RetrievalAskRepo()
+		retrievalAskRepo := repo.RetrievalAskRepo()
 		defer func() { require.NoError(t, repo.Close()) }()
-		testRetrievalAsk(t, retrivevalAskRepo)
+		testRetrievalAsk(t, retrievalAskRepo)
 	})
 
 	t.Run("badger", func(t *testing.T) {
