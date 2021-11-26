@@ -20,7 +20,7 @@ type retrievalDeal struct {
 	DealProposal    `gorm:"embedded;embeddedPrefix:cdp_"`
 	StoreID         uint64     `gorm:"column:store_id;type:bigint unsigned;"`
 	ChannelID       ChannelID  `gorm:"embedded;embeddedPrefix:ci_"`
-	PieceCID        DBCid      `gorm:"column:piece_cid;type:varchar(256);"` //piece info
+	SelStorageProposalCid DBCid     `gorm:"column:sel_proposal_cid;type:varchar(256);"` //piece info
 	Status          uint64     `gorm:"column:status;type:bigint unsigned;"`
 	Receiver        string     `gorm:"column:receiver;type:varchar(256);primary_key"`
 	TotalSent       uint64     `gorm:"column:total_sent;type:bigint unsigned;"`
@@ -36,6 +36,7 @@ type DealProposal struct {
 	ID         uint64 `gorm:"column:proposal_id;type:bigint unsigned;primary_key"`
 
 	Selector                *[]byte    `gorm:"column:selector;type:blob;"` // V1
+	PieceCID                DBCid     `gorm:"column:piece_cid;type:varchar(256);"`
 	PricePerByte            mtypes.Int `gorm:"column:price_perbyte;type:varchar(256);"`
 	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;"` // when to request payment
 	PaymentIntervalIncrease uint64     `gorm:"column:payment_interval_increase;type:bigint unsigned;"`
@@ -58,6 +59,7 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 		},
 		StoreID:         deal.StoreID,
 		Status:          uint64(deal.Status),
+		SelStorageProposalCid: DBCid(deal.SelStorageProposalCid),
 		Receiver:        deal.Receiver.String(),
 		TotalSent:       deal.TotalSent,
 		FundsReceived:   mtypes.Int(deal.FundsReceived),
@@ -76,12 +78,12 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 			ID:        uint64(deal.ChannelID.ID),
 		}
 	}
-	//todo: pieceCID
-	//if deal.PieceCID == nil {
-	//	newdeal.PieceCID = UndefDBCid
-	//} else {
-	//	newdeal.PieceCID = DBCid(*deal.PieceCID)
-	//}
+
+	if deal.DealProposal.PieceCID != nil {
+		newdeal.DealProposal.PieceCID = UndefDBCid
+	}else{
+		newdeal.DealProposal.PieceCID = DBCid(*deal.DealProposal.PieceCID)
+	}
 	return newdeal
 }
 
@@ -91,6 +93,7 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 			PayloadCID: deal.PayloadCID.cid(),
 			ID:         rm.DealID(deal.DealProposal.ID),
 			Params: rm.Params{
+				PieceCID: deal.DealProposal.PieceCID.cidPtr(),
 				PricePerByte:            abi.TokenAmount(deal.PricePerByte),
 				PaymentInterval:         deal.DealProposal.PaymentInterval,
 				PaymentIntervalIncrease: deal.DealProposal.PaymentIntervalIncrease,
@@ -99,6 +102,7 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 		},
 		StoreID:         deal.StoreID,
 		ChannelID:       nil,
+		SelStorageProposalCid: deal.SelStorageProposalCid.cid(),
 		Status:          rm.DealStatus(deal.Status),
 		TotalSent:       deal.TotalSent,
 		FundsReceived:   abi.TokenAmount(deal.FundsReceived),
@@ -111,16 +115,6 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 	if deal.DealProposal.Selector != nil {
 		newdeal.DealProposal.Selector = &cbg.Deferred{Raw: *deal.Selector}
 	}
-
-	// todo: pieceCID
-	//if len(deal.PieceCID) > 0 {
-	//	pieceCid, err := parseCid(deal.PieceCID)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	newdeal.DealProposal.PayloadCID = pieceCid
-	//	newdeal.PieceInfo = &piecestore.PieceInfo{PieceCID: pieceCid}
-	//}
 
 	if len(deal.Receiver) > 0 {
 		newdeal.Receiver, err = decodePeerId(deal.Receiver)
@@ -156,7 +150,7 @@ func (r *retrievalDealRepo) SaveDeal(deal *types.ProviderDealState) error {
 
 func (r *retrievalDealRepo) GetDeal(id peer.ID, id2 rm.DealID) (*types.ProviderDealState, error) {
 	deal := &retrievalDeal{}
-	err := r.Take(RetrievalDealTableName).Take(deal, "cdp_proposal_id=? AND receiver=? ", id2, id.String()).Error
+	err := r.Table(RetrievalDealTableName).Take(deal, "cdp_proposal_id=? AND receiver=? ", id2, id.String()).Error
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +159,7 @@ func (r *retrievalDealRepo) GetDeal(id peer.ID, id2 rm.DealID) (*types.ProviderD
 
 func (r *retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*types.ProviderDealState, error) {
 	deal := &retrievalDeal{}
-	err := r.Take(RetrievalDealTableName).Take(deal, "ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ?", chid.Initiator, chid.Responder, chid.ID).Error
+	err := r.Table(RetrievalDealTableName).Take(deal, "ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ?", chid.Initiator.String(), chid.Responder.String(), chid.ID).Error
 	if err != nil {
 		return nil, err
 	}

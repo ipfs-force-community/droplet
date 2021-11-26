@@ -10,10 +10,13 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 )
 
+var invokeDataMigrate = builder.NextInvoke()
+
 // TODO: 这里没有考虑client和server的数据表是不一样的
 var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 	return builder.Options(
 		builder.Override(new(badger2.MetadataDS), badger2.NewMetadataDS),
+		builder.Override(invokeDataMigrate, func(r repo.Repo) error { return r.Migrate() }),
 		builder.ApplyIfElse(func(s *builder.Settings) bool {
 			return server
 		}, builder.Options(

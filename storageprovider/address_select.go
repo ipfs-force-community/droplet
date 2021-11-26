@@ -3,6 +3,7 @@ package storageprovider
 import (
 	"context"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/minermgr"
 	marketTypes "github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/go-address"
@@ -23,9 +24,10 @@ type addrSelectApi interface {
 
 type AddressSelector struct {
 	config.AddressConfig
+	minermgr.User
 }
 
-func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use marketTypes.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use marketTypes.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, big.Int, error) {
 	if as == nil {
 		// should only happen in some tests
 		log.Warnw("smart address selection disabled, using worker address")
@@ -35,7 +37,7 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 	var addrs []address.Address
 	switch use {
 	case marketTypes.DealPublishAddr:
-		addrs = append(addrs, config.ConvertConfigAddress(as.DealPublishControl)...)
+		addrs = append(addrs, as.Address()...)
 	default:
 		defaultCtl := map[address.Address]struct{}{}
 		for _, a := range mi.ControlAddresses {
@@ -44,7 +46,7 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 		delete(defaultCtl, mi.Owner)
 		delete(defaultCtl, mi.Worker)
 
-		configCtl := append([]address.Address{}, config.ConvertConfigAddress(as.DealPublishControl)...)
+		configCtl := append([]address.Address{}, as.Address()...)
 
 		for _, addr := range configCtl {
 			if addr.Protocol() != address.ID {
@@ -66,9 +68,6 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 
 	if len(addrs) == 0 || !as.DisableWorkerFallback {
 		addrs = append(addrs, mi.Worker)
-	}
-	if !as.DisableOwnerFallback {
-		addrs = append(addrs, mi.Owner)
 	}
 
 	return pickAddress(ctx, a, mi, goodFunds, minFunds, addrs)

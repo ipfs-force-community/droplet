@@ -53,8 +53,9 @@ type Common struct {
 }
 
 type Signer struct {
-	Url   string
-	Token string
+	SignerType string `toml:"Type"` //remote wallet/gategory
+	Url        string
+	Token      string
 }
 
 type Mysql struct {
@@ -99,16 +100,21 @@ type RetrievalPricingDefault struct {
 }
 
 type AddressConfig struct {
-	DealPublishControl []Address
+	DealPublishControl []User
 
-	// DisableOwnerFallback disables usage of the owner address for messages
-	// sent automatically
-	DisableOwnerFallback bool
 	// DisableWorkerFallback disables usage of the worker address for messages
 	// sent automatically, if control addresses are configured.
 	// A control address that doesn't have enough funds will still be chosen
 	// over the worker address if this flag is set.
 	DisableWorkerFallback bool
+}
+
+func (ac AddressConfig) Address() []address.Address {
+	addrs := make([]address.Address, len(ac.DealPublishControl))
+	for index, miner := range ac.DealPublishControl {
+		addrs[index] = address.Address(miner.Addr)
+	}
+	return addrs
 }
 
 type DAGStoreConfig struct {
@@ -147,6 +153,11 @@ type DAGStoreConfig struct {
 
 type PieceStorageString string
 
+type User struct {
+	Addr    Address
+	Account string
+}
+
 // StorageMiner is a miner config
 type MarketConfig struct {
 	Home `toml:"-"`
@@ -165,8 +176,9 @@ type MarketConfig struct {
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
 
-	MinerAddress            []Address
-	RetrievalPaymentAddress Address
+	StorageMiners           []User
+	RetrievalPaymentAddress User
+
 	// When enabled, the miner can accept online deals
 	ConsiderOnlineStorageDeals bool
 	// When enabled, the miner can accept offline deals

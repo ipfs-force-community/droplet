@@ -2,6 +2,7 @@ package storageprovider
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -20,13 +21,13 @@ import (
 type DealTracker struct {
 	period      time.Duration // TODO: Preferably configurable?
 	storageRepo repo.StorageDealRepo
-	minerMgr    minermgr.IMinerMgr
+	minerMgr    minermgr.IAddrMgr
 	fullNode    apiface.FullNode
 }
 
 var ReadyRetrievalDealStatus = []storagemarket.StorageDealStatus{storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive}
 
-func NewDealTracker(lc fx.Lifecycle, r repo.Repo, minerMgr minermgr.IMinerMgr, fullNode apiface.FullNode) *DealTracker {
+func NewDealTracker(lc fx.Lifecycle, r repo.Repo, minerMgr minermgr.IAddrMgr, fullNode apiface.FullNode) *DealTracker {
 	tracker := &DealTracker{period: time.Minute, storageRepo: r.StorageDealRepo(), minerMgr: minerMgr, fullNode: fullNode}
 
 	lc.Append(fx.Hook{
@@ -78,8 +79,8 @@ func (dealTracker *DealTracker) checkPreCommit(ctx metrics.MetricsCtx, addr addr
 
 	for _, deal := range deals {
 		_, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
-		if err != nil {
-			log.Errorf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+		if err != nil && !strings.Contains(err.Error(), "precommit info is not exists"){
+			log.Debugf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			continue
 		}
 		err = dealTracker.storageRepo.UpdateDealStatus(deal.ProposalCid, storagemarket.StorageDealSealing)

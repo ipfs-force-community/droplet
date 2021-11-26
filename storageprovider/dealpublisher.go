@@ -3,23 +3,23 @@ package storageprovider
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"go.uber.org/fx"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
-	"github.com/filecoin-project/venus-market/config"
 	marketTypes "github.com/filecoin-project/venus-market/types"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
@@ -37,29 +37,114 @@ type dealPublisherAPI interface {
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
-// DealPublisher batches deal publishing so that many deals can be included in
+type DealPublisher struct {
+	api dealPublisherAPI
+	as  *AddressSelector
+
+	publishSpec   *types.MessageSendSpec
+	publishMsgCfg PublishMsgConfig
+
+	lk         sync.Mutex
+	publishers map[address.Address]*singleDealPublisher
+}
+
+func NewDealPublisherWrapper(
+	cfg *config.MarketConfig,
+) func(lc fx.Lifecycle, full apiface.FullNode, as *AddressSelector) *DealPublisher {
+	return func(lc fx.Lifecycle, full apiface.FullNode, as *AddressSelector) *DealPublisher {
+		dp := &DealPublisher{
+			api:         full,
+			as:          as,
+			publishSpec: &types.MessageSendSpec{MaxFee: abi.TokenAmount(cfg.MaxPublishDealsFee)},
+			publishMsgCfg: PublishMsgConfig{
+				Period:         time.Duration(cfg.PublishMsgPeriod),
+				MaxDealsPerMsg: cfg.MaxDealsPerPublishMsg,
+			},
+			publishers: map[address.Address]*singleDealPublisher{},
+		}
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				dp.lk.Lock()
+				for _, p := range dp.publishers {
+					p.Shutdown()
+				}
+				dp.lk.Unlock()
+				return nil
+			},
+		})
+		return dp
+	}
+}
+
+// PendingDeals returns the list of deals that are queued up to be published
+func (p *DealPublisher) PendingDeals() []marketTypes.PendingDealInfo {
+	p.lk.Lock()
+	defer p.lk.Unlock()
+
+	// Filter out deals whose context has been cancelled
+	var deals []marketTypes.PendingDealInfo
+	for _, publisher := range p.publishers {
+		deals = append(deals, publisher.pendingDeals())
+	}
+	return deals
+}
+
+// ForcePublishPendingDeals publishes all pending deals without waiting for
+// the publish period to elapse
+func (p *DealPublisher) ForcePublishPendingDeals() {
+	p.lk.Lock()
+	defer p.lk.Unlock()
+
+	log.Infof("force publishing deals")
+	for _, singlePublisher := range p.publishers {
+		singlePublisher.forcePublishPendingDeals()
+	}
+}
+
+func (p *DealPublisher) Publish(ctx context.Context, deal market2.ClientDealProposal) (cid.Cid, error) {
+	pdeal := newPendingDeal(ctx, deal)
+
+	p.lk.Lock()
+	providerAddr := deal.Proposal.Provider
+	publisher, ok := p.publishers[providerAddr]
+	if !ok {
+		publisher = newDealPublisher(p.api, p.as, p.publishMsgCfg, p.publishSpec)
+		p.publishers[providerAddr] = publisher
+	}
+	publisher.processNewDeal(pdeal)
+	p.lk.Unlock()
+	// Wait for the deal to be submitted
+	select {
+	case <-ctx.Done():
+		return cid.Undef, ctx.Err()
+	case res := <-pdeal.Result:
+		return res.msgCid, res.err
+	}
+}
+
+// singleDealPublisher batches deal publishing so that many deals can be included in
 // a single publish message. This saves gas for miners that publish deals
 // frequently.
-// When a deal is submitted, the DealPublisher waits a configurable amount of
+// When a deal is submitted, the singleDealPublisher waits a configurable amount of
 // time for other deals to be submitted before sending the publish message.
 // There is a configurable maximum number of deals that can be included in one
-// message. When the limit is reached the DealPublisher immediately submits a
+// message. When the limit is reached the singleDealPublisher immediately submits a
 // publish message with all deals in the queue.
-type DealPublisher struct {
+type singleDealPublisher struct {
 	api dealPublisherAPI
 	as  *AddressSelector
 
 	ctx      context.Context
 	Shutdown context.CancelFunc
 
-	maxDealsPerPublishMsg uint64
-	publishPeriod         time.Duration
-	publishSpec           *types.MessageSendSpec
-
-	lk                     sync.Mutex
-	pending                []*pendingDeal
+	maxDealsPerPublishMsg  uint64
+	publishPeriod          time.Duration
+	publishSpec            *types.MessageSendSpec
 	cancelWaitForMoreDeals context.CancelFunc
 	publishPeriodStart     time.Time
+
+	lk      sync.Mutex
+	pending []*pendingDeal
 }
 
 // A deal that is queued to be published
@@ -92,36 +177,14 @@ type PublishMsgConfig struct {
 	MaxDealsPerMsg uint64
 }
 
-func NewDealPublisher(
-	cfg *config.MarketConfig,
-) func(lc fx.Lifecycle, full apiface.FullNode, as *AddressSelector) *DealPublisher {
-	return func(lc fx.Lifecycle, full apiface.FullNode, as *AddressSelector) *DealPublisher {
-		maxFee := abi.TokenAmount(cfg.MaxPublishDealsFee)
-		publishMsgConfig := PublishMsgConfig{
-			Period:         time.Duration(cfg.PublishMsgPeriod),
-			MaxDealsPerMsg: cfg.MaxDealsPerPublishMsg,
-		}
-
-		publishSpec := &types.MessageSendSpec{MaxFee: maxFee}
-		dp := newDealPublisher(full, as, publishMsgConfig, publishSpec)
-		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
-				dp.Shutdown()
-				return nil
-			},
-		})
-		return dp
-	}
-}
-
 func newDealPublisher(
 	dpapi dealPublisherAPI,
 	as *AddressSelector,
 	publishMsgCfg PublishMsgConfig,
 	publishSpec *types.MessageSendSpec,
-) *DealPublisher {
+) *singleDealPublisher {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &DealPublisher{
+	return &singleDealPublisher{
 		api:                   dpapi,
 		as:                    as,
 		ctx:                   ctx,
@@ -133,7 +196,7 @@ func newDealPublisher(
 }
 
 // PendingDeals returns the list of deals that are queued up to be published
-func (p *DealPublisher) PendingDeals() marketTypes.PendingDealInfo {
+func (p *singleDealPublisher) pendingDeals() marketTypes.PendingDealInfo {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 
@@ -159,7 +222,7 @@ func (p *DealPublisher) PendingDeals() marketTypes.PendingDealInfo {
 
 // ForcePublishPendingDeals publishes all pending deals without waiting for
 // the publish period to elapse
-func (p *DealPublisher) ForcePublishPendingDeals() {
+func (p *singleDealPublisher) forcePublishPendingDeals() {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 
@@ -167,22 +230,7 @@ func (p *DealPublisher) ForcePublishPendingDeals() {
 	p.publishAllDeals()
 }
 
-func (p *DealPublisher) Publish(ctx context.Context, deal market2.ClientDealProposal) (cid.Cid, error) {
-	pdeal := newPendingDeal(ctx, deal)
-
-	// Add the deal to the queue
-	p.processNewDeal(pdeal)
-
-	// Wait for the deal to be submitted
-	select {
-	case <-ctx.Done():
-		return cid.Undef, ctx.Err()
-	case res := <-pdeal.Result:
-		return res.msgCid, res.err
-	}
-}
-
-func (p *DealPublisher) processNewDeal(pdeal *pendingDeal) {
+func (p *singleDealPublisher) processNewDeal(pdeal *pendingDeal) {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 
@@ -217,7 +265,7 @@ func (p *DealPublisher) processNewDeal(pdeal *pendingDeal) {
 	p.waitForMoreDeals()
 }
 
-func (p *DealPublisher) waitForMoreDeals() {
+func (p *singleDealPublisher) waitForMoreDeals() {
 	// Check if we're already waiting for deals
 	if !p.publishPeriodStart.IsZero() {
 		elapsed := marketTypes.Clock.Since(p.publishPeriodStart)
@@ -248,7 +296,7 @@ func (p *DealPublisher) waitForMoreDeals() {
 	}()
 }
 
-func (p *DealPublisher) publishAllDeals() {
+func (p *singleDealPublisher) publishAllDeals() {
 	// If the timeout hasn't yet been cancelled, cancel it
 	if p.cancelWaitForMoreDeals != nil {
 		p.cancelWaitForMoreDeals()
@@ -265,7 +313,7 @@ func (p *DealPublisher) publishAllDeals() {
 	go p.publishReady(deals)
 }
 
-func (p *DealPublisher) publishReady(ready []*pendingDeal) {
+func (p *singleDealPublisher) publishReady(ready []*pendingDeal) {
 	if len(ready) == 0 {
 		return
 	}
@@ -311,7 +359,7 @@ func (p *DealPublisher) publishReady(ready []*pendingDeal) {
 
 // validateDeal checks that the deal proposal start epoch hasn't already
 // elapsed
-func (p *DealPublisher) validateDeal(deal market2.ClientDealProposal) error {
+func (p *singleDealPublisher) validateDeal(deal market2.ClientDealProposal) error {
 	head, err := p.api.ChainHead(p.ctx)
 	if err != nil {
 		return err
@@ -325,7 +373,7 @@ func (p *DealPublisher) validateDeal(deal market2.ClientDealProposal) error {
 }
 
 // Sends the publish message
-func (p *DealPublisher) publishDealProposals(deals []market2.ClientDealProposal) (cid.Cid, error) {
+func (p *singleDealPublisher) publishDealProposals(deals []market2.ClientDealProposal) (cid.Cid, error) {
 	if len(deals) == 0 {
 		return cid.Undef, nil
 	}
@@ -384,7 +432,7 @@ func pieceCids(deals []market2.ClientDealProposal) string {
 }
 
 // filter out deals that have been cancelled
-func (p *DealPublisher) filterCancelledDeals() {
+func (p *singleDealPublisher) filterCancelledDeals() {
 	i := 0
 	for _, pd := range p.pending {
 		if pd.ctx.Err() == nil {

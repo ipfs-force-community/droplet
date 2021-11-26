@@ -43,3 +43,15 @@ func (r *retrievalAskRepo) SetAsk(ask *types.RetrievalAsk) error {
 	}
 	return r.ds.Put(dskeyForAddr(ask.Miner), data)
 }
+
+func (r *retrievalAskRepo) ListAsk() ([]*types.RetrievalAsk, error) {
+	var results []*types.RetrievalAsk
+	err := travelDeals(r.ds, func(ask *types.RetrievalAsk) (bool, error) {
+		results = append(results, ask)
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}

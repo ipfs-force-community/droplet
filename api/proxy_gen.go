@@ -151,8 +151,6 @@ type MarketFullNodeStruct struct {
 
 		GetDeals func(p0 context.Context, p1 address.Address, p2 int, p3 int) ([]*types.DealInfo, error) `perm:"read"`
 
-		GetUnPackedDeals func(p0 context.Context, p1 address.Address, p2 *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) `perm:"read"`
-
 		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
 
 		ListenMarketEvent func(p0 context.Context, p1 *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) `perm:"read"`
@@ -175,15 +173,19 @@ type MarketFullNodeStruct struct {
 
 		MarketImportDealData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"write"`
 
+		MarketListAsk func(p0 context.Context) ([]*storagemarket.SignedStorageAsk, error) `perm:"read"`
+
 		MarketListDataTransfers func(p0 context.Context) ([]types.DataTransferChannel, error) `perm:"write"`
 
 		MarketListDeals func(p0 context.Context, p1 []address.Address) ([]types.MarketDeal, error) `perm:"read"`
 
 		MarketListIncompleteDeals func(p0 context.Context, p1 address.Address) ([]storagemarket.MinerDeal, error) `perm:"read"`
 
+		MarketListRetrievalAsk func(p0 context.Context) ([]*types.RetrievalAsk, error) `perm:"read"`
+
 		MarketListRetrievalDeals func(p0 context.Context, p1 address.Address) ([]types.ProviderDealState, error) `perm:"read"`
 
-		MarketPendingDeals func(p0 context.Context) (types.PendingDealInfo, error) `perm:"write"`
+		MarketPendingDeals func(p0 context.Context) ([]types.PendingDealInfo, error) `perm:"write"`
 
 		MarketPublishPendingDeals func(p0 context.Context) error `perm:"admin"`
 
@@ -698,14 +700,6 @@ func (s *MarketFullNodeStub) GetDeals(p0 context.Context, p1 address.Address, p2
 	return *new([]*types.DealInfo), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) GetUnPackedDeals(p0 context.Context, p1 address.Address, p2 *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
-	return s.Internal.GetUnPackedDeals(p0, p1, p2)
-}
-
-func (s *MarketFullNodeStub) GetUnPackedDeals(p0 context.Context, p1 address.Address, p2 *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
-	return *new([]*types.DealInfoIncludePath), xerrors.New("method not supported")
-}
-
 func (s *MarketFullNodeStruct) ID(p0 context.Context) (peer.ID, error) {
 	return s.Internal.ID(p0)
 }
@@ -794,6 +788,14 @@ func (s *MarketFullNodeStub) MarketImportDealData(p0 context.Context, p1 cid.Cid
 	return xerrors.New("method not supported")
 }
 
+func (s *MarketFullNodeStruct) MarketListAsk(p0 context.Context) ([]*storagemarket.SignedStorageAsk, error) {
+	return s.Internal.MarketListAsk(p0)
+}
+
+func (s *MarketFullNodeStub) MarketListAsk(p0 context.Context) ([]*storagemarket.SignedStorageAsk, error) {
+	return *new([]*storagemarket.SignedStorageAsk), xerrors.New("method not supported")
+}
+
 func (s *MarketFullNodeStruct) MarketListDataTransfers(p0 context.Context) ([]types.DataTransferChannel, error) {
 	return s.Internal.MarketListDataTransfers(p0)
 }
@@ -818,6 +820,14 @@ func (s *MarketFullNodeStub) MarketListIncompleteDeals(p0 context.Context, p1 ad
 	return *new([]storagemarket.MinerDeal), xerrors.New("method not supported")
 }
 
+func (s *MarketFullNodeStruct) MarketListRetrievalAsk(p0 context.Context) ([]*types.RetrievalAsk, error) {
+	return s.Internal.MarketListRetrievalAsk(p0)
+}
+
+func (s *MarketFullNodeStub) MarketListRetrievalAsk(p0 context.Context) ([]*types.RetrievalAsk, error) {
+	return *new([]*types.RetrievalAsk), xerrors.New("method not supported")
+}
+
 func (s *MarketFullNodeStruct) MarketListRetrievalDeals(p0 context.Context, p1 address.Address) ([]types.ProviderDealState, error) {
 	return s.Internal.MarketListRetrievalDeals(p0, p1)
 }
@@ -826,12 +836,12 @@ func (s *MarketFullNodeStub) MarketListRetrievalDeals(p0 context.Context, p1 add
 	return *new([]types.ProviderDealState), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MarketPendingDeals(p0 context.Context) (types.PendingDealInfo, error) {
+func (s *MarketFullNodeStruct) MarketPendingDeals(p0 context.Context) ([]types.PendingDealInfo, error) {
 	return s.Internal.MarketPendingDeals(p0)
 }
 
-func (s *MarketFullNodeStub) MarketPendingDeals(p0 context.Context) (types.PendingDealInfo, error) {
-	return *new(types.PendingDealInfo), xerrors.New("method not supported")
+func (s *MarketFullNodeStub) MarketPendingDeals(p0 context.Context) ([]types.PendingDealInfo, error) {
+	return *new([]types.PendingDealInfo), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) MarketPublishPendingDeals(p0 context.Context) error {

@@ -37,11 +37,11 @@ type storageDeal struct {
 	Miner                 string     `gorm:"column:miner_peer;type:varchar(128);"`
 	Client                string     `gorm:"column:client_peer;type:varchar(128);"`
 	State                 uint64     `gorm:"column:state;type:bigint unsigned;"`
-	PiecePath             string     `gorm:"column:piece_path;type:varchar(128);"`
-	MetadataPath          string     `gorm:"column:metadata_path;type:varchar(128);"`
+	PiecePath             string     `gorm:"column:piece_path;type:varchar(256);"`
+	MetadataPath          string     `gorm:"column:metadata_path;type:varchar(256);"`
 	SlashEpoch            int64      `gorm:"column:slash_epoch;type:bigint;"`
 	FastRetrieval         bool       `gorm:"column:fast_retrieval;"`
-	Message               string     `gorm:"column:message;type:varchar(128);"`
+	Message               string     `gorm:"column:message;type:varchar(512);"`
 	FundsReserved         mtypes.Int `gorm:"column:funds_reserved;type:varchar(256);"`
 	Ref                   DataRef    `gorm:"embedded;embeddedPrefix:ref_"`
 	AvailableForRetrieval bool       `gorm:"column:available_for_retrieval;"`
@@ -52,11 +52,11 @@ type storageDeal struct {
 	TransferChannelId ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
 	SectorNumber      uint64    `gorm:"column:sector_number;type:bigint unsigned;"`
 
-	InboundCAR string `gorm:"column:addr;type:varchar(128);"`
+	InboundCAR string `gorm:"column:addr;type:varchar(256);"`
 
 	Offset      uint64 `gorm:"column:offset;type:bigint"`
 	Length      uint64 `gorm:"column:length;type:bigint"`
-	PieceStatus string `gorm:"column:piece_status;column:length;type:varchar(128)"`
+	PieceStatus string `gorm:"column:piece_status;type:varchar(128)"`
 
 	TimeStampOrm
 }
@@ -153,8 +153,9 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 		SectorNumber:          uint64(src.SectorNumber),
 		InboundCAR:            src.InboundCAR,
 
-		Offset: uint64(src.Offset),
-		Length: uint64(src.Proposal.PieceSize),
+		Offset:      uint64(src.Offset),
+		Length:      uint64(src.Proposal.PieceSize),
+		PieceStatus: src.PieceStatus,
 	}
 
 	if src.AddFundsCid == nil {
@@ -167,11 +168,6 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 	} else {
 		md.PublishCid = DBCid(*src.PublishCid)
 	}
-	if src.Ref.PieceCid == nil {
-		md.Ref.PieceCid = UndefDBCid
-	} else {
-		md.Ref.PieceCid = DBCid(*src.Ref.PieceCid)
-	}
 
 	if src.Ref != nil {
 		md.Ref = DataRef{
@@ -179,6 +175,12 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 			Root:         DBCid(src.Ref.Root),
 			PieceSize:    src.Ref.PieceSize,
 			RawBlockSize: src.Ref.RawBlockSize,
+		}
+
+		if src.Ref.PieceCid == nil {
+			md.Ref.PieceCid = UndefDBCid
+		} else {
+			md.Ref.PieceCid = DBCid(*src.Ref.PieceCid)
 		}
 	}
 	if src.TransferChannelId != nil {
@@ -219,6 +221,7 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		State:         src.State,
 		PiecePath:     filestore.Path(src.PiecePath),
 		MetadataPath:  filestore.Path(src.MetadataPath),
+		PieceStatus:   src.PieceStatus,
 		SlashEpoch:    abi.ChainEpoch(src.SlashEpoch),
 		FastRetrieval: src.FastRetrieval,
 		Message:       src.Message,
@@ -317,7 +320,7 @@ func (dsr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 	var md []storageDeal
 
 	err := dsr.DB.Table((&storageDeal{}).TableName()).
-		Find(&md, "cdp_piece_cid = ? AND state in ", DBCid(piececid).String(), statues).Error
+		Find(&md, "cdp_piece_cid = ? AND state in ?", DBCid(piececid).String(), statues).Error
 
 	if err != nil {
 		return nil, err
@@ -338,9 +341,7 @@ func (dsr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 func (dsr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	var md []storageDeal
 
-	err := dsr.DB.Table((&storageDeal{}).TableName()).
-		Find(&md, "cdp_provider = ? AND state = ?", DBAddress(addr).String(), status).Error
-
+	err := dsr.DB.Table((&storageDeal{}).TableName()).Find(&md, "cdp_provider = ? AND state = ?", DBAddress(addr).String(), status).Error
 	if err != nil {
 		return nil, err
 	}
@@ -362,58 +363,46 @@ func (dsr *storageDealRepo) UpdateDealStatus(proposalCid cid.Cid, status storage
 		UpdateColumns(map[string]interface{}{"state": status, "updated_at": time.Now().Unix()}).Error
 }
 
-func (m *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {
-	storageDeals := make([]*types.MinerDeal, 0)
-	if err := m.travelDeals(
-		map[string]interface{}{"cdp_provider": DBAddress(miner).String()},
-		func(deal *types.MinerDeal) (err error) {
-			if deal.ClientDealProposal.Proposal.Provider == miner {
-				storageDeals = append(storageDeals, deal)
-			}
-			return
-		}); err != nil {
+func (m *storageDealRepo) ListDealByAddr(miner address.Address) ([]*types.MinerDeal, error) {
+	var storageDeals []*storageDeal
+	if err := m.Table(storageDealTableName).Find(storageDeals, "cdp_provider = ?", DBAddress(miner).String()).Error; err != nil {
 		return nil, err
 	}
-	return storageDeals, nil
+	return fromDbDeals(storageDeals)
+}
+
+func (m *storageDealRepo) ListDeal() ([]*types.MinerDeal, error) {
+	var storageDeals []*storageDeal
+	if err := m.Table(storageDealTableName).Find(&storageDeals).Error; err != nil {
+		return nil, err
+	}
+	return fromDbDeals(storageDeals)
 }
 
 func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
+	var storageDeals []*storageDeal
+	if err := m.Table(storageDealTableName).Find(&storageDeals, "cdp_piece_cid = ?", DBCid(pieceCID).String()).Error; err != nil {
+		return nil, err
+	}
+
 	var pieceInfo = piecestore.PieceInfo{
 		PieceCID: pieceCID,
 		Deals:    nil,
 	}
-	if err := m.travelDeals(
-		map[string]interface{}{"cdp_piece_cid": DBCid(pieceCID).String()},
-		func(deal *types.MinerDeal) error {
-			pieceInfo.Deals = append(pieceInfo.Deals, piecestore.DealInfo{
-				DealID:   deal.DealID,
-				SectorID: deal.SectorNumber,
-				Offset:   deal.Offset,
-				Length:   deal.Proposal.PieceSize},
-			)
-			return nil
-		}); err != nil {
-		return nil, err
+
+	for _, dbDeal := range storageDeals {
+		deal, err := toStorageDeal(dbDeal)
+		if err != nil {
+			return nil, err
+		}
+		pieceInfo.Deals = append(pieceInfo.Deals, piecestore.DealInfo{
+			DealID:   deal.DealID,
+			SectorID: deal.SectorNumber,
+			Offset:   deal.Offset,
+			Length:   deal.Proposal.PieceSize},
+		)
 	}
 	return &pieceInfo, nil
-}
-
-func (m *storageDealRepo) travelDeals(condition map[string]interface{},
-	travelFn func(deal *types.MinerDeal) error) error {
-	var mds []*storageDeal
-	if err := m.DB.Find(&mds, condition).Error; err != nil {
-		return err
-	}
-	for _, md := range mds {
-		deal, err := toStorageDeal(md)
-		if err != nil {
-			return err
-		}
-		if err := travelFn(deal); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (m *storageDealRepo) ListPieceInfoKeys() (cids []cid.Cid, err error) {
@@ -433,20 +422,30 @@ func (m *storageDealRepo) ListPieceInfoKeys() (cids []cid.Cid, err error) {
 }
 
 func (m *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error) {
-	deal := &types.MinerDeal{}
-	err := m.DB.Model(deal).Find(deal, "cdp_provider = ? and deal_id = ?", DBAddress(mAddr).String(), dealID).Error
-	if err != nil {
+	var dbDeal *storageDeal
+	if err := m.DB.Table(storageDealTableName).Take(&dbDeal, "cdp_provider = ? and deal_id = ?", DBAddress(mAddr).String(), dealID).Error; err != nil {
 		return nil, err
 	}
-	return deal, nil
+	return toStorageDeal(dbDeal)
 }
 
 func (m *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
-	var deals []*types.MinerDeal
-
-	err := m.DB.Model(deals).Find(deals, "cdp_provider = ? and piece_status = ?", DBAddress(mAddr).String(), pieceStatus).Error
-	if err != nil {
+	var dbDeals []*storageDeal
+	if err := m.DB.Table(storageDealTableName).Find(&dbDeals, "cdp_provider = ? and piece_status = ?", DBAddress(mAddr).String(), pieceStatus).Error; err != nil {
 		return nil, err
 	}
-	return deals, nil
+
+	return fromDbDeals(dbDeals)
+}
+
+func fromDbDeals(dbDeals []*storageDeal) ([]*types.MinerDeal, error) {
+	results := make([]*types.MinerDeal, len(dbDeals))
+	for index, dbDeal := range dbDeals {
+		deal, err := toStorageDeal(dbDeal)
+		if err != nil {
+			return nil, err
+		}
+		results[index] = deal
+	}
+	return results, nil
 }

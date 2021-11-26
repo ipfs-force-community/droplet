@@ -39,12 +39,12 @@ type ProviderRequestValidator struct {
 	storageDeals  repo.StorageDealRepo
 	pieceInfo     *PieceInfo
 	retrievalDeal repo.IRetrievalDealRepo
-	askHandler    IAskHandler
+	retrievalAsk  repo.IRetrievalAskRepo
 }
 
 // NewProviderRequestValidator returns a new instance of the ProviderRequestValidator
-func NewProviderRequestValidator(paymentAddr address.Address, storageDeals repo.StorageDealRepo, retrievalDeal repo.IRetrievalDealRepo, pieceInfo *PieceInfo, askHandler IAskHandler) *ProviderRequestValidator {
-	return &ProviderRequestValidator{paymentAddr: paymentAddr, storageDeals: storageDeals, retrievalDeal: retrievalDeal, pieceInfo: pieceInfo, askHandler: askHandler}
+func NewProviderRequestValidator(paymentAddr address.Address, storageDeals repo.StorageDealRepo, retrievalDeal repo.IRetrievalDealRepo, retrievalAsk repo.IRetrievalAskRepo, pieceInfo *PieceInfo) *ProviderRequestValidator {
+	return &ProviderRequestValidator{paymentAddr: paymentAddr, storageDeals: storageDeals, retrievalDeal: retrievalDeal, retrievalAsk: retrievalAsk, pieceInfo: pieceInfo}
 }
 
 // ValidatePush validates a push request received from the peer that will send data
@@ -171,9 +171,9 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 	ctx, cancel := context.WithTimeout(context.TODO(), askTimeout)
 	defer cancel()
 
-	deal.PieceCID = &minerdeals[0].Proposal.PieceCID
-	//todo check if unseal
-	ask, err := rv.askHandler.GetAskForPayload(ctx, rv.paymentAddr, deal.PayloadCID, minerdeals, true, deal.Receiver)
+	//todo how to select deal
+	deal.SelStorageProposalCid = minerdeals[0].ProposalCid
+	ask, err := rv.retrievalAsk.GetAsk(minerdeals[0].Proposal.Provider)
 	if err != nil {
 		return retrievalmarket.DealStatusErrored, err
 	}

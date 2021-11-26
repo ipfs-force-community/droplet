@@ -7,6 +7,6 @@ import (
 
 var MinerMgrOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
-		builder.Override(new(IMinerMgr), NewMinerMgrImpl(cfg)),
+		builder.Override(new(IAddrMgr), NeAddrMgrImpl),
 	)
 }

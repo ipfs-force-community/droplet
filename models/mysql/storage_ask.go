@@ -106,3 +106,20 @@ func (a *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 		UpdateAll: true,
 	}).Save(dbAsk).Error
 }
+
+func (a *storageAskRepo) ListAsk() ([]*storagemarket.SignedStorageAsk, error) {
+	var dbAsks []storageAsk
+	err := a.Table("storage_asks").Find(&dbAsks).Error
+	if err != nil {
+		return nil, err
+	}
+	results := make([]*storagemarket.SignedStorageAsk, len(dbAsks))
+	for index, ask := range dbAsks {
+		mAsk, err := toStorageAsk(&ask)
+		if err != nil {
+			return nil, err
+		}
+		results[index] = mAsk
+	}
+	return results, nil
+}

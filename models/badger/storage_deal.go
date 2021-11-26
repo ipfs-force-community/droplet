@@ -133,13 +133,24 @@ func (sdr *storageDealRepo) UpdateDealStatus(proposalCid cid.Cid, status storage
 	return sdr.SaveDeal(deal)
 }
 
-func (sdr *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) ListDealByAddr(miner address.Address) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
 	if err := travelDeals(sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
 		if deal.ClientDealProposal.Proposal.Provider == miner {
 			storageDeals = append(storageDeals, deal)
 		}
 		return
+	}); err != nil {
+		return nil, err
+	}
+	return storageDeals, nil
+}
+
+func (sdr *storageDealRepo) ListDeal() ([]*types.MinerDeal, error) {
+	storageDeals := make([]*types.MinerDeal, 0)
+	if err := travelDeals(sdr.ds, func(deal *types.MinerDeal) (bool, error) {
+		storageDeals = append(storageDeals, deal)
+		return false, nil
 	}); err != nil {
 		return nil, err
 	}

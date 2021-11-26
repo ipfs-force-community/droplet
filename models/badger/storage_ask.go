@@ -2,14 +2,12 @@ package badger
 
 import (
 	"bytes"
-	"github.com/filecoin-project/venus-market/models/repo"
-
-	cborrpc "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-statestore"
-	"github.com/ipfs/go-datastore"
-
 	"github.com/filecoin-project/go-address"
+	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-statestore"
+	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/ipfs/go-datastore"
 	"golang.org/x/xerrors"
 )
 
@@ -49,4 +47,16 @@ func (ar *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 	}
 
 	return ar.ds.Put(key, b)
+}
+
+func (ar *storageAskRepo) ListAsk() ([]*storagemarket.SignedStorageAsk, error) {
+	var results []*storagemarket.SignedStorageAsk
+	err := travelDeals(ar.ds, func(ask *storagemarket.SignedStorageAsk) (bool, error) {
+		results = append(results, ask)
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
 }

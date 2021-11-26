@@ -164,6 +164,7 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 		numberPiece  int
 		curPieceSize uint64
 	)
+
 	for _, md := range mds {
 		// TODO: 要排除不可密封状态的订单?
 		if md.DealID == 0 || isTerminateState(md) {
@@ -180,7 +181,6 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 				FastRetrieval:   md.FastRetrieval,
 				PublishCid:      *md.PublishCid,
 			})
-			md.PieceStatus = types.Assigned
 			if err := ps.StorageDealRepo.SaveDeal(md); err != nil {
 				return nil, err
 			}

@@ -14,7 +14,7 @@ require (
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.0-20201016124514-d0bbec7bfcc4
-	github.com/filecoin-project/go-commp-utils v0.1.1-0.20210427191551-70bf140d31c7
+	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-data-transfer v1.11.4
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
@@ -30,9 +30,9 @@ require (
 	github.com/filecoin-project/specs-actors/v5 v5.0.4
 	github.com/filecoin-project/specs-actors/v6 v6.0.0
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
-	github.com/filecoin-project/venus v1.1.1
-	github.com/filecoin-project/venus-auth v1.3.1-0.20210809053831-012d55d5f578
-	github.com/filecoin-project/venus-messager v1.1.1
+	github.com/filecoin-project/venus v1.1.2-rc2
+	github.com/filecoin-project/venus-auth v1.3.1
+	github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20211125063748-3e5ce29f6b84
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/golang/mock v1.6.0
@@ -41,7 +41,7 @@ require (
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab79c62a
-	github.com/ipfs-force-community/venus-gateway v1.1.2-0.20210924083450-c55d3300dfc9
+	github.com/ipfs-force-community/venus-gateway v1.1.2-0.20211124052117-425c4a895f4a
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.1.5
 	github.com/ipfs/go-cid v0.1.0

@@ -2,7 +2,6 @@ package impl
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -56,21 +55,19 @@ type MarketNodeImpl struct {
 	MarketEventAPI
 	fx.In
 
-	FullNode            apiface.FullNode
-	Host                host.Host
-	StorageProvider     storageprovider.StorageProviderV2
-	RetrievalProvider   retrievalprovider.IRetrievalProvider
-	RetrievalAskHandler retrievalprovider.IAskHandler
-	DataTransfer        network.ProviderDataTransfer
-	DealPublisher       *storageprovider.DealPublisher
-	DealAssigner        storageprovider.DealAssiger
+	FullNode          apiface.FullNode
+	Host              host.Host
+	StorageProvider   storageprovider.StorageProviderV2
+	RetrievalProvider retrievalprovider.IRetrievalProvider
+	DataTransfer      network.ProviderDataTransfer
+	DealPublisher     *storageprovider.DealPublisher
+	DealAssigner      storageprovider.DealAssiger
 
 	Messager                                    clients2.IMessager `optional:"true"`
 	StorageAsk                                  storageprovider.IStorageAsk
-	RetrievalAsk                                retrievalprovider.IAskHandler
 	DAGStore                                    *dagstore.DAGStore
 	PieceStorage                                piecestorage.IPieceStorage
-	MinerMgr                                    minermgr.IMinerMgr
+	MinerMgr                                    minermgr.IAddrMgr
 	PaychAPI                                    *paychmgr.PaychAPI
 	Repo                                        repo.Repo
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
@@ -144,19 +141,6 @@ func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr addr
 		// todo: 按miner过滤交易
 		out = append(out, *deal)
 	}
-	for _, mm := range deals {
-		xxxx, err := json.Marshal(mm)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		var dd types.ProviderDealState
-		err = json.Unmarshal(xxxx, &dd)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-
 	return out, nil
 }
 
@@ -177,9 +161,18 @@ func (m MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan storag
 }
 
 func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]storagemarket.MinerDeal, error) {
-	deals, err := m.Repo.StorageDealRepo().ListDeal(mAddr)
-	if err != nil {
-		return nil, err
+	var deals []*types.MinerDeal
+	var err error
+	if mAddr == address.Undef {
+		deals, err = m.Repo.StorageDealRepo().ListDeal()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		deals, err = m.Repo.StorageDealRepo().ListDealByAddr(mAddr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	resDeals := make([]storagemarket.MinerDeal, len(deals))
@@ -203,12 +196,16 @@ func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address,
 	return m.StorageAsk.SetAsk(mAddr, price, verifiedPrice, duration, options...)
 }
 
+func (m MarketNodeImpl) MarketListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error) {
+	return m.StorageAsk.ListAsk()
+}
+
 func (m MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*storagemarket.SignedStorageAsk, error) {
 	return m.StorageAsk.GetAsk(mAddr)
 }
 
 func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, ask *retrievalmarket.Ask) error {
-	return m.RetrievalAskHandler.SetAsk(&types.RetrievalAsk{
+	return m.Repo.RetrievalAskRepo().SetAsk(&types.RetrievalAsk{
 		Miner:                   mAddr,
 		PricePerByte:            ask.PricePerByte,
 		UnsealPrice:             ask.UnsealPrice,
@@ -217,8 +214,12 @@ func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address
 	})
 }
 
+func (m MarketNodeImpl) MarketListRetrievalAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {
+	return m.Repo.RetrievalAskRepo().ListAsk()
+}
+
 func (m MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error) {
-	ask, err := m.RetrievalAskHandler.GetAsk(mAddr)
+	ask, err := m.Repo.RetrievalAskRepo().GetAsk(mAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +280,7 @@ func (m MarketNodeImpl) MarketCancelDataTransfer(ctx context.Context, transferID
 	return m.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: otherPeer, Responder: selfPeer, ID: transferID})
 }
 
-func (m MarketNodeImpl) MarketPendingDeals(ctx context.Context) (types.PendingDealInfo, error) {
+func (m MarketNodeImpl) MarketPendingDeals(ctx context.Context) ([]types.PendingDealInfo, error) {
 	return m.DealPublisher.PendingDeals(), nil
 }
 

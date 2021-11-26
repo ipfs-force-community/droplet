@@ -11,6 +11,7 @@ import (
 	address "github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	filestore "github.com/filecoin-project/go-fil-markets/filestore"
+	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -1312,6 +1313,258 @@ func (t *RetrievalAsk) UnmarshalCBOR(r io.Reader) error {
 		}
 		t.PaymentIntervalIncrease = uint64(extra)
 
+	}
+	return nil
+}
+
+var lengthBufProviderDealState = []byte{139}
+
+func (t *ProviderDealState) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+	if _, err := w.Write(lengthBufProviderDealState); err != nil {
+		return err
+	}
+
+	scratch := make([]byte, 9)
+
+	// t.DealProposal (retrievalmarket.DealProposal) (struct)
+	if err := t.DealProposal.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.StoreID (uint64) (uint64)
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.StoreID)); err != nil {
+		return err
+	}
+
+	// t.SelStorageProposalCid (cid.Cid) (struct)
+
+	if err := cbg.WriteCidBuf(scratch, w, t.SelStorageProposalCid); err != nil {
+		return xerrors.Errorf("failed to write cid field t.SelStorageProposalCid: %w", err)
+	}
+
+	// t.ChannelID (datatransfer.ChannelID) (struct)
+	if err := t.ChannelID.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.Status (retrievalmarket.DealStatus) (uint64)
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.Status)); err != nil {
+		return err
+	}
+
+	// t.Receiver (peer.ID) (string)
+	if len(t.Receiver) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Receiver was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len(t.Receiver))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Receiver)); err != nil {
+		return err
+	}
+
+	// t.TotalSent (uint64) (uint64)
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.TotalSent)); err != nil {
+		return err
+	}
+
+	// t.FundsReceived (big.Int) (struct)
+	if err := t.FundsReceived.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.Message (string) (string)
+	if len(t.Message) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Message was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len(t.Message))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Message)); err != nil {
+		return err
+	}
+
+	// t.CurrentInterval (uint64) (uint64)
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.CurrentInterval)); err != nil {
+		return err
+	}
+
+	// t.LegacyProtocol (bool) (bool)
+	if err := cbg.WriteBool(w, t.LegacyProtocol); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) error {
+	*t = ProviderDealState{}
+
+	br := cbg.GetPeeker(r)
+	scratch := make([]byte, 8)
+
+	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajArray {
+		return fmt.Errorf("cbor input should be of type array")
+	}
+
+	if extra != 11 {
+		return fmt.Errorf("cbor input had wrong number of fields")
+	}
+
+	// t.DealProposal (retrievalmarket.DealProposal) (struct)
+
+	{
+
+		if err := t.DealProposal.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.DealProposal: %w", err)
+		}
+
+	}
+	// t.StoreID (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.StoreID = uint64(extra)
+
+	}
+	// t.SelStorageProposalCid (cid.Cid) (struct)
+
+	{
+
+		c, err := cbg.ReadCid(br)
+		if err != nil {
+			return xerrors.Errorf("failed to read cid field t.SelStorageProposalCid: %w", err)
+		}
+
+		t.SelStorageProposalCid = c
+
+	}
+	// t.ChannelID (datatransfer.ChannelID) (struct)
+
+	{
+
+		b, err := br.ReadByte()
+		if err != nil {
+			return err
+		}
+		if b != cbg.CborNull[0] {
+			if err := br.UnreadByte(); err != nil {
+				return err
+			}
+			t.ChannelID = new(datatransfer.ChannelID)
+			if err := t.ChannelID.UnmarshalCBOR(br); err != nil {
+				return xerrors.Errorf("unmarshaling t.ChannelID pointer: %w", err)
+			}
+		}
+
+	}
+	// t.Status (retrievalmarket.DealStatus) (uint64)
+
+	{
+
+		maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.Status = retrievalmarket.DealStatus(extra)
+
+	}
+	// t.Receiver (peer.ID) (string)
+
+	{
+		sval, err := cbg.ReadStringBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+
+		t.Receiver = peer.ID(sval)
+	}
+	// t.TotalSent (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.TotalSent = uint64(extra)
+
+	}
+	// t.FundsReceived (big.Int) (struct)
+
+	{
+
+		if err := t.FundsReceived.UnmarshalCBOR(br); err != nil {
+			return xerrors.Errorf("unmarshaling t.FundsReceived: %w", err)
+		}
+
+	}
+	// t.Message (string) (string)
+
+	{
+		sval, err := cbg.ReadStringBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+
+		t.Message = string(sval)
+	}
+	// t.CurrentInterval (uint64) (uint64)
+
+	{
+
+		maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.CurrentInterval = uint64(extra)
+
+	}
+	// t.LegacyProtocol (bool) (bool)
+
+	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+	if err != nil {
+		return err
+	}
+	if maj != cbg.MajOther {
+		return fmt.Errorf("booleans must be major type 7")
+	}
+	switch extra {
+	case 20:
+		t.LegacyProtocol = false
+	case 21:
+		t.LegacyProtocol = true
+	default:
+		return fmt.Errorf("booleans are either major type 7, value 20 or 21 (got %d)", extra)
 	}
 	return nil
 }

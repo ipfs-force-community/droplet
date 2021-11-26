@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/types"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -19,7 +20,7 @@ import (
 )
 
 // CheckDealParams verifies the given deal params are acceptable
-func CheckDealParams(ask retrievalmarket.Ask, pricePerByte abi.TokenAmount, paymentInterval uint64, paymentIntervalIncrease uint64, unsealPrice abi.TokenAmount) error {
+func CheckDealParams(ask *types.RetrievalAsk, pricePerByte abi.TokenAmount, paymentInterval uint64, paymentIntervalIncrease uint64, unsealPrice abi.TokenAmount) error {
 	if pricePerByte.LessThan(ask.PricePerByte) {
 		return errors.New("Price per byte too low")
 	}
@@ -38,8 +39,6 @@ func CheckDealParams(ask retrievalmarket.Ask, pricePerByte abi.TokenAmount, paym
 // ProviderDealEnvironment is a bridge to the environment a provider deal is executing in
 // It provides access to relevant functionality on the retrieval provider
 type ProviderDealEnvironment interface {
-	// Node returns the node interface for this deal
-	Node() retrievalmarket.RetrievalProviderNode
 	PrepareBlockstore(ctx context.Context, dealID retrievalmarket.DealID, pieceCid cid.Cid) error
 	DeleteStore(dealID retrievalmarket.DealID) error
 	ResumeDataTransfer(context.Context, datatransfer.ChannelID) error
@@ -50,11 +49,6 @@ var _ ProviderDealEnvironment = new(providerDealEnvironment)
 
 type providerDealEnvironment struct {
 	p *RetrievalProvider
-}
-
-// Node returns the node interface for this deal
-func (pde *providerDealEnvironment) Node() retrievalmarket.RetrievalProviderNode {
-	return pde.p.node
 }
 
 // PrepareBlockstore is called when the deal data has been unsealed and we need

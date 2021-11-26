@@ -376,8 +376,7 @@ var dealsListCmd = &cli.Command{
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
 		&cli.StringFlag{
-			Name:     "miner",
-			Required: true,
+			Name: "miner",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -386,14 +385,16 @@ var dealsListCmd = &cli.Command{
 			return err
 		}
 		defer closer()
-
-		maddr, err := address.NewFromString(cctx.String("miner"))
-		if err != nil {
-			return nil
+		var maddr = address.Undef
+		if cctx.IsSet("miner") {
+			var err error
+			maddr, err = address.NewFromString(cctx.String("miner"))
+			if err != nil {
+				return nil
+			}
 		}
 
 		ctx := DaemonContext(cctx)
-
 		deals, err := api.MarketListIncompleteDeals(ctx, maddr)
 		if err != nil {
 			return err
@@ -480,9 +481,9 @@ func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose 
 	w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
 
 	if verbose {
-		_, _ = fmt.Fprintf(w, "Creation\tVerified\tProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tTransferChannelID\tMessage\n")
+		_, _ = fmt.Fprintf(w, "Creation\tVerified\tProposalCid\tDealId\tState\tClient\tProvider\tSize\tPrice\tDuration\tTransferChannelID\tMessage\n")
 	} else {
-		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\n")
+		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tProvider\tSize\tPrice\tDuration\n")
 	}
 
 	for _, deal := range deals {
@@ -497,7 +498,7 @@ func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose 
 			_, _ = fmt.Fprintf(w, "%s\t%t\t", deal.CreationTime.Time().Format(time.Stamp), deal.Proposal.VerifiedDeal)
 		}
 
-		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, deal.Proposal.Provider, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
 		if verbose {
 			tchid := ""
 			if deal.TransferChannelId != nil {
@@ -880,28 +881,30 @@ var dealsPendingPublish = &cli.Command{
 			return nil
 		}
 
-		pending, err := api.MarketPendingDeals(ctx)
+		pendings, err := api.MarketPendingDeals(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting pending deals: %w", err)
 		}
 
-		if len(pending.Deals) > 0 {
-			endsIn := time.Until(pending.PublishPeriodStart.Add(pending.PublishPeriod))
-			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-			_, _ = fmt.Fprintf(w, "Publish period:             %s (ends in %s)\n", pending.PublishPeriod, endsIn.Round(time.Second))
-			_, _ = fmt.Fprintf(w, "First deal queued at:       %s\n", pending.PublishPeriodStart)
-			_, _ = fmt.Fprintf(w, "Deals will be published at: %s\n", pending.PublishPeriodStart.Add(pending.PublishPeriod))
-			_, _ = fmt.Fprintf(w, "%d deals queued to be published:\n", len(pending.Deals))
-			_, _ = fmt.Fprintf(w, "ProposalCID\tClient\tSize\n")
-			for _, deal := range pending.Deals {
-				proposalNd, err := cborutil.AsIpld(&deal) // nolint
-				if err != nil {
-					return err
-				}
+		for _, pending := range pendings {
+			if len(pending.Deals) > 0 {
+				endsIn := time.Until(pending.PublishPeriodStart.Add(pending.PublishPeriod))
+				w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+				_, _ = fmt.Fprintf(w, "Publish period:             %s (ends in %s)\n", pending.PublishPeriod, endsIn.Round(time.Second))
+				_, _ = fmt.Fprintf(w, "First deal queued at:       %s\n", pending.PublishPeriodStart)
+				_, _ = fmt.Fprintf(w, "Deals will be published at: %s\n", pending.PublishPeriodStart.Add(pending.PublishPeriod))
+				_, _ = fmt.Fprintf(w, "%d deals queued to be published:\n", len(pending.Deals))
+				_, _ = fmt.Fprintf(w, "ProposalCID\tClient\tSize\n")
+				for _, deal := range pending.Deals {
+					proposalNd, err := cborutil.AsIpld(&deal) // nolint
+					if err != nil {
+						return err
+					}
 
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", proposalNd.Cid(), deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)))
+					_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", proposalNd.Cid(), deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)))
+				}
+				return w.Flush()
 			}
-			return w.Flush()
 		}
 
 		fmt.Println("No deals queued to be published")

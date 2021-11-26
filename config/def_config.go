@@ -42,13 +42,13 @@ var DefaultMarketConfig = &MarketConfig{
 		Url:   "", // /ip4/<ip>/tcp/5678
 		Token: "",
 	},
-	//Mysql: Mysql{
-	//	ConnectionString: "root:password@(127.0.0.1:3306)/venus_market?parseTime=true&loc=Local",
-	//	MaxOpenConn:      100,
-	//	MaxIdleConn:      100,
-	//	ConnMaxLifeTime:  "1m",
-	//	Debug:            false,
-	//},
+	Mysql: Mysql{
+		ConnectionString: "",
+		MaxOpenConn:      100,
+		MaxIdleConn:      100,
+		ConnMaxLifeTime:  "1m",
+		Debug:            false,
+	},
 	AuthNode: AuthNode{
 		Url:   "http://<ip>:8989",
 		Token: "",

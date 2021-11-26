@@ -29,7 +29,8 @@ type StorageDealRepo interface {
 	GetDeals(mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error)
 	GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error)
 	GetDealByDealID(mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error)
-	ListDeal(mAddr address.Address) ([]*types.MinerDeal, error)
+	ListDealByAddr(mAddr address.Address) ([]*types.MinerDeal, error)
+	ListDeal() ([]*types.MinerDeal, error)
 	GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error)
 	ListPieceInfoKeys() ([]cid.Cid, error)
 }
@@ -61,11 +62,13 @@ type PaychChannelInfoRepo interface {
 }
 
 type IStorageAskRepo interface {
+	ListAsk() ([]*storagemarket.SignedStorageAsk, error)
 	GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error)
 	SetAsk(ask *storagemarket.SignedStorageAsk) error
 }
 
 type IRetrievalAskRepo interface {
+	ListAsk() ([]*types.RetrievalAsk, error)
 	GetAsk(addr address.Address) (*types.RetrievalAsk, error)
 	SetAsk(ask *types.RetrievalAsk) error
 }
@@ -93,6 +96,7 @@ type Repo interface {
 	CidInfoRepo() ICidInfoRepo
 	RetrievalDealRepo() IRetrievalDealRepo
 	Close() error
+	Migrate() error
 }
 
 var ErrNotFound = xerrors.New("record not found")

@@ -76,7 +76,7 @@ type StorageProviderV2Impl struct {
 	dealProcess     StorageDealProcess
 	transferProcess TransferProcess
 	storageReceiver smnet.StorageReceiver
-	minerMgr        minermgr.IMinerMgr
+	minerMgr        minermgr.IAddrMgr
 }
 
 type internalProviderEvent struct {
@@ -107,7 +107,7 @@ func NewStorageProviderV2(
 	spn StorageProviderNode,
 	dagStore stores.DAGStoreWrapper,
 	repo repo.Repo,
-	minerMgr minermgr.IMinerMgr,
+	minerMgr minermgr.IAddrMgr,
 ) (StorageProviderV2, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -171,20 +171,10 @@ func (p *StorageProviderV2Impl) Start(ctx context.Context) error {
 
 func (p *StorageProviderV2Impl) start(ctx context.Context) error {
 	// Run datastore and DAG store migrations
-	addrs, err := p.minerMgr.ActorAddress(ctx)
+	deals, err := p.dealStore.ListDeal()
 	if err != nil {
-		return err
+		return nil
 	}
-
-	var deals []*types.MinerDeal
-	for _, addr := range addrs {
-		tdeals, err := p.dealStore.ListDeal(addr)
-		if err != nil {
-			return nil
-		}
-		deals = append(deals, tdeals...)
-	}
-
 	// Fire restart event on all active deals
 	if err := p.restartDeals(ctx, deals); err != nil {
 		return fmt.Errorf("failed to restart deals: %w", err)

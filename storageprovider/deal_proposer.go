@@ -64,7 +64,7 @@ type StorageDealProcessImpl struct {
 
 	dagStore stores.DAGStoreWrapper // TODO:检查是否遗漏
 
-	minerMgr     minermgr2.IMinerMgr
+	minerMgr     minermgr2.IAddrMgr
 	pieceStorage piecestorage.IPieceStorage
 }
 
@@ -76,7 +76,7 @@ func NewStorageDealProcessImpl(
 	deals repo.StorageDealRepo,
 	ask IStorageAsk,
 	fs filestore.FileStore,
-	minerMgr minermgr2.IMinerMgr,
+	minerMgr minermgr2.IAddrMgr,
 	repo repo.Repo,
 	pieceStorage piecestorage.IPieceStorage,
 	dataTransfer network2.ProviderDataTransfer,
@@ -235,9 +235,6 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 		}
 	}
 
-	// TODO: RunCustomDecisionLogic ?
-
-	// DecideOnProposal
 	err = storageDealPorcess.SendSignedResponse(ctx, proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealWaitingForData,
 		Proposal: minerDeal.ProposalCid,
@@ -279,7 +276,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 		deal.PiecePath = filestore.Path("")
 		deal.MetadataPath = metadataPath
-		deal.PieceStatus= types.Undefine
+		deal.PieceStatus = types.Undefine
 
 		deal.State = storagemarket.StorageDealReserveProviderFunds
 
@@ -324,7 +321,6 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			deal.State = storagemarket.StorageDealPublish // PublishDeal
 		}
 
-		deal.PieceStatus= types.Undefine
 		err = storageDealPorcess.deals.SaveDeal(deal)
 		if err != nil {
 			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))

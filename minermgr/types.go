@@ -1,6 +1,6 @@
 package minermgr
 
-type User struct {
+type AuthUser struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
 	Miner      string `json:"miner"` // miner address f01234
