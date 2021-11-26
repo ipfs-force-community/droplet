@@ -2,6 +2,8 @@ package badger
 
 import (
 	"context"
+	"path"
+
 	"github.com/filecoin-project/venus-market/blockstore"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -10,7 +12,6 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
 	"go.uber.org/fx"
-	"path"
 )
 
 const (
@@ -210,12 +211,12 @@ func (r *BadgerRepo) StorageAskRepo() repo.IStorageAskRepo {
 	return r.storageAskRepo
 }
 
-func (b *BadgerRepo) RetrievalAskRepo() repo.IRetrievalAskRepo {
-	return b.retrievalAskRepo
+func (r *BadgerRepo) RetrievalAskRepo() repo.IRetrievalAskRepo {
+	return r.retrievalAskRepo
 }
 
-func (b *BadgerRepo) CidInfoRepo() repo.ICidInfoRepo {
-	return b.piecesRepo
+func (r *BadgerRepo) CidInfoRepo() repo.ICidInfoRepo {
+	return r.piecesRepo
 }
 
 func (r *BadgerRepo) RetrievalDealRepo() repo.IRetrievalDealRepo {

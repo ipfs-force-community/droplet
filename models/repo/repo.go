@@ -66,8 +66,8 @@ type IStorageAskRepo interface {
 }
 
 type IRetrievalAskRepo interface {
-	GetAsk(addr address.Address) (*retrievalmarket.Ask, error)
-	SetAsk(addr address.Address, ask *retrievalmarket.Ask) error
+	GetAsk(addr address.Address) (*types.RetrievalAsk, error)
+	SetAsk(ask *types.RetrievalAsk) error
 }
 
 type ICidInfoRepo interface {

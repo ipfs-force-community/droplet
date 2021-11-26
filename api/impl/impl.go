@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus-market/models/repo"
 	"os"
 	"sort"
 	"time"
+
+	"github.com/filecoin-project/venus-market/models/repo"
 
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
@@ -207,11 +208,26 @@ func (m MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address)
 }
 
 func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, ask *retrievalmarket.Ask) error {
-	return m.RetrievalAskHandler.SetAsk(mAddr, ask)
+	return m.RetrievalAskHandler.SetAsk(&types.RetrievalAsk{
+		Miner:                   mAddr,
+		PricePerByte:            ask.PricePerByte,
+		UnsealPrice:             ask.UnsealPrice,
+		PaymentInterval:         ask.PaymentInterval,
+		PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
+	})
 }
 
 func (m MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error) {
-	return m.RetrievalAskHandler.GetAsk(mAddr)
+	ask, err := m.RetrievalAskHandler.GetAsk(mAddr)
+	if err != nil {
+		return nil, err
+	}
+	return &retrievalmarket.Ask{
+		PricePerByte:            ask.PricePerByte,
+		UnsealPrice:             ask.UnsealPrice,
+		PaymentInterval:         ask.PaymentInterval,
+		PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
+	}, nil
 }
 
 func (m MarketNodeImpl) MarketListDataTransfers(ctx context.Context) ([]types.DataTransferChannel, error) {

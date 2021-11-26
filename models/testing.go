@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/utils/test_helper"
+	"github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/models/mysql"
@@ -35,11 +36,11 @@ func MysqlDB(t *testing.T) repo.Repo {
 	return repo
 }
 
-func BadgerDB(t *testing.T, path string) *badger.Datastore {
-	if len(path) == 0 {
-		t.Skipf("badger path is nil")
-	}
-	db, err := badger.NewDatastore(path, &badger.DefaultOptions)
+func BadgerDB(t *testing.T) *badger.Datastore {
+	datastore.ErrNotFound = repo.ErrNotFound
+	opts := &badger.DefaultOptions
+	opts.InMemory = true
+	db, err := badger.NewDatastore("", opts)
 	assert.Nil(t, err)
 	return db
 }

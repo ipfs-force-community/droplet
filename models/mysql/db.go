@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"database/sql/driver"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -69,9 +70,7 @@ func (r MysqlRepo) Close() error {
 
 func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 	gorm.ErrRecordNotFound = repo.ErrNotFound
-
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
-
 	if err != nil {
 		return nil, xerrors.Errorf("[db connection failed] Database name: %s %w", cfg.ConnectionString, err)
 	}
@@ -132,26 +131,6 @@ func decodeCidPtr(c *cid.Cid) string {
 	return c.String()
 }
 
-var undefAddrStr = address.Undef.String()
-
-func parseAddrPtr(str string) (*address.Address, error) {
-	if str == undefAddrStr {
-		return nil, nil
-	}
-	addr, err := address.NewFromString(str)
-	if err != nil {
-		return nil, err
-	}
-	return &addr, nil
-}
-
-func decodeAddrPtr(addr *address.Address) string {
-	if addr == nil {
-		return address.Undef.String()
-	}
-	return addr.String()
-}
-
 func convertBigInt(v big.Int) mtypes.Int {
 	if v.Nil() {
 		return mtypes.Zero()
@@ -161,4 +140,55 @@ func convertBigInt(v big.Int) mtypes.Int {
 
 func decodePeerId(str string) (peer.ID, error) {
 	return peer.Decode(str)
+}
+
+type DBAddress address.Address
+
+var UndefDBAddress = DBAddress{}
+
+func (a *DBAddress) Scan(value interface{}) error {
+	val, ok := value.([]byte)
+	if !ok {
+		return xerrors.New("address should be a `[]byte`")
+	}
+	if len(val) == 0 {
+		*a = UndefDBAddress
+		return nil
+	}
+	addr, err := address.NewFromString(address.MainnetPrefix + string(val))
+	if err != nil {
+		return err
+	}
+	*a = DBAddress(addr)
+
+	return nil
+}
+
+func (a DBAddress) Value() (driver.Value, error) {
+	return a.String(), nil
+}
+
+func (a DBAddress) String() string {
+	if a == UndefDBAddress {
+		return ""
+	}
+	// Remove the prefix identifying the network type，eg. change `f01000` to `01000`
+	return address.Address(a).String()[1:]
+}
+
+func (a DBAddress) addr() address.Address {
+	return address.Address(a)
+}
+
+func (a DBAddress) addrPtr() *address.Address {
+	if a == UndefDBAddress {
+		return nil
+	}
+	addr := address.Address(a)
+	return &addr
+}
+
+type TimeStampOrm struct {
+	CreatedAt uint64 `gorm:"type:bigint unsigned"`
+	UpdatedAt uint64 `gorm:"type:bigint unsigned"`
 }

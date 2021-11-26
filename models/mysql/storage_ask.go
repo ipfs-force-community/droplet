@@ -1,20 +1,23 @@
 package mysql
 
 import (
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus-market/models/repo"
 	mtypes "github.com/filecoin-project/venus-messager/types"
 	"golang.org/x/xerrors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
+const storageAskTableName = "storage_asks"
+
 type storageAsk struct {
 	ID            uint       `gorm:"primary_key"`
-	Miner         string     `gorm:"column:miner;type:varchar(128);uniqueIndex"`
+	Miner         DBAddress  `gorm:"column:miner;type:varchar(256);uniqueIndex"`
 	Price         mtypes.Int `gorm:"column:price;type:varchar(256);"`
 	VerifiedPrice mtypes.Int `gorm:"column:verified_price;type:varchar(256);"`
 	MinPieceSize  int64      `gorm:"column:min_piece_size;type:bigint;"`
@@ -27,15 +30,13 @@ type storageAsk struct {
 }
 
 func (a *storageAsk) TableName() string {
-	return "storage_asks"
+	return storageAskTableName
 }
 
 func fromStorageAsk(src *storagemarket.SignedStorageAsk) *storageAsk {
 	ask := &storageAsk{}
 	if src.Ask != nil {
-		// todo: how to deal,
-		//  if address.CurrentNetwork are different at saving and querying time.
-		ask.Miner = src.Ask.Miner.String()
+		ask.Miner = DBAddress(src.Ask.Miner)
 		ask.Price = convertBigInt(src.Ask.Price)
 		ask.VerifiedPrice = convertBigInt(src.Ask.VerifiedPrice)
 		ask.MinPieceSize = int64(src.Ask.MinPieceSize)
@@ -57,6 +58,7 @@ func fromStorageAsk(src *storagemarket.SignedStorageAsk) *storageAsk {
 func toStorageAsk(src *storageAsk) (*storagemarket.SignedStorageAsk, error) {
 	ask := &storagemarket.SignedStorageAsk{
 		Ask: &storagemarket.StorageAsk{
+			Miner:         src.Miner.addr(),
 			Price:         abi.TokenAmount{Int: src.Price.Int},
 			VerifiedPrice: abi.TokenAmount{Int: src.VerifiedPrice.Int},
 			MinPieceSize:  abi.PaddedPieceSize(src.MinPieceSize),
@@ -65,11 +67,6 @@ func toStorageAsk(src *storageAsk) (*storagemarket.SignedStorageAsk, error) {
 			Expiry:        abi.ChainEpoch(src.Expiry),
 			SeqNo:         src.SeqNo,
 		},
-	}
-	var err error
-	ask.Ask.Miner, err = address.NewFromString(src.Miner)
-	if err != nil {
-		return nil, err
 	}
 	if len(src.Signature.Data) != 0 {
 		ask.Signature = &crypto.Signature{
@@ -91,11 +88,9 @@ func NewStorageAskRepo(db *gorm.DB) *storageAskRepo {
 
 func (a *storageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {
 	var res storageAsk
-	err := a.DB.Take(&res, "miner = ?", miner.String()).Error
+	err := a.DB.Take(&res, "miner = ?", DBAddress(miner).String()).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, repo.ErrNotFound
-		}
+		return nil, err
 	}
 	return toStorageAsk(&res)
 }
@@ -104,8 +99,10 @@ func (a *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 	if ask == nil || ask.Ask == nil {
 		return xerrors.Errorf("param is nil")
 	}
+	dbAsk := fromStorageAsk(ask)
+	dbAsk.UpdatedAt = uint64(time.Now().Unix())
 	return a.DB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "miner"}},
 		UpdateAll: true,
-	}).Save(fromStorageAsk(ask)).Error
+	}).Save(dbAsk).Error
 }

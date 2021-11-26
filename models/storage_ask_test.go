@@ -1,7 +1,6 @@
 package models
 
 import (
-	"os"
 	"testing"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -21,13 +20,7 @@ func TestStorageAsk(t *testing.T) {
 		testStorageAsk(t, askRepo)
 	})
 	t.Run("badger", func(t *testing.T) {
-		path := "./badger_stoarage_ask_db"
-		db := BadgerDB(t, path)
-		defer func() {
-			assert.Nil(t, db.Close())
-			assert.Nil(t, os.RemoveAll(path))
-
-		}()
+		db := BadgerDB(t)
 		testStorageAsk(t, repo.IStorageAskRepo(badger.NewStorageAskRepo(db)))
 	})
 }

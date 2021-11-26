@@ -1,6 +1,8 @@
 package mysql
 
 import (
+	"time"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -27,6 +29,7 @@ type retrievalDeal struct {
 	Message         string     `gorm:"column:message;type:varchar(2048);"`
 	CurrentInterval uint64     `gorm:"column:current_interval;type:bigint unsigned;"`
 	LegacyProtocol  bool       `gorm:"column:legacy_protocol;"`
+	TimeStampOrm
 }
 
 type DealProposal struct {
@@ -150,6 +153,7 @@ type retrievalDealRepo struct {
 
 func (r *retrievalDealRepo) SaveDeal(deal *types.ProviderDealState) error {
 	dbDeal := fromProviderDealState(deal)
+	dbDeal.UpdatedAt = uint64(time.Now().Unix())
 	return r.Save(dbDeal).Error
 }
 

@@ -2,15 +2,16 @@ package types
 
 import (
 	"fmt"
+	"io"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
-	xerrors "github.com/pkg/errors"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"io"
+	"golang.org/x/xerrors"
 )
 
 // ProviderDealState is the current state of a deal from the point of view

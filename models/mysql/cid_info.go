@@ -3,6 +3,8 @@ package mysql
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"time"
+
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/ipfs/go-cid"
@@ -10,6 +12,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+const cidInfoTableName = "cid_infos"
 
 type mysqlCidInfoRepo struct {
 	ds *gorm.DB
@@ -62,7 +66,7 @@ type cidInfo struct {
 }
 
 func (m cidInfo) TableName() string {
-	return "cid_infos"
+	return cidInfoTableName
 }
 
 func (m *mysqlCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
@@ -73,10 +77,11 @@ func (m *mysqlCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocatio
 		mysqlInfos[idx].PieceCid = mysqlCid(pieceCID)
 		mysqlInfos[idx].PayloadCid = mysqlCid(blockCid)
 		mysqlInfos[idx].BlockLocation = mysqlBlockLocation(location)
+		mysqlInfos[idx].UpdatedAt = uint64(time.Now().Unix())
 		idx++
 	}
 
-	return m.ds.Table("cid_infos").Clauses(clause.OnConflict{
+	return m.ds.Table(cidInfoTableName).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "piece_cid"}, {Name: "block_cid"}},
 		UpdateAll: true,
 	}).Save(mysqlInfos).Error
@@ -97,19 +102,21 @@ func (m *mysqlCidInfoRepo) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, e
 		}}, nil
 }
 
-func (m *mysqlCidInfoRepo) ListCidInfoKeys() (cids []cid.Cid, err error) {
+func (m *mysqlCidInfoRepo) ListCidInfoKeys() ([]cid.Cid, error) {
 	var cidsStr []string
-	defer func() {
-		size := len(cidsStr)
-		if size == 0 {
-			return
+	err := m.ds.Table(cidInfoTableName).Select("payload_cid").Scan(&cidsStr).Error
+	if err != nil {
+		return nil, err
+	}
+	cids := make([]cid.Cid, len(cidsStr))
+	for idx, s := range cidsStr {
+		cids[idx], err = cid.Decode(s)
+		if err != nil {
+			return nil, err
 		}
-		cids = make([]cid.Cid, size)
-		for idx, s := range cidsStr {
-			cids[idx], _ = cid.Decode(s)
-		}
-	}()
-	return cids, m.ds.Table((cidInfo{}).TableName()).Select("payload_cid").Scan(&cidsStr).Error
+	}
+
+	return cids, nil
 
 }
 

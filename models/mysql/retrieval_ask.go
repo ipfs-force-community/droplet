@@ -1,25 +1,19 @@
 package mysql
 
 import (
-	"database/sql/driver"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
-	"fmt"
+	"time"
+
+	"github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	fbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/models/repo"
-	"golang.org/x/xerrors"
+	mtypes "github.com/filecoin-project/venus-messager/types"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-type TimeStampOrm struct {
-	CreatedAt uint64 `gorm:"type:bigint unsigned"`
-	UpdatedAt uint64 `gorm:"type:bigint unsigned"`
-	DeleteAt  uint64 `gorm:"type:bigint unsigned;index;default:null"`
-}
+const retrievalAskTableName = "retrieval_asks"
 
 type retrievalAskRepo struct {
 	ds *gorm.DB
@@ -31,78 +25,44 @@ func NewRetrievalAskRepo(ds *gorm.DB) repo.IRetrievalAskRepo {
 	return &retrievalAskRepo{ds: ds}
 }
 
-type mysqlRetrievalAsk retrievalmarket.Ask
-type mysqlAddress address.Address
-
-func (j *mysqlAddress) Scan(value interface{}) error {
-	var a, ok = value.([]byte)
-	if !ok {
-		return errors.New("address should be a string")
-	}
-	addr, err := address.NewFromString(string(a))
-	if err != nil {
-		return err
-	}
-	*j = (mysqlAddress)(addr)
-	return nil
-}
-
-func (j mysqlAddress) Value() (driver.Value, error) {
-	return (address.Address)(j).String(), nil
-}
-
-func addressMysqlKey(addr address.Address) string {
-	return hex.EncodeToString(addr.Bytes())
-}
-
-func (j mysqlAddress) Key() string {
-	return addressMysqlKey((address.Address)(j))
-}
-
-func (j *mysqlRetrievalAsk) Scan(value interface{}) error {
-	var bytes, ok = value.([]byte)
-	if !ok {
-		return xerrors.New(fmt.Sprint("Failed to unmarshal mysqlAddress value:", value))
-	}
-	return json.Unmarshal(bytes, j)
-}
-
-func (j mysqlRetrievalAsk) Value() (driver.Value, error) {
-	return json.Marshal(j)
-}
-
 type modelRetrievalAsk struct {
-	ID      uint               `gorm:"primary_key"`
-	UIdx    string             `gorm:"column:uidx;uniqueIndex;type:varchar(128)"`
-	Address mysqlAddress       `gorm:"column:address;uniqueIndex;type:varchar(128)"`
-	Ask     *mysqlRetrievalAsk `gorm:"column:retrieval_ask;type:blob;size:2048"`
+	ID                      uint       `gorm:"primary_key"`
+	Address                 DBAddress  `gorm:"column:address;uniqueIndex;type:varchar(256)"`
+	PricePerByte            mtypes.Int `gorm:"column:price_per_byte;type:varchar(256);"`
+	UnsealPrice             mtypes.Int `gorm:"column:unseal_price;type:varchar(256);"`
+	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;"`
+	PaymentIntervalIncrease uint64     `gorm:"column:payment_interval_increase;type:bigint unsigned;"`
 	TimeStampOrm
 }
 
 func (a *modelRetrievalAsk) TableName() string {
-	return "retrieval_asks"
+	return retrievalAskTableName
 }
 
-func (r *retrievalAskRepo) GetAsk(addr address.Address) (*retrievalmarket.Ask, error) {
+func (r *retrievalAskRepo) GetAsk(addr address.Address) (*types.RetrievalAsk, error) {
 	var mAsk modelRetrievalAsk
-	if err := r.ds.Take(&mAsk, "uidx = ?", (mysqlAddress)(addr).Key()).Error; err != nil {
-		if xerrors.Is(err, gorm.ErrRecordNotFound) {
-			err = repo.ErrNotFound
-		}
+	if err := r.ds.Take(&mAsk, "address = ?", DBAddress(addr).String()).Error; err != nil {
 		return nil, err
 	}
-	return (*retrievalmarket.Ask)(mAsk.Ask), nil
+	return &types.RetrievalAsk{
+		Miner:                   addr,
+		PricePerByte:            fbig.Int{Int: mAsk.PricePerByte.Int},
+		UnsealPrice:             fbig.Int{Int: mAsk.UnsealPrice.Int},
+		PaymentInterval:         mAsk.PaymentInterval,
+		PaymentIntervalIncrease: mAsk.PaymentIntervalIncrease,
+	}, nil
 }
 
-func (repo *retrievalAskRepo) SetAsk(addr address.Address, ask *retrievalmarket.Ask) error {
-	mysqlAddr := (mysqlAddress)(addr)
-
-	return repo.ds.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "uidx"}},
+func (r *retrievalAskRepo) SetAsk(ask *types.RetrievalAsk) error {
+	return r.ds.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "address"}},
 		UpdateAll: true,
 	}).Save(&modelRetrievalAsk{
-		UIdx:    mysqlAddr.Key(),
-		Address: mysqlAddr,
-		Ask:     (*mysqlRetrievalAsk)(ask),
+		Address:                 DBAddress(ask.Miner),
+		PricePerByte:            convertBigInt(ask.PricePerByte),
+		UnsealPrice:             convertBigInt(ask.UnsealPrice),
+		PaymentInterval:         ask.PaymentInterval,
+		PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
+		TimeStampOrm:            TimeStampOrm{UpdatedAt: uint64(time.Now().Unix())},
 	}).Error
 }

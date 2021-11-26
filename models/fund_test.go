@@ -1,7 +1,6 @@
 package models
 
 import (
-	"os"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -17,13 +16,7 @@ func TestFund(t *testing.T) {
 	})
 
 	t.Run("badger", func(t *testing.T) {
-		path := "./badger_fund_db"
-		db := BadgerDB(t, path)
-		defer func() {
-			assert.Nil(t, db.Close())
-			assert.Nil(t, os.RemoveAll(path))
-
-		}()
+		db := BadgerDB(t)
 		testFund(t, repo.FundRepo(badger.NewFundRepo(db)))
 	})
 }
@@ -57,6 +50,7 @@ func testFund(t *testing.T, fundRepo repo.FundRepo) {
 	assert.Nil(t, fundRepo.SaveFundedAddressState(res))
 	res3, err := fundRepo.GetFundedAddressState(res.Addr)
 	assert.Nil(t, err)
+
 	assert.Equal(t, res, res3)
 
 	list, err := fundRepo.ListFundedAddressState()

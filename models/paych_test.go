@@ -1,7 +1,6 @@
 package models
 
 import (
-	"os"
 	"testing"
 
 	"github.com/filecoin-project/venus-market/models/badger"
@@ -22,13 +21,7 @@ func TestPaych(t *testing.T) {
 	})
 
 	t.Run("badger", func(t *testing.T) {
-		path := "./badger_paych_db"
-		db := BadgerDB(t, path)
-		defer func() {
-			assert.Nil(t, db.Close())
-			assert.Nil(t, os.RemoveAll(path))
-
-		}()
+		db := BadgerDB(t)
 		ps := badger.NewPaychRepo(db)
 		testChannelInfo(t, repo.PaychChannelInfoRepo(ps), repo.PaychMsgInfoRepo(ps))
 		testMsgInfo(t, repo.PaychMsgInfoRepo(ps))
@@ -94,8 +87,14 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 		Settling:      true,
 	}
 
+	ci3 := &types.ChannelInfo{}
+	*ci3 = *ci2
+	ci3.Channel = nil
+	ci3.ChannelID = uuid.NewString()
+
 	assert.Nil(t, channelRepo.SaveChannel(ci))
 	assert.Nil(t, channelRepo.SaveChannel(ci2))
+	assert.Nil(t, channelRepo.SaveChannel(ci3))
 
 	res, err := channelRepo.GetChannelByChannelID(ci.ChannelID)
 	assert.Nil(t, err)
@@ -103,6 +102,10 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 	res2, err := channelRepo.GetChannelByChannelID(ci2.ChannelID)
 	assert.Nil(t, err)
 	assert.Equal(t, res2, ci2)
+	res_3, err := channelRepo.GetChannelByChannelID(ci3.ChannelID)
+	assert.Nil(t, err)
+	ci3.Channel = nil
+	assert.Equal(t, res_3, ci3)
 
 	res3, err := channelRepo.GetChannelByAddress(*ci.Channel)
 	assert.Nil(t, err)

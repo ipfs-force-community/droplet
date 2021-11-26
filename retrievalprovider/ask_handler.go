@@ -2,6 +2,7 @@ package retrievalprovider
 
 import (
 	"context"
+
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/types"
@@ -15,8 +16,8 @@ import (
 )
 
 type IAskHandler interface {
-	GetAsk(address.Address) (*retrievalmarket.Ask, error)
-	SetAsk(address.Address, *retrievalmarket.Ask) error
+	GetAsk(address.Address) (*types.RetrievalAsk, error)
+	SetAsk(*types.RetrievalAsk) error
 	GetDynamicAsk(context.Context, address.Address, retrievalmarket.PricingInput, []abi.DealID) (retrievalmarket.Ask, error)
 	GetAskForPayload(context.Context, address.Address, cid.Cid, []*types.MinerDeal, bool, peer.ID) (retrievalmarket.Ask, error)
 }
@@ -36,18 +37,18 @@ func NewAskHandler(r repo.Repo, node retrievalmarket.RetrievalProviderNode, retr
 }
 
 // GetAsk returns the current deal parameters this provider accepts
-func (p *AskHandler) GetAsk(mAddr address.Address) (*retrievalmarket.Ask, error) {
+func (p *AskHandler) GetAsk(mAddr address.Address) (*types.RetrievalAsk, error) {
 	return p.askStore.GetAsk(mAddr)
 }
 
 // GetAsk returns the current deal parameters this provider accepts
-func (p *AskHandler) HasAsk(mAddr address.Address) (*retrievalmarket.Ask, error) {
+func (p *AskHandler) HasAsk(mAddr address.Address) (*types.RetrievalAsk, error) {
 	return p.askStore.GetAsk(mAddr)
 }
 
 // SetAsk sets the deal parameters this provider accepts
-func (p *AskHandler) SetAsk(maddr address.Address, ask *retrievalmarket.Ask) error {
-	return p.askStore.SetAsk(maddr, ask)
+func (p *AskHandler) SetAsk(ask *types.RetrievalAsk) error {
+	return p.askStore.SetAsk(ask)
 }
 
 // GetDynamicAsk quotes a dynamic price for the retrieval deal by calling the user configured
@@ -69,7 +70,12 @@ func (p *AskHandler) GetDynamicAsk(ctx context.Context, paymentAddr address.Addr
 	dp.PieceCID = input.PieceCID
 	dp.Unsealed = input.Unsealed
 	dp.Client = input.Client
-	dp.CurrentAsk = *currAsk
+	dp.CurrentAsk = retrievalmarket.Ask{
+		PricePerByte:            currAsk.PricePerByte,
+		UnsealPrice:             currAsk.UnsealPrice,
+		PaymentInterval:         currAsk.PaymentInterval,
+		PaymentIntervalIncrease: currAsk.PaymentIntervalIncrease,
+	}
 
 	ask, err := p.retrievalPricingFunc(ctx, dp)
 	if err != nil {

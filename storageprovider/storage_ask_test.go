@@ -1,7 +1,6 @@
 package storageprovider
 
 import (
-	"os"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -11,7 +10,6 @@ import (
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/models/badger"
 	"github.com/filecoin-project/venus-market/utils/test_helper"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,13 +21,8 @@ func TestStorageAsk(t *testing.T) {
 		testStorageAsk(t, mysqlAsk)
 	})
 	t.Run("badger", func(t *testing.T) {
-		path := "./badger_stoarage_ask_db"
-		badgerAsk := &StorageAsk{repo: badger.NewStorageAskRepo(models.BadgerDB(t, path)),
+		badgerAsk := &StorageAsk{repo: badger.NewStorageAskRepo(models.BadgerDB(t)),
 			fullNode: test_helper.MockFullnode{T: t}}
-		defer func() {
-			assert.Nil(t, os.RemoveAll(path))
-
-		}()
 		testStorageAsk(t, badgerAsk)
 	})
 }
