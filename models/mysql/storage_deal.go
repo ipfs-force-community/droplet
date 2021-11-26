@@ -31,9 +31,9 @@ const storageDealTableName = "storage_deals"
 type storageDeal struct {
 	ClientDealProposal `gorm:"embedded;embeddedPrefix:cdp_"`
 
-	ProposalCid           string     `gorm:"column:proposal_cid;type:varchar(128);primary_key"`
-	AddFundsCid           string     `gorm:"column:add_funds_cid;type:varchar(128);"`
-	PublishCid            string     `gorm:"column:publish_cid;type:varchar(128);"`
+	ProposalCid           DBCid      `gorm:"column:proposal_cid;type:varchar(256);primary_key"`
+	AddFundsCid           DBCid      `gorm:"column:add_funds_cid;type:varchar(256);"`
+	PublishCid            DBCid      `gorm:"column:publish_cid;type:varchar(256);"`
 	Miner                 string     `gorm:"column:miner_peer;type:varchar(128);"`
 	Client                string     `gorm:"column:client_peer;type:varchar(128);"`
 	State                 uint64     `gorm:"column:state;type:bigint unsigned;"`
@@ -62,7 +62,7 @@ type storageDeal struct {
 }
 
 type ClientDealProposal struct {
-	PieceCID     string    `gorm:"column:piece_cid;type:varchar(128);index"`
+	PieceCID     DBCid     `gorm:"column:piece_cid;type:varchar(256);index"`
 	PieceSize    uint64    `gorm:"column:piece_size;type:bigint unsigned;"`
 	VerifiedDeal bool      `gorm:"column:verified_deal;"`
 	Client       DBAddress `gorm:"column:client;type:varchar(256);"`
@@ -107,9 +107,9 @@ type ChannelID struct {
 
 type DataRef struct {
 	TransferType string `gorm:"column:transfer_type;type:varchar(128);"`
-	Root         string `gorm:"column:root;type:varchar(128);"`
+	Root         DBCid  `gorm:"column:root;type:varchar(256);"`
 
-	PieceCid     string                `gorm:"column:piece_cid;type:varchar(256);"`
+	PieceCid     DBCid                 `gorm:"column:piece_cid;type:varchar(256);"`
 	PieceSize    abi.UnpaddedPieceSize `gorm:"column:piece_size;type:bigint unsigned;"`
 	RawBlockSize uint64                `gorm:"column:raw_block_size;type:bigint unsigned;"`
 }
@@ -121,7 +121,7 @@ func (m *storageDeal) TableName() string {
 func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 	md := &storageDeal{
 		ClientDealProposal: ClientDealProposal{
-			PieceCID:             decodeCid(src.ClientDealProposal.Proposal.PieceCID),
+			PieceCID:             DBCid(src.ClientDealProposal.Proposal.PieceCID),
 			PieceSize:            uint64(src.ClientDealProposal.Proposal.PieceSize),
 			VerifiedDeal:         src.ClientDealProposal.Proposal.VerifiedDeal,
 			Client:               DBAddress(src.ClientDealProposal.Proposal.Client),
@@ -137,9 +137,7 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 				Data: src.ClientSignature.Data,
 			},
 		},
-		ProposalCid:           decodeCid(src.ProposalCid),
-		AddFundsCid:           decodeCidPtr(src.AddFundsCid),
-		PublishCid:            decodeCidPtr(src.PublishCid),
+		ProposalCid:           DBCid(src.ProposalCid),
 		Miner:                 src.Miner.Pretty(),
 		Client:                src.Client.Pretty(),
 		State:                 src.State,
@@ -159,11 +157,26 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 		Length: uint64(src.Proposal.PieceSize),
 	}
 
+	if src.AddFundsCid == nil {
+		md.AddFundsCid = UndefDBCid
+	} else {
+		md.AddFundsCid = DBCid(*src.AddFundsCid)
+	}
+	if src.PublishCid == nil {
+		md.PublishCid = UndefDBCid
+	} else {
+		md.PublishCid = DBCid(*src.PublishCid)
+	}
+	if src.Ref.PieceCid == nil {
+		md.Ref.PieceCid = UndefDBCid
+	} else {
+		md.Ref.PieceCid = DBCid(*src.Ref.PieceCid)
+	}
+
 	if src.Ref != nil {
 		md.Ref = DataRef{
 			TransferType: src.Ref.TransferType,
-			Root:         decodeCid(src.Ref.Root),
-			PieceCid:     decodeCidPtr(src.Ref.PieceCid),
+			Root:         DBCid(src.Ref.Root),
 			PieceSize:    src.Ref.PieceSize,
 			RawBlockSize: src.Ref.RawBlockSize,
 		}
@@ -183,6 +196,7 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 	md := &types.MinerDeal{
 		ClientDealProposal: market.ClientDealProposal{
 			Proposal: market.DealProposal{
+				PieceCID:             src.PieceCID.cid(),
 				PieceSize:            abi.PaddedPieceSize(src.PieceSize),
 				VerifiedDeal:         src.VerifiedDeal,
 				Client:               src.ClientDealProposal.Client.addr(),
@@ -199,6 +213,9 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 				Data: src.ClientSignature.Data,
 			},
 		},
+		ProposalCid:   src.ProposalCid.cid(),
+		AddFundsCid:   src.AddFundsCid.cidPtr(),
+		PublishCid:    src.PublishCid.cidPtr(),
 		State:         src.State,
 		PiecePath:     filestore.Path(src.PiecePath),
 		MetadataPath:  filestore.Path(src.MetadataPath),
@@ -208,6 +225,8 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		FundsReserved: abi.TokenAmount{Int: src.FundsReserved.Int},
 		Ref: &storagemarket.DataRef{
 			TransferType: src.Ref.TransferType,
+			Root:         src.Ref.Root.cid(),
+			PieceCid:     src.Ref.PieceCid.cidPtr(),
 			PieceSize:    src.Ref.PieceSize,
 			RawBlockSize: src.Ref.RawBlockSize,
 		},
@@ -219,30 +238,6 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		Offset:                abi.PaddedPieceSize(src.Offset),
 	}
 	var err error
-	md.ClientDealProposal.Proposal.PieceCID, err = parseCid(src.ClientDealProposal.PieceCID)
-	if err != nil {
-		return nil, err
-	}
-	md.ProposalCid, err = parseCid(src.ProposalCid)
-	if err != nil {
-		return nil, err
-	}
-	md.AddFundsCid, err = parseCidPtr(src.AddFundsCid)
-	if err != nil {
-		return nil, err
-	}
-	md.PublishCid, err = parseCidPtr(src.PublishCid)
-	if err != nil {
-		return nil, err
-	}
-	md.Ref.Root, err = parseCid(src.Ref.Root)
-	if err != nil {
-		return nil, err
-	}
-	md.Ref.PieceCid, err = parseCidPtr(src.Ref.PieceCid)
-	if err != nil {
-		return nil, err
-	}
 
 	if len(src.TransferChannelId.Initiator) > 0 {
 		md.TransferChannelId = &datatransfer.ChannelID{}
@@ -287,7 +282,7 @@ func (m *storageDealRepo) SaveDeal(StorageDeal *types.MinerDeal) error {
 
 func (m *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
 	var md storageDeal
-	err := m.DB.Take(&md, "proposal_cid = ?", proposalCid.String()).Error
+	err := m.DB.Take(&md, "proposal_cid = ?", DBCid(proposalCid).String()).Error
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +317,7 @@ func (dsr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 	var md []storageDeal
 
 	err := dsr.DB.Table((&storageDeal{}).TableName()).
-		Find(&md, "cdp_piece_cid = ? AND state in ", piececid.String(), statues).Error
+		Find(&md, "cdp_piece_cid = ? AND state in ", DBCid(piececid).String(), statues).Error
 
 	if err != nil {
 		return nil, err
@@ -363,7 +358,7 @@ func (dsr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status 
 }
 
 func (dsr *storageDealRepo) UpdateDealStatus(proposalCid cid.Cid, status storagemarket.StorageDealStatus) error {
-	return dsr.DB.Model(storageDeal{}).Where("proposal_cid = ?", proposalCid.String()).
+	return dsr.DB.Model(storageDeal{}).Where("proposal_cid = ?", DBCid(proposalCid).String()).
 		UpdateColumns(map[string]interface{}{"state": status, "updated_at": time.Now().Unix()}).Error
 }
 
@@ -388,7 +383,7 @@ func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo,
 		Deals:    nil,
 	}
 	if err := m.travelDeals(
-		map[string]interface{}{"cdp_piece_cid": pieceCID.String()},
+		map[string]interface{}{"cdp_piece_cid": DBCid(pieceCID).String()},
 		func(deal *types.MinerDeal) error {
 			pieceInfo.Deals = append(pieceInfo.Deals, piecestore.DealInfo{
 				DealID:   deal.DealID,

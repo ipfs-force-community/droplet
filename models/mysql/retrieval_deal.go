@@ -4,7 +4,6 @@ import (
 	"time"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -21,7 +20,7 @@ type retrievalDeal struct {
 	DealProposal    `gorm:"embedded;embeddedPrefix:cdp_"`
 	StoreID         uint64     `gorm:"column:store_id;type:bigint unsigned;"`
 	ChannelID       ChannelID  `gorm:"embedded;embeddedPrefix:ci_"`
-	PieceCID        string     `gorm:"column:piece_cid;type:varchar(256);"` //piece info
+	PieceCID        DBCid      `gorm:"column:piece_cid;type:varchar(256);"` //piece info
 	Status          uint64     `gorm:"column:status;type:bigint unsigned;"`
 	Receiver        string     `gorm:"column:receiver;type:varchar(256);primary_key"`
 	TotalSent       uint64     `gorm:"column:total_sent;type:bigint unsigned;"`
@@ -33,7 +32,7 @@ type retrievalDeal struct {
 }
 
 type DealProposal struct {
-	PayloadCID string `gorm:"column:payload_cid;type:varchar(256);"`
+	PayloadCID DBCid  `gorm:"column:payload_cid;type:varchar(256);"`
 	ID         uint64 `gorm:"column:proposal_id;type:bigint unsigned;primary_key"`
 
 	Selector                *[]byte    `gorm:"column:selector;type:blob;"` // V1
@@ -50,7 +49,7 @@ func (m *retrievalDeal) TableName() string {
 func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 	newdeal := &retrievalDeal{
 		DealProposal: DealProposal{
-			PayloadCID:              deal.PayloadCID.String(),
+			PayloadCID:              DBCid(deal.PayloadCID),
 			ID:                      uint64(deal.ID),
 			PricePerByte:            mtypes.Int(deal.PricePerByte),
 			PaymentInterval:         deal.PaymentInterval,
@@ -58,7 +57,6 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 			UnsealPrice:             mtypes.Int(deal.UnsealPrice),
 		},
 		StoreID:         deal.StoreID,
-		PieceCID:        deal.PieceCID.String(),
 		Status:          uint64(deal.Status),
 		Receiver:        deal.Receiver.String(),
 		TotalSent:       deal.TotalSent,
@@ -78,16 +76,20 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 			ID:        uint64(deal.ChannelID.ID),
 		}
 	}
-	if deal.PieceCID != nil {
-		newdeal.PieceCID = deal.PieceCID.String()
-	}
+	//todo: pieceCID
+	//if deal.PieceCID == nil {
+	//	newdeal.PieceCID = UndefDBCid
+	//} else {
+	//	newdeal.PieceCID = DBCid(*deal.PieceCID)
+	//}
 	return newdeal
 }
 
 func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) {
 	newdeal := &types.ProviderDealState{
 		DealProposal: rm.DealProposal{
-			ID: rm.DealID(deal.DealProposal.ID),
+			PayloadCID: deal.PayloadCID.cid(),
+			ID:         rm.DealID(deal.DealProposal.ID),
 			Params: rm.Params{
 				PricePerByte:            abi.TokenAmount(deal.PricePerByte),
 				PaymentInterval:         deal.DealProposal.PaymentInterval,
@@ -104,26 +106,21 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 		CurrentInterval: deal.CurrentInterval,
 		LegacyProtocol:  deal.LegacyProtocol,
 	}
-
 	var err error
-	if len(deal.DealProposal.PayloadCID) > 0 {
-		newdeal.DealProposal.PayloadCID, err = parseCid(deal.DealProposal.PayloadCID)
-		if err != nil {
-			return nil, err
-		}
-	}
+
 	if deal.DealProposal.Selector != nil {
 		newdeal.DealProposal.Selector = &cbg.Deferred{Raw: *deal.Selector}
 	}
 
-	if len(deal.PieceCID) > 0 {
-		pieceCid, err := parseCid(deal.PieceCID)
-		if err != nil {
-			return nil, err
-		}
-		newdeal.DealProposal.PayloadCID = pieceCid
-		newdeal.PieceInfo = &piecestore.PieceInfo{PieceCID: pieceCid}
-	}
+	// todo: pieceCID
+	//if len(deal.PieceCID) > 0 {
+	//	pieceCid, err := parseCid(deal.PieceCID)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	newdeal.DealProposal.PayloadCID = pieceCid
+	//	newdeal.PieceInfo = &piecestore.PieceInfo{PieceCID: pieceCid}
+	//}
 
 	if len(deal.Receiver) > 0 {
 		newdeal.Receiver, err = decodePeerId(deal.Receiver)

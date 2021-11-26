@@ -15,7 +15,7 @@ const fundedAddressStateTableName = "funded_address_state"
 type fundedAddressState struct {
 	Addr        DBAddress  `gorm:"column:addr;type:varchar(256);primary_key"`
 	AmtReserved mtypes.Int `gorm:"column:amt_reserved;type:varchar(256);"`
-	MsgCid      string     `gorm:"column:msg_cid;type:varchar(128);"`
+	MsgCid      DBCid      `gorm:"column:msg_cid;type:varchar(256);"`
 	TimeStampOrm
 }
 
@@ -26,8 +26,12 @@ func (fas *fundedAddressState) TableName() string {
 func fromFundedAddressState(src *types.FundedAddressState) *fundedAddressState {
 	fds := &fundedAddressState{
 		Addr:        DBAddress(src.Addr),
-		MsgCid:      decodeCidPtr(src.MsgCid),
 		AmtReserved: convertBigInt(src.AmtReserved),
+	}
+	if src.MsgCid == nil {
+		fds.MsgCid = UndefDBCid
+	} else {
+		fds.MsgCid = DBCid(*src.MsgCid)
 	}
 
 	return fds
@@ -36,13 +40,8 @@ func fromFundedAddressState(src *types.FundedAddressState) *fundedAddressState {
 func toFundedAddressState(src *fundedAddressState) (*types.FundedAddressState, error) {
 	fds := &types.FundedAddressState{
 		AmtReserved: abi.TokenAmount{Int: src.AmtReserved.Int},
+		MsgCid:      src.MsgCid.cidPtr(),
 		Addr:        src.Addr.addr(),
-	}
-
-	var err error
-	fds.MsgCid, err = parseCidPtr(src.MsgCid)
-	if err != nil {
-		return nil, err
 	}
 
 	return fds, nil

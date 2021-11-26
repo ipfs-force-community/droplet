@@ -98,37 +98,49 @@ func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 	return r, r.AutoMigrate(modelRetrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{})
 }
 
-func parseCid(str string) (cid.Cid, error) {
-	if len(str) == 0 {
-		return cid.Undef, nil
-	}
+type DBCid cid.Cid
 
-	return cid.Parse(str)
-}
+var UndefDBCid = DBCid{}
 
-func decodeCid(c cid.Cid) string {
-	if c == cid.Undef {
-		return ""
+func (c *DBCid) Scan(value interface{}) error {
+	val, ok := value.([]byte)
+	if !ok {
+		return xerrors.New("cid should be a `[]byte`")
 	}
-	return c.String()
-}
-
-func parseCidPtr(str string) (*cid.Cid, error) {
-	if len(str) == 0 {
-		return nil, nil
+	if len(val) == 0 {
+		*c = UndefDBCid
+		return nil
 	}
-	c, err := cid.Parse(str)
+	cid, err := cid.Decode(string(val))
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &c, nil
+	*c = DBCid(cid)
+
+	return nil
 }
 
-func decodeCidPtr(c *cid.Cid) string {
-	if c == nil {
+func (c DBCid) Value() (driver.Value, error) {
+	return c.String(), nil
+}
+
+func (c DBCid) String() string {
+	if c == UndefDBCid {
 		return ""
 	}
-	return c.String()
+	return cid.Cid(c).String()
+}
+
+func (c DBCid) cid() cid.Cid {
+	return cid.Cid(c)
+}
+
+func (c DBCid) cidPtr() *cid.Cid {
+	if c == UndefDBCid {
+		return nil
+	}
+	cid := cid.Cid(c)
+	return &cid
 }
 
 func convertBigInt(v big.Int) mtypes.Int {
