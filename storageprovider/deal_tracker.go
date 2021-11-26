@@ -20,13 +20,13 @@ import (
 type DealTracker struct {
 	period      time.Duration // TODO: Preferably configurable?
 	storageRepo repo.StorageDealRepo
-	minerMgr    minermgr.IMinerMgr
+	minerMgr    minermgr.IAddrMgr
 	fullNode    apiface.FullNode
 }
 
 var ReadyRetrievalDealStatus = []storagemarket.StorageDealStatus{storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive}
 
-func NewDealTracker(lc fx.Lifecycle, r repo.Repo, minerMgr minermgr.IMinerMgr, fullNode apiface.FullNode) *DealTracker {
+func NewDealTracker(lc fx.Lifecycle, r repo.Repo, minerMgr minermgr.IAddrMgr, fullNode apiface.FullNode) *DealTracker {
 	tracker := &DealTracker{period: time.Minute, storageRepo: r.StorageDealRepo(), minerMgr: minerMgr, fullNode: fullNode}
 
 	lc.Append(fx.Hook{

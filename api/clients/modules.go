@@ -34,15 +34,15 @@ import (
 var log = logging.Logger("clients")
 
 var (
-	ReplaceMpoolMethod   = builder.NextInvoke()
-	ReplaceWalletMethod  = builder.NextInvoke()
+	ReplaceMpoolMethod  = builder.NextInvoke()
+	ReplaceWalletMethod = builder.NextInvoke()
 )
 
 type MPoolReplaceParams struct {
 	fx.In
 	FullNode apiface.FullNode
 	Messager IMessager
-	Mgr      minermgr.IMinerMgr `optional:"true"`
+	Mgr      minermgr.IAddrMgr `optional:"true"`
 }
 
 func ConvertMpoolToMessager(params MPoolReplaceParams) error {
@@ -55,7 +55,8 @@ func ConvertMpoolToMessager(params MPoolReplaceParams) error {
 		var uid string
 		var err error
 		if params.Mgr != nil {
-			account, err := params.Mgr.GetAccount(ctx, p1.From)
+			fromAddr, err := params.FullNode.StateAccountKey(ctx, p1.From, types.EmptyTSK)
+			account, err := params.Mgr.GetAccount(ctx, fromAddr)
 			if err != nil {
 				return nil, err
 			}

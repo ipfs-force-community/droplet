@@ -228,6 +228,10 @@ func (r *BadgerRepo) Close() error {
 	return nil
 }
 
+func (r *BadgerRepo) Migrate() error {
+	return nil
+}
+
 //not metadata, just raw data between file transfer
 
 const (

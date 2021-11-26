@@ -15,7 +15,7 @@ import (
 	"unsafe"
 )
 
-func newGatewayWalletClient(mctx metrics.MetricsCtx, mgr minermgr.IMinerMgr, nodeCfg *config.Signer) (ISinger, jsonrpc.ClientCloser, error) {
+func newGatewayWalletClient(mctx metrics.MetricsCtx, mgr minermgr.IAddrMgr, nodeCfg *config.Signer) (ISinger, jsonrpc.ClientCloser, error) {
 	info := apiinfo.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
 	dialAddr, err := info.DialArgs("v0")
 	if err != nil {
@@ -33,7 +33,7 @@ func newGatewayWalletClient(mctx metrics.MetricsCtx, mgr minermgr.IMinerMgr, nod
 
 type GatewayClient struct {
 	innerClient gateway.WalletClient
-	importMgr   minermgr.IMinerMgr
+	importMgr   minermgr.IAddrMgr
 }
 
 func (gatewayClient *GatewayClient) WalletHas(ctx context.Context, addr address.Address) (bool, error) {

@@ -5,6 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"golang.org/x/xerrors"
 	"net/http"
 	"sync"
@@ -18,58 +22,61 @@ import (
 
 const CoMinersLimit = 200
 
-var log = logging.Logger("miner-manager")
+var log = logging.Logger("address-manager")
 
-type IMinerMgr interface {
+type IAddrMgr interface {
 	ActorAddress(ctx context.Context) ([]address.Address, error)
 	Has(ctx context.Context, addr address.Address) bool
+	GetMiners(ctx context.Context) ([]User, error)
 	GetAccount(ctx context.Context, addr address.Address) (string, error)
-	AddAddress(ctx context.Context, miner Miner) error
-	GetMinerFromVenusAuth(ctx context.Context, skip, limit int64) ([]Miner, error)
+	//	AddAddress(ctx context.Context, miner User) error
 }
 
-type Miner struct {
+type User struct {
 	Addr    address.Address
 	Account string
 }
 
-type MinerMgrImpl struct {
-	authCfg config.AuthNode
+type UserMgrImpl struct {
+	authCfg  config.AuthNode
+	fullNode apiface.FullNode
 
-	miners []Miner
+	miners []User
 	lk     sync.Mutex
 }
 
-func NewMinerMgrImpl(cfg *config.MarketConfig) func() (IMinerMgr, error) {
-	return func() (IMinerMgr, error) {
-		m := &MinerMgrImpl{authCfg: cfg.AuthNode}
-		err := m.distAddress(convertConfigAddress(cfg.StorageMiners)...)
-		if err != nil {
-			return nil, err
-		}
-		miners, err := m.GetMinerFromVenusAuth(context.TODO(), 0, 0)
-		if err != nil {
-			return nil, err
-		}
+var _ IAddrMgr = (*UserMgrImpl)(nil)
 
-		err = m.distAddress(Miner{
-			Addr:    address.Address(cfg.RetrievalPaymentAddress.Addr),
-			Account: cfg.RetrievalPaymentAddress.Account,
-		})
-		if err != nil {
-			return nil, err
-		}
+func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode apiface.FullNode, cfg *config.MarketConfig) (IAddrMgr, error) {
+	m := &UserMgrImpl{authCfg: cfg.AuthNode, fullNode: fullNode}
 
-		err = m.distAddress(convertConfigAddress(cfg.AddressConfig.DealPublishControl)...)
-		if err != nil {
-			return nil, err
-		}
-
-		return m, m.distAddress(miners...)
+	err := m.distAddress(ctx, convertConfigAddress(cfg.StorageMiners)...)
+	if err != nil {
+		return nil, err
 	}
+
+	err = m.distAddress(ctx, User{
+		Addr:    address.Address(cfg.RetrievalPaymentAddress.Addr),
+		Account: cfg.RetrievalPaymentAddress.Account,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = m.distAddress(ctx, convertConfigAddress(cfg.AddressConfig.DealPublishControl)...)
+	if err != nil {
+		return nil, err
+	}
+	miners, err := m.getMinerFromVenusAuth(context.TODO(), 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, m.distAddress(ctx, miners...)
+
 }
 
-func (m *MinerMgrImpl) ActorAddress(ctx context.Context) ([]address.Address, error) {
+func (m *UserMgrImpl) ActorAddress(ctx context.Context) ([]address.Address, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 	addrs := make([]address.Address, len(m.miners))
@@ -79,7 +86,13 @@ func (m *MinerMgrImpl) ActorAddress(ctx context.Context) ([]address.Address, err
 	return addrs, nil
 }
 
-func (m *MinerMgrImpl) Has(ctx context.Context, addr address.Address) bool {
+func (m *UserMgrImpl) GetMiners(ctx context.Context) ([]User, error) {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+	return m.miners, nil
+}
+
+func (m *UserMgrImpl) Has(ctx context.Context, addr address.Address) bool {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
@@ -92,7 +105,7 @@ func (m *MinerMgrImpl) Has(ctx context.Context, addr address.Address) bool {
 	return false
 }
 
-func (m *MinerMgrImpl) GetAccount(ctx context.Context, addr address.Address) (string, error) {
+func (m *UserMgrImpl) GetAccount(ctx context.Context, addr address.Address) (string, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
@@ -104,13 +117,13 @@ func (m *MinerMgrImpl) GetAccount(ctx context.Context, addr address.Address) (st
 	}
 
 	if len(account) == 0 {
-		return "", xerrors.Errorf("find account of address %s", addr)
+		return "", xerrors.Errorf("unable find account of address %s", addr)
 	}
 
 	return account, nil
 }
 
-func (m *MinerMgrImpl) GetMinerFromVenusAuth(ctx context.Context, skip, limit int64) ([]Miner, error) {
+func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int64) ([]User, error) {
 	log.Infof("request miners from auth: %v ...", m.authCfg)
 	if len(m.authCfg.Url) == 0 {
 		return nil, nil
@@ -130,21 +143,21 @@ func (m *MinerMgrImpl) GetMinerFromVenusAuth(ctx context.Context, skip, limit in
 
 	switch response.StatusCode() {
 	case http.StatusOK:
-		var res []User
+		var res []AuthUser
 		err = json.Unmarshal(response.Body(), &res)
 		if err != nil {
 			return nil, err
 		}
 
 		m.lk.Lock()
-		m.miners = make([]Miner, 0)
+		var miners []User
 		for _, val := range res {
 			if len(val.Miner) > 0 {
 				addr, err := address.NewFromString(val.Miner)
 				if err == nil && addr != address.Undef {
-					m.miners = append(m.miners, Miner{
+					miners = append(miners, User{
 						Addr:    addr,
-						Account: val.Miner,
+						Account: val.Name,
 					})
 				} else {
 					log.Errorf("miner [%s] is error", val.Miner)
@@ -152,18 +165,14 @@ func (m *MinerMgrImpl) GetMinerFromVenusAuth(ctx context.Context, skip, limit in
 			}
 		}
 		m.lk.Unlock()
-		return m.miners, err
+		return miners, err
 	default:
 		response.Result()
 		return nil, fmt.Errorf("response code is : %d, msg:%s", response.StatusCode(), response.Body())
 	}
 }
 
-func (m *MinerMgrImpl) AddAddress(ctx context.Context, miner Miner) error {
-	return m.distAddress(miner)
-}
-
-func (m *MinerMgrImpl) distAddress(addrs ...Miner) error {
+func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...User) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 	filter := make(map[address.Address]struct{}, len(m.miners))
@@ -171,19 +180,73 @@ func (m *MinerMgrImpl) distAddress(addrs ...Miner) error {
 		filter[miner.Addr] = struct{}{}
 	}
 
-	for _, miner := range addrs {
-		if _, ok := filter[miner.Addr]; !ok {
-			filter[miner.Addr] = struct{}{}
-			m.miners = append(m.miners, miner)
+	for _, usr := range addrs {
+		if usr.Addr == address.Undef {
+			continue
 		}
+		if _, ok := filter[usr.Addr]; !ok {
+			filter[usr.Addr] = struct{}{}
+			m.miners = append(m.miners, usr)
+		}
+		actor, err := m.fullNode.StateGetActor(ctx, usr.Addr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		if builtin.IsStorageMinerActor(actor.Code) {
+			// add owner/worker/controladdress for this miner
+			minerInfo, err := m.fullNode.StateMinerInfo(ctx, usr.Addr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			workerKey, err := m.fullNode.StateAccountKey(ctx, minerInfo.Worker, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+			if _, ok := filter[workerKey]; !ok {
+				filter[workerKey] = struct{}{}
+				m.miners = append(m.miners, User{
+					Addr:    workerKey,
+					Account: usr.Account,
+				})
+			}
+
+			ownerKey, err := m.fullNode.StateAccountKey(ctx, minerInfo.Owner, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+			if _, ok := filter[ownerKey]; !ok {
+				filter[ownerKey] = struct{}{}
+				m.miners = append(m.miners, User{
+					Addr:    ownerKey,
+					Account: usr.Account,
+				})
+			}
+
+			for _, ctlAddr := range minerInfo.ControlAddresses {
+				ctlKey, err := m.fullNode.StateAccountKey(ctx, ctlAddr, types.EmptyTSK)
+				if err != nil {
+					return err
+				}
+				if _, ok := filter[ctlKey]; !ok {
+					filter[ctlKey] = struct{}{}
+					m.miners = append(m.miners, User{
+						Addr:    ctlKey,
+						Account: usr.Account,
+					})
+				}
+			}
+		}
+
 	}
 	return nil
 }
 
-func convertConfigAddress(addrs []config.User) []Miner {
-	addrs2 := make([]Miner, len(addrs))
+func convertConfigAddress(addrs []config.User) []User {
+	addrs2 := make([]User, len(addrs))
 	for index, miner := range addrs {
-		addrs2[index] = Miner{
+		addrs2[index] = User{
 			Addr:    address.Address(miner.Addr),
 			Account: miner.Account,
 		}

@@ -167,11 +167,6 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 	} else {
 		md.PublishCid = DBCid(*src.PublishCid)
 	}
-	if src.Ref.PieceCid == nil {
-		md.Ref.PieceCid = UndefDBCid
-	} else {
-		md.Ref.PieceCid = DBCid(*src.Ref.PieceCid)
-	}
 
 	if src.Ref != nil {
 		md.Ref = DataRef{
@@ -179,6 +174,12 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 			Root:         DBCid(src.Ref.Root),
 			PieceSize:    src.Ref.PieceSize,
 			RawBlockSize: src.Ref.RawBlockSize,
+		}
+
+		if src.Ref.PieceCid == nil {
+			md.Ref.PieceCid = UndefDBCid
+		} else {
+			md.Ref.PieceCid = DBCid(*src.Ref.PieceCid)
 		}
 	}
 	if src.TransferChannelId != nil {
@@ -317,7 +318,7 @@ func (dsr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 	var md []storageDeal
 
 	err := dsr.DB.Table((&storageDeal{}).TableName()).
-		Find(&md, "cdp_piece_cid = ? AND state in ", DBCid(piececid).String(), statues).Error
+		Find(&md, "cdp_piece_cid = ? AND state in ?", DBCid(piececid).String(), statues).Error
 
 	if err != nil {
 		return nil, err
@@ -362,14 +363,24 @@ func (dsr *storageDealRepo) UpdateDealStatus(proposalCid cid.Cid, status storage
 		UpdateColumns(map[string]interface{}{"state": status, "updated_at": time.Now().Unix()}).Error
 }
 
-func (m *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {
+func (m *storageDealRepo) ListDealByAddr(miner address.Address) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
 	if err := m.travelDeals(
 		map[string]interface{}{"cdp_provider": DBAddress(miner).String()},
 		func(deal *types.MinerDeal) (err error) {
-			if deal.ClientDealProposal.Proposal.Provider == miner {
-				storageDeals = append(storageDeals, deal)
-			}
+			storageDeals = append(storageDeals, deal)
+			return
+		}); err != nil {
+		return nil, err
+	}
+	return storageDeals, nil
+}
+
+func (m *storageDealRepo) ListDeal() ([]*types.MinerDeal, error) {
+	storageDeals := make([]*types.MinerDeal, 0)
+	if err := m.travelDeals(nil,
+		func(deal *types.MinerDeal) (err error) {
+			storageDeals = append(storageDeals, deal)
 			return
 		}); err != nil {
 		return nil, err

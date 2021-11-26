@@ -18,6 +18,7 @@ import (
 type IAskHandler interface {
 	GetAsk(address.Address) (*types.RetrievalAsk, error)
 	SetAsk(*types.RetrievalAsk) error
+	ListAsk() ([]*types.RetrievalAsk, error)
 	GetDynamicAsk(context.Context, address.Address, retrievalmarket.PricingInput, []abi.DealID) (retrievalmarket.Ask, error)
 	GetAskForPayload(context.Context, address.Address, cid.Cid, []*types.MinerDeal, bool, peer.ID) (retrievalmarket.Ask, error)
 }
@@ -44,6 +45,10 @@ func (p *AskHandler) GetAsk(mAddr address.Address) (*types.RetrievalAsk, error) 
 // GetAsk returns the current deal parameters this provider accepts
 func (p *AskHandler) HasAsk(mAddr address.Address) (*types.RetrievalAsk, error) {
 	return p.askStore.GetAsk(mAddr)
+}
+
+func (p *AskHandler) ListAsk() ([]*types.Ask, error) {
+	return p.askStore.ListAsk()
 }
 
 // SetAsk sets the deal parameters this provider accepts

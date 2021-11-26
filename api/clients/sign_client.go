@@ -44,7 +44,7 @@ func (walletClient *WalletClient) WalletSign(ctx context.Context, k address.Addr
 type SignerParams struct {
 	fx.In
 	SignerCfg *config.Signer
-	Mgr       minermgr.IMinerMgr `optional:"true"`
+	Mgr       minermgr.IAddrMgr `optional:"true"`
 }
 
 func NewISignerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, params SignerParams) (ISinger, error) {

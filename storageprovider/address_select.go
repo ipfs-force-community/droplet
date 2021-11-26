@@ -24,7 +24,7 @@ type addrSelectApi interface {
 
 type AddressSelector struct {
 	config.AddressConfig
-	minermgr.Miner
+	minermgr.User
 }
 
 func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use marketTypes.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, big.Int, error) {

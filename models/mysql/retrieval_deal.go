@@ -156,7 +156,7 @@ func (r *retrievalDealRepo) SaveDeal(deal *types.ProviderDealState) error {
 
 func (r *retrievalDealRepo) GetDeal(id peer.ID, id2 rm.DealID) (*types.ProviderDealState, error) {
 	deal := &retrievalDeal{}
-	err := r.Take(RetrievalDealTableName).Take(deal, "cdp_proposal_id=? AND receiver=? ", id2, id.String()).Error
+	err := r.Table(RetrievalDealTableName).Take(deal, "cdp_proposal_id=? AND receiver=? ", id2, id.String()).Error
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func (r *retrievalDealRepo) GetDeal(id peer.ID, id2 rm.DealID) (*types.ProviderD
 
 func (r *retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*types.ProviderDealState, error) {
 	deal := &retrievalDeal{}
-	err := r.Take(RetrievalDealTableName).Take(deal, "ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ?", chid.Initiator, chid.Responder, chid.ID).Error
+	err := r.Table(RetrievalDealTableName).Take(deal, "ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ?", chid.Initiator.String(), chid.Responder.String(), chid.ID).Error
 	if err != nil {
 		return nil, err
 	}

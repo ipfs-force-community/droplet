@@ -2,7 +2,6 @@ package impl
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -70,7 +69,7 @@ type MarketNodeImpl struct {
 	RetrievalAsk                                retrievalprovider.IAskHandler
 	DAGStore                                    *dagstore.DAGStore
 	PieceStorage                                piecestorage.IPieceStorage
-	MinerMgr                                    minermgr.IMinerMgr
+	MinerMgr                                    minermgr.IAddrMgr
 	PaychAPI                                    *paychmgr.PaychAPI
 	Repo                                        repo.Repo
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
@@ -144,19 +143,6 @@ func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr addr
 		// todo: 按miner过滤交易
 		out = append(out, *deal)
 	}
-	for _, mm := range deals {
-		xxxx, err := json.Marshal(mm)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		var dd types.ProviderDealState
-		err = json.Unmarshal(xxxx, &dd)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-
 	return out, nil
 }
 
@@ -177,9 +163,18 @@ func (m MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan storag
 }
 
 func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]storagemarket.MinerDeal, error) {
-	deals, err := m.Repo.StorageDealRepo().ListDeal(mAddr)
-	if err != nil {
-		return nil, err
+	var deals []*types.MinerDeal
+	var err error
+	if mAddr == address.Undef {
+		deals, err = m.Repo.StorageDealRepo().ListDeal()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		deals, err = m.Repo.StorageDealRepo().ListDealByAddr(mAddr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	resDeals := make([]storagemarket.MinerDeal, len(deals))
@@ -203,6 +198,10 @@ func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address,
 	return m.StorageAsk.SetAsk(mAddr, price, verifiedPrice, duration, options...)
 }
 
+func (m MarketNodeImpl) MarketListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error) {
+	return m.StorageAsk.ListAsk()
+}
+
 func (m MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*storagemarket.SignedStorageAsk, error) {
 	return m.StorageAsk.GetAsk(mAddr)
 }
@@ -215,6 +214,10 @@ func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address
 		PaymentInterval:         ask.PaymentInterval,
 		PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
 	})
+}
+
+func (m MarketNodeImpl) MarketListRetrievalAsk(ctx context.Context) ([]*retrievalmarket.Ask, error) {
+	return m.RetrievalAskHandler.ListAsk()
 }
 
 func (m MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error) {

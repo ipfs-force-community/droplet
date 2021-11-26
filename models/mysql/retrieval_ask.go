@@ -66,3 +66,16 @@ func (r *retrievalAskRepo) SetAsk(ask *types.RetrievalAsk) error {
 		TimeStampOrm:            TimeStampOrm{UpdatedAt: uint64(time.Now().Unix())},
 	}).Error
 }
+
+func (r *retrievalAskRepo) ListAsk() ([]*types.RetrievalAsk, error) {
+	var dbAsks []types.RetrievalAsk
+	err := r.ds.Table("retrieval_asks").Find(&dbAsks).Error
+	if err != nil {
+		return nil, err
+	}
+	results := make([]*types.RetrievalAsk, len(dbAsks))
+	for index, ask := range dbAsks {
+		results[index] = (*types.RetrievalAsk)(ask.Ask)
+	}
+	return results, nil
+}

@@ -68,6 +68,44 @@ func (r MysqlRepo) Close() error {
 	return db.Close()
 }
 
+func (r MysqlRepo) Migrate() error {
+	err := r.GetDb().AutoMigrate(cidInfo{})
+	if err != nil {
+		return err
+	}
+
+	err = r.GetDb().AutoMigrate(fundedAddressState{})
+	if err != nil {
+		return err
+	}
+
+	err = r.GetDb().AutoMigrate(channelInfo{})
+	if err != nil {
+		return err
+	}
+
+	err = r.GetDb().AutoMigrate(retrievalAsk{})
+	if err != nil {
+		return err
+	}
+
+	err = r.GetDb().AutoMigrate(retrievalDeal{})
+	if err != nil {
+		return err
+	}
+
+	err = r.GetDb().AutoMigrate(storageDeal{})
+	if err != nil {
+		return err
+	}
+
+	err = r.GetDb().AutoMigrate(storageAsk{})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 	gorm.ErrRecordNotFound = repo.ErrNotFound
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
@@ -95,7 +133,7 @@ func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 
 	r := &MysqlRepo{DB: db}
 
-	return r, r.AutoMigrate(modelRetrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{})
+	return r, r.AutoMigrate(retrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{})
 }
 
 type DBCid cid.Cid
