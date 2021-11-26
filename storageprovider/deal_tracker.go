@@ -2,6 +2,7 @@ package storageprovider
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -78,8 +79,8 @@ func (dealTracker *DealTracker) checkPreCommit(ctx metrics.MetricsCtx, addr addr
 
 	for _, deal := range deals {
 		_, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
-		if err != nil {
-			log.Errorf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+		if err != nil && !strings.Contains(err.Error(), "precommit info is not exists"){
+			log.Debugf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			continue
 		}
 		err = dealTracker.storageRepo.UpdateDealStatus(deal.ProposalCid, storagemarket.StorageDealSealing)

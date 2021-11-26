@@ -160,7 +160,7 @@ func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int
 						Account: val.Name,
 					})
 				} else {
-					log.Errorf("miner [%s] is error", val.Miner)
+					log.Warnf("miner [%s] is error", val.Miner)
 				}
 			}
 		}

@@ -235,9 +235,6 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 		}
 	}
 
-	// TODO: RunCustomDecisionLogic ?
-
-	// DecideOnProposal
 	err = storageDealPorcess.SendSignedResponse(ctx, proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealWaitingForData,
 		Proposal: minerDeal.ProposalCid,
@@ -324,7 +321,6 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			deal.State = storagemarket.StorageDealPublish // PublishDeal
 		}
 
-		deal.PieceStatus = types.Undefine
 		err = storageDealPorcess.deals.SaveDeal(deal)
 		if err != nil {
 			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))

@@ -148,9 +148,9 @@ func (sdr *storageDealRepo) ListDealByAddr(miner address.Address) ([]*types.Mine
 
 func (sdr *storageDealRepo) ListDeal() ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
-	if err := sdr.travelDeals(func(deal *types.MinerDeal) (err error) {
+	if err := travelDeals(sdr.ds, func(deal *types.MinerDeal) (bool, error) {
 		storageDeals = append(storageDeals, deal)
-		return
+		return false, nil
 	}); err != nil {
 		return nil, err
 	}
