@@ -25,25 +25,6 @@ func NewMysqlCidInfoRepo(ds *gorm.DB) *mysqlCidInfoRepo {
 	return &mysqlCidInfoRepo{ds: ds}
 }
 
-type mysqlCid cid.Cid
-
-func (mc *mysqlCid) Scan(value interface{}) error {
-	var a, ok = value.([]byte)
-	if !ok {
-		return errors.New("address should be a string")
-	}
-	id, err := cid.Decode(string(a))
-	if err != nil {
-		return err
-	}
-	*mc = mysqlCid(id)
-	return nil
-}
-
-func (mc mysqlCid) Value() (driver.Value, error) {
-	return ((cid.Cid)(mc)).String(), nil
-}
-
 type mysqlBlockLocation piecestore.BlockLocation
 
 func (mbl *mysqlBlockLocation) Scan(value interface{}) error {
@@ -59,8 +40,8 @@ func (mbl mysqlBlockLocation) Value() (driver.Value, error) {
 }
 
 type cidInfo struct {
-	PieceCid      mysqlCid           `gorm:"column:piece_cid;primaryKey;type:varchar(128)"`
-	PayloadCid    mysqlCid           `gorm:"column:payload_cid;primaryKey;type:varchar(128);index"`
+	PieceCid      DBCid              `gorm:"column:piece_cid;primaryKey;type:varchar(256)"`
+	PayloadCid    DBCid              `gorm:"column:payload_cid;primaryKey;type:varchar(256);index"`
 	BlockLocation mysqlBlockLocation `gorm:"block_location;type:json"`
 	TimeStampOrm
 }
@@ -74,8 +55,8 @@ func (m *mysqlCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocatio
 	mysqlInfos := make([]cidInfo, len(blockLocations))
 	idx := 0
 	for blockCid, location := range blockLocations {
-		mysqlInfos[idx].PieceCid = mysqlCid(pieceCID)
-		mysqlInfos[idx].PayloadCid = mysqlCid(blockCid)
+		mysqlInfos[idx].PieceCid = DBCid(pieceCID)
+		mysqlInfos[idx].PayloadCid = DBCid(blockCid)
 		mysqlInfos[idx].BlockLocation = mysqlBlockLocation(location)
 		mysqlInfos[idx].UpdatedAt = uint64(time.Now().Unix())
 		idx++
@@ -90,7 +71,7 @@ func (m *mysqlCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocatio
 
 func (m *mysqlCidInfoRepo) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error) {
 	cidInfo := cidInfo{}
-	if err := m.ds.Model(&cidInfo).Find(&cidInfo, "payload_cid = ?", payloadCID.String()).Error; err != nil {
+	if err := m.ds.Model(&cidInfo).Find(&cidInfo, "payload_cid = ?", DBCid(payloadCID).String()).Error; err != nil {
 		return piecestore.CIDInfo{}, err
 	}
 	return piecestore.CIDInfo{

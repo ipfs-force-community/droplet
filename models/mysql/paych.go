@@ -26,8 +26,8 @@ type channelInfo struct {
 	NextLane      uint64     `gorm:"column:next_lane;type:bigint unsigned;"`
 	Amount        mtypes.Int `gorm:"column:amount;type:varchar(256);"`
 	PendingAmount mtypes.Int `gorm:"column:pending_amount;type:varchar(256);"`
-	CreateMsg     string     `gorm:"column:create_msg;type:varchar(128);"`
-	AddFundsMsg   string     `gorm:"column:add_funds_msg;type:varchar(128);"`
+	CreateMsg     DBCid      `gorm:"column:create_msg;type:varchar(256);"`
+	AddFundsMsg   DBCid      `gorm:"column:add_funds_msg;type:varchar(256);"`
 	Settling      bool       `gorm:"column:settling;"`
 
 	VoucherInfo types.VoucherInfos `gorm:"column:voucher_info;type:blob;"`
@@ -49,15 +49,23 @@ func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 		NextLane:      src.NextLane,
 		Amount:        convertBigInt(src.Amount),
 		PendingAmount: convertBigInt(src.PendingAmount),
-		CreateMsg:     decodeCidPtr(src.CreateMsg),
-		AddFundsMsg:   decodeCidPtr(src.AddFundsMsg),
 		Settling:      src.Settling,
 		VoucherInfo:   src.Vouchers,
 	}
 	if src.Channel == nil {
-		info.Channel = DBAddress{}
+		info.Channel = UndefDBAddress
 	} else {
 		info.Channel = DBAddress(*src.Channel)
+	}
+	if src.CreateMsg == nil {
+		info.CreateMsg = UndefDBCid
+	} else {
+		info.CreateMsg = DBCid(*src.CreateMsg)
+	}
+	if src.AddFundsMsg == nil {
+		info.AddFundsMsg = UndefDBCid
+	} else {
+		info.AddFundsMsg = DBCid(*src.AddFundsMsg)
 	}
 
 	return info
@@ -74,18 +82,9 @@ func toChannelInfo(src *channelInfo) (*types.ChannelInfo, error) {
 		NextLane:      src.NextLane,
 		Amount:        fbig.Int{Int: src.Amount.Int},
 		PendingAmount: fbig.Int{Int: src.PendingAmount.Int},
+		CreateMsg:     src.CreateMsg.cidPtr(),
+		AddFundsMsg:   src.AddFundsMsg.cidPtr(),
 		Settling:      src.Settling,
-	}
-
-	var err error
-	info.CreateMsg, err = parseCidPtr(src.CreateMsg)
-	if err != nil {
-		return nil, err
-	}
-
-	info.AddFundsMsg, err = parseCidPtr(src.AddFundsMsg)
-	if err != nil {
-		return nil, err
 	}
 
 	return info, nil
@@ -146,7 +145,7 @@ func (c *channelInfoRepo) GetChannelByChannelID(channelID string) (*types.Channe
 
 func (c *channelInfoRepo) GetChannelByMessageCid(mcid cid.Cid) (*types.ChannelInfo, error) {
 	var msgInfo msgInfo
-	if err := c.DB.Take(&msgInfo, "msg_cid = ?", mcid.String()).Error; err != nil {
+	if err := c.DB.Take(&msgInfo, "msg_cid = ?", DBCid(mcid).String()).Error; err != nil {
 		return nil, err
 	}
 
@@ -171,7 +170,7 @@ func (c *channelInfoRepo) WithPendingAddFunds() ([]*types.ChannelInfo, error) {
 	}
 	list := make([]*types.ChannelInfo, 0, len(cis))
 	for _, ci := range cis {
-		if len(ci.CreateMsg) != 0 || len(ci.AddFundsMsg) != 0 {
+		if ci.CreateMsg != UndefDBCid || ci.AddFundsMsg != UndefDBCid {
 			ciTmp, err := toChannelInfo(&ci)
 			if err != nil {
 				return nil, err
@@ -221,7 +220,7 @@ func (c *channelInfoRepo) RemoveChannel(channelID string) error {
 
 type msgInfo struct {
 	ChannelID string `gorm:"column:channel_id;type:varchar(256);"`
-	MsgCid    string `gorm:"column:msg_cid;type:varchar(256);primary_key;"`
+	MsgCid    DBCid  `gorm:"column:msg_cid;type:varchar(256);primary_key;"`
 	Received  bool   `gorm:"column:received;"`
 	Err       string `gorm:"column:err;type:varchar(256);"`
 	TimeStampOrm
@@ -234,25 +233,19 @@ func (m *msgInfo) TableName() string {
 func fromMsgInfo(src *types.MsgInfo) *msgInfo {
 	return &msgInfo{
 		ChannelID: src.ChannelID,
-		MsgCid:    decodeCid(src.MsgCid),
+		MsgCid:    DBCid(src.MsgCid),
 		Received:  src.Received,
 		Err:       src.Err,
 	}
 }
 
 func toMsgInfo(src *msgInfo) (*types.MsgInfo, error) {
-	info := &types.MsgInfo{
+	return &types.MsgInfo{
 		ChannelID: src.ChannelID,
+		MsgCid:    src.MsgCid.cid(),
 		Received:  src.Received,
 		Err:       src.Err,
-	}
-	var err error
-	info.MsgCid, err = parseCid(src.MsgCid)
-	if err != nil {
-		return nil, err
-	}
-
-	return info, nil
+	}, nil
 }
 
 type msgInfoRepo struct {
@@ -265,7 +258,7 @@ func NewMsgInfoRepo(db *gorm.DB) *msgInfoRepo {
 
 func (m *msgInfoRepo) GetMessage(mcid cid.Cid) (*types.MsgInfo, error) {
 	var info msgInfo
-	err := m.DB.Take(&info, "msg_cid = ?", mcid.String()).Error
+	err := m.DB.Take(&info, "msg_cid = ?", DBCid(mcid).String()).Error
 	if err != nil {
 		return nil, err
 	}
@@ -285,5 +278,5 @@ func (m *msgInfoRepo) SaveMessageResult(mcid cid.Cid, msgErr error) error {
 	if msgErr != nil {
 		cols["err"] = msgErr.Error()
 	}
-	return m.DB.Model(&msgInfo{}).Where("msg_cid = ?", mcid.String()).UpdateColumns(cols).Error
+	return m.DB.Model(&msgInfo{}).Where("msg_cid = ?", DBCid(mcid).String()).UpdateColumns(cols).Error
 }
