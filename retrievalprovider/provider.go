@@ -4,7 +4,9 @@ import (
 	"context"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus/app/client/apiface"
 	"math"
 	"time"
 
@@ -13,12 +15,14 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 var queryTimeout = 5 * time.Second
+
+var log = logging.Logger("retrievaladapter")
 
 type IRetrievalProvider interface {
 	Stop() error
@@ -29,7 +33,6 @@ type IRetrievalProvider interface {
 // RetrievalProvider is the production implementation of the RetrievalProvider interface
 type RetrievalProvider struct {
 	dataTransfer     network.ProviderDataTransfer
-	node             retrievalmarket.RetrievalProviderNode
 	network          rmnet.RetrievalMarketNetwork
 	requestValidator *ProviderRequestValidator
 	reValidator      *ProviderRevalidator
@@ -40,38 +43,37 @@ type RetrievalProvider struct {
 	retrievalDealRepo repo.IRetrievalDealRepo
 	storageDealRepo   repo.StorageDealRepo
 
-	askHandler             IAskHandler
 	retrievalStreamHandler *RetrievalStreamHandler
 }
 
 // NewProvider returns a new retrieval Provider
-func NewProvider(node retrievalmarket.RetrievalProviderNode,
-	network rmnet.RetrievalMarketNetwork,
-	askHandler IAskHandler,
+func NewProvider(network rmnet.RetrievalMarketNetwork,
 	dagStore stores.DAGStoreWrapper,
 	dataTransfer network.ProviderDataTransfer,
+	fullNode apiface.FullNode,
+	payAPI *paychmgr.PaychAPI,
 	repo repo.Repo,
 	cfg *config.MarketConfig,
 ) (*RetrievalProvider, error) {
 	storageDealsRepo := repo.StorageDealRepo()
 	retrievalDealRepo := repo.RetrievalDealRepo()
+	cidInfoRepo := repo.CidInfoRepo()
+	retrievalAskRepo := repo.RetrievalAskRepo()
 
-	pieceInfo := &PieceInfo{cidInfoRepo: repo.CidInfoRepo(), dealRepo: repo.StorageDealRepo()}
+	pieceInfo := &PieceInfo{cidInfoRepo: cidInfoRepo, dealRepo: storageDealsRepo}
 	p := &RetrievalProvider{
 		dataTransfer:           dataTransfer,
-		node:                   node,
 		network:                network,
 		dagStore:               dagStore,
-		askHandler:             askHandler,
-		retrievalDealRepo:      repo.RetrievalDealRepo(),
-		storageDealRepo:        repo.StorageDealRepo(),
+		retrievalDealRepo:      retrievalDealRepo,
+		storageDealRepo:        storageDealsRepo,
 		stores:                 stores.NewReadOnlyBlockstores(),
-		retrievalStreamHandler: NewRetrievalStreamHandler(askHandler, retrievalDealRepo, storageDealsRepo, pieceInfo, address.Address(cfg.RetrievalPaymentAddress.Addr)),
+		retrievalStreamHandler: NewRetrievalStreamHandler(retrievalAskRepo, retrievalDealRepo, storageDealsRepo, pieceInfo, address.Address(cfg.RetrievalPaymentAddress.Addr)),
 	}
-	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo)
-	p.requestValidator = NewProviderRequestValidator(address.Address(cfg.RetrievalPaymentAddress.Addr), storageDealsRepo, retrievalDealRepo, pieceInfo, askHandler)
+	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo, storageDealsRepo)
+	p.requestValidator = NewProviderRequestValidator(address.Address(cfg.RetrievalPaymentAddress.Addr), storageDealsRepo, retrievalDealRepo, retrievalAskRepo, pieceInfo)
 	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{retrievalDealRepo, p.stores})
-	p.reValidator = NewProviderRevalidator(p.node, retrievalDealRepo, retrievalHandler)
+	p.reValidator = NewProviderRevalidator(fullNode, payAPI, retrievalDealRepo, retrievalHandler)
 
 	var err error
 	if p.disableNewDeals {
@@ -148,23 +150,4 @@ func (p *RetrievalProvider) ListDeals() (map[retrievalmarket.ProviderDealIdentif
 		dealMap[retrievalmarket.ProviderDealIdentifier{Receiver: deal.Receiver, DealID: deal.ID}] = deal
 	}
 	return dealMap, nil
-}
-
-// DefaultPricingFunc is the default pricing policy that will be used to price retrieval deals.
-var DefaultPricingFunc = func(VerifiedDealsFreeTransfer bool) func(ctx context.Context, pricingInput retrievalmarket.PricingInput) (retrievalmarket.Ask, error) {
-	return func(ctx context.Context, pricingInput retrievalmarket.PricingInput) (retrievalmarket.Ask, error) {
-		ask := pricingInput.CurrentAsk
-
-		// don't charge for Unsealing if we have an Unsealed copy.
-		if pricingInput.Unsealed {
-			ask.UnsealPrice = big.Zero()
-		}
-
-		// don't charge for data transfer for verified deals if it's been configured to do so.
-		if pricingInput.VerifiedDeal && VerifiedDealsFreeTransfer {
-			ask.PricePerByte = big.Zero()
-		}
-
-		return ask, nil
-	}
 }

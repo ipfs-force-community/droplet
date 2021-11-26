@@ -13,6 +13,7 @@ func main() {
 		types.VoucherInfo{},
 		types.MinerDeal{},
 		types.RetrievalAsk{},
+		types.ProviderDealState{},
 	); err != nil {
 		panic(err)
 	}

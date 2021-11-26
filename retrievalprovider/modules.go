@@ -4,8 +4,6 @@ import (
 	"context"
 	"github.com/filecoin-project/venus-market/types"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
@@ -69,20 +67,6 @@ func HandleRetrieval(
 	})
 }
 
-// RetrievalPricingFunc configures the pricing function to use for retrieval deals.
-func RetrievalPricingFunc(cfg *config.MarketConfig) func(_ config.ConsiderOnlineRetrievalDealsConfigFunc,
-	_ config.ConsiderOfflineRetrievalDealsConfigFunc) retrievalimpl.RetrievalPricingFunc {
-
-	return func(_ config.ConsiderOnlineRetrievalDealsConfigFunc,
-		_ config.ConsiderOfflineRetrievalDealsConfigFunc) retrievalimpl.RetrievalPricingFunc {
-		if cfg.RetrievalPricing.Strategy == config.RetrievalPricingExternalMode {
-			return ExternalRetrievalPricingFunc(cfg.RetrievalPricing.External.Path)
-		}
-
-		return retrievalimpl.DefaultPricingFunc(cfg.RetrievalPricing.Default.VerifiedDealsFreeTransfer)
-	}
-}
-
 func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
 	return rmnet.NewFromLibp2pHost(h)
 }
@@ -91,12 +75,8 @@ var RetrievalProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
 
 		builder.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
-		// Markets (retrieval deps)
-		builder.Override(new(retrievalimpl.RetrievalPricingFunc), RetrievalPricingFunc(cfg)),
 		// Markets (retrieval)
-		builder.Override(new(retrievalmarket.RetrievalProviderNode), NewRetrievalProviderNode),
 		builder.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
-		builder.Override(new(IAskHandler), NewAskHandler),
 		builder.Override(new(IRetrievalProvider), NewProvider), // save to metadata /retrievals/provider
 		builder.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(nil)),
 		builder.Override(HandleRetrievalKey, HandleRetrieval),

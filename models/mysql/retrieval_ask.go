@@ -25,7 +25,7 @@ func NewRetrievalAskRepo(ds *gorm.DB) repo.IRetrievalAskRepo {
 	return &retrievalAskRepo{ds: ds}
 }
 
-type modelRetrievalAsk struct {
+type retrievalAsk struct {
 	ID                      uint       `gorm:"primary_key"`
 	Address                 DBAddress  `gorm:"column:address;uniqueIndex;type:varchar(256)"`
 	PricePerByte            mtypes.Int `gorm:"column:price_per_byte;type:varchar(256);"`
@@ -35,12 +35,12 @@ type modelRetrievalAsk struct {
 	TimeStampOrm
 }
 
-func (a *modelRetrievalAsk) TableName() string {
+func (a *retrievalAsk) TableName() string {
 	return retrievalAskTableName
 }
 
 func (r *retrievalAskRepo) GetAsk(addr address.Address) (*types.RetrievalAsk, error) {
-	var mAsk modelRetrievalAsk
+	var mAsk retrievalAsk
 	if err := r.ds.Take(&mAsk, "address = ?", DBAddress(addr).String()).Error; err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (r *retrievalAskRepo) SetAsk(ask *types.RetrievalAsk) error {
 	return r.ds.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "address"}},
 		UpdateAll: true,
-	}).Save(&modelRetrievalAsk{
+	}).Save(&retrievalAsk{
 		Address:                 DBAddress(ask.Miner),
 		PricePerByte:            convertBigInt(ask.PricePerByte),
 		UnsealPrice:             convertBigInt(ask.UnsealPrice),
@@ -68,14 +68,20 @@ func (r *retrievalAskRepo) SetAsk(ask *types.RetrievalAsk) error {
 }
 
 func (r *retrievalAskRepo) ListAsk() ([]*types.RetrievalAsk, error) {
-	var dbAsks []types.RetrievalAsk
+	var dbAsks []retrievalAsk
 	err := r.ds.Table("retrieval_asks").Find(&dbAsks).Error
 	if err != nil {
 		return nil, err
 	}
 	results := make([]*types.RetrievalAsk, len(dbAsks))
 	for index, ask := range dbAsks {
-		results[index] = (*types.RetrievalAsk)(ask.Ask)
+		results[index] = &types.RetrievalAsk{
+			Miner:                   ask.Address.addr(),
+			PricePerByte:            fbig.Int{Int: ask.PricePerByte.Int},
+			UnsealPrice:             fbig.Int{Int: ask.UnsealPrice.Int},
+			PaymentInterval:         ask.PaymentInterval,
+			PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
+		}
 	}
 	return results, nil
 }

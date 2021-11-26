@@ -55,18 +55,16 @@ type MarketNodeImpl struct {
 	MarketEventAPI
 	fx.In
 
-	FullNode            apiface.FullNode
-	Host                host.Host
-	StorageProvider     storageprovider.StorageProviderV2
-	RetrievalProvider   retrievalprovider.IRetrievalProvider
-	RetrievalAskHandler retrievalprovider.IAskHandler
-	DataTransfer        network.ProviderDataTransfer
-	DealPublisher       *storageprovider.DealPublisher
-	DealAssigner        storageprovider.DealAssiger
+	FullNode          apiface.FullNode
+	Host              host.Host
+	StorageProvider   storageprovider.StorageProviderV2
+	RetrievalProvider retrievalprovider.IRetrievalProvider
+	DataTransfer      network.ProviderDataTransfer
+	DealPublisher     *storageprovider.DealPublisher
+	DealAssigner      storageprovider.DealAssiger
 
 	Messager                                    clients2.IMessager `optional:"true"`
 	StorageAsk                                  storageprovider.IStorageAsk
-	RetrievalAsk                                retrievalprovider.IAskHandler
 	DAGStore                                    *dagstore.DAGStore
 	PieceStorage                                piecestorage.IPieceStorage
 	MinerMgr                                    minermgr.IAddrMgr
@@ -207,7 +205,7 @@ func (m MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address)
 }
 
 func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, ask *retrievalmarket.Ask) error {
-	return m.RetrievalAskHandler.SetAsk(&types.RetrievalAsk{
+	return m.Repo.RetrievalAskRepo().SetAsk(&types.RetrievalAsk{
 		Miner:                   mAddr,
 		PricePerByte:            ask.PricePerByte,
 		UnsealPrice:             ask.UnsealPrice,
@@ -216,12 +214,12 @@ func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address
 	})
 }
 
-func (m MarketNodeImpl) MarketListRetrievalAsk(ctx context.Context) ([]*retrievalmarket.Ask, error) {
-	return m.RetrievalAskHandler.ListAsk()
+func (m MarketNodeImpl) MarketListRetrievalAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {
+	return m.Repo.RetrievalAskRepo().ListAsk()
 }
 
 func (m MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error) {
-	ask, err := m.RetrievalAskHandler.GetAsk(mAddr)
+	ask, err := m.Repo.RetrievalAskRepo().GetAsk(mAddr)
 	if err != nil {
 		return nil, err
 	}

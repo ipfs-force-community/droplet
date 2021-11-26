@@ -181,7 +181,7 @@ type MarketFullNodeStruct struct {
 
 		MarketListIncompleteDeals func(p0 context.Context, p1 address.Address) ([]storagemarket.MinerDeal, error) `perm:"read"`
 
-		MarketListRetrievalAsk func(p0 context.Context) ([]*retrievalmarket.Ask, error) `perm:"read"`
+		MarketListRetrievalAsk func(p0 context.Context) ([]*types.RetrievalAsk, error) `perm:"read"`
 
 		MarketListRetrievalDeals func(p0 context.Context, p1 address.Address) ([]types.ProviderDealState, error) `perm:"read"`
 
@@ -820,12 +820,12 @@ func (s *MarketFullNodeStub) MarketListIncompleteDeals(p0 context.Context, p1 ad
 	return *new([]storagemarket.MinerDeal), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MarketListRetrievalAsk(p0 context.Context) ([]*retrievalmarket.Ask, error) {
+func (s *MarketFullNodeStruct) MarketListRetrievalAsk(p0 context.Context) ([]*types.RetrievalAsk, error) {
 	return s.Internal.MarketListRetrievalAsk(p0)
 }
 
-func (s *MarketFullNodeStub) MarketListRetrievalAsk(p0 context.Context) ([]*retrievalmarket.Ask, error) {
-	return *new([]*retrievalmarket.Ask), xerrors.New("method not supported")
+func (s *MarketFullNodeStub) MarketListRetrievalAsk(p0 context.Context) ([]*types.RetrievalAsk, error) {
+	return *new([]*types.RetrievalAsk), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) MarketListRetrievalDeals(p0 context.Context, p1 address.Address) ([]types.ProviderDealState, error) {

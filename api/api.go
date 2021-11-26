@@ -48,7 +48,7 @@ type MarketFullNode interface {
 	MarketListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error)                                                                                                                                 //perm:read
 	MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, rask *retrievalmarket.Ask) error                                                                                                            //perm:admin
 	MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error)                                                                                                               //perm:read
-	MarketListRetrievalAsk(ctx context.Context) ([]*retrievalmarket.Ask, error)                                                                                                                                   //perm:read
+	MarketListRetrievalAsk(ctx context.Context) ([]*types.RetrievalAsk, error)                                                                                                                                    //perm:read
 	MarketListDataTransfers(ctx context.Context) ([]types.DataTransferChannel, error)                                                                                                                             //perm:write
 	MarketDataTransferUpdates(ctx context.Context) (<-chan types.DataTransferChannel, error)                                                                                                                      //perm:write
 	// MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer

@@ -8,7 +8,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus/app/client/apiface"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -18,15 +20,17 @@ import (
 // ProviderRevalidator defines data transfer revalidation logic in the context of
 // a provider for a retrieval deal
 type ProviderRevalidator struct {
-	node                 rm.RetrievalProviderNode
+	fullNode             apiface.FullNode
+	payAPI               *paychmgr.PaychAPI
 	deals                repo.IRetrievalDealRepo
 	retrievalDealHandler IRetrievalHandler
 }
 
 // NewProviderRevalidator returns a new instance of a ProviderRevalidator
-func NewProviderRevalidator(node rm.RetrievalProviderNode, deals repo.IRetrievalDealRepo, retrievalDealHandler IRetrievalHandler) *ProviderRevalidator {
+func NewProviderRevalidator(fullNode apiface.FullNode, payAPI *paychmgr.PaychAPI, deals repo.IRetrievalDealRepo, retrievalDealHandler IRetrievalHandler) *ProviderRevalidator {
 	return &ProviderRevalidator{
-		node:                 node,
+		fullNode:             fullNode,
+		payAPI:               payAPI,
 		deals:                deals,
 		retrievalDealHandler: retrievalDealHandler,
 	}
@@ -64,14 +68,8 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 }
 
 func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.ProviderDealState, payment *rm.DealPayment) (*retrievalmarket.DealResponse, error) {
-	tok, _, err := pr.node.GetChainHead(context.TODO())
-	if err != nil {
-		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
-		return errorDealResponse(deal.Identifier(), err), err
-	}
-
 	// Save voucher
-	received, err := pr.node.SavePaymentVoucher(context.TODO(), payment.PaymentChannel, payment.PaymentVoucher, nil, big.Zero(), tok)
+	received, err := pr.payAPI.PaychVoucherAdd(context.TODO(), payment.PaymentChannel, payment.PaymentVoucher, nil, big.Zero())
 	if err != nil {
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
 		return errorDealResponse(deal.Identifier(), err), err

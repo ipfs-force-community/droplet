@@ -22,10 +22,11 @@ var _ IRetrievalHandler = (*RetrievalDealHandler)(nil)
 type RetrievalDealHandler struct {
 	env                ProviderDealEnvironment
 	retrievalDealStore repo.IRetrievalDealRepo
+	storageDealRepo    repo.StorageDealRepo
 }
 
-func NewRetrievalDealHandler(env ProviderDealEnvironment, retrievalDealStore repo.IRetrievalDealRepo) IRetrievalHandler {
-	return &RetrievalDealHandler{env: env, retrievalDealStore: retrievalDealStore}
+func NewRetrievalDealHandler(env ProviderDealEnvironment, retrievalDealStore repo.IRetrievalDealRepo, storageDealRepo repo.StorageDealRepo) IRetrievalHandler {
+	return &RetrievalDealHandler{env: env, retrievalDealStore: retrievalDealStore, storageDealRepo: storageDealRepo}
 }
 
 func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *types.ProviderDealState) error {
@@ -35,7 +36,12 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *types.Provi
 		return err
 	}
 
-	if err := p.env.PrepareBlockstore(ctx, deal.ID, *deal.PieceCID); err != nil {
+	storageDeal, err := p.storageDealRepo.GetDeal(deal.SelStorageProposalCid)
+	if err != nil {
+		return err
+	}
+
+	if err := p.env.PrepareBlockstore(ctx, deal.ID, storageDeal.Proposal.PieceCID); err != nil {
 		return p.CancelDeal(ctx, deal)
 	}
 	log.Debugf("blockstore prepared successfully, firing unseal complete for deal %d", deal.ID)
