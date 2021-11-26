@@ -3,7 +3,8 @@ package models
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/venus-market/types"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models/badger"
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -31,29 +32,26 @@ func testRetrievalAsk(t *testing.T, rtAskRepo repo.IRetrievalAskRepo) {
 	_, err := rtAskRepo.GetAsk(addr)
 	assert.Equal(t, err.Error(), repo.ErrNotFound.Error(), "must be an not found error")
 
-	ask1 := &retrievalmarket.Ask{
+	ask := &types.RetrievalAsk{
+		Miner:                   addr,
 		PricePerByte:            abi.NewTokenAmount(1024),
 		UnsealPrice:             abi.NewTokenAmount(2048),
 		PaymentInterval:         20,
 		PaymentIntervalIncrease: 10,
 	}
+	require.NoError(t, rtAskRepo.SetAsk(ask))
 
-	require.NoError(t, rtAskRepo.SetAsk(addr, ask1))
-
-	var ask2 *retrievalmarket.Ask
-	ask2, err = rtAskRepo.GetAsk(addr)
-
+	ask2, err := rtAskRepo.GetAsk(addr)
 	require.NoError(t, err)
-	assert.Equal(t, ask1, ask2)
+	assert.Equal(t, ask, ask2)
 
-	newPricePerByte := abi.NewTokenAmount(3045)
-	newPaymentInterval := uint64(4000)
+	ask.PricePerByte = abi.NewTokenAmount(1000)
+	ask.UnsealPrice = abi.NewTokenAmount(1000)
+	ask.PaymentInterval = 1000
+	ask.PaymentIntervalIncrease = 1000
 
-	ask1.PricePerByte = newPricePerByte
-	ask1.PaymentInterval = newPaymentInterval
-
-	require.NoError(t, rtAskRepo.SetAsk(addr, ask1))
+	require.NoError(t, rtAskRepo.SetAsk(ask))
 	ask2, err = rtAskRepo.GetAsk(addr)
 	assert.Nil(t, err)
-	assert.Equal(t, ask1, ask2)
+	assert.Equal(t, ask, ask2)
 }

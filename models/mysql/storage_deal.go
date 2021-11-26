@@ -26,6 +26,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const storageDealTableName = "storage_deals"
+
 type storageDeal struct {
 	ClientDealProposal `gorm:"embedded;embeddedPrefix:cdp_"`
 
@@ -55,14 +57,16 @@ type storageDeal struct {
 	Offset      uint64 `gorm:"column:offset;type:bigint"`
 	Length      uint64 `gorm:"column:length;type:bigint"`
 	PieceStatus string `gorm:"column:piece_status;column:length;type:varchar(128)"`
+
+	TimeStampOrm
 }
 
 type ClientDealProposal struct {
 	PieceCID     string    `gorm:"column:piece_cid;type:varchar(128);index"`
 	PieceSize    uint64    `gorm:"column:piece_size;type:bigint unsigned;"`
 	VerifiedDeal bool      `gorm:"column:verified_deal;"`
-	Client       DBAddress `gorm:"column:client;type:varchar(128);"`
-	Provider     DBAddress `gorm:"column:provider;type:varchar(128);index"`
+	Client       DBAddress `gorm:"column:client;type:varchar(256);"`
+	Provider     DBAddress `gorm:"column:provider;type:varchar(256);index"`
 
 	// Label is an arbitrary client chosen label to apply to the deal
 	Label string `gorm:"column:label;type:varchar(256);"`
@@ -111,7 +115,7 @@ type DataRef struct {
 }
 
 func (m *storageDeal) TableName() string {
-	return "storage_deals"
+	return storageDealTableName
 }
 
 func fromStorageDeal(src *types.MinerDeal) *storageDeal {
@@ -276,7 +280,9 @@ func NewStorageDealRepo(db *gorm.DB) *storageDealRepo {
 }
 
 func (m *storageDealRepo) SaveDeal(StorageDeal *types.MinerDeal) error {
-	return m.DB.Save(fromStorageDeal(StorageDeal)).Error
+	dbDeal := fromStorageDeal(StorageDeal)
+	dbDeal.UpdatedAt = uint64(time.Now().Unix())
+	return m.DB.Save(dbDeal).Error
 }
 
 func (m *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
@@ -357,7 +363,8 @@ func (dsr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status 
 }
 
 func (dsr *storageDealRepo) UpdateDealStatus(proposalCid cid.Cid, status storagemarket.StorageDealStatus) error {
-	return dsr.DB.Model(storageDeal{}).Where("proposal_cid = ?", proposalCid.String()).Update("state", status).Error
+	return dsr.DB.Model(storageDeal{}).Where("proposal_cid = ?", proposalCid.String()).
+		UpdateColumns(map[string]interface{}{"state": status, "updated_at": time.Now().Unix()}).Error
 }
 
 func (m *storageDealRepo) ListDeal(miner address.Address) ([]*types.MinerDeal, error) {

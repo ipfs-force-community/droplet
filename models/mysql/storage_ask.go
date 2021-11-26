@@ -1,20 +1,23 @@
 package mysql
 
 import (
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus-market/models/repo"
 	mtypes "github.com/filecoin-project/venus-messager/types"
 	"golang.org/x/xerrors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
+const storageAskTableName = "storage_asks"
+
 type storageAsk struct {
 	ID            uint       `gorm:"primary_key"`
-	Miner         DBAddress  `gorm:"column:miner;type:varchar(128);uniqueIndex"`
+	Miner         DBAddress  `gorm:"column:miner;type:varchar(256);uniqueIndex"`
 	Price         mtypes.Int `gorm:"column:price;type:varchar(256);"`
 	VerifiedPrice mtypes.Int `gorm:"column:verified_price;type:varchar(256);"`
 	MinPieceSize  int64      `gorm:"column:min_piece_size;type:bigint;"`
@@ -27,7 +30,7 @@ type storageAsk struct {
 }
 
 func (a *storageAsk) TableName() string {
-	return "storage_asks"
+	return storageAskTableName
 }
 
 func fromStorageAsk(src *storagemarket.SignedStorageAsk) *storageAsk {
@@ -87,9 +90,7 @@ func (a *storageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedSto
 	var res storageAsk
 	err := a.DB.Take(&res, "miner = ?", DBAddress(miner).String()).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, repo.ErrNotFound
-		}
+		return nil, err
 	}
 	return toStorageAsk(&res)
 }
@@ -98,8 +99,10 @@ func (a *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 	if ask == nil || ask.Ask == nil {
 		return xerrors.Errorf("param is nil")
 	}
+	dbAsk := fromStorageAsk(ask)
+	dbAsk.UpdatedAt = uint64(time.Now().Unix())
 	return a.DB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "miner"}},
 		UpdateAll: true,
-	}).Save(fromStorageAsk(ask)).Error
+	}).Save(dbAsk).Error
 }

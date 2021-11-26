@@ -2,11 +2,11 @@ package badger
 
 import (
 	"bytes"
+
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/types"
 )
 
 type retrievalAskRepo struct {
@@ -19,26 +19,27 @@ func NewRetrievalAskRepo(ds RetrievalAskDS) repo.IRetrievalAskRepo {
 	return &retrievalAskRepo{ds: ds}
 }
 
-func (r *retrievalAskRepo) HasAsk(addr address.Address) bool {
-	panic("implement me")
+func (r *retrievalAskRepo) HasAsk(addr address.Address) (bool, error) {
+	key := dskeyForAddr(addr)
+	return r.ds.Has(key)
 }
 
-func (r *retrievalAskRepo) GetAsk(addr address.Address) (*retrievalmarket.Ask, error) {
-	data, err := r.ds.Get(statestore.ToKey(addr))
+func (r *retrievalAskRepo) GetAsk(addr address.Address) (*types.RetrievalAsk, error) {
+	data, err := r.ds.Get(dskeyForAddr(addr))
 	if err != nil {
 		return nil, err
 	}
-	var ask retrievalmarket.Ask
+	var ask types.RetrievalAsk
 	if err = ask.UnmarshalCBOR(bytes.NewBuffer(data)); err != nil {
 		return nil, err
 	}
 	return &ask, nil
 }
 
-func (r *retrievalAskRepo) SetAsk(addr address.Address, ask *retrievalmarket.Ask) error {
+func (r *retrievalAskRepo) SetAsk(ask *types.RetrievalAsk) error {
 	data, err := cborrpc.Dump(ask)
 	if err != nil {
 		return err
 	}
-	return r.ds.Put(statestore.ToKey(addr), data)
+	return r.ds.Put(dskeyForAddr(ask.Miner), data)
 }

@@ -187,3 +187,8 @@ func (a DBAddress) addrPtr() *address.Address {
 	addr := address.Address(a)
 	return &addr
 }
+
+type TimeStampOrm struct {
+	CreatedAt uint64 `gorm:"type:bigint unsigned"`
+	UpdatedAt uint64 `gorm:"type:bigint unsigned"`
+}

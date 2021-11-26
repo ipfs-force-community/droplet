@@ -1,6 +1,8 @@
 package mysql
 
 import (
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/types"
@@ -8,14 +10,17 @@ import (
 	"gorm.io/gorm"
 )
 
+const fundedAddressStateTableName = "funded_address_state"
+
 type fundedAddressState struct {
-	Addr        DBAddress  `gorm:"column:addr;type:varchar(128);primary_key"`
+	Addr        DBAddress  `gorm:"column:addr;type:varchar(256);primary_key"`
 	AmtReserved mtypes.Int `gorm:"column:amt_reserved;type:varchar(256);"`
 	MsgCid      string     `gorm:"column:msg_cid;type:varchar(128);"`
+	TimeStampOrm
 }
 
 func (fas *fundedAddressState) TableName() string {
-	return "funded_address_state"
+	return fundedAddressStateTableName
 }
 
 func fromFundedAddressState(src *types.FundedAddressState) *fundedAddressState {
@@ -52,7 +57,9 @@ func NewFundedAddressStateRepo(db *gorm.DB) *fundedAddressStateRepo {
 }
 
 func (f *fundedAddressStateRepo) SaveFundedAddressState(fds *types.FundedAddressState) error {
-	return f.DB.Save(fromFundedAddressState(fds)).Error
+	state := fromFundedAddressState(fds)
+	state.UpdatedAt = uint64(time.Now().Unix())
+	return f.DB.Save(state).Error
 }
 
 func (f *fundedAddressStateRepo) GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error) {
