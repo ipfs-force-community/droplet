@@ -160,6 +160,7 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 	err = storageDealStream.conns.AddStream(proposalNd.Cid(), s)
 	if err != nil {
 		log.Errorf("add stream to connection %s %w", proposalNd.Cid(), err)
+		return
 	}
 
 	err = storageDealStream.dealProcess.AcceptDeal(ctx, deal)
