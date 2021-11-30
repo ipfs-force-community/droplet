@@ -18,14 +18,17 @@ func checkCallbackAndGetParamType(i interface{}) (reflect.Type, error) {
 	if t.NumIn() != 1 {
 		return nil, xerrors.Errorf("callback must and only have 1 param")
 	}
-	if t.NumOut() != 1 {
-		return nil, xerrors.Errorf("callback must and only have 1 return value")
+	if t.NumOut() != 2 {
+		return nil, xerrors.Errorf("callback must and only have 2 return value")
 	}
 	in := t.In(0)
 	if !in.Implements(reflect.TypeOf((*cbg.CBORUnmarshaler)(nil)).Elem()) {
 		return nil, xerrors.Errorf("param must be a CBORUnmarshaler")
 	}
-	if !t.Out(0).Implements(reflect.TypeOf((*error)(nil)).Elem()) {
+	if t.Out(0).Kind() != reflect.Bool {
+		return nil, xerrors.Errorf("1st return value must be an boolean")
+	}
+	if !t.Out(1).Implements(reflect.TypeOf((*error)(nil)).Elem()) {
 		return nil, xerrors.Errorf("return value must be an error interface")
 	}
 	return in.Elem(), nil
@@ -56,7 +59,11 @@ func travelDeals(ds datastore.Batching, callback interface{}) error {
 		rets := reflect.ValueOf(callback).Call([]reflect.Value{
 			reflect.ValueOf(unmarshaler)})
 
-		if !rets[0].IsNil() {
+		if rets[0].Interface().(bool) {
+			return nil
+		}
+
+		if !rets[1].IsNil() {
 			return rets[0].Interface().(error)
 		}
 	}
