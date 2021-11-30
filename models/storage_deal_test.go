@@ -25,7 +25,6 @@ func TestStorageDeal(t *testing.T) {
 	t.Run("MinerDealMarshal", testCborMarshal)
 
 	t.Run("mysql", func(t *testing.T) {
-		t.Skip("")
 		repo := MysqlDB(t)
 		dealRepo := repo.StorageDealRepo()
 		defer func() {
@@ -145,10 +144,9 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	compareDeal(t, res2, deal2)
 
 	// test list
-	list, err := dealRepo.ListDeal(deal.Proposal.Provider)
+	list, err := dealRepo.ListDeal()
 	assert.Nil(t, err)
-	assert.Equal(t, len(list), 1)
-	compareDeal(t, list[0], deal)
+	assert.Equal(t, len(list), 2)
 
 	_, err = dealRepo.GetDeal(randCid(t))
 	require.Error(t, err, "recode shouldn't be found")
