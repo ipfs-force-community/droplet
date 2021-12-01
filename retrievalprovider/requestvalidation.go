@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/types"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
@@ -162,7 +163,7 @@ func (rv *ProviderRequestValidator) validatePull(ctx context.Context, isRestart 
 func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.ProviderDealState) (retrievalmarket.DealStatus, error) {
 	minerdeals, err := rv.pieceInfo.GetPieceInfoFromCid(ctx, deal.PayloadCID, deal.PieceCID)
 	if err != nil {
-		if err == retrievalmarket.ErrNotFound { //todo use db not found
+		if err == repo.ErrNotFound {
 			return retrievalmarket.DealStatusDealNotFound, err
 		}
 		return retrievalmarket.DealStatusErrored, err

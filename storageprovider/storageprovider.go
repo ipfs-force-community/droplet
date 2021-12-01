@@ -3,9 +3,10 @@ package storageprovider
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/utils"
 	"io"
 	"time"
+
+	"github.com/filecoin-project/venus-market/utils"
 
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
@@ -184,7 +185,7 @@ func (p *StorageProviderV2Impl) start(ctx context.Context) error {
 
 func isTerminateState(deal *types.MinerDeal) bool {
 	if deal.State == storagemarket.StorageDealSlashed || deal.State == storagemarket.StorageDealExpired ||
-		deal.State == storagemarket.StorageDealError || deal.State == storagemarket.StorageDealFailing  {
+		deal.State == storagemarket.StorageDealError || deal.State == storagemarket.StorageDealFailing {
 		return true
 	}
 
@@ -197,12 +198,12 @@ func (p *StorageProviderV2Impl) restartDeals(ctx context.Context, deals []*types
 			continue
 		}
 
-		go func() {
+		go func(deal *types.MinerDeal) {
 			err := p.dealProcess.HandleOff(ctx, deal)
 			if err != nil {
 				log.Errorf("deal %s handle off err: %s", deal.ProposalCid, err)
 			}
-		}()
+		}(deal)
 	}
 	return nil
 }
