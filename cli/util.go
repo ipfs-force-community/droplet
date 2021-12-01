@@ -14,19 +14,51 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
+	"github.com/ipfs/go-cidutil/cidenc"
+	"github.com/mitchellh/go-homedir"
+	"github.com/multiformats/go-multibase"
+	"github.com/urfave/cli/v2"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-jsonrpc"
+
+	"github.com/filecoin-project/venus/app/client"
+	"github.com/filecoin-project/venus/app/client/apiface"
+
 	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/cli/tablewriter"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
-	"github.com/filecoin-project/venus/app/client"
-	"github.com/filecoin-project/venus/app/client/apiface"
+
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
-	"github.com/mitchellh/go-homedir"
-	"github.com/urfave/cli/v2"
 )
+
+var CidBaseFlag = cli.StringFlag{
+	Name:        "cid-base",
+	Hidden:      true,
+	Value:       "base32",
+	Usage:       "Multibase encoding used for version 1 CIDs in output.",
+	DefaultText: "base32",
+}
+
+// GetCidEncoder returns an encoder using the `cid-base` flag if provided, or
+// the default (Base32) encoder if not.
+func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
+	val := cctx.String("cid-base")
+
+	e := cidenc.Encoder{Base: multibase.MustNewEncoder(multibase.Base32)}
+
+	if val != "" {
+		var err error
+		e.Base, err = multibase.EncoderByName(val)
+		if err != nil {
+			return e, err
+		}
+	}
+
+	return e, nil
+}
 
 var minerFlag = &cli.StringFlag{
 	Name: "miner",
