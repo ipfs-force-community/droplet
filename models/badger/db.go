@@ -23,8 +23,9 @@ const (
 	retrievalProvider = "/retrievals/provider"
 	retrievalAsk      = "/retrieval-ask"
 	retrievalDeals    = "/deals"
-	dealProvider      = "/deals/provider"
-	storageAsk        = "storage-ask"
+	storageProvider   = "/storage/provider"
+	storageDeals      = "/deals"
+	storageAsk        = "/storage-ask"
 	paych             = "/paych/"
 
 	// client
@@ -61,10 +62,13 @@ type RetrievalAskDS datastore.Batching //key = latest
 // /metadata/datatransfer/provider/transfers
 type DagTransferDS datastore.Batching
 
-// /metadata/deals/provider
-type ProviderDealDS datastore.Batching
+// /metadata/storage/provider
+type StorageProviderDS datastore.Batching
 
-//   /metadata/deals/provider/storage-ask
+// /metadata/storage/provider/deals
+type StorageDealsDS datastore.Batching
+
+// /metadata/storage/provider/storage-ask
 type StorageAskDS datastore.Batching //key = latest
 
 // /metadata/paych/
@@ -125,11 +129,15 @@ func NewRetrievalAskDS(ds RetrievalProviderDS) RetrievalAskDS {
 	return namespace.Wrap(ds, datastore.NewKey(retrievalAsk))
 }
 
-func NewProviderDealDS(ds MetadataDS) ProviderDealDS {
-	return namespace.Wrap(ds, datastore.NewKey(dealProvider))
+func NewStorageProviderDS(ds MetadataDS) StorageProviderDS {
+	return namespace.Wrap(ds, datastore.NewKey(storageProvider))
 }
 
-func NewStorageAskDS(ds ProviderDealDS) StorageAskDS {
+func NewStorageDealsDS(ds StorageProviderDS) StorageDealsDS {
+	return namespace.Wrap(ds, datastore.NewKey(storageDeals))
+}
+
+func NewStorageAskDS(ds StorageProviderDS) StorageAskDS {
 	return namespace.Wrap(ds, datastore.NewKey(storageAsk))
 }
 
@@ -169,7 +177,7 @@ type BadgerRepo struct {
 type BadgerDSParams struct {
 	fx.In
 	FundDS           FundMgrDS        `optional:"true"`
-	DealDS           ProviderDealDS   `optional:"true"`
+	DealDS           StorageDealsDS   `optional:"true"`
 	PaychDS          PayChanDS        `optional:"true"`
 	AskDS            StorageAskDS     `optional:"true"`
 	RetrAskDs        RetrievalAskDS   `optional:"true"`

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"go.uber.org/fx"
@@ -73,13 +75,13 @@ func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
 
 func (dealTracker *DealTracker) checkPreCommit(ctx metrics.MetricsCtx, addr address.Address, tsk vTypes.TipSetKey) {
 	deals, err := dealTracker.storageRepo.GetDealByAddrAndStatus(addr, storagemarket.StorageDealAwaitingPreCommit)
-	if err != nil {
+	if err != nil && !xerrors.Is(err, repo.ErrNotFound) {
 		log.Errorf("get miner %s storage deals for check StorageDealAwaitingPreCommit %w", addr, err)
 	}
 
 	for _, deal := range deals {
 		_, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
-		if err != nil && !strings.Contains(err.Error(), "precommit info is not exists"){
+		if err != nil && !strings.Contains(err.Error(), "precommit info is not exists") {
 			log.Debugf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			continue
 		}
@@ -92,7 +94,7 @@ func (dealTracker *DealTracker) checkPreCommit(ctx metrics.MetricsCtx, addr addr
 
 func (dealTracker *DealTracker) checkCommit(ctx metrics.MetricsCtx, addr address.Address, tsk vTypes.TipSetKey) {
 	deals, err := dealTracker.storageRepo.GetDealByAddrAndStatus(addr, storagemarket.StorageDealSealing)
-	if err != nil {
+	if err != nil && !xerrors.Is(err, repo.ErrNotFound) {
 		log.Errorf("get miner %s storage deals for check StorageDealSealing %w", addr, err)
 	}
 
@@ -113,7 +115,7 @@ func (dealTracker *DealTracker) checkCommit(ctx metrics.MetricsCtx, addr address
 
 func (dealTracker *DealTracker) checkSlash(ctx metrics.MetricsCtx, addr address.Address, tsk vTypes.TipSetKey) {
 	deals, err := dealTracker.storageRepo.GetDealByAddrAndStatus(addr, storagemarket.StorageDealActive)
-	if err != nil {
+	if err != nil && !xerrors.Is(err, repo.ErrNotFound) {
 		log.Errorf("get miner %s storage deals for check StorageDealActive %w", addr, err)
 	}
 
