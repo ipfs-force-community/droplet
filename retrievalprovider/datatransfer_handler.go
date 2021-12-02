@@ -83,6 +83,5 @@ func (d *DataTransferHandler) HandleErrorForDeal(ctx context.Context, identifier
 		deal.Message = err.Error()
 		return d.retrievalDealStore.SaveDeal(deal)
 	}
-	// TODO: deal 是nil会panic
 	return d.retrievalDealHandler.Error(ctx, deal, errIn)
 }

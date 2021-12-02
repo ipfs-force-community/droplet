@@ -8,11 +8,9 @@ import (
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-fil-markets/stores"
-
-	xerrors "github.com/pkg/errors"
-	"go.uber.org/fx"
-
 	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"

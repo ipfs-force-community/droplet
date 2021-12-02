@@ -97,6 +97,11 @@ type Repo interface {
 	RetrievalDealRepo() IRetrievalDealRepo
 	Close() error
 	Migrate() error
+	Transaction(func(txRepo TxRepo) error) error
+}
+
+type TxRepo interface {
+	StorageDealRepo() StorageDealRepo
 }
 
 var ErrNotFound = xerrors.New("record not found")

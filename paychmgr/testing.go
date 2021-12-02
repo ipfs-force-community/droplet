@@ -11,9 +11,5 @@ func newRepo() repo.Repo {
 	params := badger.BadgerDSParams{
 		PaychDS: ds_sync.MutexWrap(ds.NewMapDatastore()),
 	}
-	r, err := badger.NewBadgerRepo(params)
-	if err != nil {
-		panic("new badger repo failed: " + err.Error())
-	}
-	return r
+	return badger.NewBadgerRepo(params)
 }

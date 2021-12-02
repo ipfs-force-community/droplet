@@ -164,20 +164,13 @@ func NewClientTransferDS(ds MetadataDS) ClientTransferDS {
 }
 
 type BadgerRepo struct {
-	fundRepo         repo.FundRepo
-	storageDealRepo  repo.StorageDealRepo
-	channelInfoRepo  repo.PaychChannelInfoRepo
-	msgInfoRepo      repo.PaychMsgInfoRepo
-	storageAskRepo   repo.IStorageAskRepo
-	retrievalAskRepo repo.IRetrievalAskRepo
-	piecesRepo       repo.ICidInfoRepo
-	retrievalRepo    repo.IRetrievalDealRepo
+	dsParams *BadgerDSParams
 }
 
 type BadgerDSParams struct {
 	fx.In
 	FundDS           FundMgrDS        `optional:"true"`
-	DealDS           StorageDealsDS   `optional:"true"`
+	StorageDealsDS   StorageDealsDS   `optional:"true"`
 	PaychDS          PayChanDS        `optional:"true"`
 	AskDS            StorageAskDS     `optional:"true"`
 	RetrAskDs        RetrievalAskDS   `optional:"true"`
@@ -185,50 +178,42 @@ type BadgerDSParams struct {
 	RetrievalDealsDs RetrievalDealsDS `optional:"true"`
 }
 
-func NewBadgerRepo(params BadgerDSParams) (repo.Repo, error) {
-	pst := NewPaychRepo(params.PaychDS)
+func NewBadgerRepo(params BadgerDSParams) repo.Repo {
 	return &BadgerRepo{
-		fundRepo:         NewFundRepo(params.FundDS),
-		storageDealRepo:  NewStorageDealRepo(params.DealDS),
-		msgInfoRepo:      pst,
-		channelInfoRepo:  pst,
-		storageAskRepo:   NewStorageAskRepo(params.AskDS),
-		retrievalAskRepo: NewRetrievalAskRepo(params.RetrAskDs),
-		piecesRepo:       NewBadgerCidInfoRepo(params.CidInfoDs),
-		retrievalRepo:    NewRetrievalDealRepo(params.RetrievalDealsDs),
-	}, nil
+		dsParams: &params,
+	}
 }
 
 func (r *BadgerRepo) FundRepo() repo.FundRepo {
-	return r.fundRepo
+	return NewFundRepo(r.dsParams.FundDS)
 }
 
 func (r *BadgerRepo) StorageDealRepo() repo.StorageDealRepo {
-	return r.storageDealRepo
+	return NewStorageDealRepo(r.dsParams.StorageDealsDS)
 }
 
 func (r *BadgerRepo) PaychMsgInfoRepo() repo.PaychMsgInfoRepo {
-	return r.msgInfoRepo
+	return NewPaychRepo(r.dsParams.PaychDS)
 }
 
 func (r *BadgerRepo) PaychChannelInfoRepo() repo.PaychChannelInfoRepo {
-	return r.channelInfoRepo
+	return NewPaychRepo(r.dsParams.PaychDS)
 }
 
 func (r *BadgerRepo) StorageAskRepo() repo.IStorageAskRepo {
-	return r.storageAskRepo
+	return NewStorageAskRepo(r.dsParams.AskDS)
 }
 
 func (r *BadgerRepo) RetrievalAskRepo() repo.IRetrievalAskRepo {
-	return r.retrievalAskRepo
+	return NewRetrievalAskRepo(r.dsParams.RetrAskDs)
 }
 
 func (r *BadgerRepo) CidInfoRepo() repo.ICidInfoRepo {
-	return r.piecesRepo
+	return NewBadgerCidInfoRepo(r.dsParams.CidInfoDs)
 }
 
 func (r *BadgerRepo) RetrievalDealRepo() repo.IRetrievalDealRepo {
-	return r.retrievalRepo
+	return NewRetrievalDealRepo(r.dsParams.RetrievalDealsDs)
 }
 
 func (r *BadgerRepo) Close() error {
@@ -238,6 +223,19 @@ func (r *BadgerRepo) Close() error {
 
 func (r *BadgerRepo) Migrate() error {
 	return nil
+}
+
+// Not a real transaction
+func (r *BadgerRepo) Transaction(cb func(txRepo repo.TxRepo) error) error {
+	return cb(&txRepo{dsParams: r.dsParams})
+}
+
+type txRepo struct {
+	dsParams *BadgerDSParams
+}
+
+func (r txRepo) StorageDealRepo() repo.StorageDealRepo {
+	return NewStorageDealRepo(r.dsParams.StorageDealsDS)
 }
 
 //not metadata, just raw data between file transfer
