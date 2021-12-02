@@ -289,7 +289,7 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 
 func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
 	// Wait for deal to be published (plus additional time for confidence)
-	receipt, err := n.msgClient.WaitMsg(ctx, publishCid, 1, constants.LookbackNoLimit, true)
+	receipt, err := n.msgClient.WaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return nil, xerrors.Errorf("WaitForPublishDeals errored: %w", err)
 	}
