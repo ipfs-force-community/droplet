@@ -5,6 +5,7 @@ package storageprovider
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/venus-market/api/clients"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
@@ -40,6 +41,7 @@ import (
 type ClientNodeAdapter struct {
 	*clientApi
 
+	msgClient clients.IMixMessage
 	fundmgr   *fundmgr.FundManager
 	ev        *events.Events
 	dsMatcher *dealStateMatcher
@@ -51,7 +53,7 @@ type clientApi struct {
 	full apiface.FullNode
 }
 
-func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, fundmgr *fundmgr.FundManager, cfg *config.MarketClientConfig) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, msgClient clients.IMixMessage, fundmgr *fundmgr.FundManager, cfg *config.MarketClientConfig) storagemarket.StorageClientNode {
 	capi := &clientApi{fullNode}
 	ctx := metrics.LifecycleCtx(mctx, lc)
 
@@ -63,12 +65,17 @@ func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode api
 	a := &ClientNodeAdapter{
 		clientApi: capi,
 
+		msgClient: msgClient,
 		fundmgr:   fundmgr,
 		ev:        ev,
 		cfg:       cfg,
 		dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(capi.full))),
 	}
-	a.scMgr = NewSectorCommittedManager(ev, a.full, &apiWrapper{api: capi.full})
+
+	a.scMgr = NewSectorCommittedManager(ev, struct {
+		apiface.FullNode
+		clients.IMixMessage
+	}{a.full, msgClient}, &apiWrapper{api: capi.full})
 	return a
 }
 
@@ -110,7 +117,7 @@ func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Sign
 // Adds funds with the StorageMinerActor for a piecestorage participant.  Used by both providers and clients.
 func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
-	smsg, err := c.full.MpoolPushMessage(ctx, &types.Message{ //todo send to messager service
+	msgId, err := c.msgClient.PushMessage(ctx, &types.Message{
 		To:     marketactor.Address,
 		From:   addr,
 		Value:  amount,
@@ -120,7 +127,7 @@ func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 		return cid.Undef, err
 	}
 
-	return smsg.Cid(), nil
+	return msgId, nil
 }
 
 func (c *ClientNodeAdapter) ReserveFunds(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
@@ -151,7 +158,7 @@ func (c *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address
 func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal storagemarket.ClientDeal) (abi.DealID, error) {
 	log.Infow("DEAL ACCEPTED!")
 
-	pubmsg, err := c.full.ChainGetMessage(ctx, *deal.PublishMessage)
+	pubmsg, err := c.msgClient.GetMessage(ctx, *deal.PublishMessage)
 	if err != nil {
 		return 0, xerrors.Errorf("getting deal publish message: %w", err)
 	}
@@ -210,7 +217,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	// TODO: timeout
-	ret, err := c.full.StateWaitMsg(ctx, *deal.PublishMessage, constants.MessageConfidence, constants.LookbackNoLimit, true)
+	ret, err := c.msgClient.WaitMsg(ctx, *deal.PublishMessage, constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
 	}
@@ -409,7 +416,7 @@ func (c *ClientNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToke
 }
 
 func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
-	receipt, err := c.full.StateWaitMsg(ctx, mcid, constants.MessageConfidence, constants.LookbackNoLimit, true)
+	receipt, err := c.msgClient.WaitMsg(ctx, mcid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}

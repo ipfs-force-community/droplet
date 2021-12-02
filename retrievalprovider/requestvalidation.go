@@ -174,7 +174,7 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 
 	//todo how to select deal
 	deal.SelStorageProposalCid = minerdeals[0].ProposalCid
-	ask, err := rv.retrievalAsk.GetAsk(minerdeals[0].Proposal.Provider)
+	ask, err := rv.retrievalAsk.GetAsk(rv.paymentAddr)
 	if err != nil {
 		return retrievalmarket.DealStatusErrored, err
 	}

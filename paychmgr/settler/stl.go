@@ -19,16 +19,17 @@ type Settler interface {
 	PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (bool, error)
 	PaychVoucherList(context.Context, address.Address) ([]*paych.SignedVoucher, error)
 	PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error)
+	WaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error)
 }
 
 type settler struct {
 	mgr   *paychmgr.Manager
 	ciAPI paychmgr.IChainInfo
+	mpAPI paychmgr.IMessagePush
 }
 
-func NewSetter(mgr *paychmgr.Manager, chainInfoAPI paychmgr.IChainInfo) Settler {
-	return &settler{mgr, chainInfoAPI}
+func NewSetter(mgr *paychmgr.Manager, chainInfoAPI paychmgr.IChainInfo, mpAPI paychmgr.IMessagePush) Settler {
+	return &settler{mgr, chainInfoAPI, mpAPI}
 }
 
 func (o *settler) PaychList(context.Context) ([]address.Address, error) {
@@ -63,6 +64,6 @@ func (o *settler) PaychVoucherList(ctx context.Context, pch address.Address) ([]
 func (o *settler) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	return o.mgr.SubmitVoucher(ctx, ch, sv, secret, proof)
 }
-func (o *settler) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error) {
-	return o.ciAPI.StateWaitMsg(ctx, cid, confidence, lookbackLimit, allowReplaced)
+func (o *settler) WaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*chain.MsgLookup, error) {
+	return o.mpAPI.WaitMsg(ctx, cid, confidence, lookbackLimit, allowReplaced)
 }

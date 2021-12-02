@@ -384,22 +384,21 @@ func (ca *channelAccessor) createPaych(ctx context.Context, amt big.Int) (cid.Ci
 		return cid.Undef, err
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
+	msgId, err := ca.api.PushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
 	}
-	mcid := smsg.Cid()
 	// Create a new channel in the store
-	ci, err := ca.channelInfoRepo.CreateChannel(ca.from, ca.to, mcid, amt)
+	ci, err := ca.channelInfoRepo.CreateChannel(ca.from, ca.to, msgId, amt)
 	if err != nil {
 		log.Errorf("creating channel: %s", err)
 		return cid.Undef, err
 	}
 
 	// Wait for the channel to be created on chain
-	go ca.waitForPaychCreateMsg(ci.ChannelID, mcid)
+	go ca.waitForPaychCreateMsg(ci.ChannelID, msgId)
 
-	return mcid, nil
+	return msgId, nil
 }
 
 // waitForPaychCreateMsg waits for mcid to appear on chain and stores the robust address of the
@@ -410,7 +409,7 @@ func (ca *channelAccessor) waitForPaychCreateMsg(channelID string, mcid cid.Cid)
 }
 
 func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) error {
-	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, 1)
+	mwait, err := ca.api.WaitMsg(ca.chctx, mcid, 1)
 	if err != nil {
 		log.Errorf("wait msg: %w", err)
 		return err
@@ -464,30 +463,29 @@ func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *types.Chan
 		Method: 0,
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
+	msgId, err := ca.api.PushMessage(ctx, msg, nil)
 	if err != nil {
 		return nil, err
 	}
-	mcid := smsg.Cid()
 	// Store the add funds message CID on the channel
 	ca.mutateChannelInfo(channelInfo.ChannelID, func(ci *types.ChannelInfo) {
 		ci.PendingAmount = amt
-		ci.AddFundsMsg = &mcid
+		ci.AddFundsMsg = &msgId
 	})
 
 	// Store a reference from the message CID to the channel, so that we can
 	// look up the channel from the message CID
 	err = ca.msgInfoRepo.SaveMessage(&types.MsgInfo{
 		ChannelID: channelInfo.ChannelID,
-		MsgCid:    mcid,
+		MsgCid:    msgId,
 	})
 	if err != nil {
-		log.Errorf("saving add funds message CID %s: %s", mcid, err)
+		log.Errorf("saving add funds message CID %s: %s", msgId, err)
 	}
 
-	go ca.waitForAddFundsMsg(channelInfo.ChannelID, mcid)
+	go ca.waitForAddFundsMsg(channelInfo.ChannelID, msgId)
 
-	return &mcid, nil
+	return &msgId, nil
 }
 
 // waitForAddFundsMsg waits for mcid to appear on chain and returns error, if any
@@ -497,7 +495,7 @@ func (ca *channelAccessor) waitForAddFundsMsg(channelID string, mcid cid.Cid) {
 }
 
 func (ca *channelAccessor) waitAddFundsMsg(channelID string, mcid cid.Cid) error {
-	mwait, err := ca.api.StateWaitMsg(ca.chctx, mcid, 1)
+	mwait, err := ca.api.WaitMsg(ca.chctx, mcid, 1)
 	if err != nil {
 		log.Error(err)
 		return err

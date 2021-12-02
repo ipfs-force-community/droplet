@@ -17,17 +17,17 @@ import (
 const RetrievalDealTableName = "retrieval_deals"
 
 type retrievalDeal struct {
-	DealProposal    `gorm:"embedded;embeddedPrefix:cdp_"`
-	StoreID         uint64     `gorm:"column:store_id;type:bigint unsigned;"`
-	ChannelID       ChannelID  `gorm:"embedded;embeddedPrefix:ci_"`
-	SelStorageProposalCid DBCid     `gorm:"column:sel_proposal_cid;type:varchar(256);"` //piece info
-	Status          uint64     `gorm:"column:status;type:bigint unsigned;"`
-	Receiver        string     `gorm:"column:receiver;type:varchar(256);primary_key"`
-	TotalSent       uint64     `gorm:"column:total_sent;type:bigint unsigned;"`
-	FundsReceived   mtypes.Int `gorm:"column:funds_received;type:varchar(256);"`
-	Message         string     `gorm:"column:message;type:varchar(2048);"`
-	CurrentInterval uint64     `gorm:"column:current_interval;type:bigint unsigned;"`
-	LegacyProtocol  bool       `gorm:"column:legacy_protocol;"`
+	DealProposal          `gorm:"embedded;embeddedPrefix:cdp_"`
+	StoreID               uint64     `gorm:"column:store_id;type:bigint unsigned;"`
+	ChannelID             ChannelID  `gorm:"embedded;embeddedPrefix:ci_"`
+	SelStorageProposalCid DBCid      `gorm:"column:sel_proposal_cid;type:varchar(256);"` //piece info
+	Status                uint64     `gorm:"column:status;type:bigint unsigned;"`
+	Receiver              string     `gorm:"column:receiver;type:varchar(256);primary_key"`
+	TotalSent             uint64     `gorm:"column:total_sent;type:bigint unsigned;"`
+	FundsReceived         mtypes.Int `gorm:"column:funds_received;type:varchar(256);"`
+	Message               string     `gorm:"column:message;type:varchar(2048);"`
+	CurrentInterval       uint64     `gorm:"column:current_interval;type:bigint unsigned;"`
+	LegacyProtocol        bool       `gorm:"column:legacy_protocol;"`
 	TimeStampOrm
 }
 
@@ -36,7 +36,7 @@ type DealProposal struct {
 	ID         uint64 `gorm:"column:proposal_id;type:bigint unsigned;primary_key"`
 
 	Selector                *[]byte    `gorm:"column:selector;type:blob;"` // V1
-	PieceCID                DBCid     `gorm:"column:piece_cid;type:varchar(256);"`
+	PieceCID                DBCid      `gorm:"column:piece_cid;type:varchar(256);"`
 	PricePerByte            mtypes.Int `gorm:"column:price_perbyte;type:varchar(256);"`
 	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;"` // when to request payment
 	PaymentIntervalIncrease uint64     `gorm:"column:payment_interval_increase;type:bigint unsigned;"`
@@ -57,15 +57,15 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 			PaymentIntervalIncrease: deal.PaymentIntervalIncrease,
 			UnsealPrice:             mtypes.Int(deal.UnsealPrice),
 		},
-		StoreID:         deal.StoreID,
-		Status:          uint64(deal.Status),
+		StoreID:               deal.StoreID,
+		Status:                uint64(deal.Status),
 		SelStorageProposalCid: DBCid(deal.SelStorageProposalCid),
-		Receiver:        deal.Receiver.String(),
-		TotalSent:       deal.TotalSent,
-		FundsReceived:   mtypes.Int(deal.FundsReceived),
-		Message:         deal.Message,
-		CurrentInterval: deal.CurrentInterval,
-		LegacyProtocol:  deal.LegacyProtocol,
+		Receiver:              deal.Receiver.String(),
+		TotalSent:             deal.TotalSent,
+		FundsReceived:         mtypes.Int(deal.FundsReceived),
+		Message:               deal.Message,
+		CurrentInterval:       deal.CurrentInterval,
+		LegacyProtocol:        deal.LegacyProtocol,
 	}
 	deal.Identifier()
 	if deal.Selector != nil {
@@ -79,9 +79,9 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 		}
 	}
 
-	if deal.DealProposal.PieceCID != nil {
+	if deal.DealProposal.PieceCID == nil {
 		newdeal.DealProposal.PieceCID = UndefDBCid
-	}else{
+	} else {
 		newdeal.DealProposal.PieceCID = DBCid(*deal.DealProposal.PieceCID)
 	}
 	return newdeal
@@ -93,22 +93,22 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 			PayloadCID: deal.PayloadCID.cid(),
 			ID:         rm.DealID(deal.DealProposal.ID),
 			Params: rm.Params{
-				PieceCID: deal.DealProposal.PieceCID.cidPtr(),
+				PieceCID:                deal.DealProposal.PieceCID.cidPtr(),
 				PricePerByte:            abi.TokenAmount(deal.PricePerByte),
 				PaymentInterval:         deal.DealProposal.PaymentInterval,
 				PaymentIntervalIncrease: deal.DealProposal.PaymentIntervalIncrease,
 				UnsealPrice:             abi.TokenAmount(deal.UnsealPrice),
 			},
 		},
-		StoreID:         deal.StoreID,
-		ChannelID:       nil,
+		StoreID:               deal.StoreID,
+		ChannelID:             nil,
 		SelStorageProposalCid: deal.SelStorageProposalCid.cid(),
-		Status:          rm.DealStatus(deal.Status),
-		TotalSent:       deal.TotalSent,
-		FundsReceived:   abi.TokenAmount(deal.FundsReceived),
-		Message:         deal.Message,
-		CurrentInterval: deal.CurrentInterval,
-		LegacyProtocol:  deal.LegacyProtocol,
+		Status:                rm.DealStatus(deal.Status),
+		TotalSent:             deal.TotalSent,
+		FundsReceived:         abi.TokenAmount(deal.FundsReceived),
+		Message:               deal.Message,
+		CurrentInterval:       deal.CurrentInterval,
+		LegacyProtocol:        deal.LegacyProtocol,
 	}
 	var err error
 

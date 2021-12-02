@@ -4,6 +4,7 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -22,6 +23,14 @@ type ProviderDealState struct {
 	Message               string
 	CurrentInterval       uint64
 	LegacyProtocol        bool
+}
+
+func (deal *ProviderDealState) TotalPaidFor() uint64 {
+	totalPaidFor := uint64(0)
+	if !deal.PricePerByte.IsZero() {
+		totalPaidFor = big.Div(big.Max(big.Sub(deal.FundsReceived, deal.UnsealPrice), big.Zero()), deal.PricePerByte).Uint64()
+	}
+	return totalPaidFor
 }
 
 func (deal *ProviderDealState) IntervalLowerBound() uint64 {

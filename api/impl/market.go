@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/fundmgr"
 	"github.com/filecoin-project/venus/app/client/apiface"
 
@@ -17,8 +18,9 @@ import (
 type FundAPI struct {
 	fx.In
 
-	Full apiface.FullNode
-	FMgr *fundmgr.FundManager
+	Full      apiface.FullNode
+	MsgClient clients.IMixMessage
+	FMgr      *fundmgr.FundManager
 }
 
 func (a *FundAPI) MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error) {
@@ -27,7 +29,7 @@ func (a *FundAPI) MarketAddBalance(ctx context.Context, wallet, addr address.Add
 		return cid.Undef, err
 	}
 
-	smsg, aerr := a.Full.MpoolPushMessage(ctx, &types.UnsignedMessage{
+	msgId, aerr := a.MsgClient.PushMessage(ctx, &types.UnsignedMessage{
 		To:     marketactor.Address,
 		From:   wallet,
 		Value:  amt,
@@ -39,7 +41,7 @@ func (a *FundAPI) MarketAddBalance(ctx context.Context, wallet, addr address.Add
 		return cid.Undef, aerr
 	}
 
-	return smsg.Cid(), nil
+	return msgId, nil
 }
 
 func (a *FundAPI) MarketGetReserved(ctx context.Context, addr address.Address) (types.BigInt, error) {

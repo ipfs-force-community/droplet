@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/chain"
 	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
@@ -258,7 +257,7 @@ func (m MockFullnode) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Blo
 	panic("implement me")
 }
 
-func (m MockFullnode) ChainGetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error) {
+func (m MockFullnode) GetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error) {
 	panic("implement me")
 }
 
@@ -326,11 +325,11 @@ func (m MockFullnode) StateNetworkName(ctx context.Context) (apitypes.NetworkNam
 	panic("implement me")
 }
 
-func (m MockFullnode) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+func (m MockFullnode) SearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+func (m MockFullnode) WaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
 	panic("implement me")
 }
 
@@ -414,7 +413,7 @@ func (m MockFullnode) MpoolPushUntrusted(ctx context.Context, smsg *types.Signed
 	panic("implement me")
 }
 
-func (m MockFullnode) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
+func (m MockFullnode) PushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
 	panic("implement me")
 }
 
@@ -727,5 +726,3 @@ func (m MockFullnode) Verify(ctx context.Context, host, token string) ([]auth.Pe
 func (m MockFullnode) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
 	panic("implement me")
 }
-
-var _ apiface.FullNode = (*MockFullnode)(nil)

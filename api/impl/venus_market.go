@@ -63,7 +63,7 @@ type MarketNodeImpl struct {
 	DealPublisher     *storageprovider.DealPublisher
 	DealAssigner      storageprovider.DealAssiger
 
-	Messager                                    clients2.IMessager `optional:"true"`
+	Messager                                    clients2.IMixMessage
 	StorageAsk                                  storageprovider.IStorageAsk
 	DAGStore                                    *dagstore.DAGStore
 	PieceStorage                                piecestorage.IPieceStorage
@@ -379,25 +379,23 @@ func (m MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, durat
 }
 
 func (m MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*apitypes.MsgLookup, error) {
-	//StateWaitMsg method has been replace in messager mode
-	return m.FullNode.StateWaitMsg(ctx, mid, constants.MessageConfidence, constants.LookbackNoLimit, false)
+	//WaitMsg method has been replace in messager mode
+	return m.Messager.WaitMsg(ctx, mid, constants.MessageConfidence, constants.LookbackNoLimit, false)
 }
 
-func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (*vTypes.SignedMessage, error) {
-	//MpoolPushMessage method has been replace in messager mode
-	var spec *vTypes.MessageSendSpec
+func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (cid.Cid, error) {
+	var spec *mTypes.MsgMeta
 	if meta != nil {
-		spec = &vTypes.MessageSendSpec{
+		spec = &mTypes.MsgMeta{
 			MaxFee:            meta.MaxFee,
 			GasOverEstimation: meta.GasOverEstimation,
 		}
 	}
-	return m.FullNode.MpoolPushMessage(ctx, msg, spec)
+	return m.Messager.PushMessage(ctx, msg, spec)
 }
 
 func (m MarketNodeImpl) MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error) {
-	//ChainGetMessage method has been replace in messager mode
-	return m.FullNode.ChainGetMessage(ctx, mid)
+	return m.Messager.GetMessage(ctx, mid)
 }
 
 func (m MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error) {

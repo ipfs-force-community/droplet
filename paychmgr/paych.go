@@ -442,7 +442,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		return cid.Undef, err
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
+	msgId, err := ca.api.PushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -465,7 +465,7 @@ func (ca *channelAccessor) submitVoucher(ctx context.Context, ch address.Address
 		return cid.Undef, err
 	}
 
-	return smsg.Cid(), nil
+	return msgId, nil
 }
 
 func (ca *channelAccessor) allocateLane(ch address.Address) (uint64, error) {
@@ -621,7 +621,7 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 	if err != nil {
 		return cid.Undef, err
 	}
-	smgs, err := ca.api.MpoolPushMessage(ctx, msg, nil)
+	msgId, err := ca.api.PushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -631,7 +631,7 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 	if err != nil {
 		log.Errorf("Error marking channel as settled: %s", err)
 	}
-	return smgs.Cid(), nil
+	return msgId, nil
 }
 
 func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid.Cid, error) {
@@ -653,9 +653,9 @@ func (ca *channelAccessor) collect(ctx context.Context, ch address.Address) (cid
 		return cid.Undef, err
 	}
 
-	smsg, err := ca.api.MpoolPushMessage(ctx, msg, nil)
+	msgId, err := ca.api.PushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
-	return smsg.Cid(), nil
+	return msgId, nil
 }

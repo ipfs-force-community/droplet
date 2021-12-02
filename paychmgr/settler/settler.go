@@ -63,7 +63,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.UnsignedMessage, rec
 		}
 		go func(voucher *paych.SignedVoucher, submitMessageCID cid.Cid) {
 			defer wg.Done()
-			msgLookup, err := pcs.api.StateWaitMsg(pcs.ctx, submitMessageCID, 1, constants.LookbackNoLimit, true)
+			msgLookup, err := pcs.api.WaitMsg(pcs.ctx, submitMessageCID, 1, constants.LookbackNoLimit, true)
 			if err != nil {
 				log.Errorf("submitting voucher: %s", err.Error())
 			}

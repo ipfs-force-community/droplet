@@ -3,6 +3,8 @@ package fundmgr
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/api/clients"
+	types3 "github.com/filecoin-project/venus-messager/types"
 	"sync"
 
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -30,14 +32,16 @@ type FundManagerAPI struct {
 	fx.In
 
 	apiface.FullNode
+	clients.IMixMessage
 }
 
 // fundManagerAPI is the specific methods called by the FundManager
 // (used by the tests)
 type fundManagerAPI interface {
-	MpoolPushMessage(context.Context, *types2.Message, *types2.MessageSendSpec) (*types2.SignedMessage, error)
 	StateMarketBalance(context.Context, address.Address, types2.TipSetKey) (apitypes.MarketBalance, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
+
+	PushMessage(context.Context, *types2.Message, *types3.MsgMeta) (cid.Cid, error)
+	WaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
 type StateStore interface {
@@ -690,7 +694,7 @@ func (env *fundManagerEnvironment) AddFunds(
 		return cid.Undef, err
 	}
 
-	smsg, aerr := env.api.MpoolPushMessage(ctx, &types2.Message{
+	msgId, aerr := env.api.PushMessage(ctx, &types2.Message{
 		To:     market.Address,
 		From:   wallet,
 		Value:  amt,
@@ -702,7 +706,7 @@ func (env *fundManagerEnvironment) AddFunds(
 		return cid.Undef, aerr
 	}
 
-	return smsg.Cid(), nil
+	return msgId, nil
 }
 
 func (env *fundManagerEnvironment) WithdrawFunds(
@@ -719,7 +723,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 		return cid.Undef, xerrors.Errorf("serializing params: %w", err)
 	}
 
-	smsg, aerr := env.api.MpoolPushMessage(ctx, &types2.Message{
+	msgId, aerr := env.api.PushMessage(ctx, &types2.Message{
 		To:     market.Address,
 		From:   wallet,
 		Value:  types2.NewInt(0),
@@ -731,10 +735,10 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 		return cid.Undef, aerr
 	}
 
-	return smsg.Cid(), nil
+	return msgId, nil
 }
 
 func (env *fundManagerEnvironment) WaitMsg(ctx context.Context, c cid.Cid) error {
-	_, err := env.api.StateWaitMsg(ctx, c, constants.MessageConfidence, constants.LookbackNoLimit, true)
+	_, err := env.api.WaitMsg(ctx, c, constants.MessageConfidence, constants.LookbackNoLimit, true)
 	return err
 }

@@ -197,7 +197,8 @@ func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, addit
 	}
 
 	totalSent := deal.TotalSent
-	totalPaidFor := big.Div(big.Max(big.Sub(deal.FundsReceived, deal.UnsealPrice), big.Zero()), deal.PricePerByte).Uint64()
+	totalPaidFor := deal.TotalPaidFor()
+
 	// Calculate how much data has been sent in total
 	totalSent += additionalBytesSent
 	if deal.PricePerByte.IsZero() || totalSent < deal.CurrentInterval {
@@ -211,8 +212,7 @@ func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, addit
 
 	// Calculate the payment owed
 	paymentOwed := big.Mul(abi.NewTokenAmount(int64(totalSent-totalPaidFor)), deal.PricePerByte)
-	log.Debugf("provider: owed %d = (total sent %d - paid for %d) * price per byte %d: sending payment request",
-		paymentOwed, totalSent, totalPaidFor, deal.PricePerByte)
+	log.Debugf("provider: owed %d = (total sent %d - paid for %d) * price per byte %d: sending payment request", paymentOwed, totalSent, totalPaidFor, deal.PricePerByte)
 
 	deal.TotalSent = totalSent
 	// Request payment
@@ -270,7 +270,7 @@ func (pr *ProviderRevalidator) OnComplete(chid datatransfer.ChannelID) (bool, da
 	}
 
 	totalSent := deal.TotalSent
-	totalPaidFor := big.Div(big.Max(big.Sub(deal.FundsReceived, deal.UnsealPrice), big.Zero()), deal.PricePerByte).Uint64()
+	totalPaidFor := deal.TotalPaidFor()
 	// Calculate how much payment is owed
 	paymentOwed := big.Mul(abi.NewTokenAmount(int64(totalSent-totalPaidFor)), deal.PricePerByte)
 	if paymentOwed.Equals(big.Zero()) {
