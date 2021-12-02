@@ -19,7 +19,7 @@ const (
 
 type channelInfo struct {
 	ChannelID     string     `gorm:"column:channel_id;type:varchar(128);primary_key;"`
-	Channel       DBAddress  `gorm:"column:channel;type:varchar(256);"`
+	Channel       DBAddress  `gorm:"column:channel;type:varchar(256);index"`
 	Control       DBAddress  `gorm:"column:control;type:varchar(256);"`
 	Target        DBAddress  `gorm:"column:target;type:varchar(256);"`
 	Direction     uint64     `gorm:"column:direction;type:bigint unsigned;"`

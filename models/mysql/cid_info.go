@@ -41,7 +41,7 @@ func (mbl mysqlBlockLocation) Value() (driver.Value, error) {
 
 type cidInfo struct {
 	PieceCid      DBCid              `gorm:"column:piece_cid;primaryKey;type:varchar(256)"`
-	PayloadCid    DBCid              `gorm:"column:payload_cid;primaryKey;type:varchar(256);index"`
+	PayloadCid    DBCid              `gorm:"column:payload_cid;primaryKey;type:varchar(256);"`
 	BlockLocation mysqlBlockLocation `gorm:"block_location;type:json"`
 	TimeStampOrm
 }
@@ -51,7 +51,6 @@ func (m cidInfo) TableName() string {
 }
 
 func (m *mysqlCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
-
 	mysqlInfos := make([]cidInfo, len(blockLocations))
 	idx := 0
 	for blockCid, location := range blockLocations {
@@ -63,7 +62,7 @@ func (m *mysqlCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocatio
 	}
 
 	return m.ds.Table(cidInfoTableName).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "piece_cid"}, {Name: "block_cid"}},
+		Columns:   []clause.Column{{Name: "piece_cid"}, {Name: "payload_cid"}},
 		UpdateAll: true,
 	}).Save(mysqlInfos).Error
 

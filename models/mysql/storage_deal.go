@@ -36,7 +36,7 @@ type storageDeal struct {
 	PublishCid            DBCid      `gorm:"column:publish_cid;type:varchar(256);"`
 	Miner                 string     `gorm:"column:miner_peer;type:varchar(128);"`
 	Client                string     `gorm:"column:client_peer;type:varchar(128);"`
-	State                 uint64     `gorm:"column:state;type:bigint unsigned;"`
+	State                 uint64     `gorm:"column:state;type:bigint unsigned;index"`
 	PiecePath             string     `gorm:"column:piece_path;type:varchar(256);"`
 	MetadataPath          string     `gorm:"column:metadata_path;type:varchar(256);"`
 	SlashEpoch            int64      `gorm:"column:slash_epoch;type:bigint;"`
@@ -46,7 +46,7 @@ type storageDeal struct {
 	Ref                   DataRef    `gorm:"embedded;embeddedPrefix:ref_"`
 	AvailableForRetrieval bool       `gorm:"column:available_for_retrieval;"`
 
-	DealID       uint64 `gorm:"column:deal_id;type:bigint unsigned;"`
+	DealID       uint64 `gorm:"column:deal_id;type:bigint unsigned;index"`
 	CreationTime int64  `gorm:"column:creation_time;type:bigint;"`
 
 	TransferChannelId ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
@@ -56,7 +56,7 @@ type storageDeal struct {
 
 	Offset      uint64 `gorm:"column:offset;type:bigint"`
 	Length      uint64 `gorm:"column:length;type:bigint"`
-	PieceStatus string `gorm:"column:piece_status;type:varchar(128)"`
+	PieceStatus string `gorm:"column:piece_status;type:varchar(128);index"`
 
 	TimeStampOrm
 }
@@ -405,20 +405,23 @@ func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo,
 	return &pieceInfo, nil
 }
 
-func (m *storageDealRepo) ListPieceInfoKeys() (cids []cid.Cid, err error) {
+func (m *storageDealRepo) ListPieceInfoKeys() ([]cid.Cid, error) {
 	var cidsStr []string
-	defer func() {
-		size := len(cidsStr)
-		if size == 0 {
-			return
+	var err error
+
+	if err := m.DB.Table((&storageDeal{}).TableName()).Select("cdp_piece_cid").Scan(&cidsStr).Error; err != nil {
+		return nil, err
+	}
+
+	cids := make([]cid.Cid, len(cidsStr))
+	for idx, s := range cidsStr {
+		cids[idx], err = cid.Decode(s)
+		if err != nil {
+			return nil, err
 		}
-		cids = make([]cid.Cid, size)
-		for idx, s := range cidsStr {
-			cids[idx], _ = cid.Decode(s)
-		}
-	}()
-	return cids, m.DB.Table((&storageDeal{}).TableName()).Distinct("cdp_piece_id").
-		Select("cdp_piece_id").Scan(&cidsStr).Error
+	}
+
+	return cids, nil
 }
 
 func (m *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error) {
