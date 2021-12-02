@@ -70,6 +70,7 @@ func NewProvider(network rmnet.RetrievalMarketNetwork,
 		stores:                 stores.NewReadOnlyBlockstores(),
 		retrievalStreamHandler: NewRetrievalStreamHandler(retrievalAskRepo, retrievalDealRepo, storageDealsRepo, pieceInfo, address.Address(cfg.RetrievalPaymentAddress.Addr)),
 	}
+
 	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo, storageDealsRepo)
 	p.requestValidator = NewProviderRequestValidator(address.Address(cfg.RetrievalPaymentAddress.Addr), storageDealsRepo, retrievalDealRepo, retrievalAskRepo, pieceInfo)
 	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{retrievalDealRepo, p.stores})

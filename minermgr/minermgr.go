@@ -29,7 +29,7 @@ type IAddrMgr interface {
 	Has(ctx context.Context, addr address.Address) bool
 	GetMiners(ctx context.Context) ([]User, error)
 	GetAccount(ctx context.Context, addr address.Address) (string, error)
-	//	AddAddress(ctx context.Context, miner User) error
+	AddAddress(ctx context.Context, user User) error
 }
 
 type User struct {
@@ -170,6 +170,10 @@ func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int
 		response.Result()
 		return nil, fmt.Errorf("response code is : %d, msg:%s", response.StatusCode(), response.Body())
 	}
+}
+
+func (m *UserMgrImpl) AddAddress(ctx context.Context, user User) error {
+	return m.distAddress(ctx, user)
 }
 
 func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...User) error {

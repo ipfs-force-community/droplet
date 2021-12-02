@@ -18,11 +18,12 @@ import (
 )
 
 type CurrentDealInfoAPI interface {
-	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*apitypes.MarketDeal, error)
-	StateSearchMsg(context.Context, cid.Cid) (*apitypes.MsgLookup, error)
 	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
+
+	GetMessage(context.Context, cid.Cid) (*types.Message, error)
+	SearchMsg(context.Context, cid.Cid) (*apitypes.MsgLookup, error)
 }
 
 type CurrentDealInfo struct {
@@ -69,7 +70,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	dealID := abi.DealID(0)
 
 	// Get the return value of the publish deals message
-	lookup, err := mgr.CDAPI.StateSearchMsg(ctx, publishCid)
+	lookup, err := mgr.CDAPI.SearchMsg(ctx, publishCid)
 	if err != nil {
 		return dealID, types.TipSetKey{}, xerrors.Errorf("looking for publish deal message %s: search msg failed: %w", publishCid, err)
 	}
@@ -117,7 +118,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	}
 
 	// Get the parameters to the publish deals message
-	pubmsg, err := mgr.CDAPI.ChainGetMessage(ctx, publishCid)
+	pubmsg, err := mgr.CDAPI.GetMessage(ctx, publishCid)
 	if err != nil {
 		return dealID, types.TipSetKey{}, xerrors.Errorf("getting publish deal message %s: %w", publishCid, err)
 	}
@@ -186,11 +187,11 @@ func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok ty
 }
 
 type CurrentDealInfoTskAPI interface {
-	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
+	GetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*apitypes.MarketDeal, error)
-	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
+	SearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
 type CurrentDealInfoAPIAdapter struct {
@@ -209,8 +210,8 @@ func (c *CurrentDealInfoAPIAdapter) StateMarketStorageDeal(ctx context.Context, 
 	return c.CurrentDealInfoTskAPI.StateMarketStorageDeal(ctx, dealID, tsk)
 }
 
-func (c *CurrentDealInfoAPIAdapter) StateSearchMsg(ctx context.Context, k cid.Cid) (*apitypes.MsgLookup, error) {
-	wmsg, err := c.CurrentDealInfoTskAPI.StateSearchMsg(ctx, types.EmptyTSK, k, constants.LookbackNoLimit, true)
+func (c *CurrentDealInfoAPIAdapter) SearchMsg(ctx context.Context, k cid.Cid) (*apitypes.MsgLookup, error) {
+	wmsg, err := c.CurrentDealInfoTskAPI.SearchMsg(ctx, types.EmptyTSK, k, constants.LookbackNoLimit, true)
 	if err != nil {
 		return nil, err
 	}

@@ -93,6 +93,12 @@ type MarketClientNodeStruct struct {
 		MarketReserveFunds func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) `perm:"write"`
 
 		MarketWithdraw func(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) `perm:"write"`
+
+		MessagerGetMessage func(p0 context.Context, p1 cid.Cid) (*vTypes.Message, error) `perm:"read"`
+
+		MessagerPushMessage func(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) `perm:"write"`
+
+		MessagerWaitMessage func(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) `perm:"read"`
 	}
 }
 
@@ -203,7 +209,7 @@ type MarketFullNodeStruct struct {
 
 		MessagerGetMessage func(p0 context.Context, p1 cid.Cid) (*vTypes.Message, error) `perm:"read"`
 
-		MessagerPushMessage func(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (*vTypes.SignedMessage, error) `perm:"write"`
+		MessagerPushMessage func(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) `perm:"write"`
 
 		MessagerWaitMessage func(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) `perm:"read"`
 
@@ -498,6 +504,30 @@ func (s *MarketClientNodeStruct) MarketWithdraw(p0 context.Context, p1 address.A
 
 func (s *MarketClientNodeStub) MarketWithdraw(p0 context.Context, p1 address.Address, p2 address.Address, p3 vTypes.BigInt) (cid.Cid, error) {
 	return *new(cid.Cid), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) MessagerGetMessage(p0 context.Context, p1 cid.Cid) (*vTypes.Message, error) {
+	return s.Internal.MessagerGetMessage(p0, p1)
+}
+
+func (s *MarketClientNodeStub) MessagerGetMessage(p0 context.Context, p1 cid.Cid) (*vTypes.Message, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) {
+	return s.Internal.MessagerPushMessage(p0, p1, p2)
+}
+
+func (s *MarketClientNodeStub) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) {
+	return *new(cid.Cid), xerrors.New("method not supported")
+}
+
+func (s *MarketClientNodeStruct) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) {
+	return s.Internal.MessagerWaitMessage(p0, p1)
+}
+
+func (s *MarketClientNodeStub) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) {
+	return nil, xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) ActorAddress(p0 context.Context) ([]address.Address, error) {
@@ -908,12 +938,12 @@ func (s *MarketFullNodeStub) MessagerGetMessage(p0 context.Context, p1 cid.Cid) 
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (*vTypes.SignedMessage, error) {
+func (s *MarketFullNodeStruct) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) {
 	return s.Internal.MessagerPushMessage(p0, p1, p2)
 }
 
-func (s *MarketFullNodeStub) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (*vTypes.SignedMessage, error) {
-	return nil, xerrors.New("method not supported")
+func (s *MarketFullNodeStub) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) {
+	return *new(cid.Cid), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"sync"
 
@@ -88,11 +89,11 @@ type ManagerParams struct {
 	SM           IStateManager
 }
 
-func NewManager(mctx metrics.MetricsCtx, repo repo.Repo, fullNode apiface.FullNode) (*Manager, error) {
+func NewManager(mctx metrics.MetricsCtx, repo repo.Repo, msgClient clients.IMixMessage, fullNode apiface.FullNode) (*Manager, error) {
 	ctx, shutdown := context.WithCancel(mctx)
 	impl := &managerAPIImpl{
 		IStateManager:      newStateMgrAdapter(fullNode),
-		paychDependencyAPI: newPaychDependencyAPI(fullNode, fullNode, fullNode),
+		paychDependencyAPI: newPaychDependencyAPI(msgClient, fullNode, fullNode),
 	}
 	pm := &Manager{
 		ctx:             ctx,

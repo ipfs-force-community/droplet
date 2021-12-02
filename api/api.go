@@ -85,9 +85,9 @@ type MarketFullNode interface {
 	SectorSetExpectedSealDuration(context.Context, time.Duration) error //perm:write
 
 	//messager
-	MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*apitypes.MsgLookup, error)                                 //perm:read
-	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (*vTypes.SignedMessage, error) //perm:write
-	MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error)                                      //perm:read
+	MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*apitypes.MsgLookup, error)                   //perm:read
+	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (cid.Cid, error) //perm:write
+	MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error)                        //perm:read
 
 	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)                   //perm:sign
 	MarketGetReserved(ctx context.Context, addr address.Address) (vTypes.BigInt, error)                                       //perm:sign
@@ -223,4 +223,9 @@ type MarketClientNode interface {
 	MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt vTypes.BigInt) (cid.Cid, error) //perm:write
 	MarketReleaseFunds(ctx context.Context, addr address.Address, amt vTypes.BigInt) error                                    //perm:write
 	MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)                     //perm:write
+
+	MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*apitypes.MsgLookup, error)                   //perm:read
+	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (cid.Cid, error) //perm:write
+	MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error)                        //perm:read
+
 }

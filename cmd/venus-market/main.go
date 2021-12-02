@@ -46,8 +46,8 @@ import (
 // Invokes are called in the order they are defined.
 //nolint:golint
 var (
-	InitJournalKey  = builder.NextInvoke() //nolint
-	ExtractApiKey   = builder.NextInvoke()
+	InitJournalKey = builder.NextInvoke() //nolint
+	ExtractApiKey  = builder.NextInvoke()
 )
 
 var (

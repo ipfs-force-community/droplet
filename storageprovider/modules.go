@@ -30,8 +30,8 @@ import (
 )
 
 var (
-	HandleDealsKey    = builder.NextInvoke()
-	StartDealTracker  = builder.NextInvoke()
+	HandleDealsKey   = builder.NextInvoke()
+	StartDealTracker = builder.NextInvoke()
 )
 
 func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProviderV2, j journal.Journal) {

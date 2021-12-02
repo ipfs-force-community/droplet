@@ -375,21 +375,25 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 	}
 
 	if deal.State == storagemarket.StorageDealPublishing { // WaitForPublish
-		res, err := storageDealPorcess.spn.WaitForPublishDeals(ctx, *deal.PublishCid, deal.Proposal)
-		if err != nil {
-			return storageDealPorcess.HandleError(deal, xerrors.Errorf("PublishStorageDeals errored: %w", err))
-		}
+		if deal.PublishCid != nil {
+			res, err := storageDealPorcess.spn.WaitForPublishDeals(ctx, *deal.PublishCid, deal.Proposal)
+			if err != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("PublishStorageDeals errored: %w", err))
+			}
 
-		// Once the deal has been published, release funds that were reserved
-		// for deal publishing
-		storageDealPorcess.releaseReservedFunds(ctx, deal)
+			// Once the deal has been published, release funds that were reserved
+			// for deal publishing
+			storageDealPorcess.releaseReservedFunds(ctx, deal)
 
-		deal.DealID = res.DealID
-		deal.PublishCid = &res.FinalCid
-		deal.State = storagemarket.StorageDealStaged
-		err = storageDealPorcess.deals.SaveDeal(deal)
-		if err != nil {
-			return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+			deal.DealID = res.DealID
+			deal.PublishCid = &res.FinalCid
+			deal.State = storagemarket.StorageDealStaged
+			err = storageDealPorcess.deals.SaveDeal(deal)
+			if err != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+			}
+		} else {
+			return storageDealPorcess.HandleError(deal, xerrors.Errorf("state stop at StorageDealPublishing but not found publish cid"))
 		}
 	}
 
@@ -575,7 +579,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleError(deal *types.MinerD
 	deal.State = storagemarket.StorageDealFailing
 	deal.Message = err.Error()
 
-	log.Warnf("deal %s failed: %s", deal.ProposalCid, deal.Message)
+	log.Errorf("deal %s failed: %s", deal.ProposalCid, deal.Message)
 
 	storageDealPorcess.peerTagger.UntagPeer(deal.Client, deal.ProposalCid.String())
 

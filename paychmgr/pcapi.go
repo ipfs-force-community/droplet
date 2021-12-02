@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"context"
+	types2 "github.com/filecoin-project/venus-messager/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
@@ -21,21 +22,21 @@ import (
 // paychDependencyAPI defines the API methods needed by the payment channel manager
 type paychDependencyAPI interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
-	StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*chain.MsgLookup, error)
+	WaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*chain.MsgLookup, error)
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
 	WalletSign(ctx context.Context, k address.Address, msg []byte) (*crypto.Signature, error)
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
-	MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, maxFee *types.MessageSendSpec) (*types.SignedMessage, error)
+	PushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types2.MsgMeta) (cid.Cid, error)
 }
 
 type IMessagePush interface {
-	MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error)
+	PushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types2.MsgMeta) (cid.Cid, error)
+	WaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
 type IChainInfo interface {
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
-	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
 type IWalletAPI interface {
@@ -55,11 +56,11 @@ func newPaychDependencyAPI(mpAPI IMessagePush, c IChainInfo, w IWalletAPI) paych
 func (o *pcAPI) StateAccountKey(ctx context.Context, address address.Address, tsk types.TipSetKey) (address.Address, error) {
 	return o.chainInfoAPI.StateAccountKey(ctx, address, tsk)
 }
-func (o *pcAPI) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*chain.MsgLookup, error) {
-	return o.chainInfoAPI.StateWaitMsg(ctx, msg, confidence, constants.LookbackNoLimit, true)
+func (o *pcAPI) WaitMsg(ctx context.Context, msg cid.Cid, confidence uint64) (*chain.MsgLookup, error) {
+	return o.mpAPI.WaitMsg(ctx, msg, confidence, constants.LookbackNoLimit, true)
 }
-func (o *pcAPI) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, maxFee *types.MessageSendSpec) (*types.SignedMessage, error) {
-	return o.mpAPI.MpoolPushMessage(ctx, msg, maxFee)
+func (o *pcAPI) PushMessage(ctx context.Context, msg *types.UnsignedMessage, msgMeta *types2.MsgMeta) (cid.Cid, error) {
+	return o.mpAPI.PushMessage(ctx, msg, msgMeta)
 }
 func (o *pcAPI) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
 	return o.walletAPI.WalletHas(ctx, addr)

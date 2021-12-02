@@ -138,7 +138,7 @@ func newMockPaychAPI() *mockPaychAPI {
 	}
 }
 
-func (pchapi *mockPaychAPI) StateWaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64) (*chain.MsgLookup, error) {
+func (pchapi *mockPaychAPI) WaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64) (*chain.MsgLookup, error) {
 	pchapi.lk.Lock()
 	response := make(chan types.MessageReceipt)
 
@@ -193,14 +193,14 @@ func (pchapi *mockPaychAPI) close() {
 	}
 }
 
-func (pchapi *mockPaychAPI) MpoolPushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
+func (pchapi *mockPaychAPI) PushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (cid.Cid, error) {
 	pchapi.lk.Lock()
 	defer pchapi.lk.Unlock()
 
 	smsg := &types.SignedMessage{Message: *msg}
 	smsgCid := smsg.Cid()
 	pchapi.messages[smsgCid] = smsg
-	return smsg, nil
+	return smsgCid, nil
 }
 
 func (pchapi *mockPaychAPI) pushedMessages(c cid.Cid) *types.SignedMessage {

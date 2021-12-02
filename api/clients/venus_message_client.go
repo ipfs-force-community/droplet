@@ -12,9 +12,9 @@ import (
 
 var ErrFailMsg = xerrors.New("Message Fail")
 
-type IMessager = client2.IMessager
+type IVenusMessager = client2.IMessager
 
-func MessagerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, nodeCfg *config.Messager) (IMessager, error) {
+func MessagerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, nodeCfg *config.Messager) (IVenusMessager, error) {
 	info := apiinfo.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
 	dialAddr, err := info.DialArgs("v0")
 	if err != nil {

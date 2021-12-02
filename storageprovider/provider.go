@@ -4,6 +4,9 @@ package storageprovider
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/api/clients"
+	types3 "github.com/filecoin-project/venus-messager/types"
+	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -43,20 +46,21 @@ var log = logging.Logger("storageadapter")
 type ProviderNodeAdapter struct {
 	apiface.FullNode
 
-	fundMgr *fundmgr.FundManager
-	ev      *events.Events
+	fundMgr   *fundmgr.FundManager
+	msgClient clients.IMixMessage
+	ev        *events.Events
 
 	dealPublisher *DealPublisher
 
 	extendPieceMeta             DealAssiger
-	addBalanceSpec              *types.MessageSendSpec
+	addBalanceSpec              *types3.MsgMeta
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta DealAssiger) StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta DealAssiger) StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, msgClient clients.IMixMessage, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta DealAssiger) StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, msgClient clients.IMixMessage, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta DealAssiger) StorageProviderNode {
 		ctx := metrics.LifecycleCtx(mctx, lc)
 
 		ev, err := events.NewEvents(ctx, full)
@@ -66,6 +70,7 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 		}
 		na := &ProviderNodeAdapter{
 			FullNode:        full,
+			msgClient:       msgClient,
 			ev:              ev,
 			dealPublisher:   dealPublisher,
 			dsMatcher:       newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
@@ -73,7 +78,7 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 			fundMgr:         fundMgr,
 		}
 		if fc != nil {
-			na.addBalanceSpec = &types.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
+			na.addBalanceSpec = &types3.MsgMeta{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
 			na.maxDealCollateralMultiplier = fc.MaxProviderCollateralMultiplier
 		}
 		na.maxDealCollateralMultiplier = defaultMaxProviderCollateralMultiplier
@@ -208,7 +213,7 @@ func (n *ProviderNodeAdapter) ReleaseFunds(ctx context.Context, addr address.Add
 // Adds funds with the StorageMinerActor for a piecestorage participant.  Used by both providers and clients.
 func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
-	smsg, err := n.MpoolPushMessage(ctx, &types.Message{
+	msgId, err := n.msgClient.PushMessage(ctx, &types.Message{
 		To:     market.Address,
 		From:   addr,
 		Value:  amount,
@@ -218,7 +223,7 @@ func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address
 		return cid.Undef, err
 	}
 
-	return smsg.Cid(), nil
+	return msgId, nil
 }
 
 func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (storagemarket.Balance, error) {
@@ -274,7 +279,7 @@ func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetTo
 }
 
 func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error) error {
-	receipt, err := n.StateWaitMsg(ctx, mcid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
+	receipt, err := n.msgClient.WaitMsg(ctx, mcid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}
@@ -284,7 +289,7 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 
 func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
 	// Wait for deal to be published (plus additional time for confidence)
-	receipt, err := n.StateWaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
+	receipt, err := n.msgClient.WaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
 		return nil, xerrors.Errorf("WaitForPublishDeals errored: %w", err)
 	}
@@ -404,6 +409,14 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 	}
 
 	return nil
+}
+
+func (n *ProviderNodeAdapter) SearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+	return n.msgClient.WaitMsg(ctx, msg, constants.MessageConfidence, limit, allowReplaced)
+}
+
+func (n *ProviderNodeAdapter) GetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
+	return n.msgClient.GetMessage(ctx, mc)
 }
 
 // StorageProviderNode are common interfaces provided by a filecoin Node to both StorageClient and StorageProvider
