@@ -4,30 +4,25 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"path"
+
 	"github.com/filecoin-project/go-jsonrpc"
 	auth2 "github.com/filecoin-project/venus-auth/auth"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-market/config"
-	jwt3 "github.com/gbrlsnchs/jwt/v3"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"golang.org/x/xerrors"
-	"io/ioutil"
-	"net/http"
-	"path"
 )
 
 var log = logging.Logger("modules")
 
 func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.Router, maxRequestSize int64, namespace string, authUrl string, api interface{}, shutdownCh <-chan struct{}) error {
-	seckey, err := makeSecet(home, cfg)
-	if err != nil {
-		return err
-
-	}
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
@@ -38,16 +33,28 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 	mux.Handle("/rpc/v0", rpcServer)
 	mux.PathPrefix("/").Handler(http.DefaultServeMux)
 
+	secKey, err := makeSecret(cfg)
+	if err != nil {
+		return err
+	}
+	localJwtClient := NewJwtClient(secKey)
+	token, err := localJwtClient.NewAuth(auth2.JWTPayload{
+		Perm: core.PermAdmin,
+		Name: "MarketLocalToken",
+	})
+	if err != nil {
+		return err
+	}
+	if err = saveAPIInfo(home, cfg, secKey, token); err != nil {
+		return err
+	}
+
 	var handler http.Handler
 	if len(authUrl) > 0 {
 		cli := jwtclient.NewJWTClient(authUrl)
-		handler = jwtclient.NewAuthMux(
-			&localJwtClient{seckey: seckey}, jwtclient.WarpIJwtAuthClient(cli),
-			mux, logging.Logger("auth"))
+		handler = jwtclient.NewAuthMux(localJwtClient, jwtclient.WarpIJwtAuthClient(cli), mux, logging.Logger("auth"))
 	} else {
-		handler = jwtclient.NewAuthMux(
-			&localJwtClient{seckey: seckey}, nil,
-			mux, logging.Logger("auth"))
+		handler = jwtclient.NewAuthMux(localJwtClient, nil, mux, logging.Logger("auth"))
 	}
 	srv := &http.Server{Handler: handler}
 
@@ -76,40 +83,32 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 	return srv.Serve(manet.NetListener(nl))
 }
 
-func makeSecet(cfg config.IHome, api *config.API) ([]byte, error) {
-	var seckey []byte
-	var token []byte
-	var err error
-	if len(api.Secret) == 0 {
-		seckey, _, err = MakeToken()
-		if err != nil {
-			return nil, fmt.Errorf("make token failed:%s", err.Error())
-		}
-		api.Secret = hex.EncodeToString(seckey)
-		err := config.SaveConfig(cfg)
-		if err != nil {
-			return nil, fmt.Errorf("save config failed:%s", err.Error())
-		}
-	} else {
-		seckey, err = hex.DecodeString(api.Secret)
+func makeSecret(apiCfg *config.API) ([]byte, error) {
+	if len(apiCfg.Secret) != 0 {
+		secret, err := hex.DecodeString(apiCfg.Secret)
 		if err != nil {
 			return nil, xerrors.Errorf("unable to decode api security key")
 		}
+		return secret, nil
 	}
 
-	if token, err = jwt3.Sign(
-		auth2.JWTPayload{
-			Perm: core.PermAdmin,
-			Name: "MarketLocalToken",
-		}, jwt3.NewHS256(seckey)); err != nil {
-		return nil, err
-	}
+	return RandSecret()
+}
 
-	homePath, err := cfg.HomePath()
+func saveAPIInfo(home config.IHome, apiCfg *config.API, secKey, token []byte) error {
+	if len(apiCfg.Secret) == 0 {
+		apiCfg.Secret = hex.EncodeToString(secKey)
+		err := config.SaveConfig(home)
+		if err != nil {
+			return fmt.Errorf("save config failed:%s", err.Error())
+		}
+	}
+	homePath, err := home.HomePath()
 	if err != nil {
-		return nil, xerrors.Errorf("unable to home path to save api/token")
+		return xerrors.Errorf("unable to home path to save api/token")
 	}
-	_ = ioutil.WriteFile(path.Join(string(homePath), "api"), []byte(api.ListenAddress), 0644)
+	_ = ioutil.WriteFile(path.Join(string(homePath), "api"), []byte(apiCfg.ListenAddress), 0644)
 	_ = ioutil.WriteFile(path.Join(string(homePath), "token"), token, 0644)
-	return seckey, nil
+
+	return nil
 }

@@ -6,43 +6,42 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/filecoin-project/go-jsonrpc/auth"
-	auth2 "github.com/filecoin-project/venus-auth/auth"
+	auth2 "github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/filecoin-project/venus-auth/auth"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-auth/core"
 	jwt3 "github.com/gbrlsnchs/jwt/v3"
-	xerrors "github.com/pkg/errors"
 )
 
-// todo: this is a temporary solution
-type localJwtClient struct{ seckey []byte }
+type JwtClient struct {
+	alg *jwt3.HMACSHA
+}
 
-func (l *localJwtClient) Verify(ctx context.Context, token string) ([]auth.Permission, error) {
-	var payload auth2.JWTPayload
-	if _, err := jwt3.Verify([]byte(token), jwt3.NewHS256(l.seckey), &payload); err != nil {
-		return nil, xerrors.Errorf("JWT Verification failed: %v", err)
+func NewJwtClient(secret []byte) *JwtClient {
+	return &JwtClient{
+		alg: jwt3.NewHS256(secret),
+	}
+}
+
+func (c *JwtClient) Verify(ctx context.Context, token string) ([]auth2.Permission, error) {
+	var payload auth.JWTPayload
+	_, err := jwt3.Verify([]byte(token), c.alg, &payload)
+	if err != nil {
+		return nil, err
 	}
 	jwtPerms := core.AdaptOldStrategy(payload.Perm)
-	perms := make([]auth.Permission, len(jwtPerms))
+	perms := make([]auth2.Permission, len(jwtPerms))
 	copy(perms, jwtPerms)
+
 	return perms, nil
 }
 
-var _ jwtclient.IJwtAuthClient = (*localJwtClient)(nil)
-
-func MakeToken() ([]byte, []byte, error) {
-	var err error
-	var seckey []byte
-	if seckey, err = ioutil.ReadAll(io.LimitReader(rand.Reader, 32)); err != nil {
-		return nil, nil, err
-	}
-	var cliToken []byte
-	if cliToken, err = jwt3.Sign(
-		auth2.JWTPayload{
-			Perm: core.PermAdmin,
-			Name: "MarketLocalToken",
-		}, jwt3.NewHS256(seckey)); err != nil {
-		return nil, nil, err
-	}
-	return seckey, cliToken, nil
+func (c *JwtClient) NewAuth(payload auth.JWTPayload) ([]byte, error) {
+	return jwt3.Sign(payload, c.alg)
 }
+
+func RandSecret() ([]byte, error) {
+	return ioutil.ReadAll(io.LimitReader(rand.Reader, 32))
+}
+
+var _ jwtclient.IJwtAuthClient = (*JwtClient)(nil)

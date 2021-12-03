@@ -218,7 +218,7 @@ func (dsr *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.De
 	if deal == nil {
 		err = repo.ErrNotFound
 	}
-	return deal, repo.ErrNotFound
+	return deal, err
 }
 
 func (dsr *storageDealRepo) GetDealsByPieceStatusV0(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {

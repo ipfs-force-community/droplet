@@ -2,6 +2,8 @@ package clients
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/minermgr"
 	"github.com/filecoin-project/venus-market/utils"
@@ -12,7 +14,6 @@ import (
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 	"go.uber.org/fx"
-	"time"
 )
 
 type IMixMessage interface {
@@ -60,6 +61,9 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Unsign
 		}
 		if msgClient.Mgr != nil {
 			fromAddr, err := msgClient.FullNode.StateAccountKey(ctx, p1.From, types.EmptyTSK)
+			if err != nil {
+				return cid.Undef, err
+			}
 			account, err := msgClient.Mgr.GetAccount(ctx, fromAddr)
 			if err != nil {
 				return cid.Undef, err
