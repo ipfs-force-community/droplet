@@ -1,6 +1,7 @@
 package piecestorage
 
 import (
+	"context"
 	"crypto/rand"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -12,13 +13,18 @@ import (
 func TestReWrite(t *testing.T) {
 	r := io.LimitReader(rand.Reader, 100)
 	path := os.TempDir()
-	filePath := path2.Join(path, "market-test-tmp")
-	os.Remove(filePath)
-	wlen, err := ReWrite("fs:"+filePath, r)
+	name := "market-test-tmp"
+	filepath := path2.Join(path, name)
+	os.Remove(filepath)
+
+	ctx := context.TODO()
+	ifs, err := newFsPieceStorage(path)
+	require.NoErrorf(t, err, "open file storage")
+	wlen, err := ifs.SaveTo(ctx, name, r)
 
 	require.NoErrorf(t, err, "expect to write file ")
 	require.Equal(t, wlen, int64(100))
-	fs, err := os.Open(filePath)
+	fs, err := os.Open(filepath)
 	if err != nil {
 		if !os.IsExist(err) {
 			require.NoErrorf(t, err, "expect file exit")

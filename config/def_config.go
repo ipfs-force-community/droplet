@@ -58,8 +58,11 @@ var DefaultMarketConfig = &MarketConfig{
 		MaxConcurrencyStorageCalls: 100,
 		GCInterval:                 Duration(1 * time.Minute),
 	},
-	Journal:                        Journal{Path: "journal"},
-	PieceStorage:                   "fs:/mnt/piece",
+	Journal: Journal{Path: "journal"},
+	PieceStorage: PieceStorage{Fs: FsPieceStorage{
+		Enable: true,
+		Path:   "/mnt/piece",
+	}},
 	ConsiderOnlineStorageDeals:     true,
 	ConsiderOfflineStorageDeals:    true,
 	ConsiderOnlineRetrievalDeals:   true,

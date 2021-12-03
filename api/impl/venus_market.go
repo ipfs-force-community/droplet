@@ -531,7 +531,7 @@ func (m MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.
 				continue
 			}
 
-			isUnsealed, err := m.PieceStorage.Has(pieceCid.String())
+			isUnsealed, err := m.PieceStorage.Has(ctx, pieceCid.String())
 			if err != nil {
 				log.Warnw("DagstoreInitializeAll: failed to get unsealed status; skipping deal", "piece cid", pieceCid, "error", err)
 				continue

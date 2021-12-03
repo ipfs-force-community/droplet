@@ -157,6 +157,8 @@ type MarketFullNodeStruct struct {
 
 		GetDeals func(p0 context.Context, p1 address.Address, p2 int, p3 int) ([]*types.DealInfo, error) `perm:"read"`
 
+		GetUnPackedDeals func(p0 context.Context, p1 address.Address, p2 *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) `perm:"read"`
+
 		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
 
 		ListenMarketEvent func(p0 context.Context, p1 *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) `perm:"read"`
@@ -728,6 +730,14 @@ func (s *MarketFullNodeStruct) GetDeals(p0 context.Context, p1 address.Address, 
 
 func (s *MarketFullNodeStub) GetDeals(p0 context.Context, p1 address.Address, p2 int, p3 int) ([]*types.DealInfo, error) {
 	return *new([]*types.DealInfo), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) GetUnPackedDeals(p0 context.Context, p1 address.Address, p2 *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
+	return s.Internal.GetUnPackedDeals(p0, p1, p2)
+}
+
+func (s *MarketFullNodeStub) GetUnPackedDeals(p0 context.Context, p1 address.Address, p2 *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
+	return *new([]*types.DealInfoIncludePath), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) ID(p0 context.Context) (peer.ID, error) {

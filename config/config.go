@@ -151,7 +151,24 @@ type DAGStoreConfig struct {
 	GCInterval Duration
 }
 
-type PieceStorageString string
+type PieceStorage struct {
+	Fs FsPieceStorage
+	S3 S3PieceStorage
+}
+
+type FsPieceStorage struct {
+	Enable bool
+	Path   string
+}
+
+type S3PieceStorage struct {
+	Enable   bool
+	EndPoint string
+
+	AccessKey string
+	SecretKey string
+	Token     string
+}
 
 type User struct {
 	Addr    Address
@@ -171,7 +188,7 @@ type MarketConfig struct {
 
 	Mysql Mysql
 
-	PieceStorage  PieceStorageString
+	PieceStorage  PieceStorage
 	Journal       Journal
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig

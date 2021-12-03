@@ -22,7 +22,7 @@ import (
 
 var log = logging.Logger("modules")
 
-func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, api interface{}, shutdownCh <-chan struct{}, maxRequestSize int64, authUrl string) error {
+func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.Router, maxRequestSize int64, namespace string, authUrl string, api interface{}, shutdownCh <-chan struct{}) error {
 	seckey, err := makeSecet(home, cfg)
 	if err != nil {
 		return err
@@ -34,9 +34,7 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, api inter
 	}
 
 	rpcServer := jsonrpc.NewServer(serverOptions...)
-	rpcServer.Register("VENUS_MARKET", api)
-
-	mux := mux.NewRouter()
+	rpcServer.Register(namespace, api)
 	mux.Handle("/rpc/v0", rpcServer)
 	mux.PathPrefix("/").Handler(http.DefaultServeMux)
 

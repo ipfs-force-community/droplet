@@ -501,7 +501,7 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 	}
 
 	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
-	has, err := storageDealPorcess.pieceStorage.Has(pieceCid.String())
+	has, err := storageDealPorcess.pieceStorage.Has(ctx, pieceCid.String())
 	if err != nil {
 		return xerrors.Errorf("failed to get piece cid data %w", err)
 	}
