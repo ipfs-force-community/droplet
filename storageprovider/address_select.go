@@ -2,8 +2,8 @@ package storageprovider
 
 import (
 	"context"
+
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/minermgr"
 	marketTypes "github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/go-address"
@@ -24,7 +24,7 @@ type addrSelectApi interface {
 
 type AddressSelector struct {
 	config.AddressConfig
-	minermgr.User
+	marketTypes.User
 }
 
 func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use marketTypes.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, big.Int, error) {

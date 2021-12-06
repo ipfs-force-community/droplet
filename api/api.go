@@ -34,7 +34,7 @@ import (
 var _ = xerrors.New("") // nolint
 
 type MarketFullNode interface {
-	ActorAddress(context.Context) ([]address.Address, error)                  //perm:read
+	ActorList(context.Context) ([]types.User, error)                          //perm:read
 	ActorExist(ctx context.Context, addr address.Address) (bool, error)       //perm:read
 	ActorSectorSize(context.Context, address.Address) (abi.SectorSize, error) //perm:read
 

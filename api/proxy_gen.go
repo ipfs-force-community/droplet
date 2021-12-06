@@ -4,6 +4,8 @@ package api
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -23,7 +25,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
-	"time"
 )
 
 type MarketClientNodeStruct struct {
@@ -107,9 +108,9 @@ type MarketClientNodeStub struct {
 
 type MarketFullNodeStruct struct {
 	Internal struct {
-		ActorAddress func(p0 context.Context) ([]address.Address, error) `perm:"read"`
-
 		ActorExist func(p0 context.Context, p1 address.Address) (bool, error) `perm:"read"`
+
+		ActorList func(p0 context.Context) ([]types.User, error) `perm:"read"`
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
@@ -532,20 +533,20 @@ func (s *MarketClientNodeStub) MessagerWaitMessage(p0 context.Context, p1 cid.Ci
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) ActorAddress(p0 context.Context) ([]address.Address, error) {
-	return s.Internal.ActorAddress(p0)
-}
-
-func (s *MarketFullNodeStub) ActorAddress(p0 context.Context) ([]address.Address, error) {
-	return *new([]address.Address), xerrors.New("method not supported")
-}
-
 func (s *MarketFullNodeStruct) ActorExist(p0 context.Context, p1 address.Address) (bool, error) {
 	return s.Internal.ActorExist(p0, p1)
 }
 
 func (s *MarketFullNodeStub) ActorExist(p0 context.Context, p1 address.Address) (bool, error) {
 	return false, xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) ActorList(p0 context.Context) ([]types.User, error) {
+	return s.Internal.ActorList(p0)
+}
+
+func (s *MarketFullNodeStub) ActorList(p0 context.Context) ([]types.User, error) {
+	return *new([]types.User), xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
