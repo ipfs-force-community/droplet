@@ -44,18 +44,12 @@ type fundManagerAPI interface {
 	WaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
 
-type StateStore interface {
-	GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error)
-	SaveFundedAddressState(state *types.FundedAddressState) error
-	ListFundedAddressState() ([]*types.FundedAddressState, error)
-}
-
 // FundManager keeps track of funds in a set of addresses
 type FundManager struct {
 	ctx      context.Context
 	shutdown context.CancelFunc
 	api      fundManagerAPI
-	str      StateStore
+	str      repo.FundRepo
 
 	lk          sync.Mutex
 	fundedAddrs map[address.Address]*fundedAddress
@@ -77,7 +71,7 @@ func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, repo repo.Repo) *FundMa
 }
 
 // newFundManager is used by the tests
-func newFundManager(api fundManagerAPI, store StateStore) *FundManager {
+func newFundManager(api fundManagerAPI, store repo.FundRepo) *FundManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FundManager{
 		ctx:         ctx,
@@ -169,7 +163,7 @@ func (fm *FundManager) GetReserved(addr address.Address) abi.TokenAmount {
 type fundedAddress struct {
 	ctx context.Context
 	env *fundManagerEnvironment
-	str StateStore
+	str repo.FundRepo
 
 	lk    sync.RWMutex
 	state *types.FundedAddressState

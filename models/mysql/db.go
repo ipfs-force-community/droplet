@@ -106,6 +106,20 @@ func (r MysqlRepo) Migrate() error {
 	return nil
 }
 
+func (r MysqlRepo) Transaction(cb func(txRepo repo.TxRepo) error) error {
+	return r.GetDb().Transaction(func(tx *gorm.DB) error {
+		return cb(txRepo{tx})
+	})
+}
+
+type txRepo struct {
+	*gorm.DB
+}
+
+func (r txRepo) StorageDealRepo() repo.StorageDealRepo {
+	return NewStorageDealRepo(r.DB)
+}
+
 func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 	gorm.ErrRecordNotFound = repo.ErrNotFound
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
