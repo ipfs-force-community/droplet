@@ -39,7 +39,7 @@ type DealInfoIncludePath struct {
 	Length          abi.PaddedPieceSize
 	DealID          abi.DealID
 	TotalStorageFee abi.TokenAmount
-	PieceStorage    string
+	PieceStorage    string //use resource id, reserve for future usage
 	market2.DealProposal
 	FastRetrieval bool
 	PublishCid    cid.Cid

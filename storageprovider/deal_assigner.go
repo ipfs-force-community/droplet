@@ -4,7 +4,6 @@ import (
 	"context"
 	"math"
 	"math/bits"
-	"path"
 	"sort"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -36,7 +35,7 @@ var _ DealAssiger = (*dealAssigner)(nil)
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
 // shared by the piecestorage and retrieval providers
-func NewDealAssigner(lc fx.Lifecycle, pieceStorage *config.PieceStorageString, r repo.Repo) (DealAssiger, error) {
+func NewDealAssigner(lc fx.Lifecycle, pieceStorage *config.PieceStorage, r repo.Repo) (DealAssiger, error) {
 	ps, err := newPieceStoreEx(pieceStorage, r)
 	if err != nil {
 		return nil, xerrors.Errorf("construct extend piece store %w", err)
@@ -45,12 +44,12 @@ func NewDealAssigner(lc fx.Lifecycle, pieceStorage *config.PieceStorageString, r
 }
 
 type dealAssigner struct {
-	pieceStorage config.PieceStorageString
+	pieceStorage config.PieceStorage
 	repo         repo.Repo
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func newPieceStoreEx(pieceStorage *config.PieceStorageString, r repo.Repo) (DealAssiger, error) {
+func newPieceStoreEx(pieceStorage *config.PieceStorage, r repo.Repo) (DealAssiger, error) {
 	return &dealAssigner{
 		pieceStorage: *pieceStorage,
 
@@ -178,7 +177,7 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 				Length:          md.Proposal.PieceSize,
 				DealID:          md.DealID,
 				TotalStorageFee: md.Proposal.TotalStorageFee(),
-				PieceStorage:    path.Join(string(ps.pieceStorage), md.Proposal.PieceCID.String()),
+				PieceStorage:    "",
 				FastRetrieval:   md.FastRetrieval,
 				PublishCid:      *md.PublishCid,
 			})

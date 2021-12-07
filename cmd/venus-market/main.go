@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	mux2 "github.com/gorilla/mux"
 	"log"
 	"os"
 	"strings"
@@ -98,10 +99,12 @@ var (
 		Name:  "signer-token",
 		Usage: "auth token for connect signer service",
 	}
+
 	PieceStorageFlag = &cli.StringFlag{
 		Name:  "piecestorage",
-		Usage: "config storage for piece",
+		Usage: "config storage for piece  (eg  fs:/mnt/piece   s3:{access key}:{secret key}:{option token}@{region}host/{bucket}",
 	}
+
 	MysqlDsnFlag = &cli.StringFlag{
 		Name:  "mysql-dsn",
 		Usage: "mysql connection string",
@@ -243,7 +246,9 @@ func daemon(cctx *cli.Context) error {
 	}
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, api.MarketFullNode(resAPI), finishCh, 1000, "")
+	mux := mux2.NewRouter()
+	mux.Handle("resource", rpc.NewPieceStorageServer(resAPI.PieceStorage))
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, "VENUS_MARKET", "", api.MarketFullNode(resAPI), finishCh)
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
@@ -299,7 +304,12 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	}
 
 	if cctx.IsSet("piecestorage") {
-		cfg.PieceStorage = config.PieceStorageString(cctx.String("piecestorage"))
+		pieceStorage, err := piecestorage.ParserProtocol(cctx.String("piecestorage"))
+		if err != nil {
+			return err
+		}
+
+		cfg.PieceStorage = pieceStorage
 	}
 
 	if cctx.IsSet("mysql-dsn") {

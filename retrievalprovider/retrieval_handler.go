@@ -42,6 +42,7 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *types.Provi
 	}
 
 	if err := p.env.PrepareBlockstore(ctx, deal.ID, storageDeal.Proposal.PieceCID); err != nil {
+		log.Errorf("unable to load shard %s  %w", storageDeal.Proposal.PieceCID, err)
 		return p.CancelDeal(ctx, deal)
 	}
 	log.Debugf("blockstore prepared successfully, firing unseal complete for deal %d", deal.ID)

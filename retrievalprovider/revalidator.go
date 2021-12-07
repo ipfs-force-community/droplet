@@ -3,7 +3,6 @@ package retrievalprovider
 import (
 	"context"
 	"errors"
-	"fmt"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -86,7 +85,6 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 	if owed.GreaterThan(big.Zero()) {
 		log.Debugf("provider: owed %d: sending partial payment request", owed)
 		deal.FundsReceived = big.Add(deal.FundsReceived, received)
-		fmt.Println("receive fee ", big.Div(deal.FundsReceived, deal.PricePerByte))
 		err := pr.deals.SaveDeal(deal)
 		if err != nil {
 			//todo  receive voucher save success, but track deal status failed
@@ -103,13 +101,10 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 
 	// resume deal
 	deal.FundsReceived = big.Add(deal.FundsReceived, received)
-	fmt.Println("receive fee ", big.Div(deal.FundsReceived, deal.PricePerByte))
 	// only update interval if the payment is for bytes and not for unsealing.
 	if deal.Status != rm.DealStatusFundsNeededUnseal {
 		deal.CurrentInterval = deal.NextInterval()
 	}
-
-	fmt.Println("receive payment ", deal.Status.String())
 
 	var resp *retrievalmarket.DealResponse
 	err = datatransfer.ErrResume
@@ -187,7 +182,6 @@ func errorDealResponse(dealID rm.ProviderDealIdentifier, err error) *rm.DealResp
 // request revalidation or nil to continue uninterrupted,
 // other errors will terminate the request
 func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, additionalBytesSent uint64) (bool, datatransfer.VoucherResult, error) {
-	fmt.Println("receive OnPullDataSent funx")
 	deal, err := pr.deals.GetDealByTransferId(chid)
 	if err != nil {
 		if err == repo.ErrNotFound {
@@ -254,7 +248,6 @@ func (pr *ProviderRevalidator) OnPushDataReceived(chid datatransfer.ChannelID, a
 // if VoucherResult is non nil, the request will enter a settlement phase awaiting
 // a final update
 func (pr *ProviderRevalidator) OnComplete(chid datatransfer.ChannelID) (bool, datatransfer.VoucherResult, error) {
-	fmt.Println("receive oncomplete func")
 	deal, err := pr.deals.GetDealByTransferId(chid)
 	if err != nil {
 		if err == repo.ErrNotFound {

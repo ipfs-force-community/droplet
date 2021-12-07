@@ -2,7 +2,6 @@ package storageprovider
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -81,7 +80,7 @@ func (dealTracker *DealTracker) checkPreCommit(ctx metrics.MetricsCtx, addr addr
 
 	for _, deal := range deals {
 		_, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
-		if err != nil && !strings.Contains(err.Error(), "precommit info is not exists") {
+		if err != nil {
 			log.Debugf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			continue
 		}

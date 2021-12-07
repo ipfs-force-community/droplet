@@ -39,11 +39,11 @@ func (m *marketAPI) Start(_ context.Context) error {
 }
 
 func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
-	return m.pieceStorage.Has(pieceCid.String())
+	return m.pieceStorage.Has(ctx, pieceCid.String())
 }
 
 func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
-	has, err := m.pieceStorage.Has(pieceCid.String())
+	has, err := m.pieceStorage.Has(ctx, pieceCid.String())
 	if err != nil {
 		return nil, err
 	}
