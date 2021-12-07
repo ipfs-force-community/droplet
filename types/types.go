@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -116,4 +117,9 @@ type SignInfo struct {
 	Data interface{}
 	Type wallet.MsgType
 	Addr address.Address
+}
+
+type User struct {
+	Addr    address.Address
+	Account string
 }

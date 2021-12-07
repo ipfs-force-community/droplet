@@ -1,8 +1,9 @@
 package cli
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
+	"text/tabwriter"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -11,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
@@ -39,16 +39,21 @@ var actorListCmd = &cli.Command{
 		}
 		defer closer()
 
-		miners, err := nodeAPI.ActorAddress(cctx.Context)
+		miners, err := nodeAPI.ActorList(cctx.Context)
 		if err != nil {
 			return err
 		}
 
-		formatJson, err := json.MarshalIndent(miners, "", "\t")
-		if err != nil {
+		buf := &bytes.Buffer{}
+		tw := tabwriter.NewWriter(buf, 2, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "miner\taccount")
+		for _, miner := range miners {
+			_, _ = fmt.Fprintf(tw, "%s\t%s\n", miner.Addr.String(), miner.Account)
+		}
+		if err := tw.Flush(); err != nil {
 			return err
 		}
-		fmt.Println(string(formatJson))
+		fmt.Println(buf.String())
 
 		return nil
 	},

@@ -90,8 +90,8 @@ type MarketNodeImpl struct {
 	SetExpectedSealDurationFunc config.SetExpectedSealDurationFunc
 }
 
-func (m MarketNodeImpl) ActorAddress(ctx context.Context) ([]address.Address, error) {
-	return m.MinerMgr.ActorAddress(ctx)
+func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
+	return m.MinerMgr.ActorList(ctx)
 }
 
 func (m MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {

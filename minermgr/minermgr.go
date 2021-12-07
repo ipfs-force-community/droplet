@@ -5,19 +5,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"sync"
+
 	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/types"
+	vTypes "github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"golang.org/x/xerrors"
-	"net/http"
-	"sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/go-resty/resty/v2"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/types"
 )
 
 const CoMinersLimit = 200
@@ -26,22 +28,18 @@ var log = logging.Logger("address-manager")
 
 type IAddrMgr interface {
 	ActorAddress(ctx context.Context) ([]address.Address, error)
+	ActorList(ctx context.Context) ([]types.User, error)
 	Has(ctx context.Context, addr address.Address) bool
-	GetMiners(ctx context.Context) ([]User, error)
+	GetMiners(ctx context.Context) ([]types.User, error)
 	GetAccount(ctx context.Context, addr address.Address) (string, error)
-	AddAddress(ctx context.Context, user User) error
-}
-
-type User struct {
-	Addr    address.Address
-	Account string
+	AddAddress(ctx context.Context, user types.User) error
 }
 
 type UserMgrImpl struct {
 	authCfg  config.AuthNode
 	fullNode apiface.FullNode
 
-	miners []User
+	miners []types.User
 	lk     sync.Mutex
 }
 
@@ -55,7 +53,7 @@ func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode apiface.FullNode, cfg *confi
 		return nil, err
 	}
 
-	err = m.distAddress(ctx, User{
+	err = m.distAddress(ctx, types.User{
 		Addr:    address.Address(cfg.RetrievalPaymentAddress.Addr),
 		Account: cfg.RetrievalPaymentAddress.Account,
 	})
@@ -86,7 +84,20 @@ func (m *UserMgrImpl) ActorAddress(ctx context.Context) ([]address.Address, erro
 	return addrs, nil
 }
 
-func (m *UserMgrImpl) GetMiners(ctx context.Context) ([]User, error) {
+func (m *UserMgrImpl) ActorList(ctx context.Context) ([]types.User, error) {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+	users := make([]types.User, len(m.miners))
+	for index, user := range m.miners {
+		users[index] = types.User{
+			Addr:    user.Addr,
+			Account: user.Account,
+		}
+	}
+	return users, nil
+}
+
+func (m *UserMgrImpl) GetMiners(ctx context.Context) ([]types.User, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 	return m.miners, nil
@@ -123,7 +134,7 @@ func (m *UserMgrImpl) GetAccount(ctx context.Context, addr address.Address) (str
 	return account, nil
 }
 
-func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int64) ([]User, error) {
+func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int64) ([]types.User, error) {
 	log.Infof("request miners from auth: %v ...", m.authCfg)
 	if len(m.authCfg.Url) == 0 {
 		return nil, nil
@@ -150,12 +161,12 @@ func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int
 		}
 
 		m.lk.Lock()
-		var miners []User
+		var miners []types.User
 		for _, val := range res {
 			if len(val.Miner) > 0 {
 				addr, err := address.NewFromString(val.Miner)
 				if err == nil && addr != address.Undef {
-					miners = append(miners, User{
+					miners = append(miners, types.User{
 						Addr:    addr,
 						Account: val.Name,
 					})
@@ -172,11 +183,11 @@ func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int
 	}
 }
 
-func (m *UserMgrImpl) AddAddress(ctx context.Context, user User) error {
+func (m *UserMgrImpl) AddAddress(ctx context.Context, user types.User) error {
 	return m.distAddress(ctx, user)
 }
 
-func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...User) error {
+func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...types.User) error {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 	filter := make(map[address.Address]struct{}, len(m.miners))
@@ -192,50 +203,50 @@ func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...User) error {
 			filter[usr.Addr] = struct{}{}
 			m.miners = append(m.miners, usr)
 		}
-		actor, err := m.fullNode.StateGetActor(ctx, usr.Addr, types.EmptyTSK)
+		actor, err := m.fullNode.StateGetActor(ctx, usr.Addr, vTypes.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
 		if builtin.IsStorageMinerActor(actor.Code) {
 			// add owner/worker/controladdress for this miner
-			minerInfo, err := m.fullNode.StateMinerInfo(ctx, usr.Addr, types.EmptyTSK)
+			minerInfo, err := m.fullNode.StateMinerInfo(ctx, usr.Addr, vTypes.EmptyTSK)
 			if err != nil {
 				return err
 			}
 
-			workerKey, err := m.fullNode.StateAccountKey(ctx, minerInfo.Worker, types.EmptyTSK)
+			workerKey, err := m.fullNode.StateAccountKey(ctx, minerInfo.Worker, vTypes.EmptyTSK)
 			if err != nil {
 				return err
 			}
 			if _, ok := filter[workerKey]; !ok {
 				filter[workerKey] = struct{}{}
-				m.miners = append(m.miners, User{
+				m.miners = append(m.miners, types.User{
 					Addr:    workerKey,
 					Account: usr.Account,
 				})
 			}
 
-			ownerKey, err := m.fullNode.StateAccountKey(ctx, minerInfo.Owner, types.EmptyTSK)
+			ownerKey, err := m.fullNode.StateAccountKey(ctx, minerInfo.Owner, vTypes.EmptyTSK)
 			if err != nil {
 				return err
 			}
 			if _, ok := filter[ownerKey]; !ok {
 				filter[ownerKey] = struct{}{}
-				m.miners = append(m.miners, User{
+				m.miners = append(m.miners, types.User{
 					Addr:    ownerKey,
 					Account: usr.Account,
 				})
 			}
 
 			for _, ctlAddr := range minerInfo.ControlAddresses {
-				ctlKey, err := m.fullNode.StateAccountKey(ctx, ctlAddr, types.EmptyTSK)
+				ctlKey, err := m.fullNode.StateAccountKey(ctx, ctlAddr, vTypes.EmptyTSK)
 				if err != nil {
 					return err
 				}
 				if _, ok := filter[ctlKey]; !ok {
 					filter[ctlKey] = struct{}{}
-					m.miners = append(m.miners, User{
+					m.miners = append(m.miners, types.User{
 						Addr:    ctlKey,
 						Account: usr.Account,
 					})
@@ -247,10 +258,10 @@ func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...User) error {
 	return nil
 }
 
-func convertConfigAddress(addrs []config.User) []User {
-	addrs2 := make([]User, len(addrs))
+func convertConfigAddress(addrs []config.User) []types.User {
+	addrs2 := make([]types.User, len(addrs))
 	for index, miner := range addrs {
-		addrs2[index] = User{
+		addrs2[index] = types.User{
 			Addr:    address.Address(miner.Addr),
 			Account: miner.Account,
 		}
