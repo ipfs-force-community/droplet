@@ -42,6 +42,11 @@ var CidBaseFlag = cli.StringFlag{
 	DefaultText: "base32",
 }
 
+const (
+	API_NAMESPACE_VENUS_MARKET  = "VENUS_MARKET"
+	API_NAMESPACE_MARKET_CLIENT = "VENUS_MARKET_CLIENT"
+)
+
 // GetCidEncoder returns an encoder using the `cid-base` flag if provided, or
 // the default (Base32) encoder if not.
 func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
@@ -91,7 +96,7 @@ func NewMarketNode(cctx *cli.Context) (api.MarketFullNode, jsonrpc.ClientCloser,
 	}
 
 	impl := &api.MarketFullNodeStruct{}
-	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, "VENUS_MARKET", []interface{}{impl}, apiInfo.AuthHeader())
+	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, API_NAMESPACE_VENUS_MARKET, []interface{}{impl}, apiInfo.AuthHeader())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -119,7 +124,7 @@ func NewMarketClientNode(cctx *cli.Context) (api.MarketClientNode, jsonrpc.Clien
 	}
 
 	impl := &api.MarketClientNodeStruct{}
-	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, "VENUS_MARKET", []interface{}{impl}, apiInfo.AuthHeader())
+	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, API_NAMESPACE_MARKET_CLIENT, []interface{}{impl}, apiInfo.AuthHeader())
 	if err != nil {
 		return nil, nil, err
 	}

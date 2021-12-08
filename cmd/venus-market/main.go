@@ -248,7 +248,7 @@ func daemon(cctx *cli.Context) error {
 
 	mux := mux2.NewRouter()
 	mux.Handle("resource", rpc.NewPieceStorageServer(resAPI.PieceStorage))
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, "VENUS_MARKET", "", api.MarketFullNode(resAPI), finishCh)
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, "", api.MarketFullNode(resAPI), finishCh)
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {

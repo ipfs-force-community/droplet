@@ -231,5 +231,5 @@ func marketClient(cctx *cli.Context) error {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := utils.MonitorShutdown(shutdownChan)
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux.NewRouter(), 1000, "VENUS_MARKET_CLIENT", "", (api.MarketClientNode)(resAPI), finishCh)
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux.NewRouter(), 1000, cli2.API_NAMESPACE_MARKET_CLIENT, "", (api.MarketClientNode)(resAPI), finishCh)
 }
