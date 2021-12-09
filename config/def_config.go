@@ -31,7 +31,7 @@ var DefaultMarketConfig = &MarketConfig{
 		},
 	},
 	Node: Node{
-		Url:   "/ip4/<ip>/tcp/3453",
+		Url:   "", // "/ip4/<ip>/tcp/3453",
 		Token: "",
 	},
 	Messager: Messager{
@@ -50,7 +50,7 @@ var DefaultMarketConfig = &MarketConfig{
 		Debug:            false,
 	},
 	AuthNode: AuthNode{
-		Url:   "http://<ip>:8989",
+		Url:   "", // "http://<ip>:8989",
 		Token: "",
 	},
 	DAGStore: DAGStoreConfig{
@@ -111,15 +111,15 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		},
 	},
 	Node: Node{
-		Url:   "/ip4/<ip>/tcp/3453",
+		Url:   "", // "/ip4/<ip>/tcp/3453",
 		Token: "",
 	},
 	Signer: Signer{
-		Url:   "/ip4/<ip>/tcp/5678",
+		Url:   "", // "/ip4/<ip>/tcp/5678",
 		Token: "",
 	},
 	Messager: Messager{
-		Url:   "/ip4/<ip>/tcp/39812",
+		Url:   "", // "/ip4/<ip>/tcp/39812",
 		Token: "",
 	},
 	DefaultMarketAddress:  Address(address.Undef),

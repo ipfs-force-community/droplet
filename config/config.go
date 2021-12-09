@@ -53,7 +53,7 @@ type Common struct {
 }
 
 type Signer struct {
-	SignerType string `toml:"Type"` //remote wallet/gategory
+	SignerType string `toml:"Type"` // wallet/gateway
 	Url        string
 	Token      string
 }
