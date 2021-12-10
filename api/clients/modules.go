@@ -60,13 +60,12 @@ func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent,
 var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Signer) builder.Option {
 	opts := builder.Options(
 		builder.Override(new(IMixMessage), NewMixMsgClient),
-		builder.ApplyIf(
+		builder.ApplyIfElse(
 			func(s *builder.Settings) bool {
 				return len(mCfg.Url) > 0
 			},
 			builder.Override(new(IVenusMessager), MessagerClient),
-		),
-
+			builder.Override(new(IVenusMessager), func() IVenusMessager { return IVenusMessager(nil) })),
 		builder.ApplyIf(
 			func(s *builder.Settings) bool {
 				return len(signerCfg.SignerType) > 0 && len(signerCfg.Url) > 0
