@@ -49,16 +49,22 @@ var (
 
 	NodeUrlFlag = &cli.StringFlag{
 		Name:  "node-url",
-		Usage: "url to connect to daemon service",
+		Usage: "url to connect to full node",
+		Required: true,
 	}
-	AuthTokenFlag = &cli.StringFlag{
-		Name:  "auth-token",
-		Usage: "token for connect venus componets, this flag can set token for messager and node",
+	NodeTokenFlag = &cli.StringFlag{
+		Name:  "node-token",
+		Usage: "token for connect full node",
 	}
 
 	MessagerUrlFlag = &cli.StringFlag{
 		Name:  "messager-url",
-		Usage: "url to connect messager service",
+		Usage: "url to connect the venus-messager service of the chain service layer",
+	}
+
+	AuthTokenFlag = &cli.StringFlag{
+		Name:  "auth-token",
+		Usage: "token used to connect venus chain service components, eg. venus-meassger, venus",
 	}
 
 	SignerUrlFlag = &cli.StringFlag{
@@ -87,7 +93,7 @@ func main() {
 
 	app := &cli.App{
 		Name:                 "market-client",
-		Usage:                "venus-market client",
+		Usage:                "venus stores or retrieves the market client",
 		Version:              constants.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
@@ -97,9 +103,11 @@ func main() {
 			localCommand,
 			&cli.Command{
 				Name:  "run",
-				Usage: "run market client daemon",
+				Usage: "run market client daemon,(1) connect full node service: ./market-client run --node-url=<...> --node-token=<...> --addr=<WALLET_ADDR>;" +
+					"(2) connect venus shared service: ./market-client run --node-url=<...> --messager-url=<...> --auth-token=<...>  --signer-url=<...> --signer-token=<...> --addr=<WALLET_ADDR>.",
 				Flags: []cli.Flag{
 					NodeUrlFlag,
+					NodeTokenFlag,
 					MessagerUrlFlag,
 					AuthTokenFlag,
 					SignerUrlFlag,
@@ -125,19 +133,28 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 		cfg.Node.Url = cctx.String("node-url")
 	}
 
-	if cctx.IsSet("messager-url") {
-		cfg.Messager.Url = cctx.String("messager-url")
+	if cctx.IsSet("node-token") {
+		cfg.Node.Token = cctx.String("node-token")
 	}
 
-	if cctx.IsSet("auth-token") {
+	if cctx.IsSet("messager-url") {
+		if !cctx.IsSet("auth-token") {
+			return xerrors.Errorf("the auth-token must be set when connecting to the venus chain service")
+		}
+
 		cfg.Node.Token = cctx.String("auth-token")
+
+		cfg.Messager.Url = cctx.String("messager-url")
 		cfg.Messager.Token = cctx.String("auth-token")
 	}
 
 	if cctx.IsSet("signer-url") {
+		if !cctx.IsSet("signer-token") {
+			return xerrors.Errorf("signer-url is set, but signer-token is not set")
+		}
+
+		cfg.Signer.SignerType = "wallet"
 		cfg.Signer.Url = cctx.String("signer-url")
-	}
-	if cctx.IsSet("signer-token") {
 		cfg.Signer.Token = cctx.String("signer-token")
 	}
 
@@ -212,7 +229,7 @@ func marketClient(cctx *cli.Context) error {
 
 		config.ConfigClientOpts(cfg),
 
-		clients2.ClientsOpts(false, &cfg.Messager, &cfg.Signer),
+		clients2.ClientsOpts(false, "", &cfg.Messager, &cfg.Signer),
 		models.DBOptions(false, nil),
 		network.NetworkOpts(false, cfg.SimultaneousTransfers),
 		paychmgr.PaychOpts,

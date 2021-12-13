@@ -1,43 +1,21 @@
 package main
 
 import (
-	"context"
-	mux2 "github.com/gorilla/mux"
 	"log"
 	"os"
 	"strings"
 
 	"github.com/urfave/cli/v2"
-	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 
-	metrics2 "github.com/ipfs/go-metrics-interface"
-
 	"github.com/ipfs-force-community/venus-common-utils/builder"
-	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
-	"github.com/filecoin-project/venus-market/api"
-	"github.com/filecoin-project/venus-market/api/clients"
-	"github.com/filecoin-project/venus-market/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/dagstore"
-	"github.com/filecoin-project/venus-market/fundmgr"
-	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
-	"github.com/filecoin-project/venus-market/models"
-	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/paychmgr"
-	"github.com/filecoin-project/venus-market/piecestorage"
-	"github.com/filecoin-project/venus-market/retrievalprovider"
-	"github.com/filecoin-project/venus-market/rpc"
-	"github.com/filecoin-project/venus-market/storageprovider"
-	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus-market/utils"
-
 	_ "github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/piecestorage"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
@@ -45,7 +23,7 @@ import (
 )
 
 // Invokes are called in the order they are defined.
-//nolint:golint
+// nolint:golint
 var (
 	InitJournalKey = builder.NextInvoke() //nolint
 	ExtractApiKey  = builder.NextInvoke()
@@ -109,9 +87,10 @@ var (
 		Name:  "mysql-dsn",
 		Usage: "mysql connection string",
 	}
+
 	MinerListFlag = &cli.StringSliceFlag{
 		Name:  "miner",
-		Usage: "support miner( f01000:jimmy)",
+		Usage: "support miner(f01000:jimmy)",
 	}
 )
 
@@ -125,25 +104,8 @@ func main() {
 			RepoFlag,
 		},
 		Commands: []*cli.Command{
-			{
-				Name:  "run",
-				Usage: "run market daemon",
-				Flags: []cli.Flag{
-					NodeUrlFlag,
-					NodeTokenFlag,
-					AuthUrlFlag,
-					AuthTokeFlag,
-					MessagerUrlFlag,
-					MessagerTokenFlag,
-					SignerTypeFlag,
-					SignerUrlFlag,
-					SignerTokenFlag,
-					PieceStorageFlag,
-					MysqlDsnFlag,
-					MinerListFlag,
-				},
-				Action: daemon,
-			},
+			soloRunCmd,
+			poolRunCmd,
 			cli2.PiecesCmd,
 			cli2.RetrievalDealsCmd,
 			cli2.StorageDealsCmd,
@@ -162,7 +124,6 @@ func main() {
 
 func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 	cfg := config.DefaultMarketConfig
-	cfg.HomeDir = cctx.String("repo")
 	cfgPath, err := cfg.ConfigPath()
 	if err != nil {
 		return nil, err
@@ -184,6 +145,7 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		err = flagData(cctx, cfg)
 		if err != nil {
 			return nil, xerrors.Errorf("parser data from flag %w", err)
@@ -192,63 +154,6 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 		return nil, err
 	}
 	return cfg, nil
-}
-
-func daemon(cctx *cli.Context) error {
-	utils.SetupLogLevels()
-	ctx := cctx.Context
-	cfg, err := prepare(cctx)
-	if err != nil {
-		return err
-	}
-
-	resAPI := &impl.MarketNodeImpl{}
-	shutdownChan := make(chan struct{})
-	_, err = builder.New(ctx,
-		//defaults
-		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
-		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
-			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)
-		}),
-
-		builder.Override(new(metrics.MetricsCtx), func() context.Context {
-			return metrics2.CtxScope(context.Background(), "venus-market")
-		}),
-		builder.Override(new(types.ShutdownChan), shutdownChan),
-		//config
-		config.ConfigServerOpts(cfg),
-
-		// miner manager
-		minermgr2.MinerMgrOpts(cfg),
-
-		//clients
-		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer),
-		models.DBOptions(true, &cfg.Mysql),
-		network.NetworkOpts(true, cfg.SimultaneousTransfers),
-		piecestorage.PieceStorageOpts(cfg),
-		fundmgr.FundMgrOpts,
-		dagstore.DagstoreOpts,
-		paychmgr.PaychOpts,
-		// Markets
-		storageprovider.StorageProviderOpts(cfg),
-		retrievalprovider.RetrievalProviderOpts(cfg),
-
-		func(s *builder.Settings) error {
-			s.Invokes[ExtractApiKey] = builder.InvokeOption{
-				Priority: 10,
-				Option:   fx.Populate(resAPI),
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return xerrors.Errorf("initializing node: %w", err)
-	}
-	finishCh := utils.MonitorShutdown(shutdownChan)
-
-	mux := mux2.NewRouter()
-	mux.Handle("resource", rpc.NewPieceStorageServer(resAPI.PieceStorage))
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, "", api.MarketFullNode(resAPI), finishCh)
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
@@ -278,6 +183,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 
 	if cctx.IsSet("auth-token") {
 		cfg.Node.Token = cctx.String("auth-token")
+
 		if len(cfg.AuthNode.Url) > 0 {
 			cfg.AuthNode.Token = cctx.String("auth-token")
 		}
@@ -294,11 +200,9 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	if cctx.IsSet("node-token") {
 		cfg.Node.Token = cctx.String("node-token")
 	}
-
 	if cctx.IsSet("messager-token") {
 		cfg.Messager.Token = cctx.String("messager-token")
 	}
-
 	if cctx.IsSet("signer-token") {
 		cfg.Signer.Token = cctx.String("signer-token")
 	}
