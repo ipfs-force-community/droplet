@@ -57,7 +57,7 @@ func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent,
 	return stream, nil
 }
 
-var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Signer) builder.Option {
+var ClientsOpts = func(server bool, mode string, mCfg *config.Messager, signerCfg *config.Signer) builder.Option {
 	opts := builder.Options(
 		builder.Override(new(IMixMessage), NewMixMsgClient),
 		builder.ApplyIfElse(
@@ -65,22 +65,29 @@ var ClientsOpts = func(server bool, mCfg *config.Messager, signerCfg *config.Sig
 				return len(mCfg.Url) > 0
 			},
 			builder.Override(new(IVenusMessager), MessagerClient),
-			builder.Override(new(IVenusMessager), func() IVenusMessager { return IVenusMessager(nil) })),
+			builder.Override(new(IVenusMessager), func() IVenusMessager { return IVenusMessager(nil) }),
+		),
 		builder.ApplyIf(
 			func(s *builder.Settings) bool {
 				return len(signerCfg.SignerType) > 0 && len(signerCfg.Url) > 0
 			},
 			builder.Override(new(ISinger), NewISignerClient),
-			builder.Override(ReplaceWalletMethod, ConvertWalletToISinge)),
+			builder.Override(ReplaceWalletMethod, ConvertWalletToISinge),
+		),
 	)
 
 	if server {
 		return builder.Options(opts,
 			builder.Override(new(apiface.FullNode), NodeClient),
 
-			builder.Override(new(*marketevent.MarketEventStream), NewMarketEvent),
-			builder.Override(new(marketevent.IMarketEventAPI), NewMarketEventAPI),
-			builder.Override(new(MarketRequestEvent), builder.From(new(*marketevent.MarketEventStream))),
+			builder.ApplyIf(
+				func(s *builder.Settings) bool {
+					return mode == "solo"
+				},
+				builder.Override(new(*marketevent.MarketEventStream), NewMarketEvent),
+				builder.Override(new(marketevent.IMarketEventAPI), NewMarketEventAPI),
+				builder.Override(new(MarketRequestEvent), NewIMarketEvent),
+			),
 		)
 	} else {
 		return builder.Options(opts,
