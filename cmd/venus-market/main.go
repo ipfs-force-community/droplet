@@ -70,13 +70,20 @@ var (
 		Name:  "signer-token",
 		Usage: "auth token for connect signer service",
 	}
+
 	MinerFlag = &cli.StringFlag{
 		Name:  "miner",
 		Usage: "miner address",
 	}
+
 	PieceStorageFlag = &cli.StringFlag{
 		Name:  "piecestorage",
 		Usage: "config storage for piece",
+	}
+
+	TransferPathFlag = &cli.StringFlag{
+		Name:  "transfer-path",
+		Usage: "data transfer temporary data storage path",
 	}
 )
 
@@ -100,6 +107,7 @@ func main() {
 					SignerUrlFlag,
 					SignerTokenFlag,
 					PieceStorageFlag,
+					TransferPathFlag,
 					MinerFlag,
 				},
 				Action: daemon,
@@ -240,5 +248,10 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	if cctx.IsSet("piecestorage") {
 		cfg.PieceStorage = config.PieceStorageString(cctx.String("piecestorage"))
 	}
+
+	if cctx.IsSet("transfer-path") {
+		cfg.TransferPath = cctx.String("transfer-path")
+	}
+
 	return nil
 }

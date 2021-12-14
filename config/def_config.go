@@ -47,6 +47,7 @@ var DefaultMarketConfig = &MarketConfig{
 	},
 	Journal:                        Journal{Path: "journal"},
 	PieceStorage:                   "fs:/mnt/piece",
+	TransferPath:                   "~/.venusmarket",
 	ConsiderOnlineStorageDeals:     true,
 	ConsiderOfflineStorageDeals:    true,
 	ConsiderOnlineRetrievalDeals:   true,
