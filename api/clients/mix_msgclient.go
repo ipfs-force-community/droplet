@@ -26,7 +26,7 @@ type IMixMessage interface {
 type MPoolReplaceParams struct {
 	fx.In
 	FullNode      apiface.FullNode
-	VenusMessager IVenusMessager
+	VenusMessager IVenusMessager    `optional:"true"`
 	Mgr           minermgr.IAddrMgr `optional:"true"`
 }
 
