@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -494,11 +493,6 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 	// correct amount of zeroes
 	// (alternative would be to keep precise track of sector offsets for each
 	// piece which is just too much work for a seldom used feature)
-	unPadPieceSize := deal.Proposal.PieceSize.Unpadded()
-	paddedReader, err := padreader.NewInflator(reader, payloadSize, deal.Proposal.PieceSize.Unpadded())
-	if err != nil {
-		return err
-	}
 
 	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
 	has, err := storageDealPorcess.pieceStorage.Has(ctx, pieceCid.String())
@@ -507,12 +501,9 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 	}
 
 	if !has {
-		wLen, err := storageDealPorcess.pieceStorage.SaveTo(ctx, pieceCid.String(), paddedReader)
+		_, err = storageDealPorcess.pieceStorage.SaveTo(ctx, pieceCid.String(), reader)
 		if err != nil {
 			return err
-		}
-		if wLen != int64(unPadPieceSize) {
-			return xerrors.Errorf("save piece expect len %d but got %d", unPadPieceSize, wLen)
 		}
 		log.Infof("success to write file %s to piece storage", pieceCid)
 	}

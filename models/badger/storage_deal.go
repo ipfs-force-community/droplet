@@ -247,3 +247,21 @@ func (dsr *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceSt
 		return false, nil
 	})
 }
+
+func (sdr *storageDealRepo) GetPieceSize(pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error) {
+	var deal *types.MinerDeal
+
+	err := travelDeals(sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+		if inDeal.ClientDealProposal.Proposal.PieceCID == pieceCID {
+			deal = inDeal
+		}
+		return false, nil
+	})
+	if err != nil {
+		return 0, 0, nil
+	}
+	if deal == nil {
+		return 0, 0, repo.ErrNotFound
+	}
+	return deal.PayloadSize, deal.ClientDealProposal.Proposal.PieceSize, nil
+}

@@ -37,6 +37,7 @@ type GetDealSpec struct {
 type DealInfoIncludePath struct {
 	Offset          abi.PaddedPieceSize
 	Length          abi.PaddedPieceSize
+	PayloadSize     abi.UnpaddedPieceSize
 	DealID          abi.DealID
 	TotalStorageFee abi.TokenAmount
 	PieceStorage    string //use resource id, reserve for future usage

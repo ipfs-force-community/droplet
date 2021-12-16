@@ -31,12 +31,14 @@ const storageDealTableName = "storage_deals"
 type storageDeal struct {
 	ClientDealProposal `gorm:"embedded;embeddedPrefix:cdp_"`
 
-	ProposalCid           DBCid      `gorm:"column:proposal_cid;type:varchar(256);primary_key"`
-	AddFundsCid           DBCid      `gorm:"column:add_funds_cid;type:varchar(256);"`
-	PublishCid            DBCid      `gorm:"column:publish_cid;type:varchar(256);"`
-	Miner                 string     `gorm:"column:miner_peer;type:varchar(128);"`
-	Client                string     `gorm:"column:client_peer;type:varchar(128);"`
-	State                 uint64     `gorm:"column:state;type:bigint unsigned;index"`
+	ProposalCid DBCid  `gorm:"column:proposal_cid;type:varchar(256);primary_key"`
+	AddFundsCid DBCid  `gorm:"column:add_funds_cid;type:varchar(256);"`
+	PublishCid  DBCid  `gorm:"column:publish_cid;type:varchar(256);"`
+	Miner       string `gorm:"column:miner_peer;type:varchar(128);"`
+	Client      string `gorm:"column:client_peer;type:varchar(128);"`
+	State       uint64 `gorm:"column:state;type:bigint unsigned;index"`
+
+	PayloadSize           int64      `gorm:"column:payload_size;type:bigint;"`
 	PiecePath             string     `gorm:"column:piece_path;type:varchar(256);"`
 	MetadataPath          string     `gorm:"column:metadata_path;type:varchar(256);"`
 	SlashEpoch            int64      `gorm:"column:slash_epoch;type:bigint;"`
@@ -141,6 +143,7 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 		Miner:                 src.Miner.Pretty(),
 		Client:                src.Client.Pretty(),
 		State:                 src.State,
+		PayloadSize:           int64(src.PayloadSize),
 		PiecePath:             string(src.PiecePath),
 		MetadataPath:          string(src.MetadataPath),
 		SlashEpoch:            int64(src.SlashEpoch),
@@ -219,6 +222,7 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		AddFundsCid:   src.AddFundsCid.cidPtr(),
 		PublishCid:    src.PublishCid.cidPtr(),
 		State:         src.State,
+		PayloadSize:   abi.UnpaddedPieceSize(src.PayloadSize),
 		PiecePath:     filestore.Path(src.PiecePath),
 		MetadataPath:  filestore.Path(src.MetadataPath),
 		PieceStatus:   src.PieceStatus,
@@ -439,6 +443,15 @@ func (m *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceStat
 	}
 
 	return fromDbDeals(dbDeals)
+}
+
+func (m *storageDealRepo) GetPieceSize(pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error) {
+	var deal *storageDeal
+	if err := m.DB.Table(storageDealTableName).Take(&deal, "cdp_piece_cid = ? ", DBCid(pieceCID).String()).Error; err != nil {
+		return 0, 0, err
+	}
+
+	return abi.UnpaddedPieceSize(deal.PayloadSize), abi.PaddedPieceSize(deal.PieceSize), nil
 }
 
 func fromDbDeals(dbDeals []*storageDeal) ([]*types.MinerDeal, error) {

@@ -32,6 +32,7 @@ type StorageDealRepo interface {
 	ListDealByAddr(mAddr address.Address) ([]*types.MinerDeal, error)
 	ListDeal() ([]*types.MinerDeal, error)
 	GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error)
+	GetPieceSize(pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error)
 	ListPieceInfoKeys() ([]cid.Cid, error)
 }
 
