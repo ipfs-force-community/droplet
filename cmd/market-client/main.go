@@ -50,7 +50,6 @@ var (
 	NodeUrlFlag = &cli.StringFlag{
 		Name:  "node-url",
 		Usage: "url to connect to full node",
-		Required: true,
 	}
 	NodeTokenFlag = &cli.StringFlag{
 		Name:  "node-token",
@@ -102,7 +101,7 @@ func main() {
 		Commands: append(
 			localCommand,
 			&cli.Command{
-				Name:  "run",
+				Name: "run",
 				Usage: "run market client daemon,(1) connect full node service: ./market-client run --node-url=<...> --node-token=<...> --addr=<WALLET_ADDR>;" +
 					"(2) connect venus shared service: ./market-client run --node-url=<...> --messager-url=<...> --auth-token=<...>  --signer-url=<...> --signer-token=<...> --addr=<WALLET_ADDR>.",
 				Flags: []cli.Flag{
