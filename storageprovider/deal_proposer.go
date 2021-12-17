@@ -409,6 +409,11 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 			// Hand the deal off to the process that adds it to a sector
 			log.Infow("handing off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
+			deal.PayloadSize = abi.UnpaddedPieceSize(file.Size())
+			err = storageDealPorcess.deals.SaveDeal(deal)
+			if err != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+			}
 			err = storageDealPorcess.savePieceFile(ctx, deal, file, uint64(file.Size()))
 			if err := file.Close(); err != nil {
 				log.Errorw("failed to close imported CAR file", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid, "err", err)
@@ -427,6 +432,11 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 					deal.ProposalCid, err))
 			}
 
+			deal.PayloadSize = abi.UnpaddedPieceSize(v2r.Header.DataSize)
+			err = storageDealPorcess.deals.SaveDeal(deal)
+			if err != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+			}
 			// Hand the deal off to the process that adds it to a sector
 			var packingErr error
 			log.Infow("handing off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
