@@ -2,6 +2,8 @@ package storageprovider
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/api/clients"
+	"github.com/filecoin-project/venus-market/utils"
 	"os"
 
 	"golang.org/x/xerrors"
@@ -24,13 +26,14 @@ import (
 var _ network.StorageReceiver = (*StorageDealStream)(nil)
 
 type StorageDealStream struct {
-	conns       *connmanager.ConnManager
-	storedAsk   IStorageAsk
-	spn         StorageProviderNode
-	deals       repo.StorageDealRepo
-	net         network.StorageMarketNetwork
-	fs          filestore.FileStore
-	dealProcess StorageDealProcess
+	conns        *connmanager.ConnManager
+	storedAsk    IStorageAsk
+	spn          StorageProviderNode
+	deals        repo.StorageDealRepo
+	net          network.StorageMarketNetwork
+	fs           filestore.FileStore
+	dealProcess  StorageDealProcess
+	mixMsgClient clients.IMixMessage
 }
 
 // NewStorageReceiver returns a new StorageReceiver implements functions for receiving incoming data on storage protocols
@@ -42,16 +45,18 @@ func NewStorageDealStream(
 	net network.StorageMarketNetwork,
 	fs filestore.FileStore,
 	dealProcess StorageDealProcess,
+	mixMsgClient clients.IMixMessage,
 ) (network.StorageReceiver, error) {
 
 	return &StorageDealStream{
-		conns:       conns,
-		storedAsk:   storedAsk,
-		spn:         spn,
-		deals:       deals,
-		net:         net,
-		fs:          fs,
-		dealProcess: dealProcess,
+		conns:        conns,
+		storedAsk:    storedAsk,
+		spn:          spn,
+		deals:        deals,
+		net:          net,
+		fs:           fs,
+		dealProcess:  dealProcess,
+		mixMsgClient: mixMsgClient,
 	}, nil
 }
 
@@ -270,6 +275,22 @@ func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context
 	if err != nil {
 		log.Errorf("invalid deal status request signature: %s", err)
 		return nil, address.Undef, xerrors.Errorf("internal error")
+	}
+
+	if md.AddFundsCid != nil && md.AddFundsCid.Prefix() == utils.MidPrefix {
+		md.AddFundsCid, err = storageDealStream.mixMsgClient.GetMessageChainCid(ctx, *md.AddFundsCid)
+		if err != nil {
+			log.Errorf("unbale to get add funds message cid: %s", err)
+			return nil, address.Undef, xerrors.Errorf("internal error")
+		}
+	}
+
+	if md.PublishCid != nil && md.PublishCid.Prefix() == utils.MidPrefix {
+		md.PublishCid, err = storageDealStream.mixMsgClient.GetMessageChainCid(ctx, *md.PublishCid)
+		if err != nil {
+			log.Errorf("unbale to get publish message cid: %s", err)
+			return nil, address.Undef, xerrors.Errorf("internal error")
+		}
 	}
 
 	return &storagemarket.ProviderDealState{

@@ -22,7 +22,7 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 	}
 
 	if piececid != nil && (*piececid).Defined() {
-		minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus((*piececid), storageprovider.ReadyRetrievalDealStatus)
+		minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus((*piececid), storageprovider.ReadyRetrievalDealStatus...)
 		if err != nil {
 			return nil, err
 		}
@@ -30,7 +30,7 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 	} else {
 		var allMinerDeals []*types.MinerDeal
 		for _, pieceBlockLocation := range cidInfo.PieceBlockLocations {
-			minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus(pieceBlockLocation.PieceCID, storageprovider.ReadyRetrievalDealStatus)
+			minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus(pieceBlockLocation.PieceCID, storageprovider.ReadyRetrievalDealStatus...)
 			if err != nil {
 				return nil, err
 			}

@@ -66,35 +66,15 @@ func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
 
 	for _, addr := range addrs {
 		dealTracker.checkSlash(ctx, addr, head.Key())
-		dealTracker.checkCommit(ctx, addr, head.Key())
-		dealTracker.checkPreCommit(ctx, addr, head.Key())
+		dealTracker.checkPreCommitAndCommit(ctx, addr, head.Key())
 		//todo check expire
 	}
 }
 
-func (dealTracker *DealTracker) checkPreCommit(ctx metrics.MetricsCtx, addr address.Address, tsk vTypes.TipSetKey) {
-	deals, err := dealTracker.storageRepo.GetDealByAddrAndStatus(addr, storagemarket.StorageDealAwaitingPreCommit)
+func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, addr address.Address, tsk vTypes.TipSetKey) {
+	deals, err := dealTracker.storageRepo.GetDealByAddrAndStatus(addr, storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing)
 	if err != nil && !xerrors.Is(err, repo.ErrNotFound) {
 		log.Errorf("get miner %s storage deals for check StorageDealAwaitingPreCommit %w", addr, err)
-	}
-
-	for _, deal := range deals {
-		_, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
-		if err != nil {
-			log.Debugf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
-			continue
-		}
-		err = dealTracker.storageRepo.UpdateDealStatus(deal.ProposalCid, storagemarket.StorageDealSealing)
-		if err != nil {
-			log.Errorf("update deal status to sealing for sector %d of miner %s %w", deal.SectorNumber, addr, err)
-		}
-	}
-}
-
-func (dealTracker *DealTracker) checkCommit(ctx metrics.MetricsCtx, addr address.Address, tsk vTypes.TipSetKey) {
-	deals, err := dealTracker.storageRepo.GetDealByAddrAndStatus(addr, storagemarket.StorageDealSealing)
-	if err != nil && !xerrors.Is(err, repo.ErrNotFound) {
-		log.Errorf("get miner %s storage deals for check StorageDealSealing %w", addr, err)
 	}
 
 	for _, deal := range deals {
@@ -108,7 +88,22 @@ func (dealTracker *DealTracker) checkCommit(ctx metrics.MetricsCtx, addr address
 			if err != nil {
 				log.Errorf("update deal status to active for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			}
+			continue
 		}
+
+		if deal.State == storagemarket.StorageDealAwaitingPreCommit {
+			_, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
+			if err != nil {
+				log.Debugf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+				continue
+			}
+			err = dealTracker.storageRepo.UpdateDealStatus(deal.ProposalCid, storagemarket.StorageDealSealing)
+			if err != nil {
+				log.Errorf("update deal status to sealing for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+			}
+		}
+
+		//todo may skip storage dealsealing, and run into active
 	}
 }
 

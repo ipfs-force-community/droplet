@@ -320,7 +320,7 @@ func (dsr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize 
 	return deals, nil
 }
 
-func (dsr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statues []storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (dsr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	var md []storageDeal
 
 	err := dsr.DB.Table((&storageDeal{}).TableName()).
@@ -342,10 +342,10 @@ func (dsr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 	return deals, nil
 }
 
-func (dsr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (dsr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	var md []storageDeal
 
-	err := dsr.DB.Table((&storageDeal{}).TableName()).Find(&md, "cdp_provider = ? AND state = ?", DBAddress(addr).String(), status).Error
+	err := dsr.DB.Table((&storageDeal{}).TableName()).Find(&md, "cdp_provider = ? AND state in ?", DBAddress(addr).String(), status).Error
 	if err != nil {
 		return nil, err
 	}

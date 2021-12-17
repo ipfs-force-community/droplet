@@ -74,7 +74,7 @@ func (sdr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize 
 	return storageDeals, err
 }
 
-func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statues []storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	filter := map[storagemarket.StorageDealStatus]struct{}{}
 	for _, status := range statues {
 		filter[status] = struct{}{}
@@ -104,12 +104,20 @@ func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 	return storageDeals, err
 }
 
-func (sdr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+	filter := map[storagemarket.StorageDealStatus]struct{}{}
+	for _, status := range statues {
+		filter[status] = struct{}{}
+	}
+
 	var storageDeals []*types.MinerDeal
 	var err error
 	if err = travelDeals(sdr.ds,
 		func(deal *types.MinerDeal) (stop bool, err error) {
-			if deal.ClientDealProposal.Proposal.Provider == addr && deal.State == status {
+			if deal.ClientDealProposal.Proposal.Provider == addr {
+				if _, ok := filter[deal.State]; !ok {
+					return
+				}
 				storageDeals = append(storageDeals, deal)
 			}
 			return

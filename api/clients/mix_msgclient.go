@@ -19,6 +19,7 @@ import (
 type IMixMessage interface {
 	GetMessage(ctx context.Context, mid cid.Cid) (*types.UnsignedMessage, error)
 	PushMessage(ctx context.Context, p1 *types.UnsignedMessage, p2 *types2.MsgMeta) (cid.Cid, error)
+	GetMessageChainCid(ctx context.Context, mid cid.Cid) (*cid.Cid, error)
 	WaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, loopBackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 	SearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, loopBackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
@@ -204,4 +205,21 @@ func (msgClient *MixMsgClient) GetMessage(ctx context.Context, mid cid.Cid) (*ty
 		}
 		return msg.VMMessage(), nil
 	}
+}
+
+func (msgClient *MixMsgClient) GetMessageChainCid(ctx context.Context, mid cid.Cid) (*cid.Cid, error) {
+	if mid.Prefix() == utils.MidPrefix {
+		if msgClient.Messager == nil {
+			return nil, xerrors.Errorf("unable to get message chain cid from messager,no messager configured")
+		} else {
+			msg, err := msgClient.Messager.GetMessageByUid(ctx, mid.String())
+			if err != nil {
+				return nil, err
+			}
+			return msg.SignedCid, nil
+		}
+	} else {
+		return &mid, nil
+	}
+
 }
