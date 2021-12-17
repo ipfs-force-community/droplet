@@ -178,7 +178,6 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 				PayloadSize:     md.PayloadSize,
 				DealID:          md.DealID,
 				TotalStorageFee: md.Proposal.TotalStorageFee(),
-				PieceStorage:    "",
 				FastRetrieval:   md.FastRetrieval,
 				PublishCid:      *md.PublishCid,
 			})

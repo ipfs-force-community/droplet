@@ -143,6 +143,7 @@ func (sdr *storageDealRepo) ListDealByAddr(miner address.Address) ([]*types.Mine
 	}); err != nil {
 		return nil, err
 	}
+
 	return storageDeals, nil
 }
 

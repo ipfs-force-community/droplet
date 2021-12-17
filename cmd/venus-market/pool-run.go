@@ -108,5 +108,5 @@ func poolDaemon(cctx *cli.Context) error {
 
 	mux := mux.NewRouter()
 	mux.Handle("resource", rpc.NewPieceStorageServer(resAPI.PieceStorage))
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, "", api.MarketFullNode(resAPI), finishCh)
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, cfg.AuthNode.Url, api.MarketFullNode(resAPI), finishCh)
 }
