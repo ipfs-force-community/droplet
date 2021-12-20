@@ -10,7 +10,7 @@ var MidPrefix = cid.Prefix{
 	Version:  1,
 	Codec:    cid.Raw,
 	MhType:   mh.BLAKE2B_MAX,
-	MhLength: -1, // default length
+	MhLength: mh.DefaultLengths[mh.BLAKE2B_MAX], // default length
 }
 
 func NewMId() (cid.Cid, error) {
@@ -20,6 +20,7 @@ func NewMId() (cid.Cid, error) {
 	if err != nil {
 		return cid.Undef, err
 	}
+
 	return c, nil
 }
 
