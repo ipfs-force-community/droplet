@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+	"github.com/filecoin-project/venus/pkg/wallet"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -27,55 +28,92 @@ type IMixMessage interface {
 type MPoolReplaceParams struct {
 	fx.In
 	FullNode      apiface.FullNode
+	Singer        ISinger           `optional:"true"`
 	VenusMessager IVenusMessager    `optional:"true"`
 	Mgr           minermgr.IAddrMgr `optional:"true"`
 }
 
 type MixMsgClient struct {
-	FullNode apiface.FullNode
-	Messager IVenusMessager    `optional:"true"`
-	Mgr      minermgr.IAddrMgr `optional:"true"`
+	full        apiface.FullNode
+	messager    IVenusMessager
+	addrMgr     minermgr.IAddrMgr
+	signer      ISinger
+	nonceAssign *nonceAssigner
 }
 
 func NewMixMsgClient(params MPoolReplaceParams) IMixMessage {
 	return &MixMsgClient{
-		FullNode: params.FullNode,
-		Messager: params.VenusMessager,
-		Mgr:      params.Mgr,
+		full:        params.FullNode,
+		messager:    params.VenusMessager,
+		addrMgr:     params.Mgr,
+		signer:      params.Singer,
+		nonceAssign: newNonceAssign(params.FullNode),
 	}
 }
 func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.UnsignedMessage, p2 *types2.MsgMeta) (cid.Cid, error) {
-	if msgClient.Messager == nil {
-		signed, err := msgClient.FullNode.MpoolPushMessage(ctx, p1, &types.MessageSendSpec{
-			MaxFee:            p2.MaxFee,
-			GasOverEstimation: p2.GasOverEstimation,
+	if msgClient.messager == nil {
+		var sendSpec *types.MessageSendSpec
+		if p2 != nil {
+			sendSpec = &types.MessageSendSpec{
+				MaxFee:            p2.MaxFee,
+				GasOverEstimation: p2.GasOverEstimation,
+			}
+		}
+		var err error
+		p1.From, err = msgClient.full.StateAccountKey(ctx, p1.From, types.EmptyTSK)
+		if err != nil {
+			return cid.Undef, err
+		}
+		//estiamte -> sign -> push
+		estimatedMsg, err := msgClient.full.GasEstimateMessageGas(ctx, p1, sendSpec, types.EmptyTSK)
+		if err != nil {
+			return cid.Undef, err
+		}
+		estimatedMsg.Nonce, err = msgClient.nonceAssign.AssignNonce(ctx, p1.From)
+		if err != nil {
+			return cid.Undef, err
+		}
+		storageBlock, err := estimatedMsg.ToStorageBlock()
+		if err != nil {
+			return cid.Undef, err
+		}
+		sig, err := msgClient.signer.WalletSign(ctx, estimatedMsg.From, storageBlock.Cid().Bytes(), wallet.MsgMeta{
+			Type:  wallet.MTChainMsg,
+			Extra: storageBlock.RawData(),
 		})
 		if err != nil {
 			return cid.Undef, err
 		}
-		log.Warnf("push message %s to daemon", signed.Cid().String())
-		return signed.Cid(), nil
+		signedCid, err := msgClient.full.MpoolPush(ctx, &types.SignedMessage{
+			Message:   *estimatedMsg,
+			Signature: *sig,
+		})
+		if err != nil {
+			return cid.Undef, err
+		}
+		log.Warnf("push message %s to daemon", signedCid.String())
+		return signedCid, nil
 	} else {
 		msgid, err := utils.NewMId()
 		if err != nil {
 			return cid.Undef, err
 		}
-		if msgClient.Mgr != nil {
-			fromAddr, err := msgClient.FullNode.StateAccountKey(ctx, p1.From, types.EmptyTSK)
+		if msgClient.addrMgr != nil {
+			fromAddr, err := msgClient.full.StateAccountKey(ctx, p1.From, types.EmptyTSK)
 			if err != nil {
 				return cid.Undef, err
 			}
-			account, err := msgClient.Mgr.GetAccount(ctx, fromAddr)
+			account, err := msgClient.addrMgr.GetAccount(ctx, fromAddr)
 			if err != nil {
 				return cid.Undef, err
 			}
-			_, err = msgClient.Messager.ForcePushMessageWithId(ctx, account, msgid.String(), p1, nil)
+			_, err = msgClient.messager.ForcePushMessageWithId(ctx, account, msgid.String(), p1, nil)
 			if err != nil {
 				return cid.Undef, err
 			}
 		} else {
 			//for client account has in token
-			_, err = msgClient.Messager.PushMessageWithId(ctx, msgid.String(), p1, nil)
+			_, err = msgClient.messager.PushMessageWithId(ctx, msgid.String(), p1, nil)
 			if err != nil {
 				return cid.Undef, err
 			}
@@ -87,8 +125,8 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Unsign
 }
 
 func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, loopbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
-	if msgClient.Messager == nil || mCid.Prefix() != utils.MidPrefix {
-		return msgClient.FullNode.StateWaitMsg(ctx, mCid, confidence, loopbackLimit, allowReplaced)
+	if msgClient.messager == nil || mCid.Prefix() != utils.MidPrefix {
+		return msgClient.full.StateWaitMsg(ctx, mCid, confidence, loopbackLimit, allowReplaced)
 	} else {
 		tm := time.NewTicker(time.Second * 30)
 		defer tm.Stop()
@@ -99,7 +137,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 		for {
 			select {
 			case <-doneCh:
-				msg, err := msgClient.Messager.GetMessageByUid(ctx, mCid.String())
+				msg, err := msgClient.messager.GetMessageByUid(ctx, mCid.String())
 				if err != nil {
 					log.Warnf("get message %s fail while wait %v", mCid, err)
 					time.Sleep(time.Second * 5)
@@ -150,10 +188,10 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 }
 
 func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, loopbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
-	if msgClient.Messager == nil || mCid.Prefix() != utils.MidPrefix {
-		return msgClient.FullNode.StateSearchMsg(ctx, from, mCid, loopbackLimit, allowReplaced)
+	if msgClient.messager == nil || mCid.Prefix() != utils.MidPrefix {
+		return msgClient.full.StateSearchMsg(ctx, from, mCid, loopbackLimit, allowReplaced)
 	} else {
-		msg, err := msgClient.Messager.GetMessageByCid(ctx, mCid)
+		msg, err := msgClient.messager.GetMessageByCid(ctx, mCid)
 		if err != nil {
 			log.Warnw("get message fail while wait %w", err)
 			time.Sleep(time.Second * 5)
@@ -196,10 +234,10 @@ func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetK
 }
 
 func (msgClient *MixMsgClient) GetMessage(ctx context.Context, mCid cid.Cid) (*types.UnsignedMessage, error) {
-	if msgClient.Messager == nil || mCid.Prefix() != utils.MidPrefix {
-		return msgClient.FullNode.ChainGetMessage(ctx, mCid)
+	if msgClient.messager == nil || mCid.Prefix() != utils.MidPrefix {
+		return msgClient.full.ChainGetMessage(ctx, mCid)
 	} else {
-		msg, err := msgClient.Messager.GetMessageByUid(ctx, mCid.String())
+		msg, err := msgClient.messager.GetMessageByUid(ctx, mCid.String())
 		if err != nil {
 			return nil, err
 		}
@@ -209,10 +247,10 @@ func (msgClient *MixMsgClient) GetMessage(ctx context.Context, mCid cid.Cid) (*t
 
 func (msgClient *MixMsgClient) GetMessageChainCid(ctx context.Context, mid cid.Cid) (*cid.Cid, error) {
 	if mid.Prefix() == utils.MidPrefix {
-		if msgClient.Messager == nil {
+		if msgClient.messager == nil {
 			return nil, xerrors.Errorf("unable to get message chain cid from messager,no messager configured")
 		} else {
-			msg, err := msgClient.Messager.GetMessageByUid(ctx, mid.String())
+			msg, err := msgClient.messager.GetMessageByUid(ctx, mid.String())
 			if err != nil {
 				return nil, err
 			}
