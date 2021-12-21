@@ -672,7 +672,7 @@ func (t *VoucherInfo) UnmarshalCBOR(r io.Reader) error {
 	return nil
 }
 
-var lengthBufMinerDeal = []byte{150}
+var lengthBufMinerDeal = []byte{151}
 
 func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -759,6 +759,12 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := io.WriteString(w, string(t.PiecePath)); err != nil {
+		return err
+	}
+
+	// t.PayloadSize (abi.UnpaddedPieceSize) (uint64)
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.PayloadSize)); err != nil {
 		return err
 	}
 
@@ -885,7 +891,7 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 		return fmt.Errorf("cbor input should be of type array")
 	}
 
-	if extra != 22 {
+	if extra != 23 {
 		return fmt.Errorf("cbor input had wrong number of fields")
 	}
 
@@ -997,6 +1003,20 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) error {
 		}
 
 		t.PiecePath = filestore.Path(sval)
+	}
+	// t.PayloadSize (abi.UnpaddedPieceSize) (uint64)
+
+	{
+
+		maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+		if err != nil {
+			return err
+		}
+		if maj != cbg.MajUnsignedInt {
+			return fmt.Errorf("wrong type for uint64 field")
+		}
+		t.PayloadSize = abi.UnpaddedPieceSize(extra)
+
 	}
 	// t.MetadataPath (filestore.Path) (string)
 

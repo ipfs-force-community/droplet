@@ -20,6 +20,7 @@ type MinerDeal struct {
 	Client                peer.ID
 	State                 storagemarket.StorageDealStatus
 	PiecePath             filestore.Path
+	PayloadSize           abi.UnpaddedPieceSize
 	MetadataPath          filestore.Path
 	SlashEpoch            abi.ChainEpoch
 	FastRetrieval         bool

@@ -23,8 +23,8 @@ type FundRepo interface {
 type StorageDealRepo interface {
 	SaveDeal(StorageDeal *types.MinerDeal) error
 	GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error)
-	GetDealsByPieceCidAndStatus(piececid cid.Cid, statues []storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
-	GetDealByAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
+	GetDealsByPieceCidAndStatus(piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
+	GetDealByAddrAndStatus(addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
 	UpdateDealStatus(proposalCid cid.Cid, status storagemarket.StorageDealStatus) error
 	GetDeals(mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error)
 	GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error)
@@ -32,6 +32,7 @@ type StorageDealRepo interface {
 	ListDealByAddr(mAddr address.Address) ([]*types.MinerDeal, error)
 	ListDeal() ([]*types.MinerDeal, error)
 	GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error)
+	GetPieceSize(pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error)
 	ListPieceInfoKeys() ([]cid.Cid, error)
 }
 

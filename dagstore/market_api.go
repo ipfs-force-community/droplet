@@ -2,6 +2,7 @@ package dagstore
 
 import (
 	"context"
+	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/piecestorage"
 	"io"
@@ -43,12 +44,25 @@ func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, err
 }
 
 func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
+	payloadSize, pieceSize, err := m.pieceRepo.GetPieceSize(pieceCid)
+	if err != nil {
+		return nil, err
+	}
+
 	has, err := m.pieceStorage.Has(ctx, pieceCid.String())
 	if err != nil {
 		return nil, err
 	}
 	if has {
-		return m.pieceStorage.Read(ctx, pieceCid.String())
+		r, err := m.pieceStorage.Read(ctx, pieceCid.String())
+		if err != nil {
+			return nil, err
+		}
+		padR, err := padreader.NewInflator(r, uint64(payloadSize), pieceSize.Unpadded())
+		if err != nil {
+			return nil, err
+		}
+		return iocloser{r, padR}, nil
 	}
 
 	// todo unseal  ask miner who have this data, send unseal cmd, and read and pay after receive data
@@ -114,3 +128,18 @@ LOOP:
 }
 
 */
+
+var _ io.ReadCloser = (*iocloser)(nil)
+
+type iocloser struct {
+	closeR io.ReadCloser
+	readR  io.Reader
+}
+
+func (i iocloser) Read(p []byte) (n int, err error) {
+	return i.readR.Read(p)
+}
+
+func (i iocloser) Close() error {
+	return i.closeR.Close()
+}

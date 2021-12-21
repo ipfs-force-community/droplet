@@ -163,7 +163,7 @@ func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int
 		m.lk.Lock()
 		var miners []types.User
 		for _, val := range res {
-			if len(val.Miner) > 0 {
+			if len(val.Miner) > 0 && val.State == 1 {
 				addr, err := address.NewFromString(val.Miner)
 				if err == nil && addr != address.Undef {
 					miners = append(miners, types.User{

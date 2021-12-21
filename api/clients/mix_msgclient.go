@@ -19,6 +19,7 @@ import (
 type IMixMessage interface {
 	GetMessage(ctx context.Context, mid cid.Cid) (*types.UnsignedMessage, error)
 	PushMessage(ctx context.Context, p1 *types.UnsignedMessage, p2 *types2.MsgMeta) (cid.Cid, error)
+	GetMessageChainCid(ctx context.Context, mid cid.Cid) (*cid.Cid, error)
 	WaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, loopBackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 	SearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, loopBackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
 }
@@ -86,7 +87,7 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Unsign
 }
 
 func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, loopbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
-	if msgClient.Messager == nil {
+	if msgClient.Messager == nil || mCid.Prefix() != utils.MidPrefix {
 		return msgClient.FullNode.StateWaitMsg(ctx, mCid, confidence, loopbackLimit, allowReplaced)
 	} else {
 		tm := time.NewTicker(time.Second * 30)
@@ -100,7 +101,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 			case <-doneCh:
 				msg, err := msgClient.Messager.GetMessageByUid(ctx, mCid.String())
 				if err != nil {
-					log.Warnf("get message %s fail while wait %w", mCid, err)
+					log.Warnf("get message %s fail while wait %v", mCid, err)
 					time.Sleep(time.Second * 5)
 					continue
 				}
@@ -149,7 +150,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 }
 
 func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, loopbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
-	if msgClient.Messager == nil {
+	if msgClient.Messager == nil || mCid.Prefix() != utils.MidPrefix {
 		return msgClient.FullNode.StateSearchMsg(ctx, from, mCid, loopbackLimit, allowReplaced)
 	} else {
 		msg, err := msgClient.Messager.GetMessageByCid(ctx, mCid)
@@ -194,14 +195,31 @@ func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetK
 	}
 }
 
-func (msgClient *MixMsgClient) GetMessage(ctx context.Context, mid cid.Cid) (*types.UnsignedMessage, error) {
-	if msgClient.Messager == nil {
-		return msgClient.FullNode.ChainGetMessage(ctx, mid)
+func (msgClient *MixMsgClient) GetMessage(ctx context.Context, mCid cid.Cid) (*types.UnsignedMessage, error) {
+	if msgClient.Messager == nil || mCid.Prefix() != utils.MidPrefix {
+		return msgClient.FullNode.ChainGetMessage(ctx, mCid)
 	} else {
-		msg, err := msgClient.Messager.GetMessageByUid(ctx, mid.String())
+		msg, err := msgClient.Messager.GetMessageByUid(ctx, mCid.String())
 		if err != nil {
 			return nil, err
 		}
 		return msg.VMMessage(), nil
 	}
+}
+
+func (msgClient *MixMsgClient) GetMessageChainCid(ctx context.Context, mid cid.Cid) (*cid.Cid, error) {
+	if mid.Prefix() == utils.MidPrefix {
+		if msgClient.Messager == nil {
+			return nil, xerrors.Errorf("unable to get message chain cid from messager,no messager configured")
+		} else {
+			msg, err := msgClient.Messager.GetMessageByUid(ctx, mid.String())
+			if err != nil {
+				return nil, err
+			}
+			return msg.SignedCid, nil
+		}
+	} else {
+		return &mid, nil
+	}
+
 }

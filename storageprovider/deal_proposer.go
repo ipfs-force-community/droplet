@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -410,6 +409,11 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 			// Hand the deal off to the process that adds it to a sector
 			log.Infow("handing off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
+			deal.PayloadSize = abi.UnpaddedPieceSize(file.Size())
+			err = storageDealPorcess.deals.SaveDeal(deal)
+			if err != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+			}
 			err = storageDealPorcess.savePieceFile(ctx, deal, file, uint64(file.Size()))
 			if err := file.Close(); err != nil {
 				log.Errorw("failed to close imported CAR file", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid, "err", err)
@@ -428,6 +432,11 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 					deal.ProposalCid, err))
 			}
 
+			deal.PayloadSize = abi.UnpaddedPieceSize(v2r.Header.DataSize)
+			err = storageDealPorcess.deals.SaveDeal(deal)
+			if err != nil {
+				return storageDealPorcess.HandleError(deal, xerrors.Errorf("fail to save deal to database"))
+			}
 			// Hand the deal off to the process that adds it to a sector
 			var packingErr error
 			log.Infow("handing off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
@@ -494,11 +503,6 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 	// correct amount of zeroes
 	// (alternative would be to keep precise track of sector offsets for each
 	// piece which is just too much work for a seldom used feature)
-	unPadPieceSize := deal.Proposal.PieceSize.Unpadded()
-	paddedReader, err := padreader.NewInflator(reader, payloadSize, deal.Proposal.PieceSize.Unpadded())
-	if err != nil {
-		return err
-	}
 
 	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
 	has, err := storageDealPorcess.pieceStorage.Has(ctx, pieceCid.String())
@@ -507,12 +511,9 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 	}
 
 	if !has {
-		wLen, err := storageDealPorcess.pieceStorage.SaveTo(ctx, pieceCid.String(), paddedReader)
+		_, err = storageDealPorcess.pieceStorage.SaveTo(ctx, pieceCid.String(), reader)
 		if err != nil {
 			return err
-		}
-		if wLen != int64(unPadPieceSize) {
-			return xerrors.Errorf("save piece expect len %d but got %d", unPadPieceSize, wLen)
 		}
 		log.Infof("success to write file %s to piece storage", pieceCid)
 	}

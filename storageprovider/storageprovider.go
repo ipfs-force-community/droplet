@@ -3,6 +3,7 @@ package storageprovider
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/api/clients"
 	"io"
 	"time"
 
@@ -109,6 +110,7 @@ func NewStorageProviderV2(
 	dagStore stores.DAGStoreWrapper,
 	repo repo.Repo,
 	minerMgr minermgr.IAddrMgr,
+	mixMsgClient clients.IMixMessage,
 ) (StorageProviderV2, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -142,7 +144,7 @@ func NewStorageProviderV2(
 	// register a data transfer event handler -- this will send events to the state machines based on DT events
 	spV2.unsubDataTransfer = dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(spV2.transferProcess)) // fsm.Group
 
-	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.dealStore, spV2.net, spV2.fs, dealProcess)
+	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.dealStore, spV2.net, spV2.fs, dealProcess, mixMsgClient)
 	if err != nil {
 		return nil, err
 	}

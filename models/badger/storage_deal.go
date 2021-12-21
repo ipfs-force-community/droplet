@@ -74,7 +74,7 @@ func (sdr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize 
 	return storageDeals, err
 }
 
-func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statues []storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	filter := map[storagemarket.StorageDealStatus]struct{}{}
 	for _, status := range statues {
 		filter[status] = struct{}{}
@@ -104,12 +104,20 @@ func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 	return storageDeals, err
 }
 
-func (sdr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+	filter := map[storagemarket.StorageDealStatus]struct{}{}
+	for _, status := range statues {
+		filter[status] = struct{}{}
+	}
+
 	var storageDeals []*types.MinerDeal
 	var err error
 	if err = travelDeals(sdr.ds,
 		func(deal *types.MinerDeal) (stop bool, err error) {
-			if deal.ClientDealProposal.Proposal.Provider == addr && deal.State == status {
+			if deal.ClientDealProposal.Proposal.Provider == addr {
+				if _, ok := filter[deal.State]; !ok {
+					return
+				}
 				storageDeals = append(storageDeals, deal)
 			}
 			return
@@ -143,6 +151,7 @@ func (sdr *storageDealRepo) ListDealByAddr(miner address.Address) ([]*types.Mine
 	}); err != nil {
 		return nil, err
 	}
+
 	return storageDeals, nil
 }
 
@@ -246,4 +255,22 @@ func (dsr *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceSt
 		}
 		return false, nil
 	})
+}
+
+func (sdr *storageDealRepo) GetPieceSize(pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error) {
+	var deal *types.MinerDeal
+
+	err := travelDeals(sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+		if inDeal.ClientDealProposal.Proposal.PieceCID == pieceCID {
+			deal = inDeal
+		}
+		return false, nil
+	})
+	if err != nil {
+		return 0, 0, nil
+	}
+	if deal == nil {
+		return 0, 0, repo.ErrNotFound
+	}
+	return deal.PayloadSize, deal.ClientDealProposal.Proposal.PieceSize, nil
 }
