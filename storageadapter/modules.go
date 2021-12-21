@@ -3,10 +3,17 @@ package storageadapter
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
+	"go.uber.org/fx"
+
 	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	"github.com/filecoin-project/go-fil-markets/filestore"
 	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -14,6 +21,13 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p-core/host"
+
+	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/pkg/types"
+
 	"github.com/filecoin-project/venus-market/builder"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/dagstore"
@@ -24,15 +38,6 @@ import (
 	"github.com/filecoin-project/venus-market/network"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p-core/host"
-	"go.uber.org/fx"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 var (
@@ -55,11 +60,17 @@ func NewStorageAsk(ctx metrics.MetricsCtx,
 		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 }
 
+func NewTransferStore(transferPath string) func() (filestore.FileStore, error) {
+	return func() (filestore.FileStore, error) {
+		return piecefilestore.NewLocalFileStore(piecefilestore.OsPath(transferPath))
+	}
+}
+
 func StorageProvider(
-	homeDir *config.HomeDir,
+	h host.Host,
 	minerAddress types2.MinerAddress,
 	storedAsk *storedask.StoredAsk,
-	h host.Host,
+	transferStore filestore.FileStore,
 	providerDealsDs models.ProviderDealDS,
 	dagStore *dagstore.Wrapper,
 	pieceStore piecestore.PieceStore,
@@ -68,14 +79,10 @@ func StorageProvider(
 	df config.StorageDealFilter,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
-	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(string(*homeDir)))
-	if err != nil {
-		return nil, err
-	}
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	return storageimpl.NewProvider(net, providerDealsDs, store, dagStore, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
+	return storageimpl.NewProvider(net, providerDealsDs, transferStore, dagStore, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
 }
 
 func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, host host.Host, h storagemarket.StorageProvider, j journal.Journal) {
@@ -238,6 +245,7 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), //save to metadata /datatransfer/provider/transfers
 		//   save to metadata /deals/provider/piecestorage-ask/latest
 		builder.Override(new(config.StorageDealFilter), BasicDealFilter(nil)),
+		builder.Override(new(filestore.FileStore), NewTransferStore(cfg.TransferPath)),
 		builder.Override(new(storagemarket.StorageProvider), StorageProvider),
 		builder.Override(new(*DealPublisher), NewDealPublisher(cfg)),
 		builder.Override(HandleDealsKey, HandleDeals),

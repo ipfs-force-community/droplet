@@ -140,11 +140,14 @@ type MarketConfig struct {
 	Home `toml:"-"`
 
 	Common
+
 	Node     Node
 	Messager Messager
 	Signer   Signer
 
 	PieceStorage  PieceStorageString
+	TransferPath  string
+
 	Journal       Journal
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
