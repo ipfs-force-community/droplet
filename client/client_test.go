@@ -59,7 +59,7 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, local)
 
-	order := RetrievalOrder{
+	order := ExportRef{
 		Root:         root,
 		FromLocalCAR: it.CARPath,
 	}
@@ -67,7 +67,7 @@ func TestImportLocal(t *testing.T) {
 	// retrieve as UnixFS.
 	out1 := filepath.Join(dir, "retrieval1.data") // as unixfs
 	out2 := filepath.Join(dir, "retrieval2.data") // as car
-	err = a.ClientRetrieve(ctx, order, &FileRef{
+	err = a.ClientExport(ctx, order, FileRef{
 		Path: out1,
 	})
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, b, outBytes)
 
-	err = a.ClientRetrieve(ctx, order, &FileRef{
+	err = a.ClientExport(ctx, order, FileRef{
 		Path:  out2,
 		IsCAR: true,
 	})

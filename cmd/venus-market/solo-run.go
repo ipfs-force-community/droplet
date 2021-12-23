@@ -33,7 +33,6 @@ import (
 	"github.com/filecoin-project/venus-market/utils"
 )
 
-
 var soloRunCmd = &cli.Command{
 	Name:      "solo-run",
 	Usage:     "Run the market daemon in solo mode",

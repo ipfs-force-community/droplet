@@ -4,8 +4,6 @@ package api
 
 import (
 	"context"
-	"time"
-
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -16,7 +14,6 @@ import (
 	"github.com/filecoin-project/venus-market/client"
 	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus-market/utils"
 	mTypes "github.com/filecoin-project/venus-messager/types"
 	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	vTypes "github.com/filecoin-project/venus/pkg/types"
@@ -25,6 +22,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
+	"time"
 )
 
 type MarketClientNodeStruct struct {
@@ -40,6 +38,8 @@ type MarketClientNodeStruct struct {
 		ClientDealPieceCID func(p0 context.Context, p1 cid.Cid) (client.DataCIDSize, error) `perm:"read"`
 
 		ClientDealSize func(p0 context.Context, p1 cid.Cid) (client.DataSize, error) `perm:"read"`
+
+		ClientExport func(p0 context.Context, p1 client.ExportRef, p2 client.FileRef) error `perm:"admin"`
 
 		ClientFindData func(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]client.QueryOffer, error) `perm:"read"`
 
@@ -73,11 +73,11 @@ type MarketClientNodeStruct struct {
 
 		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
-		ClientRetrieve func(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) error `perm:"admin"`
+		ClientRetrieve func(p0 context.Context, p1 client.RetrievalOrder) (*client.RestrievalRes, error) `perm:"admin"`
 
 		ClientRetrieveTryRestartInsufficientFunds func(p0 context.Context, p1 address.Address) error `perm:"write"`
 
-		ClientRetrieveWithEvents func(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) (<-chan utils.RetrievalEvent, error) `perm:"admin"`
+		ClientRetrieveWait func(p0 context.Context, p1 retrievalmarket.DealID) error `perm:"admin"`
 
 		ClientStartDeal func(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) `perm:"admin"`
 
@@ -293,6 +293,14 @@ func (s *MarketClientNodeStub) ClientDealSize(p0 context.Context, p1 cid.Cid) (c
 	return *new(client.DataSize), xerrors.New("method not supported")
 }
 
+func (s *MarketClientNodeStruct) ClientExport(p0 context.Context, p1 client.ExportRef, p2 client.FileRef) error {
+	return s.Internal.ClientExport(p0, p1, p2)
+}
+
+func (s *MarketClientNodeStub) ClientExport(p0 context.Context, p1 client.ExportRef, p2 client.FileRef) error {
+	return xerrors.New("method not supported")
+}
+
 func (s *MarketClientNodeStruct) ClientFindData(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]client.QueryOffer, error) {
 	return s.Internal.ClientFindData(p0, p1, p2)
 }
@@ -421,12 +429,12 @@ func (s *MarketClientNodeStub) ClientRestartDataTransfer(p0 context.Context, p1 
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketClientNodeStruct) ClientRetrieve(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) error {
-	return s.Internal.ClientRetrieve(p0, p1, p2)
+func (s *MarketClientNodeStruct) ClientRetrieve(p0 context.Context, p1 client.RetrievalOrder) (*client.RestrievalRes, error) {
+	return s.Internal.ClientRetrieve(p0, p1)
 }
 
-func (s *MarketClientNodeStub) ClientRetrieve(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) error {
-	return xerrors.New("method not supported")
+func (s *MarketClientNodeStub) ClientRetrieve(p0 context.Context, p1 client.RetrievalOrder) (*client.RestrievalRes, error) {
+	return nil, xerrors.New("method not supported")
 }
 
 func (s *MarketClientNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
@@ -437,12 +445,12 @@ func (s *MarketClientNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 cont
 	return xerrors.New("method not supported")
 }
 
-func (s *MarketClientNodeStruct) ClientRetrieveWithEvents(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) (<-chan utils.RetrievalEvent, error) {
-	return s.Internal.ClientRetrieveWithEvents(p0, p1, p2)
+func (s *MarketClientNodeStruct) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) error {
+	return s.Internal.ClientRetrieveWait(p0, p1)
 }
 
-func (s *MarketClientNodeStub) ClientRetrieveWithEvents(p0 context.Context, p1 client.RetrievalOrder, p2 *client.FileRef) (<-chan utils.RetrievalEvent, error) {
-	return nil, xerrors.New("method not supported")
+func (s *MarketClientNodeStub) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) error {
+	return xerrors.New("method not supported")
 }
 
 func (s *MarketClientNodeStruct) ClientStartDeal(p0 context.Context, p1 *client.StartDealParams) (*cid.Cid, error) {

@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/venus-market/api"
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/client"
 	mTypes "github.com/filecoin-project/venus-messager/types"
@@ -10,6 +11,8 @@ import (
 	vTypes "github.com/filecoin-project/venus/pkg/types"
 	"github.com/ipfs/go-cid"
 )
+
+var _ api.MarketClientNode = (*MarketClientNodeImpl)(nil)
 
 type MarketClientNodeImpl struct {
 	client.API
