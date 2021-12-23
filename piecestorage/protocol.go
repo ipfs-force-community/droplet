@@ -13,8 +13,9 @@ type Protocol string
 type ProtocolResolver func(cfg string) (config.PieceStorage, error)
 
 const (
-	FS Protocol = "fs"
-	S3 Protocol = "s3"
+	FS       Protocol = "fs"
+	S3       Protocol = "s3"
+	ClientS3 Protocol = "clients3"
 )
 
 var protocolRegistry map[Protocol]ProtocolResolver

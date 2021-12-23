@@ -198,6 +198,6 @@ func (s s3PieceStorage) Validate(piececid string) error {
 	return err
 }
 
-func (s s3PieceStorage) Type() string {
-	return "s3"
+func (s s3PieceStorage) Type() Protocol {
+	return S3
 }

@@ -17,7 +17,7 @@ type IPreSignOp interface {
 }
 
 type IPieceStorage interface {
-	Type() string
+	Type() Protocol
 	SaveTo(context.Context, string, io.Reader) (int64, error)
 	Read(context.Context, string) (io.ReadCloser, error)
 	Len(ctx context.Context, string2 string) (int64, error)
@@ -103,8 +103,8 @@ func (f fsPieceStorage) Validate(s string) error {
 	return nil
 }
 
-func (f fsPieceStorage) Type() string {
-	return "fs"
+func (f fsPieceStorage) Type() Protocol {
+	return FS
 }
 
 func (f fsPieceStorage) GetReadUrl(ctx context.Context, s2 string) (string, error) {

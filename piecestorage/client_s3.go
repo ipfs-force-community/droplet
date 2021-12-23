@@ -14,8 +14,8 @@ type ClientS3Storage struct {
 	presignUrl IPreSignOp
 }
 
-func (c ClientS3Storage) Type() string {
-	panic("implement me")
+func (c ClientS3Storage) Type() Protocol {
+	return ClientS3
 }
 
 func (c ClientS3Storage) SaveTo(ctx context.Context, s string, reader io.Reader) (int64, error) {
