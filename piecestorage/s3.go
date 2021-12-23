@@ -14,9 +14,63 @@ import (
 	"github.com/filecoin-project/venus-market/utils"
 	logging "github.com/ipfs/go-log/v2"
 	"io"
+	"net/url"
+	"strings"
+	"time"
 )
 
 var log = logging.Logger("piece-storage")
+
+func ParserS3(dsn string) (config.S3PieceStorage, error) {
+	//todo s3 dsn  s3:{access key}:{secret key}:{token option}@{endpoint}
+	s3Seq := strings.Split(dsn, "@")
+	if len(s3Seq) != 2 {
+		return config.S3PieceStorage{}, fmt.Errorf("parser s3 config %s", dsn)
+	}
+	authStr := s3Seq[0]
+	endPointUrl := s3Seq[1]
+
+	authSeq := strings.Split(authStr, ":")
+	if !(len(authSeq) == 2 || len(authSeq) == 3) {
+		return config.S3PieceStorage{}, fmt.Errorf("parser s3 auth %s", authStr)
+	}
+	token := ""
+	if len(authSeq) == 3 {
+		token = authSeq[2]
+	}
+
+	_, _, _, err := ParseS3Endpoint(endPointUrl)
+	if err != nil {
+		return config.S3PieceStorage{}, fmt.Errorf("parser s3 endpoint %s", endPointUrl)
+	}
+	return config.S3PieceStorage{
+		Enable:    true,
+		EndPoint:  endPointUrl,
+		AccessKey: authSeq[0],
+		SecretKey: authSeq[1],
+		Token:     token,
+	}, nil
+}
+
+func ParseS3Endpoint(endPoint string) (string, string, string, error) {
+	endPointUrl, err := url.Parse(endPoint)
+	if err != nil {
+		return "", "", "", fmt.Errorf("parser s3 endpoint %s %w", endPoint, err)
+	}
+
+	hostSeq := strings.Split(endPointUrl.Host, ".")
+	if len(hostSeq) < 2 {
+		return "", "", "", fmt.Errorf("must specify region in host %s", endPoint)
+	}
+
+	if endPointUrl.Path == "" {
+		return "", "", "", fmt.Errorf("must append bucket in endpoint %s", endPoint)
+	}
+	bucket := strings.Trim(endPointUrl.Path, "/")
+
+	endPointUrl.Path = ""
+	return endPointUrl.String(), hostSeq[0], bucket, nil
+}
 
 type s3PieceStorage struct {
 	s3Cfg      config.S3PieceStorage
@@ -32,7 +86,7 @@ func newS3PieceStorage(s3Cfg config.S3PieceStorage) (IPieceStorage, error) {
 		return nil, err
 	}
 	sess := session.Must(session.NewSession(&aws.Config{
-		Credentials:      credentials.NewStaticCredentials(s3Cfg.AccessKey, s3Cfg.SecretKey, ""),
+		Credentials:      credentials.NewStaticCredentials(s3Cfg.AccessKey, s3Cfg.SecretKey, s3Cfg.Token),
 		Endpoint:         aws.String(endpoint),
 		S3ForcePathStyle: aws.Bool(false),
 		Region:           aws.String(region),
@@ -118,9 +172,32 @@ func (s s3PieceStorage) Has(ctx context.Context, piececid string) (bool, error) 
 	return true, nil
 }
 
+//todo 下面presign两个方法用于给客户端使用，暂时仅仅支持对象存储。 可能需要一个更合适的抽象模式
+func (s s3PieceStorage) GetReadUrl(ctx context.Context, s2 string) (string, error) {
+	params := &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(s2),
+	}
+
+	req, _ := s.s3Client.GetObjectRequest(params)
+	return req.Presign(time.Minute * 30)
+}
+
+func (s s3PieceStorage) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
+	req, _ := s.s3Client.PutObjectRequest(&s3.PutObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(s2),
+	})
+	return req.Presign(time.Minute * 30)
+}
+
 func (s s3PieceStorage) Validate(piececid string) error {
 	_, err := s.s3Client.GetBucketAcl(&s3.GetBucketAclInput{
 		Bucket: aws.String(s.bucket),
 	})
 	return err
+}
+
+func (s s3PieceStorage) Type() string {
+	return "s3"
 }

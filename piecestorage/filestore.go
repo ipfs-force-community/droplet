@@ -11,13 +11,21 @@ import (
 	"path"
 )
 
+type IPreSignOp interface {
+	GetReadUrl(context.Context, string) (string, error)
+	GetWriteUrl(ctx context.Context, s2 string) (string, error)
+}
+
 type IPieceStorage interface {
+	Type() string
 	SaveTo(context.Context, string, io.Reader) (int64, error)
 	Read(context.Context, string) (io.ReadCloser, error)
 	Len(ctx context.Context, string2 string) (int64, error)
 	ReadOffset(context.Context, string, int, int) (io.ReadCloser, error)
 	Has(context.Context, string) (bool, error)
 	Validate(s string) error
+
+	IPreSignOp
 }
 
 type fsPieceStorage struct {
@@ -93,6 +101,18 @@ func (f fsPieceStorage) Validate(s string) error {
 		return xerrors.Errorf("expect a directory but got file")
 	}
 	return nil
+}
+
+func (f fsPieceStorage) Type() string {
+	return "fs"
+}
+
+func (f fsPieceStorage) GetReadUrl(ctx context.Context, s2 string) (string, error) {
+	return path.Join(f.baseUrl, s2), nil
+}
+
+func (f fsPieceStorage) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
+	return path.Join(f.baseUrl, s2), nil
 }
 
 func newFsPieceStorage(baseUlr string) (IPieceStorage, error) {
