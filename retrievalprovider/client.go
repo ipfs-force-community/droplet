@@ -2,8 +2,6 @@ package retrievalprovider
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multiaddr"
 
@@ -57,7 +55,6 @@ func (rcn *retrievalClientNode) AllocateLane(ctx context.Context, paymentChannel
 func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymentChannel address.Address, amount abi.TokenAmount, lane uint64, tok shared.TipSetToken) (*paych.SignedVoucher, error) {
 	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
 	// querying the chain
-	fmt.Println("PaychVoucherCreate start")
 	voucher, err := rcn.payAPI.PaychVoucherCreate(ctx, paymentChannel, amount, lane)
 	if err != nil {
 		return nil, err
@@ -65,7 +62,6 @@ func (rcn *retrievalClientNode) CreatePaymentVoucher(ctx context.Context, paymen
 	if voucher.Voucher == nil {
 		return nil, retrievalmarket.NewShortfallError(voucher.Shortfall)
 	}
-	fmt.Println("CreatePaymentVoucher finish")
 	return voucher.Voucher, nil
 }
 

@@ -218,8 +218,6 @@ func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, addit
 	case rm.DealStatusBlocksComplete:
 		deal.Status = rm.DealStatusFundsNeededLastPayment
 	case rm.DealStatusNew:
-		//todo will come here?
-		log.Errorf("receive status new on data pull sent")
 		deal.Status = rm.DealStatusFundsNeededUnseal
 	}
 

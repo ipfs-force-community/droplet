@@ -2,7 +2,6 @@ package badger
 
 import (
 	"bytes"
-	"fmt"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -29,9 +28,6 @@ func (r retrievalDealRepo) SaveDeal(deal *types.ProviderDealState) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("save deal ", deal.Identifier(), deal.Status.String())
-
 	return r.ds.Put(statestore.ToKey(deal.Identifier()), b)
 }
 
@@ -50,7 +46,6 @@ func (r retrievalDealRepo) GetDeal(id peer.ID, id2 retrievalmarket.DealID) (*typ
 		return nil, err
 	}
 
-	fmt.Println("get deal ", key.String(), retrievalDeal.Status.String())
 	return &retrievalDeal, nil
 }
 
@@ -59,8 +54,9 @@ func (r retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*ty
 	err := travelDeals(r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
 		if deal.ChannelID != nil && deal.ChannelID.Initiator == chid.Initiator && deal.ChannelID.Responder == chid.Responder && deal.ChannelID.ID == chid.ID {
 			result = deal
+			return true, nil
 		}
-		return true, nil
+		return false, nil
 	})
 	if err != nil {
 		return nil, err

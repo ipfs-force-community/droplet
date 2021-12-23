@@ -263,6 +263,7 @@ func (sdr *storageDealRepo) GetPieceSize(pieceCID cid.Cid) (abi.UnpaddedPieceSiz
 	err := travelDeals(sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
 		if inDeal.ClientDealProposal.Proposal.PieceCID == pieceCID {
 			deal = inDeal
+			return true, nil
 		}
 		return false, nil
 	})

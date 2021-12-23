@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/venus-market/client"
 	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus-market/utils"
 )
 
 //mock for gen
@@ -180,10 +179,11 @@ type MarketClientNode interface {
 	// ClientMinerQueryOffer returns a QueryOffer for the specific miner and file.
 	ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (client.QueryOffer, error) //perm:read
 	// ClientRetrieve initiates the retrieval of a file, as specified in the order.
-	ClientRetrieve(ctx context.Context, order client.RetrievalOrder, ref *client.FileRef) error //perm:admin
-	// ClientRetrieveWithEvents initiates the retrieval of a file, as specified in the order, and provides a channel
-	// of status updates.
-	ClientRetrieveWithEvents(ctx context.Context, order client.RetrievalOrder, ref *client.FileRef) (<-chan utils.RetrievalEvent, error) //perm:admin
+	ClientRetrieve(ctx context.Context, params client.RetrievalOrder) (*client.RestrievalRes, error) //perm:admin
+	// ClientRetrieveWait waits for retrieval to be complete
+	ClientRetrieveWait(ctx context.Context, deal retrievalmarket.DealID) error //perm:admin
+	// ClientExport exports a file stored in the local filestore to a system file
+	ClientExport(ctx context.Context, exportRef client.ExportRef, fileRef client.FileRef) error //perm:admin
 	// ClientListRetrievals returns information about retrievals made by the local client
 	ClientListRetrievals(ctx context.Context) ([]client.RetrievalInfo, error) //perm:write
 	// ClientGetRetrievalUpdates returns status of updated retrieval deals
