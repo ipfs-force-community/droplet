@@ -8,17 +8,21 @@ import (
 	"net/http"
 )
 
-var _ IPieceStorage = (*ClientS3Storage)(nil)
+var _ IPieceStorage = (*PresignS3Storage)(nil)
 
-type ClientS3Storage struct {
+type PresignS3Storage struct {
 	presignUrl IPreSignOp
 }
 
-func (c ClientS3Storage) Type() Protocol {
+func NewPresignS3Storage(presignUrl IPreSignOp) *PresignS3Storage {
+	return &PresignS3Storage{presignUrl: presignUrl}
+}
+
+func (c PresignS3Storage) Type() Protocol {
 	return PreSignS3
 }
 
-func (c ClientS3Storage) SaveTo(ctx context.Context, s string, reader io.Reader) (int64, error) {
+func (c PresignS3Storage) SaveTo(ctx context.Context, s string, reader io.Reader) (int64, error) {
 	counterR := utils.NewCounterBufferReader(reader)
 	writeUrl, err := c.presignUrl.GetWriteUrl(ctx, s)
 	if err != nil {
@@ -39,7 +43,7 @@ func (c ClientS3Storage) SaveTo(ctx context.Context, s string, reader io.Reader)
 	return int64(counterR.Count()), nil
 }
 
-func (c ClientS3Storage) Read(ctx context.Context, s string) (io.ReadCloser, error) {
+func (c PresignS3Storage) Read(ctx context.Context, s string) (io.ReadCloser, error) {
 	readUrl, err := c.presignUrl.GetReadUrl(ctx, s)
 	if err != nil {
 		return nil, err
@@ -56,29 +60,29 @@ func (c ClientS3Storage) Read(ctx context.Context, s string) (io.ReadCloser, err
 	return resp.Body, nil
 }
 
-func (c ClientS3Storage) Len(ctx context.Context, string2 string) (int64, error) {
+func (c PresignS3Storage) Len(ctx context.Context, string2 string) (int64, error) {
 	panic("implement me")
 }
 
-func (c ClientS3Storage) ReadOffset(ctx context.Context, s string, i int, i2 int) (io.ReadCloser, error) {
+func (c PresignS3Storage) ReadOffset(ctx context.Context, s string, i int, i2 int) (io.ReadCloser, error) {
 	panic("implement me")
 }
 
-func (c ClientS3Storage) Has(ctx context.Context, s string) (bool, error) {
+func (c PresignS3Storage) Has(ctx context.Context, s string) (bool, error) {
 	panic("implement me")
 }
 
-func (c ClientS3Storage) Validate(s string) error {
+func (c PresignS3Storage) Validate(s string) error {
 	if c.presignUrl == nil {
 		return fmt.Errorf("client s3 storage must has presign url")
 	}
 	return nil
 }
 
-func (c ClientS3Storage) GetReadUrl(ctx context.Context, s2 string) (string, error) {
+func (c PresignS3Storage) GetReadUrl(ctx context.Context, s2 string) (string, error) {
 	return c.presignUrl.GetReadUrl(ctx, s2)
 }
 
-func (c ClientS3Storage) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
+func (c PresignS3Storage) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
 	return c.presignUrl.GetWriteUrl(ctx, s2)
 }
