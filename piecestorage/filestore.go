@@ -3,6 +3,7 @@ package piecestorage
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
 	xerrors "github.com/pkg/errors"
 	"io"
@@ -115,9 +116,9 @@ func (f fsPieceStorage) GetWriteUrl(ctx context.Context, s2 string) (string, err
 	return path.Join(f.baseUrl, s2), nil
 }
 
-func newFsPieceStorage(baseUlr string) (IPieceStorage, error) {
-	fs := &fsPieceStorage{baseUrl: baseUlr}
-	if err := fs.Validate(baseUlr); err != nil {
+func newFsPieceStorage(fsCfg config.FsPieceStorage) (IPieceStorage, error) {
+	fs := &fsPieceStorage{baseUrl: fsCfg.Path}
+	if err := fs.Validate(fsCfg.Path); err != nil {
 		return nil, err
 	}
 	return fs, nil

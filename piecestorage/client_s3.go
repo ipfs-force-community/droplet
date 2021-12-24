@@ -15,7 +15,7 @@ type ClientS3Storage struct {
 }
 
 func (c ClientS3Storage) Type() Protocol {
-	return ClientS3
+	return PreSignS3
 }
 
 func (c ClientS3Storage) SaveTo(ctx context.Context, s string, reader io.Reader) (int64, error) {

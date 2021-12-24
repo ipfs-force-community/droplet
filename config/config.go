@@ -152,8 +152,13 @@ type DAGStoreConfig struct {
 }
 
 type PieceStorage struct {
-	Fs FsPieceStorage
-	S3 S3PieceStorage
+	Fs        FsPieceStorage
+	S3        S3PieceStorage
+	PreSignS3 PreSignS3PieceStorage
+}
+
+type PreSignS3PieceStorage struct {
+	Enable bool
 }
 
 type FsPieceStorage struct {
