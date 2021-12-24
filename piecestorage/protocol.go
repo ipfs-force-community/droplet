@@ -11,9 +11,12 @@ import (
 
 type Protocol string
 
+type ProtocolParser func(cfg string) (interface{}, error)
+type PieceStorageCtor func(cfg interface{}) (IPieceStorage, error)
+
 type ProtocolResolver struct {
-	Parser      func(cfg string) (interface{}, error)
-	Constructor func(cfg interface{}) (IPieceStorage, error)
+	Parser      ProtocolParser
+	Constructor PieceStorageCtor
 }
 
 const (
@@ -27,7 +30,8 @@ var lk sync.Mutex
 
 func init() {
 	protocolRegistry = map[Protocol]ProtocolResolver{}
-	protocolRegistry[FS] = ProtocolResolver{
+
+	RegisterPieceStorage(FS, ProtocolResolver{
 		Parser: func(cfg string) (interface{}, error) {
 			return config.FsPieceStorage{
 				Enable: true,
@@ -37,21 +41,50 @@ func init() {
 		Constructor: func(cfg interface{}) (IPieceStorage, error) {
 			return newFsPieceStorage(cfg.(config.FsPieceStorage))
 		},
-	}
-	protocolRegistry[S3] = ProtocolResolver{
+	})
+
+	RegisterPieceStorage(S3, ProtocolResolver{
 		Parser: func(cfg string) (interface{}, error) {
 			return ParserS3(cfg)
 		},
 		Constructor: func(cfg interface{}) (IPieceStorage, error) {
 			return newS3PieceStorage(cfg.(config.S3PieceStorage))
 		},
-	}
+	})
+
+	RegisterProtocolParser(PreSignS3, func(cfg string) (interface{}, error) {
+		return config.PreSignS3PieceStorage{Enable: true}, nil
+	})
 }
 
 func RegisterPieceStorage(protocol Protocol, resolver ProtocolResolver) {
 	lk.Lock()
 	defer lk.Unlock()
 	protocolRegistry[protocol] = resolver
+}
+
+func RegisterProtocolParser(protocol Protocol, parser ProtocolParser) {
+	lk.Lock()
+	defer lk.Unlock()
+	resolver, ok := protocolRegistry[protocol]
+	if ok {
+		resolver.Parser = parser
+	}
+	protocolRegistry[protocol] = ProtocolResolver{
+		Parser: parser,
+	}
+}
+
+func RegisterPieceStorageCtor(protocol Protocol, ctor PieceStorageCtor) {
+	lk.Lock()
+	defer lk.Unlock()
+	resolver, ok := protocolRegistry[protocol]
+	if ok {
+		resolver.Constructor = ctor
+	}
+	protocolRegistry[protocol] = ProtocolResolver{
+		Constructor: ctor,
+	}
 }
 
 func GetPieceProtocolResolve(protocol Protocol) (ProtocolResolver, error) {
