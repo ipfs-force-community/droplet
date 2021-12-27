@@ -10,7 +10,7 @@ import (
 )
 
 // EventReceiver is any thing that can receive FSM events
-type TransferProcess interface {
+type IDatatransferHandler interface {
 	//have many receiver function
 	HandleCompleteFor(proposalid cid.Cid) error
 	HandleCancelForDeal(proposalid cid.Cid) error
@@ -25,7 +25,7 @@ type TransferProcess interface {
 // in a storage market deal, then, based on the data transfer event that occurred, it generates
 // and update message for the deal -- either moving to staged for a completion
 // event or moving to error if a data transfer error occurs
-func ProviderDataTransferSubscriber(deals TransferProcess) datatransfer.Subscriber {
+func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Subscriber {
 	return func(event datatransfer.Event, channelState datatransfer.ChannelState) {
 		voucher, ok := channelState.Voucher().(*requestvalidation.StorageDataTransferVoucher)
 		// if this event is for a transfer not related to storage, ignore

@@ -75,8 +75,8 @@ type StorageProviderV2Impl struct {
 	unsubDataTransfer datatransfer.Unsubscribe
 
 	dealStore       repo.StorageDealRepo
-	dealProcess     StorageDealProcess
-	transferProcess TransferProcess
+	dealProcess     StorageDealHandler
+	transferProcess IDatatransferHandler
 	storageReceiver smnet.StorageReceiver
 	minerMgr        minermgr.IAddrMgr
 }

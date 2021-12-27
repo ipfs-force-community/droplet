@@ -32,7 +32,7 @@ type StorageDealStream struct {
 	deals        repo.StorageDealRepo
 	net          network.StorageMarketNetwork
 	fs           filestore.FileStore
-	dealProcess  StorageDealProcess
+	dealProcess  StorageDealHandler
 	mixMsgClient clients.IMixMessage
 }
 
@@ -44,7 +44,7 @@ func NewStorageDealStream(
 	deals repo.StorageDealRepo,
 	net network.StorageMarketNetwork,
 	fs filestore.FileStore,
-	dealProcess StorageDealProcess,
+	dealProcess StorageDealHandler,
 	mixMsgClient clients.IMixMessage,
 ) (network.StorageReceiver, error) {
 

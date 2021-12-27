@@ -41,14 +41,14 @@ import (
 // TODO: These are copied from spec-actors master, use spec-actors exports when we update
 const DealMaxLabelSize = 256
 
-type StorageDealProcess interface {
+type StorageDealHandler interface {
 	AcceptDeal(ctx context.Context, deal *types.MinerDeal) error
 	HandleOff(ctx context.Context, deal *types.MinerDeal) error
 	HandleError(deal *types.MinerDeal, err error) error
 	HandleReject(deal *types.MinerDeal, event storagemarket.StorageDealStatus, err error) error
 }
 
-var _ StorageDealProcess = (*StorageDealProcessImpl)(nil)
+var _ StorageDealHandler = (*StorageDealProcessImpl)(nil)
 
 type StorageDealProcessImpl struct {
 	conns      *connmanager.ConnManager
@@ -80,7 +80,7 @@ func NewStorageDealProcessImpl(
 	pieceStorage piecestorage.IPieceStorage,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
-) (StorageDealProcess, error) {
+) (StorageDealHandler, error) {
 	stores := stores.NewReadWriteBlockstores()
 
 	err := dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{deals}, nil))

@@ -12,24 +12,24 @@ import (
 	"github.com/filecoin-project/venus-market/models/repo"
 )
 
-var _ TransferProcess = (*DataTransferProcess)(nil)
+var _ IDatatransferHandler = (*DataTransferHandler)(nil)
 
-type DataTransferProcess struct {
-	dealProcess StorageDealProcess
+type DataTransferHandler struct {
+	dealProcess StorageDealHandler
 	deals       repo.StorageDealRepo
 }
 
 func NewDataTransferProcess(
-	dealProcess StorageDealProcess,
+	dealProcess StorageDealHandler,
 	deals repo.StorageDealRepo,
-) TransferProcess {
-	return &DataTransferProcess{
+) IDatatransferHandler {
+	return &DataTransferHandler{
 		dealProcess: dealProcess,
 		deals:       deals,
 	}
 }
 
-func (d *DataTransferProcess) HandleCompleteFor(proposalid cid.Cid) error {
+func (d *DataTransferHandler) HandleCompleteFor(proposalid cid.Cid) error {
 	//should never failed
 	ctx := context.TODO()
 	deal, err := d.deals.GetDeal(proposalid)
@@ -45,7 +45,7 @@ func (d *DataTransferProcess) HandleCompleteFor(proposalid cid.Cid) error {
 	return nil
 }
 
-func (d *DataTransferProcess) HandleCancelForDeal(proposalid cid.Cid) error {
+func (d *DataTransferHandler) HandleCancelForDeal(proposalid cid.Cid) error {
 	deal, err := d.deals.GetDeal(proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
@@ -53,7 +53,7 @@ func (d *DataTransferProcess) HandleCancelForDeal(proposalid cid.Cid) error {
 	return d.dealProcess.HandleError(deal, xerrors.Errorf("proposal %v data transfer cancelled", proposalid))
 }
 
-func (d *DataTransferProcess) HandleRestartForDeal(proposalid cid.Cid, channelId datatransfer.ChannelID) error {
+func (d *DataTransferHandler) HandleRestartForDeal(proposalid cid.Cid, channelId datatransfer.ChannelID) error {
 	deal, err := d.deals.GetDeal(proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
@@ -68,7 +68,7 @@ func (d *DataTransferProcess) HandleRestartForDeal(proposalid cid.Cid, channelId
 	return nil
 }
 
-func (d *DataTransferProcess) HandleStalledForDeal(proposalid cid.Cid) error {
+func (d *DataTransferHandler) HandleStalledForDeal(proposalid cid.Cid) error {
 	deal, err := d.deals.GetDeal(proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
@@ -82,7 +82,7 @@ func (d *DataTransferProcess) HandleStalledForDeal(proposalid cid.Cid) error {
 	return nil
 }
 
-func (d *DataTransferProcess) HandleInitForDeal(proposalid cid.Cid, channelId datatransfer.ChannelID) error {
+func (d *DataTransferHandler) HandleInitForDeal(proposalid cid.Cid, channelId datatransfer.ChannelID) error {
 	deal, err := d.deals.GetDeal(proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
@@ -97,7 +97,7 @@ func (d *DataTransferProcess) HandleInitForDeal(proposalid cid.Cid, channelId da
 	return nil
 }
 
-func (d *DataTransferProcess) HandleFailedForDeal(proposalid cid.Cid, reason error) error {
+func (d *DataTransferHandler) HandleFailedForDeal(proposalid cid.Cid, reason error) error {
 	deal, err := d.deals.GetDeal(proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
