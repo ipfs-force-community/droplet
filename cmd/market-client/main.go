@@ -2,9 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/gorilla/mux"
-	"log"
+	logging "github.com/ipfs/go-log/v2"
 	"os"
 
 	metrics2 "github.com/ipfs/go-metrics-interface"
@@ -39,6 +38,7 @@ import (
 )
 
 var ExtractApiKey = builder.NextInvoke()
+var log = logging.Logger("main")
 
 var (
 	RepoFlag = &cli.StringFlag{
@@ -67,12 +67,12 @@ var (
 	}
 
 	SignerUrlFlag = &cli.StringFlag{
-		Name:  "signer-url",
-		Usage: "used to connect signer service for sign",
+		Name:  "wallet-url",
+		Usage: "used to connect wallet service for sign",
 	}
 	SignerTokenFlag = &cli.StringFlag{
-		Name:  "signer-token",
-		Usage: "auth token for connect signer service",
+		Name:  "wallet-token",
+		Usage: "wallet token for connect signer service",
 	}
 
 	DefaultAddressFlag = &cli.StringFlag{
@@ -124,45 +124,44 @@ func main() {
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
-	if cctx.IsSet("repo") {
-		cfg.HomeDir = cctx.String("repo")
+	if cctx.IsSet(RepoFlag.Name) {
+		cfg.HomeDir = cctx.String(RepoFlag.Name)
 	}
 
-	if cctx.IsSet("node-url") {
-		cfg.Node.Url = cctx.String("node-url")
+	if cctx.IsSet(NodeUrlFlag.Name) {
+		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
 	}
 
-	if cctx.IsSet("node-token") {
-		cfg.Node.Token = cctx.String("node-token")
+	if cctx.IsSet(NodeTokenFlag.Name) {
+		cfg.Node.Token = cctx.String(NodeTokenFlag.Name)
 	}
 
-	if cctx.IsSet("messager-url") {
-		if !cctx.IsSet("auth-token") {
+	if cctx.IsSet(MessagerUrlFlag.Name) {
+		if !cctx.IsSet(AuthTokenFlag.Name) {
 			return xerrors.Errorf("the auth-token must be set when connecting to the venus chain service")
 		}
 
-		cfg.Node.Token = cctx.String("auth-token")
-
-		cfg.Messager.Url = cctx.String("messager-url")
-		cfg.Messager.Token = cctx.String("auth-token")
+		cfg.Messager.Url = cctx.String(MessagerUrlFlag.Name)
+		cfg.Messager.Token = cctx.String(AuthTokenFlag.Name)
+		cfg.Node.Token = cctx.String(AuthTokenFlag.Name)
 	}
 
-	if cctx.IsSet("signer-url") {
-		if !cctx.IsSet("signer-token") {
+	if cctx.IsSet(SignerUrlFlag.Name) {
+		if !cctx.IsSet(SignerTokenFlag.Name) {
 			return xerrors.Errorf("signer-url is set, but signer-token is not set")
 		}
 
 		cfg.Signer.SignerType = "wallet"
-		cfg.Signer.Url = cctx.String("signer-url")
-		cfg.Signer.Token = cctx.String("signer-token")
+		cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
+		cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
 	}
 
-	if cctx.IsSet("addr") {
-		addr, err := address.NewFromString(cctx.String("addr"))
+	if cctx.IsSet(DefaultAddressFlag.Name) {
+		addr, err := address.NewFromString(cctx.String(DefaultAddressFlag.Name))
 		if err != nil {
 			return err
 		}
-		fmt.Println("set default address ", addr.String())
+		log.Infof("set default client address %s", addr.String())
 		cfg.DefaultMarketAddress = config.Address(addr)
 	}
 
