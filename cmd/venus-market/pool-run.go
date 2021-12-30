@@ -50,6 +50,7 @@ var poolRunCmd = &cli.Command{
 		PieceStorageFlag,
 		MysqlDsnFlag,
 		MinerListFlag,
+		PaymentAddressFlag,
 	},
 	Action: poolDaemon,
 }

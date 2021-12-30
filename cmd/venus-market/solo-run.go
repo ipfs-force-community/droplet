@@ -43,6 +43,7 @@ var soloRunCmd = &cli.Command{
 		PieceStorageFlag,
 		MysqlDsnFlag,
 		MinerListFlag,
+		PaymentAddressFlag,
 	},
 	Action: soloDaemon,
 }

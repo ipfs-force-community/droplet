@@ -92,6 +92,10 @@ var (
 		Name:  "miner",
 		Usage: "support miner(f01000:jimmy)",
 	}
+	PaymentAddressFlag = &cli.StringFlag{
+		Name:  "payment-addr",
+		Usage: "payment address for receive retrieval address",
+	}
 )
 
 func main() {
@@ -236,6 +240,22 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 				Addr:    config.Address(addr),
 				Account: account,
 			})
+		}
+	}
+
+	if cctx.IsSet(PaymentAddressFlag.Name) {
+		addrStr := strings.Split(cctx.String(PaymentAddressFlag.Name), ":")
+		addr, err := address.NewFromString(addrStr[0])
+		if err != nil {
+			return xerrors.Errorf("flag provide a wrong address %s %w", addrStr, err)
+		}
+		account := ""
+		if len(addrStr) > 2 {
+			account = addrStr[1]
+		}
+		cfg.RetrievalPaymentAddress = config.User{
+			Addr:    config.Address(addr),
+			Account: account,
 		}
 	}
 	return nil

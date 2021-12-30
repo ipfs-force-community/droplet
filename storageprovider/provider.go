@@ -56,22 +56,14 @@ type ProviderNodeAdapter struct {
 	addBalanceSpec              *types3.MsgMeta
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
-	scMgr                       *SectorCommittedManager
+	dealInfo                    *CurrentDealInfoManager
 }
 
 func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, msgClient clients.IMixMessage, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta DealAssiger) StorageProviderNode {
 	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, msgClient clients.IMixMessage, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta DealAssiger) StorageProviderNode {
-		ctx := metrics.LifecycleCtx(mctx, lc)
-
-		ev, err := events.NewEvents(ctx, full)
-		if err != nil {
-			//todo add error return
-			log.Warn(err)
-		}
 		na := &ProviderNodeAdapter{
 			FullNode:        full,
 			msgClient:       msgClient,
-			ev:              ev,
 			dealPublisher:   dealPublisher,
 			dsMatcher:       newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(full))),
 			extendPieceMeta: extendPieceMeta,
@@ -82,7 +74,9 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 			na.maxDealCollateralMultiplier = fc.MaxProviderCollateralMultiplier
 		}
 		na.maxDealCollateralMultiplier = defaultMaxProviderCollateralMultiplier
-		na.scMgr = NewSectorCommittedManager(ev, na, &apiWrapper{api: full})
+		na.dealInfo = &CurrentDealInfoManager{
+			CDAPI: &CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: na},
+		}
 		return na
 	}
 }
@@ -253,22 +247,6 @@ func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, 
 	return bounds.Min, max, nil
 }
 
-// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (n *ProviderNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
-	return n.scMgr.OnDealSectorPreCommitted(ctx, provider, market.DealProposal(proposal), *publishCid, cb)
-}
-
-// TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
-	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, market.DealProposal(proposal), *publishCid, func(err error) {
-		cb(err)
-		_Err := n.extendPieceMeta.UpdateDealStatus(ctx, provider, dealID, "Proving")
-		if _Err != nil {
-			log.Errorw("update deal status %w", _Err)
-		}
-	})
-}
-
 func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
 	head, err := n.ChainHead(ctx)
 	if err != nil {
@@ -304,7 +282,7 @@ func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCi
 		return nil, xerrors.Errorf("WaitForPublishDeals failed to get chain head: %w", err)
 	}
 
-	res, err := n.scMgr.dealInfo.GetCurrentDealInfo(ctx, head.Key(), (*market.DealProposal)(&proposal), publishCid)
+	res, err := n.dealInfo.GetCurrentDealInfo(ctx, head.Key(), (*market.DealProposal)(&proposal), publishCid)
 	if err != nil {
 		return nil, xerrors.Errorf("WaitForPublishDeals getting deal info errored: %w", err)
 	}
@@ -320,95 +298,6 @@ func (n *ProviderNodeAdapter) GetDataCap(ctx context.Context, addr address.Addre
 
 	sp, err := n.StateVerifiedClientStatus(ctx, addr, tsk)
 	return sp, err
-}
-
-func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
-	head, err := n.ChainHead(ctx)
-	if err != nil {
-		return xerrors.Errorf("client: failed to get chain head: %w", err)
-	}
-
-	sd, err := n.StateMarketStorageDeal(ctx, dealID, head.Key())
-	if err != nil {
-		return xerrors.Errorf("client: failed to look up deal %d on chain: %w", dealID, err)
-	}
-
-	// Called immediately to check if the deal has already expired or been slashed
-	checkFunc := func(ctx context.Context, ts *types.TipSet) (done bool, more bool, err error) {
-		if ts == nil {
-			// keep listening for events
-			return false, true, nil
-		}
-
-		// Check if the deal has already expired
-		if sd.Proposal.EndEpoch <= ts.Height() {
-			onDealExpired(nil)
-			return true, false, nil
-		}
-
-		// If there is no deal assume it's already been slashed
-		if sd.State.SectorStartEpoch < 0 {
-			onDealSlashed(ts.Height(), nil)
-			return true, false, nil
-		}
-
-		// No events have occurred yet, so return
-		// done: false, more: true (keep listening for events)
-		return false, true, nil
-	}
-
-	// Called when there was a match against the state change we're looking for
-	// and the chain has advanced to the confidence height
-	stateChanged := func(ts *types.TipSet, ts2 *types.TipSet, states events.StateChange, h abi.ChainEpoch) (more bool, err error) {
-		// Check if the deal has already expired
-		if ts2 == nil || sd.Proposal.EndEpoch <= ts2.Height() {
-			onDealExpired(nil)
-			return false, nil
-		}
-
-		// Timeout waiting for state change
-		if states == nil {
-			log.Error("timed out waiting for deal expiry")
-			return false, nil
-		}
-
-		changedDeals, ok := states.(state.ChangedDeals)
-		if !ok {
-			panic("Expected state.ChangedDeals")
-		}
-
-		deal, ok := changedDeals[dealID]
-		if !ok {
-			// No change to deal
-			return true, nil
-		}
-
-		// Deal was slashed
-		if deal.To == nil {
-			onDealSlashed(ts2.Height(), nil)
-			return false, nil
-		}
-
-		return true, nil
-	}
-
-	// Called when there was a chain reorg and the state change was reverted
-	revert := func(ctx context.Context, ts *types.TipSet) error {
-		// TODO: Is it ok to just ignore this?
-		log.Warn("deal state reverted; TODO: actually handle this!")
-		return nil
-	}
-
-	// Watch for state changes to the deal
-	match := n.dsMatcher.matcher(ctx, dealID)
-
-	// Wait until after the end epoch for the deal and then timeout
-	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1
-	if err := n.ev.StateChanged(checkFunc, stateChanged, revert, int(constants.MessageConfidence)+1, timeout, match); err != nil {
-		return xerrors.Errorf("failed to set up state changed handler: %w", err)
-	}
-
-	return nil
 }
 
 func (n *ProviderNodeAdapter) SearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
@@ -450,15 +339,6 @@ type StorageProviderNode interface {
 
 	// DealProviderCollateralBounds returns the min and max collateral a storage provider can issue.
 	DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error)
-
-	// OnDealSectorPreCommitted waits for a deal's sector to be pre-committed
-	OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error
-
-	// OnDealSectorCommitted waits for a deal's sector to be sealed and proved, indicating the deal is active
-	OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error
-
-	// OnDealExpiredOrSlashed registers callbacks to be called when the deal expires or is slashed
-	OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error
 
 	// PublishDeals publishes a deal on chain, returns the message cid, but does not wait for message to appear
 	PublishDeals(ctx context.Context, deal types2.MinerDeal) (cid.Cid, error)
