@@ -233,7 +233,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 				return xerrors.Errorf("flag provide a wrong address %s %w", addrStr, err)
 			}
 			account := ""
-			if len(addrStr) > 2 {
+			if len(addrStr) >= 2 {
 				account = addrStr[1]
 			}
 			cfg.StorageMiners = append(cfg.StorageMiners, config.User{
@@ -250,7 +250,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 			return xerrors.Errorf("flag provide a wrong address %s %w", addrStr, err)
 		}
 		account := ""
-		if len(addrStr) > 2 {
+		if len(addrStr) >= 2 {
 			account = addrStr[1]
 		}
 		cfg.RetrievalPaymentAddress = config.User{
