@@ -92,6 +92,10 @@ var (
 		Name:  "miner",
 		Usage: "support miner(f01000:jimmy)",
 	}
+	PaymentAddressFlag = &cli.StringFlag{
+		Name:  "payment-addr",
+		Usage: "payment address for receive retrieval address",
+	}
 )
 
 func main() {
@@ -157,58 +161,58 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
-	if cctx.IsSet("repo") {
-		cfg.HomeDir = cctx.String("repo")
+	if cctx.IsSet(RepoFlag.Name) {
+		cfg.HomeDir = cctx.String(RepoFlag.Name)
 	}
 
-	if cctx.IsSet("node-url") {
-		cfg.Node.Url = cctx.String("node-url")
+	if cctx.IsSet(NodeUrlFlag.Name) {
+		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
 	}
 
-	if cctx.IsSet("messager-url") {
-		cfg.Messager.Url = cctx.String("messager-url")
+	if cctx.IsSet(MessagerUrlFlag.Name) {
+		cfg.Messager.Url = cctx.String(MessagerUrlFlag.Name)
 	}
 
-	if cctx.IsSet("auth-url") {
-		cfg.AuthNode.Url = cctx.String("auth-url")
+	if cctx.IsSet(AuthUrlFlag.Name) {
+		cfg.AuthNode.Url = cctx.String(AuthUrlFlag.Name)
 	}
 
-	if cctx.IsSet("signer-type") {
-		cfg.Signer.SignerType = cctx.String("signer-type")
+	if cctx.IsSet(SignerTypeFlag.Name) {
+		cfg.Signer.SignerType = cctx.String(SignerTypeFlag.Name)
 	}
 
-	if cctx.IsSet("signer-url") {
-		cfg.Signer.Url = cctx.String("signer-url")
+	if cctx.IsSet(SignerUrlFlag.Name) {
+		cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
 	}
 
-	if cctx.IsSet("auth-token") {
-		cfg.Node.Token = cctx.String("auth-token")
+	if cctx.IsSet(AuthTokeFlag.Name) {
+		cfg.Node.Token = cctx.String(AuthTokeFlag.Name)
 
 		if len(cfg.AuthNode.Url) > 0 {
-			cfg.AuthNode.Token = cctx.String("auth-token")
+			cfg.AuthNode.Token = cctx.String(AuthTokeFlag.Name)
 		}
 
 		if len(cfg.Messager.Url) > 0 {
-			cfg.Messager.Token = cctx.String("auth-token")
+			cfg.Messager.Token = cctx.String(AuthTokeFlag.Name)
 		}
 
 		if cfg.Signer.SignerType == "gateway" {
-			cfg.Signer.Token = cctx.String("auth-token")
+			cfg.Signer.Token = cctx.String(AuthTokeFlag.Name)
 		}
 	}
 
-	if cctx.IsSet("node-token") {
-		cfg.Node.Token = cctx.String("node-token")
+	if cctx.IsSet(NodeTokenFlag.Name) {
+		cfg.Node.Token = cctx.String(NodeTokenFlag.Name)
 	}
-	if cctx.IsSet("messager-token") {
-		cfg.Messager.Token = cctx.String("messager-token")
+	if cctx.IsSet(MessagerTokenFlag.Name) {
+		cfg.Messager.Token = cctx.String(MessagerTokenFlag.Name)
 	}
-	if cctx.IsSet("signer-token") {
-		cfg.Signer.Token = cctx.String("signer-token")
+	if cctx.IsSet(SignerTokenFlag.Name) {
+		cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
 	}
 
-	if cctx.IsSet("piecestorage") {
-		pieceStorage, err := piecestorage.ParserProtocol(cctx.String("piecestorage"))
+	if cctx.IsSet(PieceStorageFlag.Name) {
+		pieceStorage, err := piecestorage.ParserProtocol(cctx.String(PieceStorageFlag.Name))
 		if err != nil {
 			return err
 		}
@@ -216,12 +220,12 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		cfg.PieceStorage = pieceStorage
 	}
 
-	if cctx.IsSet("mysql-dsn") {
-		cfg.Mysql.ConnectionString = cctx.String("mysql-dsn")
+	if cctx.IsSet(MysqlDsnFlag.Name) {
+		cfg.Mysql.ConnectionString = cctx.String(MysqlDsnFlag.Name)
 	}
 
-	if cctx.IsSet("miner") {
-		addrStrs := cctx.StringSlice("miner")
+	if cctx.IsSet(MinerListFlag.Name) {
+		addrStrs := cctx.StringSlice(MinerListFlag.Name)
 		for _, miners := range addrStrs {
 			addrStr := strings.Split(miners, ":")
 			addr, err := address.NewFromString(addrStr[0])
@@ -229,13 +233,29 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 				return xerrors.Errorf("flag provide a wrong address %s %w", addrStr, err)
 			}
 			account := ""
-			if len(addrStr) > 2 {
+			if len(addrStr) >= 2 {
 				account = addrStr[1]
 			}
 			cfg.StorageMiners = append(cfg.StorageMiners, config.User{
 				Addr:    config.Address(addr),
 				Account: account,
 			})
+		}
+	}
+
+	if cctx.IsSet(PaymentAddressFlag.Name) {
+		addrStr := strings.Split(cctx.String(PaymentAddressFlag.Name), ":")
+		addr, err := address.NewFromString(addrStr[0])
+		if err != nil {
+			return xerrors.Errorf("flag provide a wrong address %s %w", addrStr, err)
+		}
+		account := ""
+		if len(addrStr) >= 2 {
+			account = addrStr[1]
+		}
+		cfg.RetrievalPaymentAddress = config.User{
+			Addr:    config.Address(addr),
+			Account: account,
 		}
 	}
 	return nil

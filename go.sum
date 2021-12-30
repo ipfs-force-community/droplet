@@ -311,7 +311,6 @@ github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03/go.mod 
 github.com/filecoin-project/go-data-transfer v1.0.1/go.mod h1:UxvfUAY9v3ub0a21BSK9u3pB2aq30Y0KMsG+w9/ysyo=
 github.com/filecoin-project/go-data-transfer v1.2.7/go.mod h1:mvjZ+C3NkBX10JP4JMu27DCjUouHFjHwUGh+Xc4yvDA=
 github.com/filecoin-project/go-data-transfer v1.5.0/go.mod h1:E3WW4mCEYwU2y65swPEajSZoFWFmfXt7uwGduoACZQc=
-github.com/filecoin-project/go-data-transfer v1.10.0/go.mod h1:uQtqy6vUAY5v70ZHdkF5mJ8CjVtjj/JA3aOoaqzWTVw=
 github.com/filecoin-project/go-data-transfer v1.10.1/go.mod h1:CSDMCrPK2lVGodNB1wPEogjFvM9nVGyiL1GNbBRTSdw=
 github.com/filecoin-project/go-data-transfer v1.11.4 h1:jKvlx0/C8HSyLRn/G1P9TjtfBtFU9jbCvCVFmWbyYVQ=
 github.com/filecoin-project/go-data-transfer v1.11.4/go.mod h1:2MitLI0ebCkLlPKM7NRggP/t9d+gCcREUKkCKqWRCwU=
@@ -325,8 +324,8 @@ github.com/filecoin-project/go-fil-commp-hashhash v0.1.0 h1:imrrpZWEHRnNqqv0tN7L
 github.com/filecoin-project/go-fil-commp-hashhash v0.1.0/go.mod h1:73S8WSEWh9vr0fDJVnKADhfIv/d6dCbAGaAGWbdJEI8=
 github.com/filecoin-project/go-fil-markets v1.0.5-0.20201113164554-c5eba40d5335/go.mod h1:AJySOJC00JRWEZzRG2KsfUnqEf5ITXxeX09BE9N4f9c=
 github.com/filecoin-project/go-fil-markets v1.1.9/go.mod h1:0yQu5gvrjFoAIyzPSSJ+xUdCG83vjInAFbTswIB5/hk=
-github.com/filecoin-project/go-fil-markets v1.12.0 h1:RpU5bLaMADVrU4CgLxKMGHC2ZUocNV35uINxogQCf00=
-github.com/filecoin-project/go-fil-markets v1.12.0/go.mod h1:XuuZFaFujI47nrgfQJiq7jWB+6rRya6nm7Sj6uXQ80U=
+github.com/filecoin-project/go-fil-markets v1.13.3 h1:iMCpG7I4fb+YLcgDnMaqZiZiyFZWNvrwHqiFPHB0/tQ=
+github.com/filecoin-project/go-fil-markets v1.13.3/go.mod h1:38zuj8AgDvOfdakFLpC/syYIYgXTzkq7xqBJ6T1AuG4=
 github.com/filecoin-project/go-hamt-ipld v0.1.5 h1:uoXrKbCQZ49OHpsTCkrThPNelC4W3LPEk0OrS/ytIBM=
 github.com/filecoin-project/go-hamt-ipld v0.1.5/go.mod h1:6Is+ONR5Cd5R6XZoCse1CWaXZc0Hdb/JeX+EQCQzX24=
 github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 h1:b3UDemBYN2HNfk3KOXNuxgTTxlWi3xVvbQP0IT38fvM=
@@ -792,7 +791,6 @@ github.com/ipfs/go-graphsync v0.4.2/go.mod h1:/VmbZTUdUMTbNkgzAiCEucIIAU3BkLE2cZ
 github.com/ipfs/go-graphsync v0.4.3/go.mod h1:mPOwDYv128gf8gxPFgXnz4fNrSYPsWyqisJ7ych+XDY=
 github.com/ipfs/go-graphsync v0.5.2/go.mod h1:e2ZxnClqBBYAtd901g9vXMJzS47labjAtOzsWtOzKNk=
 github.com/ipfs/go-graphsync v0.6.1/go.mod h1:e2ZxnClqBBYAtd901g9vXMJzS47labjAtOzsWtOzKNk=
-github.com/ipfs/go-graphsync v0.9.0/go.mod h1:J62ahWT9JbPsFL2UWsUM5rOu0lZJ0LOIH1chHdxGGcw=
 github.com/ipfs/go-graphsync v0.9.1/go.mod h1:J62ahWT9JbPsFL2UWsUM5rOu0lZJ0LOIH1chHdxGGcw=
 github.com/ipfs/go-graphsync v0.10.0 h1:VXljS1ETYp1GmAJ6N45hlcKO+tlvPFUzz3xzEQ0jMbM=
 github.com/ipfs/go-graphsync v0.10.0/go.mod h1:cKIshzTaa5rCZjryH5xmSKZVGX9uk1wvwGvz2WEha5Y=
