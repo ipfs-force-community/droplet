@@ -481,7 +481,7 @@ func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose 
 	w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
 
 	if verbose {
-		_, _ = fmt.Fprintf(w, "Creation\tVerified\tProposalCid\tDealId\tState\tClient\tProvider\tSize\tPrice\tDuration\tTransferChannelID\tPublishCid\tMessage\n")
+		_, _ = fmt.Fprintf(w, "Creation\tVerified\tProposalCid\tDealId\tState\tClient\tProvider\tSize\tPrice\tDuration\tTransferChannelID\tAddFundCid\tPublishCid\tMessage\n")
 	} else {
 		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tProvider\tSize\tPrice\tDuration\n")
 	}
@@ -505,12 +505,18 @@ func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose 
 				tchid = deal.TransferChannelId.String()
 			}
 
+			addFundcid := ""
+			if deal.AddFundsCid != nil {
+				addFundcid = deal.AddFundsCid.String()
+			}
+
 			pubcid := ""
 			if deal.PublishCid != nil {
 				pubcid = deal.PublishCid.String()
 			}
 
 			_, _ = fmt.Fprintf(w, "\t%s", tchid)
+			_, _ = fmt.Fprintf(w, "\t%s", addFundcid)
 			_, _ = fmt.Fprintf(w, "\t%s", pubcid)
 			_, _ = fmt.Fprintf(w, "\t%s", deal.Message)
 		}
