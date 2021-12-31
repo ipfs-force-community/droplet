@@ -195,7 +195,10 @@ var retrievalSetAskCmd = &cli.Command{
 			Usage:       "Set the payment interval increase (in bytes) for retrieval",
 			DefaultText: "1MiB",
 		},
-		requiredMinerFlag,
+		&cli.StringFlag{
+			Name:     "payment-addr",
+			Required: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := DaemonContext(cctx)
