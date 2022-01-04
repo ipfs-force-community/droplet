@@ -77,7 +77,7 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Unsign
 		if err != nil {
 			return cid.Undef, err
 		}
-		sig, err := msgClient.signer.WalletSign(ctx, estimatedMsg.From, storageBlock.Cid().Bytes(), wallet.MsgMeta{
+		sig, err := msgClient.full.WalletSign(ctx, estimatedMsg.From, storageBlock.Cid().Bytes(), wallet.MsgMeta{
 			Type:  wallet.MTChainMsg,
 			Extra: storageBlock.RawData(),
 		})
