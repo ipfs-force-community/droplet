@@ -61,6 +61,11 @@ var (
 		Usage: "url to connect the venus-messager service of the chain service layer",
 	}
 
+	MessagerTokenFlag = &cli.StringFlag{
+		Name:  "messager-token",
+		Usage: "messager token",
+	}
+
 	AuthTokenFlag = &cli.StringFlag{
 		Name:  "auth-token",
 		Usage: "token used to connect venus chain service components, eg. venus-meassger, venus",
@@ -108,6 +113,7 @@ func main() {
 					NodeUrlFlag,
 					NodeTokenFlag,
 					MessagerUrlFlag,
+					MessagerTokenFlag,
 					AuthTokenFlag,
 					SignerUrlFlag,
 					SignerTokenFlag,
@@ -132,18 +138,25 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
 	}
 
-	if cctx.IsSet(NodeTokenFlag.Name) {
-		cfg.Node.Token = cctx.String(NodeTokenFlag.Name)
-	}
-
 	if cctx.IsSet(MessagerUrlFlag.Name) {
 		if !cctx.IsSet(AuthTokenFlag.Name) {
 			return xerrors.Errorf("the auth-token must be set when connecting to the venus chain service")
 		}
 
 		cfg.Messager.Url = cctx.String(MessagerUrlFlag.Name)
+	}
+
+	if cctx.IsSet(AuthTokenFlag.Name) {
 		cfg.Messager.Token = cctx.String(AuthTokenFlag.Name)
 		cfg.Node.Token = cctx.String(AuthTokenFlag.Name)
+	}
+
+	if cctx.IsSet(NodeTokenFlag.Name) {
+		cfg.Node.Token = cctx.String(NodeTokenFlag.Name)
+	}
+
+	if cctx.IsSet(MessagerTokenFlag.Name) {
+		cfg.Messager.Token = cctx.String(MessagerTokenFlag.Name)
 	}
 
 	if cctx.IsSet(SignerUrlFlag.Name) {

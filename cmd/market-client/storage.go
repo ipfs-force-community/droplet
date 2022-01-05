@@ -943,7 +943,11 @@ uiLoop:
 					state = "miner"
 					continue uiLoop
 				}
-
+				if mi.PeerId != nil {
+					printErr(xerrors.Errorf("not set peer id for miner"))
+					state = "miner"
+					continue uiLoop
+				}
 				a, err := api.ClientQueryAsk(ctx, *mi.PeerId, maddr)
 				if err != nil {
 					printErr(xerrors.Errorf("failed to query ask: %w", err))

@@ -269,7 +269,11 @@ var actorInfoCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("peers:", minfo.PeerId.String())
+		peerIdStr := ""
+		if minfo.PeerId != nil {
+			peerIdStr = minfo.PeerId.String()
+		}
+		fmt.Println("peers:", peerIdStr)
 		fmt.Println("addr:")
 		for _, addrBytes := range minfo.Multiaddrs {
 			addr, err := ma.NewMultiaddrBytes(addrBytes)
