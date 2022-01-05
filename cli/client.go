@@ -6,11 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/lotus/build"
-	api2 "github.com/filecoin-project/venus-market/api"
-	"github.com/filecoin-project/venus-market/client"
-	"github.com/filecoin-project/venus-market/imports"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"io"
 	"math"
 	"math/rand"
@@ -28,7 +23,6 @@ import (
 	"github.com/chzyer/readline"
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -36,9 +30,9 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -48,6 +42,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/types"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
 	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+
+	api2 "github.com/filecoin-project/venus-market/api"
+	"github.com/filecoin-project/venus-market/client"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/imports"
+	"github.com/filecoin-project/venus/app/client/apiface"
 )
 
 var CidBaseFlag = cli.StringFlag{
@@ -404,11 +404,11 @@ The minimum value is 518400 (6 months).`,
 			provCol = pc
 		}
 
-		if abi.ChainEpoch(dur) < build.MinDealDuration {
-			return xerrors.Errorf("minimum deal duration is %d blocks", build.MinDealDuration)
+		if abi.ChainEpoch(dur) < config.MinDealDuration {
+			return xerrors.Errorf("minimum deal duration is %d blocks", config.MinDealDuration)
 		}
-		if abi.ChainEpoch(dur) > build.MaxDealDuration {
-			return xerrors.Errorf("maximum deal duration is %d blocks", build.MaxDealDuration)
+		if abi.ChainEpoch(dur) > config.MaxDealDuration {
+			return xerrors.Errorf("maximum deal duration is %d blocks", config.MaxDealDuration)
 		}
 
 		var a address.Address
@@ -622,13 +622,13 @@ uiLoop:
 				continue
 			}
 
-			if days < int(build.MinDealDuration/builtin.EpochsInDay) {
-				printErr(xerrors.Errorf("minimum duration is %d days", int(build.MinDealDuration/builtin.EpochsInDay)))
+			if days < int(config.MinDealDuration/builtin.EpochsInDay) {
+				printErr(xerrors.Errorf("minimum duration is %d days", int(config.MinDealDuration/builtin.EpochsInDay)))
 				continue
 			}
 
 			dur = 24 * time.Hour * time.Duration(days)
-			epochs = abi.ChainEpoch(dur / (time.Duration(build.BlockDelaySecs) * time.Second))
+			epochs = abi.ChainEpoch(dur / (time.Duration(config.BlockDelaySecs) * time.Second))
 
 			state = "verified"
 		case "verified":
