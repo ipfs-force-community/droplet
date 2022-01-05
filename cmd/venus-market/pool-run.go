@@ -85,7 +85,7 @@ func poolDaemon(cctx *cli.Context) error {
 		//clients
 		clients.ClientsOpts(true, "pool", &cfg.Messager, &cfg.Signer),
 		models.DBOptions(true, &cfg.Mysql),
-		network.NetworkOpts(true, cfg.SimultaneousTransfers),
+		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),
 		piecestorage.PieceStorageOpts(cfg),
 		fundmgr.FundMgrOpts,
 		dagstore.DagstoreOpts,

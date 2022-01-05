@@ -226,8 +226,17 @@ type MarketConfig struct {
 	// as a multiplier of the minimum collateral bound
 	MaxProviderCollateralMultiplier uint64
 
-	// The maximum number of parallel online data transfers (piecestorage+retrieval)
-	SimultaneousTransfers uint64
+	// The maximum number of parallel online data transfers for storage deals
+	SimultaneousTransfersForStorage uint64
+	// The maximum number of simultaneous data transfers from any single client
+	// for storage deals.
+	// Unset by default (0), and values higher than SimultaneousTransfersForStorage
+	// will have no effect; i.e. the total number of simultaneous data transfers
+	// across all storage clients is bound by SimultaneousTransfersForStorage
+	// regardless of this number.
+	SimultaneousTransfersForStoragePerClient uint64
+	// The maximum number of parallel online data transfers for retrieval deals
+	SimultaneousTransfersForRetrieval uint64
 
 	// A command used for fine-grained evaluation of piecestorage deals
 	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
@@ -253,8 +262,9 @@ type MarketClientConfig struct {
 	Market Market // reserve
 
 	// The maximum number of parallel online data transfers (piecestorage+retrieval)
-	SimultaneousTransfers uint64
-	DefaultMarketAddress  Address
+	SimultaneousTransfersForRetrieval uint64
+	SimultaneousTransfersForStorage   uint64
+	DefaultMarketAddress              Address
 }
 
 var _ encoding.TextMarshaler = (*Duration)(nil)

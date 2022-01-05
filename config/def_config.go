@@ -78,7 +78,9 @@ var DefaultMarketConfig = &MarketConfig{
 	MaxDealsPerPublishMsg:           8,
 	MaxProviderCollateralMultiplier: 2,
 
-	SimultaneousTransfers: DefaultSimultaneousTransfers,
+	SimultaneousTransfersForRetrieval:        DefaultSimultaneousTransfers,
+	SimultaneousTransfersForStoragePerClient: DefaultSimultaneousTransfers,
+	SimultaneousTransfersForStorage:          DefaultSimultaneousTransfers,
 
 	RetrievalPricing: &RetrievalPricing{
 		Strategy: RetrievalPricingDefaultMode,
@@ -122,6 +124,7 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		Url:   "", // "/ip4/<ip>/tcp/39812",
 		Token: "",
 	},
-	DefaultMarketAddress:  Address(address.Undef),
-	SimultaneousTransfers: DefaultSimultaneousTransfers,
+	DefaultMarketAddress:              Address(address.Undef),
+	SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
+	SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
 }

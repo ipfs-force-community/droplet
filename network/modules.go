@@ -26,7 +26,7 @@ var (
 	StartListeningKey    = builder.NextInvoke()
 )
 
-var NetworkOpts = func(server bool, simultaneousTransfers uint64) builder.Option {
+var NetworkOpts = func(server bool, simultaneousTransfersForRetrieval, simultaneousTransfersForStoragePerClient, simultaneousTransfersForStorage uint64) builder.Option {
 	opts := builder.Options(
 		builder.Override(new(host.Host), Host),
 		//libp2p
@@ -44,11 +44,12 @@ var NetworkOpts = func(server bool, simultaneousTransfers uint64) builder.Option
 	)
 	if server {
 		return builder.Options(opts,
-			builder.Override(new(StagingGraphsync), NewStagingGraphsync(simultaneousTransfers)),
+			builder.Override(new(StagingGraphsync), NewStagingGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfersForStoragePerClient, simultaneousTransfersForStorage)),
 		)
 	} else {
 		return builder.Options(opts,
-			builder.Override(new(Graphsync), NewGraphsync(simultaneousTransfers)),
+			// retrieval/storage reverse for server/client
+			builder.Override(new(Graphsync), NewGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfersForStorage)),
 		)
 	}
 }

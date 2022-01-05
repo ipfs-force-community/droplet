@@ -79,7 +79,7 @@ func soloDaemon(cctx *cli.Context) error {
 		//clients
 		clients.ClientsOpts(true, "solo", &cfg.Messager, &cfg.Signer),
 		models.DBOptions(true, &cfg.Mysql),
-		network.NetworkOpts(true, cfg.SimultaneousTransfers),
+		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),
 		piecestorage.PieceStorageOpts(cfg),
 		fundmgr.FundMgrOpts,
 		dagstore.DagstoreOpts,
