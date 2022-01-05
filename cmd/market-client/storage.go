@@ -943,7 +943,7 @@ uiLoop:
 					state = "miner"
 					continue uiLoop
 				}
-				if mi.PeerId != nil {
+				if mi.PeerId == nil {
 					printErr(xerrors.Errorf("not set peer id for miner"))
 					state = "miner"
 					continue uiLoop
