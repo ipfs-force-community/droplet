@@ -7,7 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/filecoin-project/go-fil-markets/stores"
+	"golang.org/x/xerrors"
+
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
@@ -19,9 +20,10 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
-	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/go-fil-markets/stores"
+
+	"github.com/filecoin-project/venus-market/config"
 )
 
 func unixFSCidBuilder() (cid.Builder, error) {
@@ -132,14 +134,14 @@ func buildUnixFS(ctx context.Context, reader io.Reader, into bstore.Blockstore, 
 	bufdag := ipld.NewBufferedDAG(ctx, dags)
 
 	params := ihelper.DagBuilderParams{
-		Maxlinks:   build.UnixfsLinksPerLevel,
+		Maxlinks:   config.UnixfsLinksPerLevel,
 		RawLeaves:  true,
 		CidBuilder: b,
 		Dagserv:    bufdag,
 		NoCopy:     filestore,
 	}
 
-	db, err := params.New(chunker.NewSizeSplitter(reader, int64(build.UnixfsChunkSize)))
+	db, err := params.New(chunker.NewSizeSplitter(reader, int64(config.UnixfsChunkSize)))
 	if err != nil {
 		return cid.Undef, err
 	}
