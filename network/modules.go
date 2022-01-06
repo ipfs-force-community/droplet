@@ -1,13 +1,11 @@
 package network
 
 import (
+	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
-
-	"github.com/ipfs-force-community/venus-common-utils/builder"
 )
 
 //nolint:golint
@@ -33,7 +31,7 @@ var NetworkOpts = func(server bool, simultaneousTransfersForRetrieval, simultane
 		builder.Override(new(crypto.PrivKey), PrivKey),
 		builder.Override(new(crypto.PubKey), crypto.PrivKey.GetPublic),
 		builder.Override(new(peer.ID), peer.IDFromPublicKey),
-		builder.Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
+		builder.Override(new(peerstore.Peerstore), NewPeerstore),
 		builder.Override(PstoreAddSelfKeysKey, PstoreAddSelfKeys),
 		builder.Override(StartListeningKey, StartListening),
 		builder.Override(AddrsFactoryKey, AddrsFactory),

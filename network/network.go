@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	p2pbhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	mafilter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
@@ -62,6 +63,11 @@ func simpleOpt(opt libp2p.Option) func() (opts Libp2pOpts, err error) {
 		opts.Opts = append(opts.Opts, opt)
 		return
 	}
+}
+
+// There are no 'pstoremem.Option' provider, so wrap it for not asking 'options'.
+func NewPeerstore() (peerstore.Peerstore, error) {
+	return pstoremem.NewPeerstore()
 }
 
 func PstoreAddSelfKeys(id peer.ID, sk crypto.PrivKey, ps peerstore.Peerstore) error {

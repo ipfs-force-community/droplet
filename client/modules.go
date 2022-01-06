@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"github.com/filecoin-project/venus-market/models/badger"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"os"
 	"path/filepath"
 	"time"
@@ -60,7 +61,7 @@ func RetrievalResolver(l *discoveryimpl.Local) discovery.PeerResolver {
 	return discoveryimpl.Multi(l)
 }
 
-func NewClientImportMgr(ctx context.Context, ns badger.ImportClientDS, r *config.HomeDir) (ClientImportMgr, error) {
+func NewClientImportMgr(ctx metrics.MetricsCtx, ns badger.ImportClientDS, r *config.HomeDir) (ClientImportMgr, error) {
 	// store the imports under the repo's `imports` subdirectory.
 	dir := filepath.Join(string(*r), "imports")
 	if err := os.MkdirAll(dir, 0755); err != nil {
