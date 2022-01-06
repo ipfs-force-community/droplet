@@ -2,11 +2,12 @@ package test_helper
 
 import (
 	"flag"
+	"github.com/filecoin-project/venus/pkg/testhelpers"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // use "go test ..." with suffix '-local=true' to set 'local' args
@@ -31,13 +32,13 @@ func LocalTest(t *testing.T) {
 func MakeTestBlock(t *testing.T) *types.BlockHeader {
 	addrGetter := address.NewForTestGetter()
 	minerAddr := addrGetter()
-	mockCid := types.CidFromString(t, "mock")
-	c1 := types.CidFromString(t, "a")
-	s1 := types.CidFromString(t, "state1")
+	mockCid := testhelpers.CidFromString(t, "mock")
+	c1 := testhelpers.CidFromString(t, "a")
+	s1 := testhelpers.CidFromString(t, "state1")
 	var h1 abi.ChainEpoch = 1
-	return &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c1), ParentStateRoot: s1, Height: h1}
+	return &types.BlockHeader{Miner: minerAddr, Messages: mockCid, ParentMessageReceipts: mockCid, Parents: types.NewTipSetKey(c1).Cids(), ParentStateRoot: s1, Height: h1}
 }
 
 func MakeTestTipset(t *testing.T) *types.TipSet {
-	return types.RequireNewTipSet(t, MakeTestBlock(t))
+	return testhelpers.RequireNewTipSet(t, MakeTestBlock(t))
 }

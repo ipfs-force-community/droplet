@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
@@ -25,16 +26,16 @@ func NewStorageDealRepo(ds StorageDealsDS) *storageDealRepo {
 	return &storageDealRepo{ds}
 }
 
-func (sdr *storageDealRepo) SaveDeal(storageDeal *types.MinerDeal) error {
+func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.MinerDeal) error {
 	b, err := cborrpc.Dump(storageDeal)
 	if err != nil {
 		return err
 	}
-	return sdr.ds.Put(statestore.ToKey(storageDeal.ProposalCid), b)
+	return sdr.ds.Put(ctx, statestore.ToKey(storageDeal.ProposalCid), b)
 }
 
-func (sdr *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
-	value, err := sdr.ds.Get(statestore.ToKey(proposalCid))
+func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error) {
+	value, err := sdr.ds.Get(ctx, statestore.ToKey(proposalCid))
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +47,11 @@ func (sdr *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, erro
 	return &deal, nil
 }
 
-func (sdr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
 	var startIdx, idx = pageIndex * pageSize, 0
 	var storageDeals []*types.MinerDeal
 	var err error
-	if err = travelDeals(sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
+	if err = travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
 		if deal.ClientDealProposal.Proposal.Provider != miner {
 			return
 		}
@@ -74,7 +75,7 @@ func (sdr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize 
 	return storageDeals, err
 }
 
-func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(ctx context.Context, piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	filter := map[storagemarket.StorageDealStatus]struct{}{}
 	for _, status := range statues {
 		filter[status] = struct{}{}
@@ -82,7 +83,7 @@ func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 
 	var storageDeals []*types.MinerDeal
 	var err error
-	if err = travelDeals(sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
+	if err = travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
 		if deal.ClientDealProposal.Proposal.PieceCID != piececid {
 			return
 		}
@@ -104,7 +105,7 @@ func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 	return storageDeals, err
 }
 
-func (sdr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr address.Address, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	filter := map[storagemarket.StorageDealStatus]struct{}{}
 	for _, status := range statues {
 		filter[status] = struct{}{}
@@ -112,7 +113,7 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, statues
 
 	var storageDeals []*types.MinerDeal
 	var err error
-	if err = travelDeals(sdr.ds,
+	if err = travelDeals(ctx, sdr.ds,
 		func(deal *types.MinerDeal) (stop bool, err error) {
 			if deal.ClientDealProposal.Proposal.Provider == addr {
 				if _, ok := filter[deal.State]; !ok {
@@ -132,18 +133,18 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, statues
 	return storageDeals, err
 }
 
-func (sdr *storageDealRepo) UpdateDealStatus(proposalCid cid.Cid, status storagemarket.StorageDealStatus) error {
-	deal, err := sdr.GetDeal(proposalCid)
+func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus) error {
+	deal, err := sdr.GetDeal(ctx, proposalCid)
 	if err != nil {
 		return err
 	}
 	deal.State = status
-	return sdr.SaveDeal(deal)
+	return sdr.SaveDeal(ctx, deal)
 }
 
-func (sdr *storageDealRepo) ListDealByAddr(miner address.Address) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) ListDealByAddr(ctx context.Context, miner address.Address) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
-	if err := travelDeals(sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
+	if err := travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
 		if deal.ClientDealProposal.Proposal.Provider == miner {
 			storageDeals = append(storageDeals, deal)
 		}
@@ -155,9 +156,9 @@ func (sdr *storageDealRepo) ListDealByAddr(miner address.Address) ([]*types.Mine
 	return storageDeals, nil
 }
 
-func (sdr *storageDealRepo) ListDeal() ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) ListDeal(ctx context.Context) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
-	if err := travelDeals(sdr.ds, func(deal *types.MinerDeal) (bool, error) {
+	if err := travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (bool, error) {
 		storageDeals = append(storageDeals, deal)
 		return false, nil
 	}); err != nil {
@@ -166,13 +167,13 @@ func (sdr *storageDealRepo) ListDeal() ([]*types.MinerDeal, error) {
 	return storageDeals, nil
 }
 
-func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
+func (m *storageDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
 	var pieceInfo = piecestore.PieceInfo{
 		PieceCID: pieceCID,
 		Deals:    nil,
 	}
 	var err error
-	if err = travelDeals(m.ds, func(deal *types.MinerDeal) (bool, error) {
+	if err = travelDeals(ctx, m.ds, func(deal *types.MinerDeal) (bool, error) {
 		if deal.ClientDealProposal.Proposal.PieceCID.Equals(pieceCID) {
 			pieceInfo.Deals = append(pieceInfo.Deals, piecestore.DealInfo{
 				DealID:   deal.DealID,
@@ -193,9 +194,9 @@ func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo,
 	return &pieceInfo, err
 }
 
-func (dsr *storageDealRepo) ListPieceInfoKeys() ([]cid.Cid, error) {
+func (dsr *storageDealRepo) ListPieceInfoKeys(ctx context.Context) ([]cid.Cid, error) {
 	var cidsMap = make(map[cid.Cid]interface{})
-	err := travelDeals(dsr.ds,
+	err := travelDeals(ctx, dsr.ds,
 		func(deal *types.MinerDeal) (bool, error) {
 			cidsMap[deal.ClientDealProposal.Proposal.PieceCID] = nil
 			return false, nil
@@ -213,10 +214,10 @@ func (dsr *storageDealRepo) ListPieceInfoKeys() ([]cid.Cid, error) {
 	return cids, nil
 }
 
-func (dsr *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error) {
+func (dsr *storageDealRepo) GetDealByDealID(ctx context.Context, mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error) {
 	var deal *types.MinerDeal
 	var err error
-	if err = travelDeals(dsr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+	if err = travelDeals(ctx, dsr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
 		if stop = inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.DealID == dealID; stop {
 			deal = inDeal
 		}
@@ -230,10 +231,10 @@ func (dsr *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.De
 	return deal, err
 }
 
-func (dsr *storageDealRepo) GetDealsByPieceStatusV0(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
+func (dsr *storageDealRepo) GetDealsByPieceStatusV0(ctx context.Context, mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
 	var deals []*types.MinerDeal
 	var err error
-	if err = travelDeals(dsr.ds,
+	if err = travelDeals(ctx, dsr.ds,
 		func(inDeal *types.MinerDeal) (bool, error) {
 			if inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.PieceStatus == pieceStatus {
 				deals = append(deals, inDeal)
@@ -246,10 +247,10 @@ func (dsr *storageDealRepo) GetDealsByPieceStatusV0(mAddr address.Address, piece
 	return deals, nil
 }
 
-func (dsr *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
+func (dsr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
 	var deals []*types.MinerDeal
 
-	return deals, travelDeals(dsr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+	return deals, travelDeals(ctx, dsr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
 		if inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.PieceStatus == pieceStatus {
 			deals = append(deals, inDeal)
 		}
@@ -257,10 +258,10 @@ func (dsr *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceSt
 	})
 }
 
-func (sdr *storageDealRepo) GetPieceSize(pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error) {
+func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error) {
 	var deal *types.MinerDeal
 
-	err := travelDeals(sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+	err := travelDeals(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
 		if inDeal.ClientDealProposal.Proposal.PieceCID == pieceCID {
 			deal = inDeal
 			return true, nil

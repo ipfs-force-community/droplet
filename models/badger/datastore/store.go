@@ -2,6 +2,7 @@ package statestore
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 
@@ -31,14 +32,14 @@ func ToKey(k interface{}) datastore.Key {
 	}
 }
 
-func (st *StateStore) Save(i interface{}, state interface{}) error {
+func (st *StateStore) Save(ctx context.Context, i interface{}, state interface{}) error {
 	k := ToKey(i)
 	b, err := cborutil.Dump(state)
 	if err != nil {
 		return err
 	}
 
-	return st.ds.Put(k, b)
+	return st.ds.Put(ctx, k, b)
 }
 
 func (st *StateStore) Get(i interface{}) *StoredState {
@@ -48,13 +49,13 @@ func (st *StateStore) Get(i interface{}) *StoredState {
 	}
 }
 
-func (st *StateStore) Has(i interface{}) (bool, error) {
-	return st.ds.Has(ToKey(i))
+func (st *StateStore) Has(ctx context.Context, i interface{}) (bool, error) {
+	return st.ds.Has(ctx, ToKey(i))
 }
 
 // out: *[]T
-func (st *StateStore) List(out interface{}) error {
-	res, err := st.ds.Query(query.Query{})
+func (st *StateStore) List(ctx context.Context, out interface{}) error {
+	res, err := st.ds.Query(ctx, query.Query{})
 	if err != nil {
 		return err
 	}

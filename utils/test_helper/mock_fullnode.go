@@ -12,17 +12,11 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/chain"
-	syncTypes "github.com/filecoin-project/venus/pkg/chainsync/types"
+	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool"
-	"github.com/filecoin-project/venus/pkg/net"
-	"github.com/filecoin-project/venus/pkg/paychmgr"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	paych2 "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipld-format"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -65,7 +59,7 @@ func (m MockFullnode) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error
 	panic("implement me")
 }
 
-func (m MockFullnode) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (apitypes.ObjStat, error) {
+func (m MockFullnode) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (types.ObjStat, error) {
 	panic("implement me")
 }
 
@@ -125,11 +119,11 @@ func (m MockFullnode) StateMinerProvingDeadline(ctx context.Context, maddr addre
 	panic("implement me")
 }
 
-func (m MockFullnode) StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]apitypes.Partition, error) {
+func (m MockFullnode) StateMinerPartitions(ctx context.Context, maddr address.Address, dlIdx uint64, tsk types.TipSetKey) ([]types.Partition, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]apitypes.Deadline, error) {
+func (m MockFullnode) StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]types.Deadline, error) {
 	panic("implement me")
 }
 
@@ -137,7 +131,7 @@ func (m MockFullnode) StateMinerSectors(ctx context.Context, maddr address.Addre
 	panic("implement me")
 }
 
-func (m MockFullnode) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*apitypes.MarketDeal, error) {
+func (m MockFullnode) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error) {
 	panic("implement me")
 }
 
@@ -149,7 +143,7 @@ func (m MockFullnode) StateMinerInitialPledgeCollateral(ctx context.Context, mad
 	panic("implement me")
 }
 
-func (m MockFullnode) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (chain.CirculatingSupply, error) {
+func (m MockFullnode) StateVMCirculatingSupplyInternal(ctx context.Context, tsk types.TipSetKey) (types.CirculatingSupply, error) {
 	panic("implement me")
 }
 
@@ -177,7 +171,7 @@ func (m MockFullnode) StateListActors(ctx context.Context, tsk types.TipSetKey) 
 	panic("implement me")
 }
 
-func (m MockFullnode) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*apitypes.MinerPower, error) {
+func (m MockFullnode) StateMinerPower(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.MinerPower, error) {
 	panic("implement me")
 }
 
@@ -189,15 +183,15 @@ func (m MockFullnode) StateSectorExpiration(ctx context.Context, maddr address.A
 	panic("implement me")
 }
 
-func (m MockFullnode) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (apitypes.MinerSectors, error) {
+func (m MockFullnode) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MinerSectors, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (apitypes.MarketBalance, error) {
+func (m MockFullnode) StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.MarketBalance, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (apitypes.DealCollateralBounds, error) {
+func (m MockFullnode) StateDealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, verified bool, tsk types.TipSetKey) (types.DealCollateralBounds, error) {
 	panic("implement me")
 }
 
@@ -257,15 +251,15 @@ func (m MockFullnode) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Blo
 	panic("implement me")
 }
 
-func (m MockFullnode) GetMessage(ctx context.Context, msgID cid.Cid) (*types.UnsignedMessage, error) {
+func (m MockFullnode) GetMessage(ctx context.Context, msgID cid.Cid) (*types.Message, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*apitypes.BlockMessages, error) {
+func (m MockFullnode) ChainGetBlockMessages(ctx context.Context, bid cid.Cid) (*types.BlockMessages, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]apitypes.Message, error) {
+func (m MockFullnode) ChainGetMessagesInTipset(ctx context.Context, key types.TipSetKey) ([]types.Message, error) {
 	panic("implement me")
 }
 
@@ -273,7 +267,7 @@ func (m MockFullnode) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]types
 	panic("implement me")
 }
 
-func (m MockFullnode) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]apitypes.Message, error) {
+func (m MockFullnode) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]types.Message, error) {
 	panic("implement me")
 }
 
@@ -289,7 +283,7 @@ func (m MockFullnode) StateVerifierStatus(ctx context.Context, addr address.Addr
 	panic("implement me")
 }
 
-func (m MockFullnode) ChainNotify(ctx context.Context) <-chan []*chain.HeadChange {
+func (m MockFullnode) ChainNotify(ctx context.Context) <-chan []*types.HeadChange {
 	panic("implement me")
 }
 
@@ -309,11 +303,11 @@ func (m MockFullnode) GetEntry(ctx context.Context, height abi.ChainEpoch, round
 	panic("implement me")
 }
 
-func (m MockFullnode) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*chain.ChainMessage, error) {
+func (m MockFullnode) MessageWait(ctx context.Context, msgCid cid.Cid, confidence, lookback abi.ChainEpoch) (*types.HeadChange, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) ProtocolParameters(ctx context.Context) (*apitypes.ProtocolParams, error) {
+func (m MockFullnode) ProtocolParameters(ctx context.Context) (*types.ProtocolParams, error) {
 	panic("implement me")
 }
 
@@ -321,15 +315,15 @@ func (m MockFullnode) ResolveToKeyAddr(ctx context.Context, addr address.Address
 	panic("implement me")
 }
 
-func (m MockFullnode) StateNetworkName(ctx context.Context) (apitypes.NetworkName, error) {
+func (m MockFullnode) StateNetworkName(ctx context.Context) (types.NetworkName, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) SearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+func (m MockFullnode) SearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) WaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+func (m MockFullnode) WaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	panic("implement me")
 }
 
@@ -345,7 +339,7 @@ func (m MockFullnode) ChainExport(ctx context.Context, epoch abi.ChainEpoch, b b
 	panic("implement me")
 }
 
-func (m MockFullnode) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*chain.HeadChange, error) {
+func (m MockFullnode) ChainGetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*types.HeadChange, error) {
 	panic("implement me")
 }
 
@@ -357,15 +351,15 @@ func (m MockFullnode) ConfigGet(ctx context.Context, dottedPath string) (interfa
 	panic("implement me")
 }
 
-func (m MockFullnode) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]apitypes.MarketBalance, error) {
+func (m MockFullnode) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketBalance, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*apitypes.MiningBaseInfo, error) {
+func (m MockFullnode) MinerGetBaseInfo(ctx context.Context, maddr address.Address, round abi.ChainEpoch, tsk types.TipSetKey) (*types.MiningBaseInfo, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MinerCreateBlock(ctx context.Context, bt *apitypes.BlockTemplate) (*types.BlockMsg, error) {
+func (m MockFullnode) MinerCreateBlock(ctx context.Context, bt *types.BlockTemplate) (*types.BlockMsg, error) {
 	panic("implement me")
 }
 
@@ -413,7 +407,7 @@ func (m MockFullnode) MpoolPushUntrusted(ctx context.Context, smsg *types.Signed
 	panic("implement me")
 }
 
-func (m MockFullnode) PushMessage(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
+func (m MockFullnode) PushMessage(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec) (*types.SignedMessage, error) {
 	panic("implement me")
 }
 
@@ -425,7 +419,7 @@ func (m MockFullnode) MpoolBatchPushUntrusted(ctx context.Context, smsgs []*type
 	panic("implement me")
 }
 
-func (m MockFullnode) MpoolBatchPushMessage(ctx context.Context, msgs []*types.UnsignedMessage, spec *types.MessageSendSpec) ([]*types.SignedMessage, error) {
+func (m MockFullnode) MpoolBatchPushMessage(ctx context.Context, msgs []*types.Message, spec *types.MessageSendSpec) ([]*types.SignedMessage, error) {
 	panic("implement me")
 }
 
@@ -433,11 +427,11 @@ func (m MockFullnode) MpoolGetNonce(ctx context.Context, addr address.Address) (
 	panic("implement me")
 }
 
-func (m MockFullnode) MpoolSub(ctx context.Context) (<-chan messagepool.MpoolUpdate, error) {
+func (m MockFullnode) MpoolSub(ctx context.Context) (<-chan types.MpoolUpdate, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) GasEstimateMessageGas(ctx context.Context, msg *types.UnsignedMessage, spec *types.MessageSendSpec, tsk types.TipSetKey) (*types.UnsignedMessage, error) {
+func (m MockFullnode) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
 	panic("implement me")
 }
 
@@ -445,7 +439,7 @@ func (m MockFullnode) GasBatchEstimateMessageGas(ctx context.Context, estimateMe
 	panic("implement me")
 }
 
-func (m MockFullnode) GasEstimateFeeCap(ctx context.Context, msg *types.UnsignedMessage, maxqueueblks int64, tsk types.TipSetKey) (big.Int, error) {
+func (m MockFullnode) GasEstimateFeeCap(ctx context.Context, msg *types.Message, maxqueueblks int64, tsk types.TipSetKey) (big.Int, error) {
 	panic("implement me")
 }
 
@@ -453,67 +447,67 @@ func (m MockFullnode) GasEstimateGasPremium(ctx context.Context, nblocksincl uin
 	panic("implement me")
 }
 
-func (m MockFullnode) GasEstimateGasLimit(ctx context.Context, msgIn *types.UnsignedMessage, tsk types.TipSetKey) (int64, error) {
+func (m MockFullnode) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, tsk types.TipSetKey) (int64, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MpoolCheckMessages(ctx context.Context, protos []*apitypes.MessagePrototype) ([][]apitypes.MessageCheckStatus, error) {
+func (m MockFullnode) MpoolCheckMessages(ctx context.Context, protos []*types.MessagePrototype) ([][]types.MessageCheckStatus, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]apitypes.MessageCheckStatus, error) {
+func (m MockFullnode) MpoolCheckPendingMessages(ctx context.Context, addr address.Address) ([][]types.MessageCheckStatus, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]apitypes.MessageCheckStatus, error) {
+func (m MockFullnode) MpoolCheckReplaceMessages(ctx context.Context, msg []*types.Message) ([][]types.MessageCheckStatus, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigCreate(ctx context.Context, req uint64, addrs []address.Address, duration abi.ChainEpoch, val types.BigInt, src address.Address, gp types.BigInt) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigPropose(ctx context.Context, msig address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigAddPropose(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigAddPropose(ctx context.Context, msig address.Address, src address.Address, newAdd address.Address, inc bool) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigAddApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigAddApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, newAdd address.Address, inc bool) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigAddCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigAddCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, newAdd address.Address, inc bool) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigSwapApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigSwapApprove(ctx context.Context, msig address.Address, src address.Address, txID uint64, proposer address.Address, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigSwapCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigSwapCancel(ctx context.Context, msig address.Address, src address.Address, txID uint64, oldAdd address.Address, newAdd address.Address) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigApproveTxnHash(ctx context.Context, msig address.Address, txID uint64, proposer address.Address, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (*apitypes.MessagePrototype, error) {
+func (m MockFullnode) MsigRemoveSigner(ctx context.Context, msig address.Address, proposer address.Address, toRemove address.Address, decrease bool) (*types.MessagePrototype, error) {
 	panic("implement me")
 }
 
@@ -545,15 +539,15 @@ func (m MockFullnode) NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkConnect(ctx context.Context, addrs []string) (<-chan net.ConnectionResult, error) {
+func (m MockFullnode) NetworkConnect(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error) {
+func (m MockFullnode) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) Version(ctx context.Context) (apitypes.Version, error) {
+func (m MockFullnode) Version(ctx context.Context) (types.Version, error) {
 	panic("implement me")
 }
 
@@ -561,15 +555,15 @@ func (m MockFullnode) NetAddrsListen(ctx context.Context) (peer.AddrInfo, error)
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*apitypes.ChannelInfo, error) {
+func (m MockFullnode) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*types.ChannelInfo, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychAvailableFunds(ctx context.Context, ch address.Address) (*paychmgr.ChannelAvailableFunds, error) {
+func (m MockFullnode) PaychAvailableFunds(ctx context.Context, ch address.Address) (*types.ChannelAvailableFunds, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*paychmgr.ChannelAvailableFunds, error) {
+func (m MockFullnode) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*types.ChannelAvailableFunds, error) {
 	panic("implement me")
 }
 
@@ -581,7 +575,7 @@ func (m MockFullnode) PaychAllocateLane(ctx context.Context, ch address.Address)
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []apitypes.VoucherSpec) (*apitypes.PaymentInfo, error) {
+func (m MockFullnode) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []types.VoucherSpec) (*types.PaymentInfo, error) {
 	panic("implement me")
 }
 
@@ -589,7 +583,7 @@ func (m MockFullnode) PaychList(ctx context.Context) ([]address.Address, error) 
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error) {
+func (m MockFullnode) PaychStatus(ctx context.Context, pch address.Address) (*types.Status, error) {
 	panic("implement me")
 }
 
@@ -613,7 +607,7 @@ func (m MockFullnode) PaychVoucherAdd(ctx context.Context, ch address.Address, s
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*paychmgr.VoucherCreateResult, error) {
+func (m MockFullnode) PaychVoucherCreate(ctx context.Context, pch address.Address, amt big.Int, lane uint64) (*types.VoucherCreateResult, error) {
 	panic("implement me")
 }
 
@@ -633,7 +627,7 @@ func (m MockFullnode) SetConcurrent(ctx context.Context, concurrent int64) error
 	panic("implement me")
 }
 
-func (m MockFullnode) SyncerTracker(ctx context.Context) *syncTypes.TargetTracker {
+func (m MockFullnode) SyncerTracker(ctx context.Context) *types.TargetTracker {
 	panic("implement me")
 }
 
@@ -649,15 +643,15 @@ func (m MockFullnode) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) 
 	panic("implement me")
 }
 
-func (m MockFullnode) StateCall(ctx context.Context, msg *types.UnsignedMessage, tsk types.TipSetKey) (*types.InvocResult, error) {
+func (m MockFullnode) StateCall(ctx context.Context, msg *types.Message, tsk types.TipSetKey) (*types.InvocResult, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) SyncState(ctx context.Context) (*apitypes.SyncState, error) {
+func (m MockFullnode) SyncState(ctx context.Context) (*types.SyncState, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto2.Signature, error) {
+func (m MockFullnode) WalletSign(ctx context.Context, k address.Address, msg []byte, meta types.MsgMeta) (*crypto2.Signature, error) {
 	signStr := []byte(`{"Type": 1, "Data": "0Te6VibKM4W0E8cgNFZTgiNXzUqgOZJtCPN1DEp2kClTuzUGVzu/umhCM87o76AEpsMkjpJQGo+S8MYHXQdFTAE="}`)
 	sign := &crypto.Signature{}
 	return sign, json.Unmarshal(signStr, sign)
@@ -695,7 +689,7 @@ func (m MockFullnode) WalletSetDefault(ctx context.Context, addr address.Address
 	panic("implement me")
 }
 
-func (m MockFullnode) WalletSignMessage(ctx context.Context, k address.Address, msg *types.UnsignedMessage) (*types.SignedMessage, error) {
+func (m MockFullnode) WalletSignMessage(ctx context.Context, k address.Address, msg *types.Message) (*types.SignedMessage, error) {
 	panic("implement me")
 }
 

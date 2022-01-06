@@ -82,7 +82,7 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	answer.PaymentAddress = p.paymentAddr
 
 	//todo use market ask maybe need miner ask list for future
-	ask, err := p.askRepo.GetAsk(p.paymentAddr)
+	ask, err := p.askRepo.GetAsk(ctx, p.paymentAddr)
 	if err != nil {
 		log.Errorf("Retrieval query: GetAsk: %s", err)
 		answer.Status = retrievalmarket.QueryResponseError

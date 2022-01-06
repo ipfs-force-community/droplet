@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -86,30 +87,30 @@ func NewStorageAskRepo(db *gorm.DB) *storageAskRepo {
 	return &storageAskRepo{db}
 }
 
-func (a *storageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {
+func (sar *storageAskRepo) GetAsk(ctx context.Context, miner address.Address) (*storagemarket.SignedStorageAsk, error) {
 	var res storageAsk
-	err := a.DB.Take(&res, "miner = ?", DBAddress(miner).String()).Error
+	err := sar.WithContext(ctx).Take(&res, "miner = ?", DBAddress(miner).String()).Error
 	if err != nil {
 		return nil, err
 	}
 	return toStorageAsk(&res)
 }
 
-func (a *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
+func (sar *storageAskRepo) SetAsk(ctx context.Context, ask *storagemarket.SignedStorageAsk) error {
 	if ask == nil || ask.Ask == nil {
 		return xerrors.Errorf("param is nil")
 	}
 	dbAsk := fromStorageAsk(ask)
 	dbAsk.UpdatedAt = uint64(time.Now().Unix())
-	return a.DB.Clauses(clause.OnConflict{
+	return sar.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "miner"}},
 		UpdateAll: true,
 	}).Save(dbAsk).Error
 }
 
-func (a *storageAskRepo) ListAsk() ([]*storagemarket.SignedStorageAsk, error) {
+func (sar *storageAskRepo) ListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error) {
 	var dbAsks []storageAsk
-	err := a.Table("storage_asks").Find(&dbAsks).Error
+	err := sar.Table("storage_asks").Find(&dbAsks).Error
 	if err != nil {
 		return nil, err
 	}

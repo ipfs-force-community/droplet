@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"time"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -142,41 +143,41 @@ type retrievalDealRepo struct {
 	*gorm.DB
 }
 
-func (r *retrievalDealRepo) SaveDeal(deal *types.ProviderDealState) error {
+func (rdr *retrievalDealRepo) SaveDeal(ctx context.Context, deal *types.ProviderDealState) error {
 	dbDeal := fromProviderDealState(deal)
 	dbDeal.UpdatedAt = uint64(time.Now().Unix())
-	return r.Save(dbDeal).Error
+	return rdr.WithContext(ctx).Save(dbDeal).Error
 }
 
-func (r *retrievalDealRepo) GetDeal(id peer.ID, id2 rm.DealID) (*types.ProviderDealState, error) {
+func (rdr *retrievalDealRepo) GetDeal(ctx context.Context, id peer.ID, id2 rm.DealID) (*types.ProviderDealState, error) {
 	deal := &retrievalDeal{}
-	err := r.Table(RetrievalDealTableName).Take(deal, "cdp_proposal_id=? AND receiver=? ", id2, id.String()).Error
+	err := rdr.WithContext(ctx).WithContext(ctx).Table(RetrievalDealTableName).Take(deal, "cdp_proposal_id=? AND receiver=? ", id2, id.String()).Error
 	if err != nil {
 		return nil, err
 	}
 	return toProviderDealState(deal)
 }
 
-func (r *retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*types.ProviderDealState, error) {
+func (rdr *retrievalDealRepo) GetDealByTransferId(ctx context.Context, chid datatransfer.ChannelID) (*types.ProviderDealState, error) {
 	deal := &retrievalDeal{}
-	err := r.Table(RetrievalDealTableName).Take(deal, "ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ?", chid.Initiator.String(), chid.Responder.String(), chid.ID).Error
+	err := rdr.WithContext(ctx).WithContext(ctx).Table(RetrievalDealTableName).Take(deal, "ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ?", chid.Initiator.String(), chid.Responder.String(), chid.ID).Error
 	if err != nil {
 		return nil, err
 	}
 	return toProviderDealState(deal)
 }
 
-func (r *retrievalDealRepo) HasDeal(id peer.ID, id2 rm.DealID) (bool, error) {
+func (rdr *retrievalDealRepo) HasDeal(ctx context.Context, id peer.ID, id2 rm.DealID) (bool, error) {
 	var count int64
-	err := r.DB.Table(RetrievalDealTableName).Where("cdp_proposal_id=? AND receiver=? ", id2, id.String()).Count(&count).Error
+	err := rdr.WithContext(ctx).WithContext(ctx).Table(RetrievalDealTableName).Where("cdp_proposal_id=? AND receiver=? ", id2, id.String()).Count(&count).Error
 	if err != nil {
 		return false, err
 	}
 	return count > 0, nil
 }
 
-func (r *retrievalDealRepo) ListDeals(pageIndex, pageSize int) ([]*types.ProviderDealState, error) {
-	query := r.DB.Table(RetrievalDealTableName).Offset((pageIndex - 1) * pageSize).Limit(pageSize)
+func (rdr *retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize int) ([]*types.ProviderDealState, error) {
+	query := rdr.DB.Table(RetrievalDealTableName).Offset((pageIndex - 1) * pageSize).Limit(pageSize)
 
 	var sqlMsgs []*retrievalDeal
 	err := query.Find(&sqlMsgs).Error

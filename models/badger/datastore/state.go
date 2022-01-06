@@ -2,6 +2,7 @@ package statestore
 
 import (
 	"bytes"
+	"context"
 	"reflect"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -15,15 +16,15 @@ type StoredState struct {
 	name datastore.Key
 }
 
-func (st *StoredState) End() error {
-	has, err := st.ds.Has(st.name)
+func (st *StoredState) End(ctx context.Context) error {
+	has, err := st.ds.Has(ctx, st.name)
 	if err != nil {
 		return err
 	}
 	if !has {
 		return xerrors.Errorf("No state for %s", st.name)
 	}
-	if err := st.ds.Delete(st.name); err != nil {
+	if err := st.ds.Delete(ctx, st.name); err != nil {
 		return xerrors.Errorf("removing state from datastore: %w", err)
 	}
 	st.name = datastore.Key{}
@@ -32,8 +33,8 @@ func (st *StoredState) End() error {
 	return nil
 }
 
-func (st *StoredState) Get(out cbg.CBORUnmarshaler) error {
-	val, err := st.ds.Get(st.name)
+func (st *StoredState) Get(ctx context.Context, out cbg.CBORUnmarshaler) error {
+	val, err := st.ds.Get(ctx, st.name)
 	if err != nil {
 		if xerrors.Is(err, datastore.ErrNotFound) {
 			return xerrors.Errorf("No state for %s: %w", st.name, err)
@@ -45,12 +46,12 @@ func (st *StoredState) Get(out cbg.CBORUnmarshaler) error {
 }
 
 // mutator func(*T) error
-func (st *StoredState) Mutate(mutator interface{}) error {
-	return st.mutate(cborMutator(mutator))
+func (st *StoredState) Mutate(ctx context.Context, mutator interface{}) error {
+	return st.mutate(ctx, cborMutator(mutator))
 }
 
-func (st *StoredState) mutate(mutator func([]byte) ([]byte, error)) error {
-	has, err := st.ds.Has(st.name)
+func (st *StoredState) mutate(ctx context.Context, mutator func([]byte) ([]byte, error)) error {
+	has, err := st.ds.Has(ctx, st.name)
 	if err != nil {
 		return err
 	}
@@ -58,7 +59,7 @@ func (st *StoredState) mutate(mutator func([]byte) ([]byte, error)) error {
 		return xerrors.Errorf("No state for %s", st.name)
 	}
 
-	cur, err := st.ds.Get(st.name)
+	cur, err := st.ds.Get(ctx, st.name)
 	if err != nil {
 		return err
 	}
@@ -72,7 +73,7 @@ func (st *StoredState) mutate(mutator func([]byte) ([]byte, error)) error {
 		return nil
 	}
 
-	return st.ds.Put(st.name, mutated)
+	return st.ds.Put(ctx, st.name, mutated)
 }
 
 func cborMutator(mutator interface{}) func([]byte) ([]byte, error) {

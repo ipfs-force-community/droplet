@@ -1,8 +1,8 @@
 package storageprovider
 
 import (
+	"context"
 	"fmt"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-data-transfer"
@@ -12,12 +12,12 @@ import (
 // EventReceiver is any thing that can receive FSM events
 type IDatatransferHandler interface {
 	//have many receiver function
-	HandleCompleteFor(proposalid cid.Cid) error
-	HandleCancelForDeal(proposalid cid.Cid) error
-	HandleRestartForDeal(proposalid cid.Cid, channelId datatransfer.ChannelID) error
-	HandleStalledForDeal(proposalid cid.Cid) error
-	HandleInitForDeal(proposalid cid.Cid, channel datatransfer.ChannelID) error
-	HandleFailedForDeal(proposalid cid.Cid, reason error) error
+	HandleCompleteFor(ctx context.Context, proposalid cid.Cid) error
+	HandleCancelForDeal(ctx context.Context, proposalid cid.Cid) error
+	HandleRestartForDeal(ctx context.Context, proposalid cid.Cid, channelId datatransfer.ChannelID) error
+	HandleStalledForDeal(ctx context.Context, proposalid cid.Cid) error
+	HandleInitForDeal(ctx context.Context, proposalid cid.Cid, channel datatransfer.ChannelID) error
+	HandleFailedForDeal(ctx context.Context, proposalid cid.Cid, reason error) error
 }
 
 // ProviderDataTransferSubscriber is the function called when an event occurs in a data
@@ -35,12 +35,13 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 			return
 		}
 
+		ctx := context.TODO()
 		log.Debugw("processing storage provider dt event", "event", datatransfer.Events[event.Code], "proposalCid", voucher.Proposal, "channelID",
 			channelState.ChannelID(), "channelState", datatransfer.Statuses[channelState.Status()])
 
 		if channelState.Status() == datatransfer.Completed {
 			//on complete
-			err := deals.HandleCompleteFor(voucher.Proposal)
+			err := deals.HandleCompleteFor(ctx, voucher.Proposal)
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)
 			}
@@ -51,15 +52,15 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 		err := func() error {
 			switch event.Code {
 			case datatransfer.Cancel:
-				return deals.HandleCancelForDeal(voucher.Proposal)
+				return deals.HandleCancelForDeal(ctx, voucher.Proposal)
 			case datatransfer.Restart:
-				return deals.HandleRestartForDeal(voucher.Proposal, channelState.ChannelID())
+				return deals.HandleRestartForDeal(ctx, voucher.Proposal, channelState.ChannelID())
 			case datatransfer.Disconnected:
-				return deals.HandleStalledForDeal(voucher.Proposal)
+				return deals.HandleStalledForDeal(ctx, voucher.Proposal)
 			case datatransfer.Open:
-				return deals.HandleInitForDeal(voucher.Proposal, channelState.ChannelID())
+				return deals.HandleInitForDeal(ctx, voucher.Proposal, channelState.ChannelID())
 			case datatransfer.Error:
-				return deals.HandleFailedForDeal(voucher.Proposal, fmt.Errorf("deal data transfer failed: %s", event.Message))
+				return deals.HandleFailedForDeal(ctx, voucher.Proposal, fmt.Errorf("deal data transfer failed: %s", event.Message))
 			default:
 				return nil
 			}

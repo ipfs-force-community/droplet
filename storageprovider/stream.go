@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/utils"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"os"
 
 	"golang.org/x/xerrors"
@@ -19,8 +20,6 @@ import (
 
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/types"
-
-	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
 var _ network.StorageReceiver = (*StorageDealStream)(nil)
@@ -79,7 +78,7 @@ func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAsk
 		return
 	}
 
-	ask, err := storageDealStream.storedAsk.GetAsk(ar.Miner)
+	ask, err := storageDealStream.storedAsk.GetAsk(context.TODO(), ar.Miner)
 	if err != nil {
 		log.Errorf("failed to get ask for [%s]: %s", ar.Miner, err)
 		return
@@ -117,7 +116,7 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 	}
 
 	// Check if we are already tracking this deal
-	md, err := storageDealStream.deals.GetDeal(proposalNd.Cid())
+	md, err := storageDealStream.deals.GetDeal(ctx, proposalNd.Cid())
 	if err == nil {
 		// We are already tracking this deal, for some reason it was re-proposed, perhaps because of a client restart
 		// this is ok, just send a response back.
@@ -156,7 +155,7 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		CreationTime:       curTime(),
 		InboundCAR:         path,
 	}
-	err = storageDealStream.deals.SaveDeal(deal)
+	err = storageDealStream.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		log.Errorf("save miner deal to database %w", err)
 		return
@@ -217,7 +216,7 @@ func (storageDealStream *StorageDealStream) HandleDealStatusStream(s network.Dea
 
 	signature, err := storageDealStream.spn.Sign(ctx, &types.SignInfo{
 		Data: dealState,
-		Type: wallet.MTUnknown,
+		Type: vTypes.MTUnknown,
 		Addr: mAddr,
 	})
 	if err != nil {
@@ -240,7 +239,7 @@ func (storageDealStream *StorageDealStream) resendProposalResponse(s network.Sto
 	resp := &network.Response{State: md.State, Message: md.Message, Proposal: md.ProposalCid}
 	sig, err := storageDealStream.spn.Sign(context.TODO(), &types.SignInfo{
 		Data: resp,
-		Type: wallet.MTUnknown,
+		Type: vTypes.MTUnknown,
 		Addr: md.Proposal.Provider,
 	})
 	if err != nil {
@@ -252,7 +251,7 @@ func (storageDealStream *StorageDealStream) resendProposalResponse(s network.Sto
 
 func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context.Context, request *network.DealStatusRequest) (*storagemarket.ProviderDealState, address.Address, error) {
 	// fetch deal state
-	md, err := storageDealStream.deals.GetDeal(request.Proposal)
+	md, err := storageDealStream.deals.GetDeal(ctx, request.Proposal)
 	if err != nil {
 		log.Errorf("proposal doesn't exist in state store: %s", err)
 		return nil, address.Undef, xerrors.Errorf("no such proposal")

@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/venus-market/api"
 	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/client"
-	types2 "github.com/filecoin-project/venus/pkg/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"io"
 	"sort"
 	"strings"

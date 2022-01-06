@@ -34,7 +34,7 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 type StorageProviderEvt struct {
@@ -60,14 +60,14 @@ func RetrievalResolver(l *discoveryimpl.Local) discovery.PeerResolver {
 	return discoveryimpl.Multi(l)
 }
 
-func NewClientImportMgr(ns badger.ImportClientDS, r *config.HomeDir) (ClientImportMgr, error) {
+func NewClientImportMgr(ctx context.Context, ns badger.ImportClientDS, r *config.HomeDir) (ClientImportMgr, error) {
 	// store the imports under the repo's `imports` subdirectory.
 	dir := filepath.Join(string(*r), "imports")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, xerrors.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
-	return imports.NewManager(ns, dir), nil
+	return imports.NewManager(ctx, ns, dir), nil
 }
 
 // NewClientGraphsyncDataTransfer returns a data transfer manager that just
@@ -166,7 +166,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientData
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
 func RetrievalClient(lc fx.Lifecycle, h host.Host, dt network.ClientDataTransfer, payAPI *paychmgr.PaychAPI, resolver discovery.PeerResolver,
-	ds badger.RetrievalClientDS, fullApi apiface.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+	ds badger.RetrievalClientDS, fullApi v1api.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 
 	adapter := retrievalprovider.NewRetrievalClientNode(payAPI, fullApi)
 	libP2pHost := rmnet.NewFromLibp2pHost(h)

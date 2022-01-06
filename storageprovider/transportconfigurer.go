@@ -1,6 +1,7 @@
 package storageprovider
 
 import (
+	"context"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"golang.org/x/xerrors"
@@ -24,7 +25,7 @@ func newProviderStoreGetter(deals repo.StorageDealRepo, stores *stores.ReadWrite
 }
 
 func (psg *providerStoreGetter) Get(proposalCid cid.Cid) (bstore.Blockstore, error) {
-	deal, err := psg.deals.GetDeal(proposalCid)
+	deal, err := psg.deals.GetDeal(context.TODO(), proposalCid)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get deal state: %w", err)
 	}
@@ -36,7 +37,7 @@ type providerPushDeals struct {
 }
 
 func (ppd *providerPushDeals) Get(proposalCid cid.Cid) (storagemarket.MinerDeal, error) {
-	deal, err := ppd.deals.GetDeal(proposalCid)
+	deal, err := ppd.deals.GetDeal(context.TODO(), proposalCid)
 	if err != nil {
 		return storagemarket.MinerDeal{}, err
 	}

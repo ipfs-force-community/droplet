@@ -4,32 +4,32 @@ import (
 	"context"
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/fundmgr"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	marketactor "github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	marketactor "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type FundAPI struct {
 	fx.In
 
-	Full      apiface.FullNode
+	Full      v1api.FullNode
 	MsgClient clients.IMixMessage
 	FMgr      *fundmgr.FundManager
 }
 
 func (a *FundAPI) MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error) {
-	params, err := specactors.SerializeParams(&addr)
+	params, err := actors.SerializeParams(&addr)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	msgId, aerr := a.MsgClient.PushMessage(ctx, &types.UnsignedMessage{
+	msgId, aerr := a.MsgClient.PushMessage(ctx, &types.Message{
 		To:     marketactor.Address,
 		From:   wallet,
 		Value:  amt,

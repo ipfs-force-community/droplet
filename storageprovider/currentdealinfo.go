@@ -4,31 +4,30 @@ import (
 	"bytes"
 	"context"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
 type CurrentDealInfoAPI interface {
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
-	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*apitypes.MarketDeal, error)
+	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*types.MarketDeal, error)
 	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
 
 	GetMessage(context.Context, cid.Cid) (*types.Message, error)
-	SearchMsg(context.Context, cid.Cid) (*apitypes.MsgLookup, error)
+	SearchMsg(context.Context, cid.Cid) (*types.MsgLookup, error)
 }
 
 type CurrentDealInfo struct {
 	DealID           abi.DealID
-	MarketDeal       *apitypes.MarketDeal
+	MarketDeal       *types.MarketDeal
 	PublishMsgTipSet types.TipSetKey
 }
 
@@ -88,7 +87,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, types.TipSetKey{}, xerrors.Errorf("getting network version: %w", err)
 	}
 
-	retval, err := market.DecodePublishStorageDealsReturn(lookup.Receipt.ReturnValue, nv)
+	retval, err := market.DecodePublishStorageDealsReturn(lookup.Receipt.Return, nv)
 	if err != nil {
 		return dealID, types.TipSetKey{}, xerrors.Errorf("looking for publish deal message %s: decoding message return: %w", publishCid, err)
 	}
@@ -190,8 +189,8 @@ type CurrentDealInfoTskAPI interface {
 	GetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
-	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*apitypes.MarketDeal, error)
-	SearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
+	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*types.MarketDeal, error)
+	SearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
 }
 
 type CurrentDealInfoAPIAdapter struct {
@@ -206,11 +205,11 @@ func (c *CurrentDealInfoAPIAdapter) StateLookupID(ctx context.Context, a address
 	return c.CurrentDealInfoTskAPI.StateLookupID(ctx, a, tsk)
 }
 
-func (c *CurrentDealInfoAPIAdapter) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*apitypes.MarketDeal, error) {
+func (c *CurrentDealInfoAPIAdapter) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error) {
 	return c.CurrentDealInfoTskAPI.StateMarketStorageDeal(ctx, dealID, tsk)
 }
 
-func (c *CurrentDealInfoAPIAdapter) SearchMsg(ctx context.Context, k cid.Cid) (*apitypes.MsgLookup, error) {
+func (c *CurrentDealInfoAPIAdapter) SearchMsg(ctx context.Context, k cid.Cid) (*types.MsgLookup, error) {
 	wmsg, err := c.CurrentDealInfoTskAPI.SearchMsg(ctx, types.EmptyTSK, k, constants.LookbackNoLimit, true)
 	if err != nil {
 		return nil, err
@@ -220,11 +219,11 @@ func (c *CurrentDealInfoAPIAdapter) SearchMsg(ctx context.Context, k cid.Cid) (*
 		return nil, nil
 	}
 
-	return &apitypes.MsgLookup{
+	return &types.MsgLookup{
 		Receipt: types.MessageReceipt{
-			ExitCode:    wmsg.Receipt.ExitCode,
-			ReturnValue: wmsg.Receipt.ReturnValue,
-			GasUsed:     wmsg.Receipt.GasUsed,
+			ExitCode: wmsg.Receipt.ExitCode,
+			Return:   wmsg.Receipt.Return,
+			GasUsed:  wmsg.Receipt.GasUsed,
 		},
 		TipSet: wmsg.TipSet,
 		Height: wmsg.Height,

@@ -102,7 +102,7 @@ type providerStoreGetter struct {
 }
 
 func (psg *providerStoreGetter) Get(otherPeer peer.ID, dealID retrievalmarket.DealID) (bstore.Blockstore, error) {
-	has, err := psg.deals.HasDeal(otherPeer, dealID)
+	has, err := psg.deals.HasDeal(context.TODO(), otherPeer, dealID)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get deal state: %w", err)
 	}

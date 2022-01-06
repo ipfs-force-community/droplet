@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/types"
-	paychTypes "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	paychTypes "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/xerrors"

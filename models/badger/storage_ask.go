@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"context"
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -19,9 +20,9 @@ func NewStorageAskRepo(ds StorageAskDS) *storageAskRepo {
 	return &storageAskRepo{ds: ds}
 }
 
-func (ar *storageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedStorageAsk, error) {
+func (ar *storageAskRepo) GetAsk(ctx context.Context, miner address.Address) (*storagemarket.SignedStorageAsk, error) {
 	key := statestore.ToKey(miner)
-	b, err := ar.ds.Get(key)
+	b, err := ar.ds.Get(ctx, key)
 	if err != nil {
 		if err == datastore.ErrNotFound {
 			return nil, repo.ErrNotFound
@@ -36,7 +37,7 @@ func (ar *storageAskRepo) GetAsk(miner address.Address) (*storagemarket.SignedSt
 	return &ask, nil
 }
 
-func (ar *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
+func (ar *storageAskRepo) SetAsk(ctx context.Context, ask *storagemarket.SignedStorageAsk) error {
 	if ask == nil || ask.Ask == nil {
 		return xerrors.Errorf("param is nil")
 	}
@@ -46,12 +47,12 @@ func (ar *storageAskRepo) SetAsk(ask *storagemarket.SignedStorageAsk) error {
 		return err
 	}
 
-	return ar.ds.Put(key, b)
+	return ar.ds.Put(ctx, key, b)
 }
 
-func (ar *storageAskRepo) ListAsk() ([]*storagemarket.SignedStorageAsk, error) {
+func (ar *storageAskRepo) ListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error) {
 	var results []*storagemarket.SignedStorageAsk
-	err := travelDeals(ar.ds, func(ask *storagemarket.SignedStorageAsk) (bool, error) {
+	err := travelDeals(ctx, ar.ds, func(ask *storagemarket.SignedStorageAsk) (bool, error) {
 		results = append(results, ask)
 		return false, nil
 	})

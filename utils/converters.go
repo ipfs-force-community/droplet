@@ -3,7 +3,7 @@ package utils
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 
@@ -30,7 +30,7 @@ func NewStorageProviderInfo(miner address.Address, worker address.Address, secto
 	}
 }
 
-func ToSharedBalance(bal apitypes.MarketBalance) storagemarket.Balance {
+func ToSharedBalance(bal types.MarketBalance) storagemarket.Balance {
 	return storagemarket.Balance{
 		Locked:    bal.Locked,
 		Available: big.Sub(bal.Escrow, bal.Locked),

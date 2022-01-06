@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var RetrievalDealsCmd = &cli.Command{
@@ -209,7 +209,7 @@ var retrievalSetAskCmd = &cli.Command{
 		}
 		defer closer()
 
-		mAddr, err := address.NewFromString(cctx.String("miner"))
+		mAddr, err := address.NewFromString(cctx.String("payment-addr"))
 		if err != nil {
 			return err
 		}

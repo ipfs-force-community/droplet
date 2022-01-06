@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
@@ -19,13 +20,13 @@ func NewRetrievalAskRepo(ds RetrievalAskDS) repo.IRetrievalAskRepo {
 	return &retrievalAskRepo{ds: ds}
 }
 
-func (r *retrievalAskRepo) HasAsk(addr address.Address) (bool, error) {
+func (r *retrievalAskRepo) HasAsk(ctx context.Context, addr address.Address) (bool, error) {
 	key := dskeyForAddr(addr)
-	return r.ds.Has(key)
+	return r.ds.Has(ctx, key)
 }
 
-func (r *retrievalAskRepo) GetAsk(addr address.Address) (*types.RetrievalAsk, error) {
-	data, err := r.ds.Get(dskeyForAddr(addr))
+func (r *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (*types.RetrievalAsk, error) {
+	data, err := r.ds.Get(ctx, dskeyForAddr(addr))
 	if err != nil {
 		return nil, err
 	}
@@ -36,17 +37,17 @@ func (r *retrievalAskRepo) GetAsk(addr address.Address) (*types.RetrievalAsk, er
 	return &ask, nil
 }
 
-func (r *retrievalAskRepo) SetAsk(ask *types.RetrievalAsk) error {
+func (r *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk) error {
 	data, err := cborrpc.Dump(ask)
 	if err != nil {
 		return err
 	}
-	return r.ds.Put(dskeyForAddr(ask.Miner), data)
+	return r.ds.Put(ctx, dskeyForAddr(ask.Miner), data)
 }
 
-func (r *retrievalAskRepo) ListAsk() ([]*types.RetrievalAsk, error) {
+func (r *retrievalAskRepo) ListAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {
 	var results []*types.RetrievalAsk
-	err := travelDeals(r.ds, func(ask *types.RetrievalAsk) (bool, error) {
+	err := travelDeals(ctx, r.ds, func(ask *types.RetrievalAsk) (bool, error) {
 		results = append(results, ask)
 		return false, nil
 	})

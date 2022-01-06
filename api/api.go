@@ -16,13 +16,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
-	mTypes "github.com/filecoin-project/venus-messager/types"
-
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
 	types2 "github.com/ipfs-force-community/venus-gateway/types"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	vTypes "github.com/filecoin-project/venus/pkg/types"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus-market/client"
 	"github.com/filecoin-project/venus-market/imports"
@@ -84,9 +81,9 @@ type MarketFullNode interface {
 	SectorSetExpectedSealDuration(context.Context, time.Duration) error //perm:write
 
 	//messager
-	MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*apitypes.MsgLookup, error)                   //perm:read
-	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (cid.Cid, error) //perm:write
-	MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error)                        //perm:read
+	MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error)                             //perm:read
+	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *vTypes.MessageSendSpec) (cid.Cid, error) //perm:write
+	MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error)                                //perm:read
 
 	MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)                   //perm:sign
 	MarketGetReserved(ctx context.Context, addr address.Address) (vTypes.BigInt, error)                                       //perm:sign
@@ -225,8 +222,8 @@ type MarketClientNode interface {
 	MarketReleaseFunds(ctx context.Context, addr address.Address, amt vTypes.BigInt) error                                    //perm:write
 	MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error)                     //perm:write
 
-	MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*apitypes.MsgLookup, error)                   //perm:read
-	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (cid.Cid, error) //perm:write
-	MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error)                        //perm:read
+	MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error)                             //perm:read
+	MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *vTypes.MessageSendSpec) (cid.Cid, error) //perm:write
+	MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error)                                //perm:read
 
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -19,14 +19,14 @@ import (
 // ProviderRevalidator defines data transfer revalidation logic in the context of
 // a provider for a retrieval deal
 type ProviderRevalidator struct {
-	fullNode             apiface.FullNode
+	fullNode             v1api.FullNode
 	payAPI               *paychmgr.PaychAPI
 	deals                repo.IRetrievalDealRepo
 	retrievalDealHandler IRetrievalHandler
 }
 
 // NewProviderRevalidator returns a new instance of a ProviderRevalidator
-func NewProviderRevalidator(fullNode apiface.FullNode, payAPI *paychmgr.PaychAPI, deals repo.IRetrievalDealRepo, retrievalDealHandler IRetrievalHandler) *ProviderRevalidator {
+func NewProviderRevalidator(fullNode v1api.FullNode, payAPI *paychmgr.PaychAPI, deals repo.IRetrievalDealRepo, retrievalDealHandler IRetrievalHandler) *ProviderRevalidator {
 	return &ProviderRevalidator{
 		fullNode:             fullNode,
 		payAPI:               payAPI,
@@ -51,7 +51,7 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 	}
 	ctx := context.TODO()
 	log.Infof("receive payment %s", payment.ID)
-	deal, err := pr.deals.GetDeal(channelID.Initiator, payment.ID)
+	deal, err := pr.deals.GetDeal(ctx, channelID.Initiator, payment.ID)
 	if err != nil {
 		if err == repo.ErrNotFound {
 			return nil, nil
@@ -85,7 +85,7 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 	if owed.GreaterThan(big.Zero()) {
 		log.Debugf("provider: owed %d: sending partial payment request", owed)
 		deal.FundsReceived = big.Add(deal.FundsReceived, received)
-		err := pr.deals.SaveDeal(deal)
+		err := pr.deals.SaveDeal(ctx, deal)
 		if err != nil {
 			//todo  receive voucher save success, but track deal status failed
 			//give error here may client send more funds than fact
@@ -130,7 +130,7 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 		err = nil
 	}
 
-	dErr := pr.deals.SaveDeal(deal)
+	dErr := pr.deals.SaveDeal(ctx, deal)
 	if dErr != nil {
 		// todo can recover from storage error?
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
@@ -182,7 +182,8 @@ func errorDealResponse(dealID rm.ProviderDealIdentifier, err error) *rm.DealResp
 // request revalidation or nil to continue uninterrupted,
 // other errors will terminate the request
 func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, additionalBytesSent uint64) (bool, datatransfer.VoucherResult, error) {
-	deal, err := pr.deals.GetDealByTransferId(chid)
+	ctx := context.TODO()
+	deal, err := pr.deals.GetDealByTransferId(ctx, chid)
 	if err != nil {
 		if err == repo.ErrNotFound {
 			return false, nil, nil
@@ -201,7 +202,7 @@ func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, addit
 		}
 		deal.Status = rm.DealStatusOngoing
 		deal.TotalSent = totalSent
-		return true, nil, pr.deals.SaveDeal(deal)
+		return true, nil, pr.deals.SaveDeal(ctx, deal)
 	}
 
 	// Calculate the payment owed
@@ -221,7 +222,7 @@ func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, addit
 		deal.Status = rm.DealStatusFundsNeededUnseal
 	}
 
-	err = pr.deals.SaveDeal(deal)
+	err = pr.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return true, nil, err
 	}
@@ -246,7 +247,8 @@ func (pr *ProviderRevalidator) OnPushDataReceived(chid datatransfer.ChannelID, a
 // if VoucherResult is non nil, the request will enter a settlement phase awaiting
 // a final update
 func (pr *ProviderRevalidator) OnComplete(chid datatransfer.ChannelID) (bool, datatransfer.VoucherResult, error) {
-	deal, err := pr.deals.GetDealByTransferId(chid)
+	ctx := context.TODO()
+	deal, err := pr.deals.GetDealByTransferId(ctx, chid)
 	if err != nil {
 		if err == repo.ErrNotFound {
 			return false, nil, nil
@@ -255,7 +257,7 @@ func (pr *ProviderRevalidator) OnComplete(chid datatransfer.ChannelID) (bool, da
 	}
 
 	deal.Status = rm.DealStatusBlocksComplete
-	err = pr.deals.SaveDeal(deal)
+	err = pr.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return true, nil, err
 	}
@@ -277,7 +279,7 @@ func (pr *ProviderRevalidator) OnComplete(chid datatransfer.ChannelID) (bool, da
 		paymentOwed, totalSent, totalPaidFor, deal.PricePerByte)
 	deal.Status = rm.DealStatusFundsNeededLastPayment
 	deal.TotalSent = totalSent
-	err = pr.deals.SaveDeal(deal)
+	err = pr.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return true, nil, err
 	}

@@ -6,8 +6,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/config"
-	types2 "github.com/filecoin-project/venus-messager/types"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"go.uber.org/fx"
 	"strings"
 	"sync"
@@ -22,10 +22,9 @@ import (
 
 	marketTypes "github.com/filecoin-project/venus-market/types"
 
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type dealPublisherAPI interface {
@@ -37,14 +36,14 @@ type dealPublisherAPI interface {
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 
-	PushMessage(ctx context.Context, msg *types.Message, spec *types2.MsgMeta) (cid.Cid, error)
+	PushMessage(ctx context.Context, msg *types.Message, spec *types.MessageSendSpec) (cid.Cid, error)
 }
 
 type DealPublisher struct {
 	api dealPublisherAPI
 	as  *AddressSelector
 
-	publishSpec   *types2.MsgMeta
+	publishSpec   *types.MessageSendSpec
 	publishMsgCfg PublishMsgConfig
 
 	lk         sync.Mutex
@@ -53,15 +52,15 @@ type DealPublisher struct {
 
 func NewDealPublisherWrapper(
 	cfg *config.MarketConfig,
-) func(lc fx.Lifecycle, full apiface.FullNode, msgClient clients.IMixMessage, as *AddressSelector) *DealPublisher {
-	return func(lc fx.Lifecycle, full apiface.FullNode, msgClient clients.IMixMessage, as *AddressSelector) *DealPublisher {
+) func(lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage, as *AddressSelector) *DealPublisher {
+	return func(lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage, as *AddressSelector) *DealPublisher {
 		dp := &DealPublisher{
 			api: struct {
-				apiface.FullNode
+				v1api.FullNode
 				clients.IMixMessage
 			}{full, msgClient},
 			as:          as,
-			publishSpec: &types2.MsgMeta{MaxFee: abi.TokenAmount(cfg.MaxPublishDealsFee)},
+			publishSpec: &types.MessageSendSpec{MaxFee: abi.TokenAmount(cfg.MaxPublishDealsFee)},
 			publishMsgCfg: PublishMsgConfig{
 				Period:         time.Duration(cfg.PublishMsgPeriod),
 				MaxDealsPerMsg: cfg.MaxDealsPerPublishMsg,
@@ -145,7 +144,7 @@ type singleDealPublisher struct {
 
 	maxDealsPerPublishMsg  uint64
 	publishPeriod          time.Duration
-	publishSpec            *types2.MsgMeta
+	publishSpec            *types.MessageSendSpec
 	cancelWaitForMoreDeals context.CancelFunc
 	publishPeriodStart     time.Time
 
@@ -187,7 +186,7 @@ func newDealPublisher(
 	dpapi dealPublisherAPI,
 	as *AddressSelector,
 	publishMsgCfg PublishMsgConfig,
-	publishSpec *types2.MsgMeta,
+	publishSpec *types.MessageSendSpec,
 ) *singleDealPublisher {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &singleDealPublisher{
@@ -402,7 +401,7 @@ func (p *singleDealPublisher) publishDealProposals(deals []market2.ClientDealPro
 		return cid.Undef, err
 	}
 
-	params, err := specactors.SerializeParams(&market2.PublishStorageDealsParams{
+	params, err := actors.SerializeParams(&market2.PublishStorageDealsParams{
 		Deals: deals,
 	})
 

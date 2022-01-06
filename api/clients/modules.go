@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -10,10 +11,8 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 
-	"github.com/filecoin-project/venus/app/client"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
@@ -28,12 +27,12 @@ var (
 	ReplaceWalletMethod = builder.NextInvoke()
 )
 
-func ConvertWalletToISinge(fullNode apiface.FullNode, signer ISinger) error {
-	fullNodeStruct := fullNode.(*client.FullNodeStruct)
+func ConvertWalletToISinge(fullNode v1api.FullNode, signer ISinger) error {
+	fullNodeStruct := fullNode.(*v1api.FullNodeStruct)
 	fullNodeStruct.IWalletStruct.Internal.WalletHas = func(p0 context.Context, p1 address.Address) (bool, error) {
 		return signer.WalletHas(p0, p1)
 	}
-	fullNodeStruct.IWalletStruct.Internal.WalletSign = func(p0 context.Context, p1 address.Address, p2 []byte, p3 wallet.MsgMeta) (*vCrypto.Signature, error) {
+	fullNodeStruct.IWalletStruct.Internal.WalletSign = func(p0 context.Context, p1 address.Address, p2 []byte, p3 types2.MsgMeta) (*vCrypto.Signature, error) {
 		return signer.WalletSign(p0, p1, p2, p3)
 	}
 	return nil
@@ -76,7 +75,7 @@ var ClientsOpts = func(server bool, mode string, mCfg *config.Messager, signerCf
 
 	if server {
 		return builder.Options(opts,
-			builder.Override(new(apiface.FullNode), NodeClient),
+			builder.Override(new(v1api.FullNode), NodeClient),
 
 			builder.ApplyIf(
 				func(s *builder.Settings) bool {
@@ -89,7 +88,7 @@ var ClientsOpts = func(server bool, mode string, mCfg *config.Messager, signerCf
 		)
 	} else {
 		return builder.Options(opts,
-			builder.Override(new(apiface.FullNode), NodeClient),
+			builder.Override(new(v1api.FullNode), NodeClient),
 		)
 	}
 }

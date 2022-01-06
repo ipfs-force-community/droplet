@@ -31,12 +31,12 @@ func NewRetrievalDealHandler(env ProviderDealEnvironment, retrievalDealStore rep
 
 func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *types.ProviderDealState) error {
 	deal.Status = rm.DealStatusUnsealing
-	err := p.retrievalDealStore.SaveDeal(deal)
+	err := p.retrievalDealStore.SaveDeal(ctx, deal)
 	if err != nil {
 		return err
 	}
 
-	storageDeal, err := p.storageDealRepo.GetDeal(deal.SelStorageProposalCid)
+	storageDeal, err := p.storageDealRepo.GetDeal(ctx, deal.SelStorageProposalCid)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *types.Provi
 	}
 	log.Debugf("blockstore prepared successfully, firing unseal complete for deal %d", deal.ID)
 	deal.Status = rm.DealStatusUnsealed
-	err = p.retrievalDealStore.SaveDeal(deal)
+	err = p.retrievalDealStore.SaveDeal(ctx, deal)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, deal *types.Provi
 			deal.Status = rm.DealStatusErrored
 		}
 	}
-	return p.retrievalDealStore.SaveDeal(deal)
+	return p.retrievalDealStore.SaveDeal(ctx, deal)
 }
 
 func (p *RetrievalDealHandler) CancelDeal(ctx context.Context, deal *types.ProviderDealState) error {
@@ -77,7 +77,7 @@ func (p *RetrievalDealHandler) CancelDeal(ctx context.Context, deal *types.Provi
 		}
 	}
 	deal.Status = rm.DealStatusCancelled
-	return p.retrievalDealStore.SaveDeal(deal)
+	return p.retrievalDealStore.SaveDeal(ctx, deal)
 }
 
 // CleanupDeal runs to do memory cleanup for an in progress deal
@@ -87,7 +87,7 @@ func (p *RetrievalDealHandler) CleanupDeal(ctx context.Context, deal *types.Prov
 		return p.Error(ctx, deal, nil)
 	}
 	deal.Status = rm.DealStatusCompleted
-	return p.retrievalDealStore.SaveDeal(deal)
+	return p.retrievalDealStore.SaveDeal(ctx, deal)
 }
 
 func (p *RetrievalDealHandler) Error(ctx context.Context, deal *types.ProviderDealState, err error) error {
@@ -95,5 +95,5 @@ func (p *RetrievalDealHandler) Error(ctx context.Context, deal *types.ProviderDe
 	if err != nil {
 		deal.Message = err.Error()
 	}
-	return p.retrievalDealStore.SaveDeal(deal)
+	return p.retrievalDealStore.SaveDeal(ctx, deal)
 }

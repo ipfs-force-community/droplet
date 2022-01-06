@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"context"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -34,13 +35,13 @@ func checkCallbackAndGetParamType(i interface{}) (reflect.Type, error) {
 	return in.Elem(), nil
 }
 
-func travelDeals(ds datastore.Batching, callback interface{}) error {
+func travelDeals(ctx context.Context, ds datastore.Batching, callback interface{}) error {
 	instanceType, err := checkCallbackAndGetParamType(callback)
 	if err != nil {
 		return err
 	}
 
-	result, err := ds.Query(query.Query{})
+	result, err := ds.Query(ctx, query.Query{})
 	if err != nil {
 		return err
 	}

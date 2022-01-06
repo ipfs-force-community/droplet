@@ -10,21 +10,21 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus-market/paychmgr"
 )
 
 type retrievalClientNode struct {
-	fullnode apiface.FullNode
+	fullnode v1api.FullNode
 	payAPI   *paychmgr.PaychAPI
 }
 
 // NewRetrievalClientNode returns a new node adapter for a retrieval client that talks to the
 // Lotus Node
-func NewRetrievalClientNode(payAPI *paychmgr.PaychAPI, fullnode apiface.FullNode) retrievalmarket.RetrievalClientNode {
+func NewRetrievalClientNode(payAPI *paychmgr.PaychAPI, fullnode v1api.FullNode) retrievalmarket.RetrievalClientNode {
 	return &retrievalClientNode{payAPI: payAPI, fullnode: fullnode}
 }
 

@@ -14,9 +14,7 @@ import (
 	"github.com/filecoin-project/venus-market/client"
 	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/types"
-	mTypes "github.com/filecoin-project/venus-messager/types"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	vTypes "github.com/filecoin-project/venus/pkg/types"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
 	types2 "github.com/ipfs-force-community/venus-gateway/types"
 	"github.com/ipfs/go-cid"
@@ -97,9 +95,9 @@ type MarketClientNodeStruct struct {
 
 		MessagerGetMessage func(p0 context.Context, p1 cid.Cid) (*vTypes.Message, error) `perm:"read"`
 
-		MessagerPushMessage func(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) `perm:"write"`
+		MessagerPushMessage func(p0 context.Context, p1 *vTypes.Message, p2 *vTypes.MessageSendSpec) (cid.Cid, error) `perm:"write"`
 
-		MessagerWaitMessage func(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) `perm:"read"`
+		MessagerWaitMessage func(p0 context.Context, p1 cid.Cid) (*vTypes.MsgLookup, error) `perm:"read"`
 	}
 }
 
@@ -212,9 +210,9 @@ type MarketFullNodeStruct struct {
 
 		MessagerGetMessage func(p0 context.Context, p1 cid.Cid) (*vTypes.Message, error) `perm:"read"`
 
-		MessagerPushMessage func(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) `perm:"write"`
+		MessagerPushMessage func(p0 context.Context, p1 *vTypes.Message, p2 *vTypes.MessageSendSpec) (cid.Cid, error) `perm:"write"`
 
-		MessagerWaitMessage func(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) `perm:"read"`
+		MessagerWaitMessage func(p0 context.Context, p1 cid.Cid) (*vTypes.MsgLookup, error) `perm:"read"`
 
 		NetAddrsListen func(p0 context.Context) (peer.AddrInfo, error) `perm:"read"`
 
@@ -525,19 +523,19 @@ func (s *MarketClientNodeStub) MessagerGetMessage(p0 context.Context, p1 cid.Cid
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *MarketClientNodeStruct) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) {
+func (s *MarketClientNodeStruct) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *vTypes.MessageSendSpec) (cid.Cid, error) {
 	return s.Internal.MessagerPushMessage(p0, p1, p2)
 }
 
-func (s *MarketClientNodeStub) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) {
+func (s *MarketClientNodeStub) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *vTypes.MessageSendSpec) (cid.Cid, error) {
 	return *new(cid.Cid), xerrors.New("method not supported")
 }
 
-func (s *MarketClientNodeStruct) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) {
+func (s *MarketClientNodeStruct) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*vTypes.MsgLookup, error) {
 	return s.Internal.MessagerWaitMessage(p0, p1)
 }
 
-func (s *MarketClientNodeStub) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) {
+func (s *MarketClientNodeStub) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*vTypes.MsgLookup, error) {
 	return nil, xerrors.New("method not supported")
 }
 
@@ -957,19 +955,19 @@ func (s *MarketFullNodeStub) MessagerGetMessage(p0 context.Context, p1 cid.Cid) 
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) {
+func (s *MarketFullNodeStruct) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *vTypes.MessageSendSpec) (cid.Cid, error) {
 	return s.Internal.MessagerPushMessage(p0, p1, p2)
 }
 
-func (s *MarketFullNodeStub) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *mTypes.MsgMeta) (cid.Cid, error) {
+func (s *MarketFullNodeStub) MessagerPushMessage(p0 context.Context, p1 *vTypes.Message, p2 *vTypes.MessageSendSpec) (cid.Cid, error) {
 	return *new(cid.Cid), xerrors.New("method not supported")
 }
 
-func (s *MarketFullNodeStruct) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) {
+func (s *MarketFullNodeStruct) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*vTypes.MsgLookup, error) {
 	return s.Internal.MessagerWaitMessage(p0, p1)
 }
 
-func (s *MarketFullNodeStub) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*apitypes.MsgLookup, error) {
+func (s *MarketFullNodeStub) MessagerWaitMessage(p0 context.Context, p1 cid.Cid) (*vTypes.MsgLookup, error) {
 	return nil, xerrors.New("method not supported")
 }
 

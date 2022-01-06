@@ -8,9 +8,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	vTypes "github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"golang.org/x/xerrors"
 
@@ -20,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/types"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const CoMinersLimit = 200
@@ -37,7 +37,7 @@ type IAddrMgr interface {
 
 type UserMgrImpl struct {
 	authCfg  config.AuthNode
-	fullNode apiface.FullNode
+	fullNode v1api.FullNode
 
 	miners []types.User
 	lk     sync.Mutex
@@ -45,7 +45,7 @@ type UserMgrImpl struct {
 
 var _ IAddrMgr = (*UserMgrImpl)(nil)
 
-func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode apiface.FullNode, cfg *config.MarketConfig) (IAddrMgr, error) {
+func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode v1api.FullNode, cfg *config.MarketConfig) (IAddrMgr, error) {
 	m := &UserMgrImpl{authCfg: cfg.AuthNode, fullNode: fullNode}
 
 	err := m.distAddress(ctx, convertConfigAddress(cfg.StorageMiners)...)
