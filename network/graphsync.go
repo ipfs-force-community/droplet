@@ -31,8 +31,8 @@ func NewGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfersForSto
 
 		gs := graphsyncimpl.New(metrics.LifecycleCtx(mctx, lc), graphsyncNetwork, lsys,
 			graphsyncimpl.RejectAllRequestsByDefault(),
-			graphsyncimpl.MaxInProgressIncomingRequests(simultaneousTransfersForRetrieval),
-			graphsyncimpl.MaxInProgressOutgoingRequests(simultaneousTransfersForStorage),
+			graphsyncimpl.MaxInProgressIncomingRequests(simultaneousTransfersForStorage),
+			graphsyncimpl.MaxInProgressOutgoingRequests(simultaneousTransfersForRetrieval),
 			graphsyncimpl.MaxLinksPerIncomingRequests(MaxTraversalLinks),
 			graphsyncimpl.MaxLinksPerOutgoingRequests(MaxTraversalLinks),
 		)
