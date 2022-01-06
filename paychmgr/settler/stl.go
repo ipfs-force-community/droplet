@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/paychmgr"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 )
 

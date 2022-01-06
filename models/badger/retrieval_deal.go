@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"context"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -23,21 +24,21 @@ func NewRetrievalDealRepo(ds RetrievalProviderDS) repo.IRetrievalDealRepo {
 	return &retrievalDealRepo{ds}
 }
 
-func (r retrievalDealRepo) SaveDeal(deal *types.ProviderDealState) error {
+func (r retrievalDealRepo) SaveDeal(ctx context.Context, deal *types.ProviderDealState) error {
 	b, err := cborrpc.Dump(deal)
 	if err != nil {
 		return err
 	}
-	return r.ds.Put(statestore.ToKey(deal.Identifier()), b)
+	return r.ds.Put(ctx, statestore.ToKey(deal.Identifier()), b)
 }
 
-func (r retrievalDealRepo) GetDeal(id peer.ID, id2 retrievalmarket.DealID) (*types.ProviderDealState, error) {
+func (r retrievalDealRepo) GetDeal(ctx context.Context, id peer.ID, id2 retrievalmarket.DealID) (*types.ProviderDealState, error) {
 	key := statestore.ToKey(retrievalmarket.ProviderDealIdentifier{
 		Receiver: id,
 		DealID:   id2,
 	})
 
-	value, err := r.ds.Get(key)
+	value, err := r.ds.Get(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -49,9 +50,9 @@ func (r retrievalDealRepo) GetDeal(id peer.ID, id2 retrievalmarket.DealID) (*typ
 	return &retrievalDeal, nil
 }
 
-func (r retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*types.ProviderDealState, error) {
+func (r retrievalDealRepo) GetDealByTransferId(ctx context.Context, chid datatransfer.ChannelID) (*types.ProviderDealState, error) {
 	var result *types.ProviderDealState
-	err := travelDeals(r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
+	err := travelDeals(ctx, r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
 		if deal.ChannelID != nil && deal.ChannelID.Initiator == chid.Initiator && deal.ChannelID.Responder == chid.Responder && deal.ChannelID.ID == chid.ID {
 			result = deal
 			return true, nil
@@ -67,15 +68,15 @@ func (r retrievalDealRepo) GetDealByTransferId(chid datatransfer.ChannelID) (*ty
 	return result, nil
 }
 
-func (r retrievalDealRepo) HasDeal(id peer.ID, id2 retrievalmarket.DealID) (bool, error) {
-	return r.ds.Has(statestore.ToKey(retrievalmarket.ProviderDealIdentifier{
+func (r retrievalDealRepo) HasDeal(ctx context.Context, id peer.ID, id2 retrievalmarket.DealID) (bool, error) {
+	return r.ds.Has(ctx, statestore.ToKey(retrievalmarket.ProviderDealIdentifier{
 		Receiver: id,
 		DealID:   id2,
 	}))
 }
 
-func (r retrievalDealRepo) ListDeals(pageIndex, pageSize int) ([]*types.ProviderDealState, error) {
-	result, err := r.ds.Query(query.Query{})
+func (r retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize int) ([]*types.ProviderDealState, error) {
+	result, err := r.ds.Query(ctx, query.Query{})
 	if err != nil {
 		return nil, err
 	}

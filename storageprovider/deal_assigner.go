@@ -59,14 +59,14 @@ func newPieceStoreEx(pieceStorage *config.PieceStorage, r repo.Repo) (DealAssige
 
 func (ps *dealAssigner) MarkDealsAsPacking(ctx context.Context, miner address.Address, dealIDs []abi.DealID) error {
 	for _, dealID := range dealIDs {
-		md, err := ps.repo.StorageDealRepo().GetDealByDealID(miner, dealID)
+		md, err := ps.repo.StorageDealRepo().GetDealByDealID(ctx, miner, dealID)
 		if err != nil {
 			log.Error("get deal [%d] error for %s", dealID, miner)
 			return xerrors.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
 		}
 
 		md.PieceStatus = types.Assigned
-		if err := ps.repo.StorageDealRepo().SaveDeal(md); err != nil {
+		if err := ps.repo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
 			return xerrors.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 		}
 	}
@@ -76,7 +76,7 @@ func (ps *dealAssigner) MarkDealsAsPacking(ctx context.Context, miner address.Ad
 
 //
 func (ps *dealAssigner) UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorID abi.SectorNumber, offset abi.PaddedPieceSize) error {
-	md, err := ps.repo.StorageDealRepo().GetDealByDealID(miner, dealID)
+	md, err := ps.repo.StorageDealRepo().GetDealByDealID(ctx, miner, dealID)
 	if err != nil {
 		log.Error("get deal [%d] error for %s", dealID, miner)
 		return xerrors.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
@@ -85,7 +85,7 @@ func (ps *dealAssigner) UpdateDealOnPacking(ctx context.Context, miner address.A
 	md.PieceStatus = types.Assigned
 	md.Offset = offset
 	md.SectorNumber = sectorID
-	if err := ps.repo.StorageDealRepo().SaveDeal(md); err != nil {
+	if err := ps.repo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
 		return xerrors.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 	}
 
@@ -94,14 +94,14 @@ func (ps *dealAssigner) UpdateDealOnPacking(ctx context.Context, miner address.A
 
 // Store `dealInfo` in the dealAssigner with key `pieceCID`.
 func (ps *dealAssigner) UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error {
-	md, err := ps.repo.StorageDealRepo().GetDealByDealID(miner, dealID)
+	md, err := ps.repo.StorageDealRepo().GetDealByDealID(ctx, miner, dealID)
 	if err != nil {
 		log.Error("get deal [%d] error for %s", dealID, miner)
 		return xerrors.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
 	}
 
 	md.PieceStatus = pieceStatus
-	if err := ps.repo.StorageDealRepo().SaveDeal(md); err != nil {
+	if err := ps.repo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
 		return xerrors.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 	}
 
@@ -111,7 +111,7 @@ func (ps *dealAssigner) UpdateDealStatus(ctx context.Context, miner address.Addr
 func (ps *dealAssigner) GetDeals(ctx context.Context, mAddr address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error) {
 	var dis []*types.DealInfo
 
-	mds, err := ps.repo.StorageDealRepo().GetDeals(mAddr, pageIndex, pageSize)
+	mds, err := ps.repo.StorageDealRepo().GetDeals(ctx, mAddr, pageIndex, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 		spec.MaxPiece = defaultMaxPiece
 	}
 
-	mds, err := ps.repo.StorageDealRepo().GetDealsByPieceStatus(miner, types.Undefine)
+	mds, err := ps.repo.StorageDealRepo().GetDealsByPieceStatus(ctx, miner, types.Undefine)
 	if err != nil {
 		return nil, err
 	}
@@ -325,13 +325,13 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.A
 
 	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
 		for _, piece := range pieces {
-			md, err := txRepo.StorageDealRepo().GetDealByDealID(miner, piece.DealID)
+			md, err := txRepo.StorageDealRepo().GetDealByDealID(ctx, miner, piece.DealID)
 			if err != nil {
 				return err
 			}
 
 			md.PieceStatus = types.Assigned
-			if err := txRepo.StorageDealRepo().SaveDeal(md); err != nil {
+			if err := txRepo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
 				return err
 			}
 		}

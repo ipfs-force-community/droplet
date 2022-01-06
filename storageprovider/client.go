@@ -28,14 +28,13 @@ import (
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
 	vcrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/state"
-	"github.com/filecoin-project/venus/pkg/types"
-	marketactor "github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	marketactor "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type ClientNodeAdapter struct {
@@ -50,10 +49,10 @@ type ClientNodeAdapter struct {
 }
 
 type clientApi struct {
-	full apiface.FullNode
+	full v1api.FullNode
 }
 
-func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode apiface.FullNode, msgClient clients.IMixMessage, fundmgr *fundmgr.FundManager, cfg *config.MarketClientConfig) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode v1api.FullNode, msgClient clients.IMixMessage, fundmgr *fundmgr.FundManager, cfg *config.MarketClientConfig) storagemarket.StorageClientNode {
 	capi := &clientApi{fullNode}
 	ctx := metrics.LifecycleCtx(mctx, lc)
 
@@ -73,7 +72,7 @@ func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode api
 	}
 
 	a.scMgr = NewSectorCommittedManager(ev, struct {
-		apiface.FullNode
+		v1api.FullNode
 		clients.IMixMessage
 	}{a.full, msgClient}, &apiWrapper{api: capi.full})
 	return a
@@ -230,7 +229,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("getting network version: %w", err)
 	}
 
-	res, err := marketactor.DecodePublishStorageDealsReturn(ret.Receipt.ReturnValue, nv)
+	res, err := marketactor.DecodePublishStorageDealsReturn(ret.Receipt.Return, nv)
 	if err != nil {
 		return 0, xerrors.Errorf("decoding deal publish return: %w", err)
 	}
@@ -389,8 +388,8 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	sig, err := c.full.WalletSign(ctx, signer, buf, wallet.MsgMeta{
-		Type: wallet.MTDealProposal,
+	sig, err := c.full.WalletSign(ctx, signer, buf, types.MsgMeta{
+		Type: types.MTDealProposal,
 	})
 	if err != nil {
 		return nil, err
@@ -420,7 +419,7 @@ func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb
 	if err != nil {
 		return cb(0, nil, cid.Undef, err)
 	}
-	return cb(receipt.Receipt.ExitCode, receipt.Receipt.ReturnValue, receipt.Message, nil)
+	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
 func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*storagemarket.StorageProviderInfo, error) {
@@ -443,8 +442,8 @@ func (c *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Addres
 		return nil, err
 	}
 
-	localSignature, err := c.full.WalletSign(ctx, signer, b, wallet.MsgMeta{
-		Type: wallet.MTUnknown, // TODO: pass type here
+	localSignature, err := c.full.WalletSign(ctx, signer, b, types.MsgMeta{
+		Type: types.MTUnknown, // TODO: pass type here
 	})
 	if err != nil {
 		return nil, err

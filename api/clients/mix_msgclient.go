@@ -2,39 +2,37 @@ package clients
 
 import (
 	"context"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	types2 "github.com/filecoin-project/venus-messager/types"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/minermgr"
 	"github.com/filecoin-project/venus-market/utils"
-	types2 "github.com/filecoin-project/venus-messager/types"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/types"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	xerrors "github.com/pkg/errors"
 	"go.uber.org/fx"
 )
 
 type IMixMessage interface {
-	GetMessage(ctx context.Context, mid cid.Cid) (*types.UnsignedMessage, error)
-	PushMessage(ctx context.Context, p1 *types.UnsignedMessage, p2 *types2.MsgMeta) (cid.Cid, error)
+	GetMessage(ctx context.Context, mid cid.Cid) (*types.Message, error)
+	PushMessage(ctx context.Context, p1 *types.Message, p2 *types.MessageSendSpec) (cid.Cid, error)
 	GetMessageChainCid(ctx context.Context, mid cid.Cid) (*cid.Cid, error)
-	WaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, loopBackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
-	SearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, loopBackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error)
+	WaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, loopBackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
+	SearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, loopBackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error)
 }
 
 type MPoolReplaceParams struct {
 	fx.In
-	FullNode      apiface.FullNode
+	FullNode      v1api.FullNode
 	Singer        ISinger           `optional:"true"`
 	VenusMessager IVenusMessager    `optional:"true"`
 	Mgr           minermgr.IAddrMgr `optional:"true"`
 }
 
 type MixMsgClient struct {
-	full        apiface.FullNode
+	full        v1api.FullNode
 	messager    IVenusMessager
 	addrMgr     minermgr.IAddrMgr
 	signer      ISinger
@@ -50,7 +48,7 @@ func NewMixMsgClient(params MPoolReplaceParams) IMixMessage {
 		nonceAssign: newNonceAssign(params.FullNode),
 	}
 }
-func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.UnsignedMessage, p2 *types2.MsgMeta) (cid.Cid, error) {
+func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Message, p2 *types.MessageSendSpec) (cid.Cid, error) {
 	if msgClient.messager == nil {
 		var sendSpec *types.MessageSendSpec
 		if p2 != nil {
@@ -77,8 +75,8 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Unsign
 		if err != nil {
 			return cid.Undef, err
 		}
-		sig, err := msgClient.full.WalletSign(ctx, estimatedMsg.From, storageBlock.Cid().Bytes(), wallet.MsgMeta{
-			Type:  wallet.MTChainMsg,
+		sig, err := msgClient.full.WalletSign(ctx, estimatedMsg.From, storageBlock.Cid().Bytes(), types.MsgMeta{
+			Type:  types.MTChainMsg,
 			Extra: storageBlock.RawData(),
 		})
 		if err != nil {
@@ -124,7 +122,7 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Unsign
 	}
 }
 
-func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, loopbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, loopbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	if msgClient.messager == nil || mCid.Prefix() != utils.MidPrefix {
 		return msgClient.full.StateWaitMsg(ctx, mCid, confidence, loopbackLimit, allowReplaced)
 	} else {
@@ -157,12 +155,12 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 					fallthrough
 				case types2.OnChainMsg:
 					if msg.Confidence > int64(confidence) {
-						return &apitypes.MsgLookup{
+						return &types.MsgLookup{
 							Message: mCid,
 							Receipt: types.MessageReceipt{
-								ExitCode:    msg.Receipt.ExitCode,
-								ReturnValue: msg.Receipt.ReturnValue,
-								GasUsed:     msg.Receipt.GasUsed,
+								ExitCode: msg.Receipt.ExitCode,
+								Return:   msg.Receipt.Return,
+								GasUsed:  msg.Receipt.GasUsed,
 							},
 							TipSet: msg.TipSetKey,
 							Height: abi.ChainEpoch(msg.Height),
@@ -173,7 +171,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 				case types2.FailedMsg:
 					var reason string
 					if msg.Receipt != nil {
-						reason = string(msg.Receipt.ReturnValue)
+						reason = string(msg.Receipt.Return)
 					}
 					return nil, xerrors.Errorf("msg failed due to %s", reason)
 				}
@@ -187,7 +185,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 	}
 }
 
-func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, loopbackLimit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, loopbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	if msgClient.messager == nil || mCid.Prefix() != utils.MidPrefix {
 		return msgClient.full.StateSearchMsg(ctx, from, mCid, loopbackLimit, allowReplaced)
 	} else {
@@ -210,12 +208,12 @@ func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetK
 		case types2.ReplacedMsg:
 			fallthrough
 		case types2.OnChainMsg:
-			return &apitypes.MsgLookup{
+			return &types.MsgLookup{
 				Message: mCid,
 				Receipt: types.MessageReceipt{
-					ExitCode:    msg.Receipt.ExitCode,
-					ReturnValue: msg.Receipt.ReturnValue,
-					GasUsed:     msg.Receipt.GasUsed,
+					ExitCode: msg.Receipt.ExitCode,
+					Return:   msg.Receipt.Return,
+					GasUsed:  msg.Receipt.GasUsed,
 				},
 				TipSet: msg.TipSetKey,
 				Height: abi.ChainEpoch(msg.Height),
@@ -224,7 +222,7 @@ func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetK
 		case types2.FailedMsg:
 			var reason string
 			if msg.Receipt != nil {
-				reason = string(msg.Receipt.ReturnValue)
+				reason = string(msg.Receipt.Return)
 			}
 			return nil, xerrors.Errorf("msg failed due to %s", reason)
 		default:
@@ -233,7 +231,7 @@ func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetK
 	}
 }
 
-func (msgClient *MixMsgClient) GetMessage(ctx context.Context, mCid cid.Cid) (*types.UnsignedMessage, error) {
+func (msgClient *MixMsgClient) GetMessage(ctx context.Context, mCid cid.Cid) (*types.Message, error) {
 	if msgClient.messager == nil || mCid.Prefix() != utils.MidPrefix {
 		return msgClient.full.ChainGetMessage(ctx, mCid)
 	} else {

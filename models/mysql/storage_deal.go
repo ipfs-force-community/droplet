@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -281,15 +282,15 @@ func NewStorageDealRepo(db *gorm.DB) *storageDealRepo {
 	return &storageDealRepo{db}
 }
 
-func (m *storageDealRepo) SaveDeal(StorageDeal *types.MinerDeal) error {
-	dbDeal := fromStorageDeal(StorageDeal)
+func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.MinerDeal) error {
+	dbDeal := fromStorageDeal(storageDeal)
 	dbDeal.UpdatedAt = uint64(time.Now().Unix())
-	return m.DB.Save(dbDeal).Error
+	return sdr.WithContext(ctx).Save(dbDeal).Error
 }
 
-func (m *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error) {
 	var md storageDeal
-	err := m.DB.Take(&md, "proposal_cid = ?", DBCid(proposalCid).String()).Error
+	err := sdr.WithContext(ctx).Take(&md, "proposal_cid = ?", DBCid(proposalCid).String()).Error
 	if err != nil {
 		return nil, err
 	}
@@ -297,10 +298,10 @@ func (m *storageDealRepo) GetDeal(proposalCid cid.Cid) (*types.MinerDeal, error)
 	return toStorageDeal(&md)
 }
 
-func (dsr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
 	var md []storageDeal
 
-	err := dsr.DB.Table((&storageDeal{}).TableName()).
+	err := sdr.WithContext(ctx).Table((&storageDeal{}).TableName()).
 		Find(&md, "cdp_provider = ?", DBAddress(miner).String()).
 		Offset(pageIndex * pageSize).Limit(pageSize).Error
 
@@ -320,10 +321,10 @@ func (dsr *storageDealRepo) GetDeals(miner address.Address, pageIndex, pageSize 
 	return deals, nil
 }
 
-func (dsr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(ctx context.Context, piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	var md []storageDeal
 
-	err := dsr.DB.Table((&storageDeal{}).TableName()).
+	err := sdr.WithContext(ctx).Table((&storageDeal{}).TableName()).
 		Find(&md, "cdp_piece_cid = ? AND state in ?", DBCid(piececid).String(), statues).Error
 
 	if err != nil {
@@ -342,10 +343,10 @@ func (dsr *storageDealRepo) GetDealsByPieceCidAndStatus(piececid cid.Cid, statue
 	return deals, nil
 }
 
-func (dsr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	var md []storageDeal
 
-	err := dsr.DB.Table((&storageDeal{}).TableName()).Find(&md, "cdp_provider = ? AND state in ?", DBAddress(addr).String(), status).Error
+	err := sdr.WithContext(ctx).Table((&storageDeal{}).TableName()).Find(&md, "cdp_provider = ? AND state in ?", DBAddress(addr).String(), status).Error
 	if err != nil {
 		return nil, err
 	}
@@ -362,30 +363,30 @@ func (dsr *storageDealRepo) GetDealByAddrAndStatus(addr address.Address, status 
 	return deals, nil
 }
 
-func (dsr *storageDealRepo) UpdateDealStatus(proposalCid cid.Cid, status storagemarket.StorageDealStatus) error {
-	return dsr.DB.Model(storageDeal{}).Where("proposal_cid = ?", DBCid(proposalCid).String()).
+func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus) error {
+	return sdr.WithContext(ctx).Model(storageDeal{}).Where("proposal_cid = ?", DBCid(proposalCid).String()).
 		UpdateColumns(map[string]interface{}{"state": status, "updated_at": time.Now().Unix()}).Error
 }
 
-func (m *storageDealRepo) ListDealByAddr(miner address.Address) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) ListDealByAddr(ctx context.Context, miner address.Address) ([]*types.MinerDeal, error) {
 	var storageDeals []*storageDeal
-	if err := m.Table(storageDealTableName).Find(storageDeals, "cdp_provider = ?", DBAddress(miner).String()).Error; err != nil {
+	if err := sdr.Table(storageDealTableName).Find(storageDeals, "cdp_provider = ?", DBAddress(miner).String()).Error; err != nil {
 		return nil, err
 	}
 	return fromDbDeals(storageDeals)
 }
 
-func (m *storageDealRepo) ListDeal() ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) ListDeal(ctx context.Context) ([]*types.MinerDeal, error) {
 	var storageDeals []*storageDeal
-	if err := m.Table(storageDealTableName).Find(&storageDeals).Error; err != nil {
+	if err := sdr.Table(storageDealTableName).Find(&storageDeals).Error; err != nil {
 		return nil, err
 	}
 	return fromDbDeals(storageDeals)
 }
 
-func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
+func (sdr *storageDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
 	var storageDeals []*storageDeal
-	if err := m.Table(storageDealTableName).Find(&storageDeals, "cdp_piece_cid = ?", DBCid(pieceCID).String()).Error; err != nil {
+	if err := sdr.Table(storageDealTableName).Find(&storageDeals, "cdp_piece_cid = ?", DBCid(pieceCID).String()).Error; err != nil {
 		return nil, err
 	}
 
@@ -409,11 +410,11 @@ func (m *storageDealRepo) GetPieceInfo(pieceCID cid.Cid) (*piecestore.PieceInfo,
 	return &pieceInfo, nil
 }
 
-func (m *storageDealRepo) ListPieceInfoKeys() ([]cid.Cid, error) {
+func (sdr *storageDealRepo) ListPieceInfoKeys(ctx context.Context) ([]cid.Cid, error) {
 	var cidsStr []string
 	var err error
 
-	if err := m.DB.Table((&storageDeal{}).TableName()).Select("cdp_piece_cid").Scan(&cidsStr).Error; err != nil {
+	if err := sdr.DB.Table((&storageDeal{}).TableName()).Select("cdp_piece_cid").Scan(&cidsStr).Error; err != nil {
 		return nil, err
 	}
 
@@ -428,26 +429,26 @@ func (m *storageDealRepo) ListPieceInfoKeys() ([]cid.Cid, error) {
 	return cids, nil
 }
 
-func (m *storageDealRepo) GetDealByDealID(mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealByDealID(ctx context.Context, mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error) {
 	var dbDeal *storageDeal
-	if err := m.DB.Table(storageDealTableName).Take(&dbDeal, "cdp_provider = ? and deal_id = ?", DBAddress(mAddr).String(), dealID).Error; err != nil {
+	if err := sdr.WithContext(ctx).Table(storageDealTableName).Take(&dbDeal, "cdp_provider = ? and deal_id = ?", DBAddress(mAddr).String(), dealID).Error; err != nil {
 		return nil, err
 	}
 	return toStorageDeal(dbDeal)
 }
 
-func (m *storageDealRepo) GetDealsByPieceStatus(mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
 	var dbDeals []*storageDeal
-	if err := m.DB.Table(storageDealTableName).Find(&dbDeals, "cdp_provider = ? and piece_status = ?", DBAddress(mAddr).String(), pieceStatus).Error; err != nil {
+	if err := sdr.WithContext(ctx).Table(storageDealTableName).Find(&dbDeals, "cdp_provider = ? and piece_status = ?", DBAddress(mAddr).String(), pieceStatus).Error; err != nil {
 		return nil, err
 	}
 
 	return fromDbDeals(dbDeals)
 }
 
-func (m *storageDealRepo) GetPieceSize(pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error) {
+func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error) {
 	var deal *storageDeal
-	if err := m.DB.Table(storageDealTableName).Take(&deal, "cdp_piece_cid = ? ", DBCid(pieceCID).String()).Error; err != nil {
+	if err := sdr.WithContext(ctx).Table(storageDealTableName).Take(&deal, "cdp_piece_cid = ? ", DBCid(pieceCID).String()).Error; err != nil {
 		return 0, 0, err
 	}
 

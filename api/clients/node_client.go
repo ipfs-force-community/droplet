@@ -5,15 +5,14 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
-	"github.com/filecoin-project/venus/app/client"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"go.uber.org/fx"
 )
 
-func NodeClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, nodeCfg *config.Node) (apiface.FullNode, error) {
-	fullNode := client.FullNodeStruct{}
+func NodeClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, nodeCfg *config.Node) (v1api.FullNode, error) {
+	fullNode := v1api.FullNodeStruct{}
 
 	aInfo := apiinfo.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
 	addr, err := aInfo.DialArgs("v1")

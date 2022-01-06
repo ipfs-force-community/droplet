@@ -34,11 +34,11 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types/specactors/policy"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	api2 "github.com/filecoin-project/venus-market/api"
 	cli2 "github.com/filecoin-project/venus-market/cli"
@@ -68,7 +68,7 @@ type QueriedAsk struct {
 	Ping time.Duration
 }
 
-func GetAsks(ctx context.Context, api apiface.FullNode, capi api2.MarketClientNode) ([]QueriedAsk, error) {
+func GetAsks(ctx context.Context, api v1api.FullNode, capi api2.MarketClientNode) ([]QueriedAsk, error) {
 	isTTY := true
 	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) == 0 {
 		isTTY = false
@@ -1171,7 +1171,7 @@ type deal struct {
 	OnChainDealState market.DealState
 }
 
-func dealFromDealInfo(ctx context.Context, full apiface.FullNode, head *types.TipSet, v client.DealInfo) deal {
+func dealFromDealInfo(ctx context.Context, full v1api.FullNode, head *types.TipSet, v client.DealInfo) deal {
 	if v.DealID == 0 {
 		return deal{
 			LocalDeal:        v,
@@ -1190,7 +1190,7 @@ func dealFromDealInfo(ctx context.Context, full apiface.FullNode, head *types.Ti
 	}
 }
 
-func outputClientStorageDeals(ctx context.Context, out io.Writer, full apiface.FullNode, localDeals []client.DealInfo, verbose bool, showFailed bool) error {
+func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.FullNode, localDeals []client.DealInfo, verbose bool, showFailed bool) error {
 	sort.Slice(localDeals, func(i, j int) bool {
 		return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
 	})

@@ -174,7 +174,7 @@ func (p *StorageProviderV2Impl) Start(ctx context.Context) error {
 
 func (p *StorageProviderV2Impl) start(ctx context.Context) error {
 	// Run datastore and DAG store migrations
-	deals, err := p.dealStore.ListDeal()
+	deals, err := p.dealStore.ListDeal(ctx)
 	if err != nil {
 		return nil
 	}
@@ -222,7 +222,7 @@ func (p *StorageProviderV2Impl) Stop() error {
 // cid for the given deal or it will error
 func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error {
 	// TODO: be able to check if we have enough disk space
-	d, err := p.dealStore.GetDeal(propCid)
+	d, err := p.dealStore.GetDeal(ctx, propCid)
 	if err != nil {
 		return xerrors.Errorf("failed getting deal %s: %w", propCid, err)
 	}

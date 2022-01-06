@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -27,7 +28,7 @@ func NewPaychRepo(ds PayChanDS) *paychRepo {
 }
 
 // CreateChannel creates an outbound channel for the given from / to
-func (pr *paychRepo) CreateChannel(from address.Address, to address.Address, createMsgCid cid.Cid, amt fbig.Int) (*types.ChannelInfo, error) {
+func (pr *paychRepo) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt fbig.Int) (*types.ChannelInfo, error) {
 	ci := &types.ChannelInfo{
 		Direction:     types.DirOutbound,
 		NextLane:      0,
@@ -38,13 +39,13 @@ func (pr *paychRepo) CreateChannel(from address.Address, to address.Address, cre
 	}
 
 	// Save the new channel
-	err := pr.SaveChannel(ci)
+	err := pr.SaveChannel(ctx, ci)
 	if err != nil {
 		return nil, err
 	}
 
 	// Save a reference to the create message
-	err = pr.SaveMessage(&types.MsgInfo{ChannelID: ci.ChannelID, MsgCid: createMsgCid})
+	err = pr.SaveMessage(ctx, &types.MsgInfo{ChannelID: ci.ChannelID, MsgCid: createMsgCid})
 	if err != nil {
 		return nil, err
 	}
@@ -52,25 +53,25 @@ func (pr *paychRepo) CreateChannel(from address.Address, to address.Address, cre
 	return ci, err
 }
 
-func (pr *paychRepo) GetChannelByAddress(ch address.Address) (*types.ChannelInfo, error) {
-	return pr.findChan(func(ci *types.ChannelInfo) bool {
+func (pr *paychRepo) GetChannelByAddress(ctx context.Context, ch address.Address) (*types.ChannelInfo, error) {
+	return pr.findChan(ctx, func(ci *types.ChannelInfo) bool {
 		return ci.Channel != nil && *ci.Channel == ch
 	})
 }
 
-func (pr *paychRepo) GetChannelByChannelID(channelID string) (*types.ChannelInfo, error) {
-	return pr.findChan(func(ci *types.ChannelInfo) bool {
+func (pr *paychRepo) GetChannelByChannelID(ctx context.Context, channelID string) (*types.ChannelInfo, error) {
+	return pr.findChan(ctx, func(ci *types.ChannelInfo) bool {
 		return ci.ChannelID == channelID
 	})
 }
 
-func (pr *paychRepo) GetChannelByMessageCid(mcid cid.Cid) (*types.ChannelInfo, error) {
-	info, err := pr.GetMessage(mcid)
+func (pr *paychRepo) GetChannelByMessageCid(ctx context.Context, mcid cid.Cid) (*types.ChannelInfo, error) {
+	info, err := pr.GetMessage(ctx, mcid)
 	if err != nil {
 		return nil, err
 	}
 
-	ci, err := pr.GetChannelByChannelID(info.ChannelID)
+	ci, err := pr.GetChannelByChannelID(ctx, info.ChannelID)
 	if err != nil {
 		return nil, err
 	}
@@ -80,8 +81,8 @@ func (pr *paychRepo) GetChannelByMessageCid(mcid cid.Cid) (*types.ChannelInfo, e
 
 // OutboundActiveByFromTo looks for outbound channels that have not been
 // settled, with the given from / to addresses
-func (pr *paychRepo) OutboundActiveByFromTo(from address.Address, to address.Address) (*types.ChannelInfo, error) {
-	return pr.findChan(func(ci *types.ChannelInfo) bool {
+func (pr *paychRepo) OutboundActiveByFromTo(ctx context.Context, from address.Address, to address.Address) (*types.ChannelInfo, error) {
+	return pr.findChan(ctx, func(ci *types.ChannelInfo) bool {
 		if ci.Direction != types.DirOutbound {
 			return false
 		}
@@ -93,8 +94,8 @@ func (pr *paychRepo) OutboundActiveByFromTo(from address.Address, to address.Add
 }
 
 // ListChannel returns the addresses of all channels that have been created
-func (pr *paychRepo) ListChannel() ([]address.Address, error) {
-	cis, err := pr.findChans(func(ci *types.ChannelInfo) bool {
+func (pr *paychRepo) ListChannel(ctx context.Context) ([]address.Address, error) {
+	cis, err := pr.findChans(ctx, func(ci *types.ChannelInfo) bool {
 		return ci.Channel != nil
 	}, 0)
 	if err != nil {
@@ -112,8 +113,8 @@ func (pr *paychRepo) ListChannel() ([]address.Address, error) {
 // WithPendingAddFunds is used on startup to find channels for which a
 // create channel or add funds message has been sent, but shut down
 // before the response was received.
-func (pr *paychRepo) WithPendingAddFunds() ([]*types.ChannelInfo, error) {
-	return pr.findChans(func(ci *types.ChannelInfo) bool {
+func (pr *paychRepo) WithPendingAddFunds(ctx context.Context) ([]*types.ChannelInfo, error) {
+	return pr.findChans(ctx, func(ci *types.ChannelInfo) bool {
 		if ci.Direction != types.DirOutbound {
 			return false
 		}
@@ -123,8 +124,8 @@ func (pr *paychRepo) WithPendingAddFunds() ([]*types.ChannelInfo, error) {
 
 // findChan finds a single channel using the given filter.
 // If there isn't a channel that matches the filter, returns ErrChannelNotFound
-func (pr *paychRepo) findChan(filter func(ci *types.ChannelInfo) bool) (*types.ChannelInfo, error) {
-	cis, err := pr.findChans(filter, 1)
+func (pr *paychRepo) findChan(ctx context.Context, filter func(ci *types.ChannelInfo) bool) (*types.ChannelInfo, error) {
+	cis, err := pr.findChans(ctx, filter, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -138,8 +139,8 @@ func (pr *paychRepo) findChan(filter func(ci *types.ChannelInfo) bool) (*types.C
 
 // findChans loops over all channels, only including those that pass the filter.
 // max is the maximum number of channels to return. Set to zero to return unlimited channels.
-func (pr *paychRepo) findChans(filter func(*types.ChannelInfo) bool, max int) ([]*types.ChannelInfo, error) {
-	res, err := pr.ds.Query(query.Query{Prefix: dsKeyChannelInfo})
+func (pr *paychRepo) findChans(ctx context.Context, filter func(*types.ChannelInfo) bool, max int) ([]*types.ChannelInfo, error) {
+	res, err := pr.ds.Query(ctx, query.Query{Prefix: dsKeyChannelInfo})
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +182,7 @@ func (pr *paychRepo) findChans(filter func(*types.ChannelInfo) bool, max int) ([
 }
 
 // SaveChannel stores the channel info in the datastore
-func (pr *paychRepo) SaveChannel(ci *types.ChannelInfo) error {
+func (pr *paychRepo) SaveChannel(ctx context.Context, ci *types.ChannelInfo) error {
 	if len(ci.ChannelID) == 0 {
 		ci.ChannelID = uuid.New().String()
 	}
@@ -192,12 +193,12 @@ func (pr *paychRepo) SaveChannel(ci *types.ChannelInfo) error {
 		return err
 	}
 
-	return pr.ds.Put(key, b)
+	return pr.ds.Put(ctx, key, b)
 }
 
 // RemoveChannel removes the channel with the given channel ID
-func (pr *paychRepo) RemoveChannel(channelID string) error {
-	return pr.ds.Delete(dskeyForChannel(channelID))
+func (pr *paychRepo) RemoveChannel(ctx context.Context, channelID string) error {
+	return pr.ds.Delete(ctx, dskeyForChannel(channelID))
 }
 
 // The datastore key used to identify the channel info
@@ -242,10 +243,10 @@ func unmarshallChannelInfo(stored *types.ChannelInfo, value []byte) (*types.Chan
 // ///// msg info ////////
 
 // GetMessage gets the message info for a given message CID
-func (pr *paychRepo) GetMessage(mcid cid.Cid) (*types.MsgInfo, error) {
+func (pr *paychRepo) GetMessage(ctx context.Context, mcid cid.Cid) (*types.MsgInfo, error) {
 	k := dskeyForMsg(mcid)
 
-	val, err := pr.ds.Get(k)
+	val, err := pr.ds.Get(ctx, k)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +260,7 @@ func (pr *paychRepo) GetMessage(mcid cid.Cid) (*types.MsgInfo, error) {
 }
 
 // SaveMessage is called when a message is sent
-func (pr *paychRepo) SaveMessage(info *types.MsgInfo) error {
+func (pr *paychRepo) SaveMessage(ctx context.Context, info *types.MsgInfo) error {
 	k := dskeyForMsg(info.MsgCid)
 
 	b, err := cborutil.Dump(info)
@@ -267,12 +268,12 @@ func (pr *paychRepo) SaveMessage(info *types.MsgInfo) error {
 		return err
 	}
 
-	return pr.ds.Put(k, b)
+	return pr.ds.Put(ctx, k, b)
 }
 
 // SaveMessageResult is called when the result of a message is received
-func (pr *paychRepo) SaveMessageResult(mcid cid.Cid, msgErr error) error {
-	minfo, err := pr.GetMessage(mcid)
+func (pr *paychRepo) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr error) error {
+	minfo, err := pr.GetMessage(ctx, mcid)
 	if err != nil {
 		return err
 	}
@@ -288,7 +289,7 @@ func (pr *paychRepo) SaveMessageResult(mcid cid.Cid, msgErr error) error {
 		return err
 	}
 
-	return pr.ds.Put(k, b)
+	return pr.ds.Put(ctx, k, b)
 }
 
 // The datastore key used to identify the message

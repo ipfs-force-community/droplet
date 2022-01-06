@@ -8,7 +8,7 @@ import (
 
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 )
 
 const (

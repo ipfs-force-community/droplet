@@ -44,7 +44,7 @@ func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, err
 }
 
 func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
-	payloadSize, pieceSize, err := m.pieceRepo.GetPieceSize(pieceCid)
+	payloadSize, pieceSize, err := m.pieceRepo.GetPieceSize(ctx, pieceCid)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (i
 }
 
 func (m *marketAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
-	pieceInfo, err := m.pieceRepo.GetPieceInfo(pieceCid)
+	pieceInfo, err := m.pieceRepo.GetPieceInfo(ctx, pieceCid)
 	if err != nil {
 		return 0, xerrors.Errorf("failed to fetch pieceInfo for piece %s: %w", pieceCid, err)
 	}

@@ -3,7 +3,7 @@ package clients
 import (
 	"context"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"sync"
 )
 
@@ -14,10 +14,10 @@ type INonceAssigner interface {
 type nonceAssigner struct {
 	lk     sync.Mutex
 	nonces map[address.Address]uint64
-	full   apiface.FullNode
+	full   v1api.FullNode
 }
 
-func newNonceAssign(full apiface.FullNode) *nonceAssigner {
+func newNonceAssign(full v1api.FullNode) *nonceAssigner {
 	return &nonceAssigner{full: full, lk: sync.Mutex{}, nonces: map[address.Address]uint64{}}
 }
 func (nonceAssign *nonceAssigner) AssignNonce(ctx context.Context, addr address.Address) (uint64, error) {

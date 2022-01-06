@@ -2,6 +2,7 @@ package badger
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
@@ -24,7 +25,7 @@ func NewFundRepo(ds FundMgrDS) *fundRepo {
 }
 
 // SaveFundedAddressState save the state to the datastore
-func (fr *fundRepo) SaveFundedAddressState(state *types.FundedAddressState) error {
+func (fr *fundRepo) SaveFundedAddressState(ctx context.Context, state *types.FundedAddressState) error {
 	k := dskeyForAddr(state.Addr)
 
 	b, err := cborrpc.Dump(state)
@@ -32,14 +33,14 @@ func (fr *fundRepo) SaveFundedAddressState(state *types.FundedAddressState) erro
 		return err
 	}
 
-	return fr.ds.Put(k, b)
+	return fr.ds.Put(ctx, k, b)
 }
 
 // GetFundedAddressState get the state for the given address
-func (fr *fundRepo) GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error) { //nolint
+func (fr *fundRepo) GetFundedAddressState(ctx context.Context, addr address.Address) (*types.FundedAddressState, error) { //nolint
 	k := dskeyForAddr(addr)
 
-	data, err := fr.ds.Get(k)
+	data, err := fr.ds.Get(ctx, k)
 	if err != nil {
 		return nil, err
 	}
@@ -53,8 +54,8 @@ func (fr *fundRepo) GetFundedAddressState(addr address.Address) (*types.FundedAd
 }
 
 // ListFundedAddressState get all states in the datastore
-func (fr *fundRepo) ListFundedAddressState() ([]*types.FundedAddressState, error) {
-	res, err := fr.ds.Query(dsq.Query{Prefix: dsKeyAddr})
+func (fr *fundRepo) ListFundedAddressState(ctx context.Context) ([]*types.FundedAddressState, error) {
+	res, err := fr.ds.Query(ctx, dsq.Query{Prefix: dsKeyAddr})
 	if err != nil {
 		return nil, err
 	}

@@ -40,7 +40,7 @@ func PrivKey(home config.IHome, cfg *config.Libp2p) (crypto.PrivKey, error) {
 		return nil, err
 	}
 
-	kbytes, err := pk.Bytes()
+	kbytes, err := pk.Raw()
 	if err != nil {
 		return nil, err
 	}
@@ -77,19 +77,6 @@ func NoRelay() func() (opts Libp2pOpts, err error) {
 		// always disabled, it's an eclipse attack vector
 		opts.Opts = append(opts.Opts, libp2p.DisableRelay())
 		return
-	}
-}
-
-func AddrFilters(filters []string) func() (opts Libp2pOpts, err error) {
-	return func() (opts Libp2pOpts, err error) {
-		for _, s := range filters {
-			f, err := mamask.NewMask(s)
-			if err != nil {
-				return opts, fmt.Errorf("incorrectly formatted address filter in config: %s", s)
-			}
-			opts.Opts = append(opts.Opts, libp2p.FilterAddresses(f)) //nolint:staticcheck
-		}
-		return opts, nil
 	}
 }
 

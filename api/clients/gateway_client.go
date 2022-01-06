@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/venus-market/minermgr"
 	"github.com/filecoin-project/venus-messager/gateway"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	wallet2 "github.com/ipfs-force-community/venus-gateway/types/wallet"
@@ -44,7 +44,7 @@ func (gatewayClient *GatewayClient) WalletHas(ctx context.Context, addr address.
 	return gatewayClient.innerClient.WalletHas(ctx, account, addr)
 }
 
-func (gatewayClient *GatewayClient) WalletSign(ctx context.Context, addr address.Address, msg []byte, meta wallet.MsgMeta) (*vCrypto.Signature, error) {
+func (gatewayClient *GatewayClient) WalletSign(ctx context.Context, addr address.Address, msg []byte, meta types2.MsgMeta) (*vCrypto.Signature, error) {
 	account, err := gatewayClient.importMgr.GetAccount(ctx, addr)
 	if err != nil {
 		return nil, err

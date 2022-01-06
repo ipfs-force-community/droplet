@@ -31,39 +31,39 @@ func NewDataTransferHandler(retrievalDealHandler IRetrievalHandler, retrievalDea
 }
 
 func (d *DataTransferHandler) HandleCompleteFor(ctx context.Context, identifier rm.ProviderDealIdentifier) error {
-	deal, err := d.retrievalDealStore.GetDeal(identifier.Receiver, identifier.DealID)
+	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
 	if err != nil {
 		deal.Status = rm.DealStatusErrored
-		return d.retrievalDealStore.SaveDeal(deal)
+		return d.retrievalDealStore.SaveDeal(ctx, deal)
 	}
 	return d.retrievalDealHandler.CleanupDeal(context.TODO(), deal)
 }
 
 func (d *DataTransferHandler) HandleAcceptFor(ctx context.Context, identifier rm.ProviderDealIdentifier, channelId datatransfer.ChannelID) error {
-	deal, err := d.retrievalDealStore.GetDeal(identifier.Receiver, identifier.DealID)
+	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
 	if err != nil {
 		deal.Status = rm.DealStatusErrored
-		return d.retrievalDealStore.SaveDeal(deal)
+		return d.retrievalDealStore.SaveDeal(ctx, deal)
 	}
 	deal.ChannelID = &channelId
 	return d.retrievalDealHandler.UnsealData(ctx, deal)
 }
 
 func (d *DataTransferHandler) HandleDisconnectFor(ctx context.Context, identifier rm.ProviderDealIdentifier, errIn error) error {
-	deal, err := d.retrievalDealStore.GetDeal(identifier.Receiver, identifier.DealID)
+	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
 	if err != nil {
 		deal.Status = rm.DealStatusErrored
 		deal.Message = err.Error()
-		return d.retrievalDealStore.SaveDeal(deal)
+		return d.retrievalDealStore.SaveDeal(ctx, deal)
 	}
 	return d.retrievalDealHandler.Error(ctx, deal, errIn)
 }
 
 func (d *DataTransferHandler) HandleCancelForDeal(ctx context.Context, identifier rm.ProviderDealIdentifier) error {
-	deal, err := d.retrievalDealStore.GetDeal(identifier.Receiver, identifier.DealID)
+	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
 	if err != nil {
 		deal.Status = rm.DealStatusErrored
-		return d.retrievalDealStore.SaveDeal(deal)
+		return d.retrievalDealStore.SaveDeal(ctx, deal)
 	}
 	switch deal.Status {
 	case rm.DealStatusFailing:
@@ -73,15 +73,15 @@ func (d *DataTransferHandler) HandleCancelForDeal(ctx context.Context, identifie
 			deal.Message = "Client cancelled retrieval"
 		}
 	}
-	return d.retrievalDealStore.SaveDeal(deal)
+	return d.retrievalDealStore.SaveDeal(ctx, deal)
 }
 
 func (d *DataTransferHandler) HandleErrorForDeal(ctx context.Context, identifier rm.ProviderDealIdentifier, errIn error) error {
-	deal, err := d.retrievalDealStore.GetDeal(identifier.Receiver, identifier.DealID)
+	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
 	if err != nil {
 		deal.Status = rm.DealStatusErrored
 		deal.Message = err.Error()
-		return d.retrievalDealStore.SaveDeal(deal)
+		return d.retrievalDealStore.SaveDeal(ctx, deal)
 	}
 	return d.retrievalDealHandler.Error(ctx, deal, errIn)
 }

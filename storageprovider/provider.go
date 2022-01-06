@@ -5,8 +5,6 @@ package storageprovider
 import (
 	"context"
 	"github.com/filecoin-project/venus-market/api/clients"
-	types3 "github.com/filecoin-project/venus-messager/types"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -23,15 +21,14 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/state"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/market"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/fundmgr"
@@ -44,7 +41,7 @@ var defaultMaxProviderCollateralMultiplier = uint64(2)
 var log = logging.Logger("storageadapter")
 
 type ProviderNodeAdapter struct {
-	apiface.FullNode
+	v1api.FullNode
 
 	fundMgr   *fundmgr.FundManager
 	msgClient clients.IMixMessage
@@ -53,14 +50,14 @@ type ProviderNodeAdapter struct {
 	dealPublisher *DealPublisher
 
 	extendPieceMeta             DealAssiger
-	addBalanceSpec              *types3.MsgMeta
+	addBalanceSpec              *types.MessageSendSpec
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	dealInfo                    *CurrentDealInfoManager
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node apiface.FullNode, msgClient clients.IMixMessage, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta DealAssiger) StorageProviderNode {
-	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full apiface.FullNode, msgClient clients.IMixMessage, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta DealAssiger) StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCtx, lc fx.Lifecycle, node v1api.FullNode, msgClient clients.IMixMessage, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta DealAssiger) StorageProviderNode {
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage, dealPublisher *DealPublisher, fundMgr *fundmgr.FundManager, extendPieceMeta DealAssiger) StorageProviderNode {
 		na := &ProviderNodeAdapter{
 			FullNode:        full,
 			msgClient:       msgClient,
@@ -70,7 +67,7 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(mctx metrics.MetricsCt
 			fundMgr:         fundMgr,
 		}
 		if fc != nil {
-			na.addBalanceSpec = &types3.MsgMeta{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
+			na.addBalanceSpec = &types.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
 			na.maxDealCollateralMultiplier = fc.MaxProviderCollateralMultiplier
 		}
 		na.maxDealCollateralMultiplier = defaultMaxProviderCollateralMultiplier
@@ -155,7 +152,7 @@ func (n *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*cryp
 	if err != nil {
 		return nil, err
 	}
-	localSignature, err := n.WalletSign(ctx, signer, msgBytes, wallet.MsgMeta{
+	localSignature, err := n.WalletSign(ctx, signer, msgBytes, types.MsgMeta{
 		Type: info.Type,
 	})
 	if err != nil {
@@ -186,8 +183,8 @@ func (n *ProviderNodeAdapter) SignWithGivenMiner(mAddr address.Address) network.
 		if err != nil {
 			return nil, err
 		}
-		localSignature, err := n.WalletSign(ctx, signer, msgBytes, wallet.MsgMeta{
-			Type: wallet.MTUnknown,
+		localSignature, err := n.WalletSign(ctx, signer, msgBytes, types.MsgMeta{
+			Type: types.MTUnknown,
 		})
 		if err != nil {
 			return nil, err
@@ -262,7 +259,7 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 		return cb(0, nil, cid.Undef, err)
 	}
 	ctx.Done()
-	return cb(receipt.Receipt.ExitCode, receipt.Receipt.ReturnValue, receipt.Message, nil)
+	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
 func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
@@ -300,7 +297,7 @@ func (n *ProviderNodeAdapter) GetDataCap(ctx context.Context, addr address.Addre
 	return sp, err
 }
 
-func (n *ProviderNodeAdapter) SearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*apitypes.MsgLookup, error) {
+func (n *ProviderNodeAdapter) SearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	return n.msgClient.WaitMsg(ctx, msg, constants.MessageConfidence, limit, allowReplaced)
 }
 

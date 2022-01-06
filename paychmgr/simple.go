@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	"github.com/filecoin-project/venus-market/types"
-	types2 "github.com/filecoin-project/venus/pkg/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // paychFundsRes is the response to a create channel or add funds request
@@ -157,7 +157,7 @@ func (m *mergedFundsReq) sum() big.Int {
 func (ca *channelAccessor) getPaych(ctx context.Context, amt big.Int) (address.Address, cid.Cid, error) {
 	// Add the request to add funds to a queue and wait for the result
 	freq := newFundsReq(ctx, amt)
-	ca.enqueue(freq)
+	ca.enqueue(ctx, freq)
 	select {
 	case res := <-freq.promise:
 		return res.channel, res.mcid, res.err
@@ -168,16 +168,16 @@ func (ca *channelAccessor) getPaych(ctx context.Context, amt big.Int) (address.A
 }
 
 // Queue up an add funds operation
-func (ca *channelAccessor) enqueue(task *fundsReq) {
+func (ca *channelAccessor) enqueue(ctx context.Context, task *fundsReq) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	ca.fundsReqQueue = append(ca.fundsReqQueue, task)
-	go ca.processQueue("") // nolint: errcheck
+	go ca.processQueue(ctx, "") // nolint: errcheck
 }
 
 // Run the operations in the queue
-func (ca *channelAccessor) processQueue(channelID string) (*ChannelAvailableFunds, error) {
+func (ca *channelAccessor) processQueue(ctx context.Context, channelID string) (*ChannelAvailableFunds, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -186,7 +186,7 @@ func (ca *channelAccessor) processQueue(channelID string) (*ChannelAvailableFund
 
 	// If there's nothing in the queue, bail out
 	if len(ca.fundsReqQueue) == 0 {
-		return ca.currentAvailableFunds(channelID, big.NewInt(0))
+		return ca.currentAvailableFunds(ctx, channelID, big.NewInt(0))
 	}
 
 	// Merge all pending requests into one.
@@ -197,7 +197,7 @@ func (ca *channelAccessor) processQueue(channelID string) (*ChannelAvailableFund
 	if amt.IsZero() {
 		// Note: The amount can be zero if requests are cancelled as we're
 		// building the mergedFundsReq
-		return ca.currentAvailableFunds(channelID, amt)
+		return ca.currentAvailableFunds(ctx, channelID, amt)
 	}
 
 	res := ca.processTask(merged.ctx, amt)
@@ -207,7 +207,7 @@ func (ca *channelAccessor) processQueue(channelID string) (*ChannelAvailableFund
 	if res == nil {
 		// Stop processing the fundsReqQueue and wait. When the event occurs it will
 		// call processQueue() again
-		return ca.currentAvailableFunds(channelID, amt)
+		return ca.currentAvailableFunds(ctx, channelID, amt)
 	}
 
 	// Finished processing so clear the queue
@@ -216,7 +216,7 @@ func (ca *channelAccessor) processQueue(channelID string) (*ChannelAvailableFund
 	// Call the task callback with its results
 	merged.onComplete(res)
 
-	return ca.currentAvailableFunds(channelID, big.NewInt(0))
+	return ca.currentAvailableFunds(ctx, channelID, big.NewInt(0))
 }
 
 // filterQueue filters cancelled requests out of the queue
@@ -253,12 +253,12 @@ func (ca *channelAccessor) queueSize() int {
 
 // msgWaitComplete is called when the message for a previous task is confirmed
 // or there is an error.
-func (ca *channelAccessor) msgWaitComplete(mcid cid.Cid, err error) {
+func (ca *channelAccessor) msgWaitComplete(ctx context.Context, mcid cid.Cid, err error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	// Save the message result to the store
-	dserr := ca.msgInfoRepo.SaveMessageResult(mcid, err)
+	dserr := ca.msgInfoRepo.SaveMessageResult(ctx, mcid, err)
 	if dserr != nil {
 		log.Errorf("saving message result: %s", dserr)
 	}
@@ -269,16 +269,16 @@ func (ca *channelAccessor) msgWaitComplete(mcid cid.Cid, err error) {
 	// The queue may have been waiting for msg completion to proceed, so
 	// process the next queue item
 	if len(ca.fundsReqQueue) > 0 {
-		go ca.processQueue("") // nolint: errcheck
+		go ca.processQueue(ctx, "") // nolint: errcheck
 	}
 }
 
-func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt big.Int) (*ChannelAvailableFunds, error) {
+func (ca *channelAccessor) currentAvailableFunds(ctx context.Context, channelID string, queuedAmt big.Int) (*ChannelAvailableFunds, error) {
 	if len(channelID) == 0 {
 		return nil, nil
 	}
 
-	channelInfo, err := ca.channelInfoRepo.GetChannelByChannelID(channelID)
+	channelInfo, err := ca.channelInfoRepo.GetChannelByChannelID(ctx, channelID)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,7 @@ func (ca *channelAccessor) currentAvailableFunds(channelID string, queuedAmt big
 			return nil, err
 		}
 
-		laneStates, err := ca.laneState(pchState, ch)
+		laneStates, err := ca.laneState(ctx, pchState, ch)
 		if err != nil {
 			return nil, err
 		}
@@ -335,7 +335,7 @@ func (ca *channelAccessor) processTask(ctx context.Context, amt big.Int) *paychF
 	// Get the payment channel for the from/to addresses.
 	// Note: It's ok if we get ErrChannelNotFound. It just means we need to
 	// create a channel.
-	channelInfo, err := ca.channelInfoRepo.OutboundActiveByFromTo(ca.from, ca.to)
+	channelInfo, err := ca.channelInfoRepo.OutboundActiveByFromTo(ctx, ca.from, ca.to)
 	if err != nil && err != types.ErrChannelNotFound {
 		return &paychFundsRes{err: err}
 	}
@@ -389,26 +389,26 @@ func (ca *channelAccessor) createPaych(ctx context.Context, amt big.Int) (cid.Ci
 		return cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
 	}
 	// Create a new channel in the store
-	ci, err := ca.channelInfoRepo.CreateChannel(ca.from, ca.to, msgId, amt)
+	ci, err := ca.channelInfoRepo.CreateChannel(ctx, ca.from, ca.to, msgId, amt)
 	if err != nil {
 		log.Errorf("creating channel: %s", err)
 		return cid.Undef, err
 	}
 
 	// Wait for the channel to be created on chain
-	go ca.waitForPaychCreateMsg(ci.ChannelID, msgId)
+	go ca.waitForPaychCreateMsg(ctx, ci.ChannelID, msgId)
 
 	return msgId, nil
 }
 
 // waitForPaychCreateMsg waits for mcid to appear on chain and stores the robust address of the
 // created payment channel
-func (ca *channelAccessor) waitForPaychCreateMsg(channelID string, mcid cid.Cid) {
-	err := ca.waitPaychCreateMsg(channelID, mcid)
-	ca.msgWaitComplete(mcid, err)
+func (ca *channelAccessor) waitForPaychCreateMsg(ctx context.Context, channelID string, mcid cid.Cid) {
+	err := ca.waitPaychCreateMsg(ctx, channelID, mcid)
+	ca.msgWaitComplete(ctx, mcid, err)
 }
 
-func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) error {
+func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID string, mcid cid.Cid) error {
 	mwait, err := ca.api.WaitMsg(ca.chctx, mcid, 1)
 	if err != nil {
 		log.Errorf("wait msg: %w", err)
@@ -420,7 +420,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 		defer ca.lk.Unlock()
 
 		// Channel creation failed, so remove the channel from the datastore
-		dserr := ca.channelInfoRepo.RemoveChannel(channelID)
+		dserr := ca.channelInfoRepo.RemoveChannel(ctx, channelID)
 		if dserr != nil {
 			log.Errorf("failed to remove channel %s: %s", channelID, dserr)
 		}
@@ -434,7 +434,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 	// This "works" because it hasn't changed from v0 to v2, but we still
 	// need an abstraction here.
 	var decodedReturn init2.ExecReturn
-	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.ReturnValue))
+	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -444,7 +444,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 	defer ca.lk.Unlock()
 
 	// Store robust address of channel
-	ca.mutateChannelInfo(channelID, func(channelInfo *types.ChannelInfo) {
+	ca.mutateChannelInfo(ctx, channelID, func(channelInfo *types.ChannelInfo) {
 		channelInfo.Channel = &decodedReturn.RobustAddress
 		channelInfo.Amount = channelInfo.PendingAmount
 		channelInfo.PendingAmount = big.NewInt(0)
@@ -456,7 +456,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(channelID string, mcid cid.Cid) er
 
 // addFunds sends a message to add funds to the channel and returns the message cid
 func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *types.ChannelInfo, amt big.Int) (*cid.Cid, error) {
-	msg := &types2.UnsignedMessage{
+	msg := &types2.Message{
 		To:     *channelInfo.Channel,
 		From:   channelInfo.Control,
 		Value:  amt,
@@ -468,14 +468,14 @@ func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *types.Chan
 		return nil, err
 	}
 	// Store the add funds message CID on the channel
-	ca.mutateChannelInfo(channelInfo.ChannelID, func(ci *types.ChannelInfo) {
+	ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *types.ChannelInfo) {
 		ci.PendingAmount = amt
 		ci.AddFundsMsg = &msgId
 	})
 
 	// Store a reference from the message CID to the channel, so that we can
 	// look up the channel from the message CID
-	err = ca.msgInfoRepo.SaveMessage(&types.MsgInfo{
+	err = ca.msgInfoRepo.SaveMessage(ctx, &types.MsgInfo{
 		ChannelID: channelInfo.ChannelID,
 		MsgCid:    msgId,
 	})
@@ -483,18 +483,18 @@ func (ca *channelAccessor) addFunds(ctx context.Context, channelInfo *types.Chan
 		log.Errorf("saving add funds message CID %s: %s", msgId, err)
 	}
 
-	go ca.waitForAddFundsMsg(channelInfo.ChannelID, msgId)
+	go ca.waitForAddFundsMsg(ctx, channelInfo.ChannelID, msgId)
 
 	return &msgId, nil
 }
 
 // waitForAddFundsMsg waits for mcid to appear on chain and returns error, if any
-func (ca *channelAccessor) waitForAddFundsMsg(channelID string, mcid cid.Cid) {
-	err := ca.waitAddFundsMsg(channelID, mcid)
-	ca.msgWaitComplete(mcid, err)
+func (ca *channelAccessor) waitForAddFundsMsg(ctx context.Context, channelID string, mcid cid.Cid) {
+	err := ca.waitAddFundsMsg(ctx, channelID, mcid)
+	ca.msgWaitComplete(ctx, mcid, err)
 }
 
-func (ca *channelAccessor) waitAddFundsMsg(channelID string, mcid cid.Cid) error {
+func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string, mcid cid.Cid) error {
 	mwait, err := ca.api.WaitMsg(ca.chctx, mcid, 1)
 	if err != nil {
 		log.Error(err)
@@ -508,7 +508,7 @@ func (ca *channelAccessor) waitAddFundsMsg(channelID string, mcid cid.Cid) error
 		ca.lk.Lock()
 		defer ca.lk.Unlock()
 
-		ca.mutateChannelInfo(channelID, func(channelInfo *types.ChannelInfo) {
+		ca.mutateChannelInfo(ctx, channelID, func(channelInfo *types.ChannelInfo) {
 			channelInfo.PendingAmount = big.NewInt(0)
 			channelInfo.AddFundsMsg = nil
 		})
@@ -520,7 +520,7 @@ func (ca *channelAccessor) waitAddFundsMsg(channelID string, mcid cid.Cid) error
 	defer ca.lk.Unlock()
 
 	// Store updated amount
-	ca.mutateChannelInfo(channelID, func(channelInfo *types.ChannelInfo) {
+	ca.mutateChannelInfo(ctx, channelID, func(channelInfo *types.ChannelInfo) {
 		channelInfo.Amount = big.Add(channelInfo.Amount, channelInfo.PendingAmount)
 		channelInfo.PendingAmount = big.NewInt(0)
 		channelInfo.AddFundsMsg = nil
@@ -530,8 +530,8 @@ func (ca *channelAccessor) waitAddFundsMsg(channelID string, mcid cid.Cid) error
 }
 
 // Change the state of the channel in the store
-func (ca *channelAccessor) mutateChannelInfo(channelID string, mutate func(*types.ChannelInfo)) {
-	channelInfo, err := ca.channelInfoRepo.GetChannelByChannelID(channelID)
+func (ca *channelAccessor) mutateChannelInfo(ctx context.Context, channelID string, mutate func(*types.ChannelInfo)) {
+	channelInfo, err := ca.channelInfoRepo.GetChannelByChannelID(ctx, channelID)
 
 	// If there's an error reading or writing to the store just log an error.
 	// For now we're assuming it's unlikely to happen in practice.
@@ -545,7 +545,7 @@ func (ca *channelAccessor) mutateChannelInfo(channelID string, mutate func(*type
 
 	mutate(channelInfo)
 
-	err = ca.channelInfoRepo.SaveChannel(channelInfo)
+	err = ca.channelInfoRepo.SaveChannel(ctx, channelInfo)
 	if err != nil {
 		log.Errorf("Error writing channel info to store: %s", err)
 	}
@@ -556,8 +556,8 @@ func (ca *channelAccessor) mutateChannelInfo(channelID string, mutate func(*type
 // messages.
 // Outstanding messages can occur if a create / add funds message was sent and
 // then the system was shut down or crashed before the result was received.
-func (pm *Manager) restartPending() error {
-	cis, err := pm.channelInfoRepo.WithPendingAddFunds()
+func (pm *Manager) restartPending(ctx context.Context) error {
+	cis, err := pm.channelInfoRepo.WithPendingAddFunds(ctx)
 	if err != nil {
 		return err
 	}
@@ -571,16 +571,16 @@ func (pm *Manager) restartPending() error {
 				if err != nil {
 					return xerrors.Errorf("error initializing payment channel manager %s -> %s: %s", ci.Control, ci.Target, err)
 				}
-				go ca.waitForPaychCreateMsg(ci.ChannelID, *ci.CreateMsg)
+				go ca.waitForPaychCreateMsg(ctx, ci.ChannelID, *ci.CreateMsg)
 				return nil
 			})
 		} else if ci.AddFundsMsg != nil {
 			group.Go(func() error {
-				ca, err := pm.accessorByAddress(*ci.Channel)
+				ca, err := pm.accessorByAddress(ctx, *ci.Channel)
 				if err != nil {
 					return xerrors.Errorf("error initializing payment channel manager %s: %s", ci.Channel, err)
 				}
-				go ca.waitForAddFundsMsg(ci.ChannelID, *ci.AddFundsMsg)
+				go ca.waitForAddFundsMsg(ctx, ci.ChannelID, *ci.AddFundsMsg)
 				return nil
 			})
 		}
@@ -594,7 +594,7 @@ func (ca *channelAccessor) getPaychWaitReady(ctx context.Context, mcid cid.Cid) 
 	ca.lk.Lock()
 
 	// First check if the message has completed
-	msgInfo, err := ca.msgInfoRepo.GetMessage(mcid)
+	msgInfo, err := ca.msgInfoRepo.GetMessage(ctx, mcid)
 	if err != nil {
 		ca.lk.Unlock()
 
@@ -613,7 +613,7 @@ func (ca *channelAccessor) getPaychWaitReady(ctx context.Context, mcid cid.Cid) 
 		ca.lk.Unlock()
 
 		// Get the channel address
-		ci, err := ca.channelInfoRepo.GetChannelByMessageCid(mcid)
+		ci, err := ca.channelInfoRepo.GetChannelByMessageCid(ctx, mcid)
 		if err != nil {
 			return address.Undef, err
 		}
@@ -656,7 +656,7 @@ func (ca *channelAccessor) msgPromise(ctx context.Context, mcid cid.Cid) chan on
 			res := onMsgRes{err: err}
 			if res.err == nil {
 				// Get the channel associated with the message cid
-				ci, err := ca.channelInfoRepo.GetChannelByMessageCid(mcid)
+				ci, err := ca.channelInfoRepo.GetChannelByMessageCid(ctx, mcid)
 				if err != nil {
 					res.err = err
 				} else {
@@ -685,6 +685,6 @@ func (ca *channelAccessor) msgPromise(ctx context.Context, mcid cid.Cid) chan on
 	return promise
 }
 
-func (ca *channelAccessor) availableFunds(channelID string) (*ChannelAvailableFunds, error) {
-	return ca.processQueue(channelID)
+func (ca *channelAccessor) availableFunds(ctx context.Context, channelID string) (*ChannelAvailableFunds, error) {
+	return ca.processQueue(ctx, channelID)
 }

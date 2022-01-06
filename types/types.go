@@ -3,14 +3,12 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/pkg/clock"
-	vTypes "github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -115,7 +113,7 @@ type DagstoreInitializeAllEvent struct {
 
 type SignInfo struct {
 	Data interface{}
-	Type wallet.MsgType
+	Type vTypes.MsgType
 	Addr address.Address
 }
 

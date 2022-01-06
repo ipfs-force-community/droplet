@@ -21,9 +21,9 @@ import (
 	"github.com/filecoin-project/venus-market/types"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	types2 "github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
-	paychmock "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych/mock"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func TestCheckVoucherValid(t *testing.T) {

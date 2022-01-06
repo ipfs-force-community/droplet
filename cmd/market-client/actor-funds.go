@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	cli2 "github.com/filecoin-project/venus-market/cli"
 )
@@ -294,7 +294,7 @@ var actorFundsWithdrawCmd = &cli.Command{
 
 		if nv >= network.Version14 {
 			var withdrawn abi.TokenAmount
-			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.ReturnValue)); err != nil {
+			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 				return err
 			}
 

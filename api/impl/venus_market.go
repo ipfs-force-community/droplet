@@ -39,12 +39,10 @@ import (
 	"github.com/filecoin-project/venus-market/types"
 
 	"github.com/filecoin-project/venus-market/paychmgr"
-	mTypes "github.com/filecoin-project/venus-messager/types"
 
-	"github.com/filecoin-project/venus/app/client/apiface"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
-	vTypes "github.com/filecoin-project/venus/pkg/types"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var _ api.MarketFullNode = (*MarketNodeImpl)(nil)
@@ -55,7 +53,7 @@ type MarketNodeImpl struct {
 	MarketEventAPI
 	fx.In
 
-	FullNode          apiface.FullNode
+	FullNode          v1api.FullNode
 	Host              host.Host
 	StorageProvider   storageprovider.StorageProviderV2
 	RetrievalProvider retrievalprovider.IRetrievalProvider
@@ -164,12 +162,12 @@ func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr add
 	var deals []*types.MinerDeal
 	var err error
 	if mAddr == address.Undef {
-		deals, err = m.Repo.StorageDealRepo().ListDeal()
+		deals, err = m.Repo.StorageDealRepo().ListDeal(ctx)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		deals, err = m.Repo.StorageDealRepo().ListDealByAddr(mAddr)
+		deals, err = m.Repo.StorageDealRepo().ListDealByAddr(ctx, mAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -184,7 +182,7 @@ func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr add
 }
 
 func (m MarketNodeImpl) UpdateStorageDealStatus(ctx context.Context, dealProposal cid.Cid, state storagemarket.StorageDealStatus) error {
-	return m.Repo.StorageDealRepo().UpdateDealStatus(dealProposal, state)
+	return m.Repo.StorageDealRepo().UpdateDealStatus(ctx, dealProposal, state)
 }
 
 func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
@@ -193,19 +191,19 @@ func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address,
 		storagemarket.MaxPieceSize(maxPieceSize),
 	}
 
-	return m.StorageAsk.SetAsk(mAddr, price, verifiedPrice, duration, options...)
+	return m.StorageAsk.SetAsk(ctx, mAddr, price, verifiedPrice, duration, options...)
 }
 
 func (m MarketNodeImpl) MarketListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error) {
-	return m.StorageAsk.ListAsk()
+	return m.StorageAsk.ListAsk(ctx)
 }
 
 func (m MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*storagemarket.SignedStorageAsk, error) {
-	return m.StorageAsk.GetAsk(mAddr)
+	return m.StorageAsk.GetAsk(ctx, mAddr)
 }
 
 func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, ask *retrievalmarket.Ask) error {
-	return m.Repo.RetrievalAskRepo().SetAsk(&types.RetrievalAsk{
+	return m.Repo.RetrievalAskRepo().SetAsk(ctx, &types.RetrievalAsk{
 		Miner:                   mAddr,
 		PricePerByte:            ask.PricePerByte,
 		UnsealPrice:             ask.UnsealPrice,
@@ -215,11 +213,11 @@ func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address
 }
 
 func (m MarketNodeImpl) MarketListRetrievalAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {
-	return m.Repo.RetrievalAskRepo().ListAsk()
+	return m.Repo.RetrievalAskRepo().ListAsk(ctx)
 }
 
 func (m MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error) {
-	ask, err := m.Repo.RetrievalAskRepo().GetAsk(mAddr)
+	ask, err := m.Repo.RetrievalAskRepo().GetAsk(ctx, mAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -290,15 +288,15 @@ func (m MarketNodeImpl) MarketPublishPendingDeals(ctx context.Context) error {
 }
 
 func (m MarketNodeImpl) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
-	return m.Repo.StorageDealRepo().ListPieceInfoKeys()
+	return m.Repo.StorageDealRepo().ListPieceInfoKeys(ctx)
 }
 
 func (m MarketNodeImpl) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
-	return m.Repo.CidInfoRepo().ListCidInfoKeys()
+	return m.Repo.CidInfoRepo().ListCidInfoKeys(ctx)
 }
 
 func (m MarketNodeImpl) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
-	pi, err := m.Repo.StorageDealRepo().GetPieceInfo(pieceCid)
+	pi, err := m.Repo.StorageDealRepo().GetPieceInfo(ctx, pieceCid)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +304,7 @@ func (m MarketNodeImpl) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid
 }
 
 func (m MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
-	ci, err := m.Repo.CidInfoRepo().GetCIDInfo(payloadCid)
+	ci, err := m.Repo.CidInfoRepo().GetCIDInfo(ctx, payloadCid)
 	if err != nil {
 		return nil, err
 	}
@@ -378,15 +376,15 @@ func (m MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, durat
 	return m.SetExpectedSealDurationFunc(duration)
 }
 
-func (m MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*apitypes.MsgLookup, error) {
+func (m MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error) {
 	//WaitMsg method has been replace in messager mode
 	return m.Messager.WaitMsg(ctx, mid, constants.MessageConfidence, constants.LookbackNoLimit, false)
 }
 
-func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (cid.Cid, error) {
-	var spec *mTypes.MsgMeta
+func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *vTypes.MessageSendSpec) (cid.Cid, error) {
+	var spec *vTypes.MessageSendSpec
 	if meta != nil {
-		spec = &mTypes.MsgMeta{
+		spec = &vTypes.MessageSendSpec{
 			MaxFee:            meta.MaxFee,
 			GasOverEstimation: meta.GasOverEstimation,
 		}

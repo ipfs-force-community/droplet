@@ -22,8 +22,7 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/filecoin-project/venus/app/client"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/cli/tablewriter"
@@ -131,7 +130,7 @@ func NewMarketClientNode(cctx *cli.Context) (api.MarketClientNode, jsonrpc.Clien
 	return impl, closer, nil
 }
 
-func NewFullNode(cctx *cli.Context) (apiface.FullNode, jsonrpc.ClientCloser, error) {
+func NewFullNode(cctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
 	cfgPath := path.Join(cctx.String("repo"), "config.toml")
 	marketCfg := config.DefaultMarketConfig
 	err := config.LoadConfig(cfgPath, marketCfg)
@@ -144,7 +143,7 @@ func NewFullNode(cctx *cli.Context) (apiface.FullNode, jsonrpc.ClientCloser, err
 		return nil, nil, err
 	}
 
-	impl := &client.FullNodeStruct{}
+	impl := &v1api.FullNodeStruct{}
 	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, "Filecoin", utils.GetInternalStructs(impl), apiInfo.AuthHeader())
 	if err != nil {
 		return nil, nil, err

@@ -8,7 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // API contains configs for API endpoint

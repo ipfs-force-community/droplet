@@ -1,6 +1,7 @@
 package storageprovider
 
 import (
+	"context"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -66,7 +67,7 @@ func (s *ImportsBlockstoreAccessor) Get(payloadCID storagemarket.PayloadCID) (bl
 		return e.st, nil
 	}
 
-	path, err := s.m.CARPathFor(payloadCID)
+	path, err := s.m.CARPathFor(context.TODO(), payloadCID)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get client blockstore for root %s: %w", payloadCID, err)
 	}

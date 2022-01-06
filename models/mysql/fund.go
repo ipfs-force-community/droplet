@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -55,15 +56,15 @@ func NewFundedAddressStateRepo(db *gorm.DB) *fundedAddressStateRepo {
 	return &fundedAddressStateRepo{db}
 }
 
-func (f *fundedAddressStateRepo) SaveFundedAddressState(fds *types.FundedAddressState) error {
+func (far *fundedAddressStateRepo) SaveFundedAddressState(ctx context.Context, fds *types.FundedAddressState) error {
 	state := fromFundedAddressState(fds)
 	state.UpdatedAt = uint64(time.Now().Unix())
-	return f.DB.Save(state).Error
+	return far.WithContext(ctx).Save(state).Error
 }
 
-func (f *fundedAddressStateRepo) GetFundedAddressState(addr address.Address) (*types.FundedAddressState, error) {
+func (far *fundedAddressStateRepo) GetFundedAddressState(ctx context.Context, addr address.Address) (*types.FundedAddressState, error) {
 	var fas fundedAddressState
-	err := f.DB.Take(&fas, "addr = ?", DBAddress(addr).String()).Error
+	err := far.WithContext(ctx).Take(&fas, "addr = ?", DBAddress(addr).String()).Error
 	if err != nil {
 		return nil, err
 	}
@@ -71,9 +72,9 @@ func (f *fundedAddressStateRepo) GetFundedAddressState(addr address.Address) (*t
 	return toFundedAddressState(&fas)
 }
 
-func (f *fundedAddressStateRepo) ListFundedAddressState() ([]*types.FundedAddressState, error) {
+func (far *fundedAddressStateRepo) ListFundedAddressState(ctx context.Context) ([]*types.FundedAddressState, error) {
 	var fads []*fundedAddressState
-	err := f.DB.Find(&fads).Error
+	err := far.WithContext(ctx).Find(&fads).Error
 	if err != nil {
 		return nil, err
 	}

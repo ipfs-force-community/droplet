@@ -1,6 +1,7 @@
 package badger
 
 import (
+	"context"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/models/badger/datastore"
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -18,9 +19,9 @@ type badgerCidInfoRepo struct {
 var _ repo.ICidInfoRepo = (*badgerCidInfoRepo)(nil)
 
 // Store the map of blockLocations in the dealAssigner's CIDInfo store, with key `pieceCID`
-func (ps *badgerCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
+func (ps *badgerCidInfoRepo) AddPieceBlockLocations(ctx context.Context, pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
 	for c, blockLocation := range blockLocations {
-		err := ps.mutateCIDInfo(c, func(ci *piecestore.CIDInfo) error {
+		err := ps.mutateCIDInfo(ctx, c, func(ci *piecestore.CIDInfo) error {
 			for _, pbl := range ci.PieceBlockLocations {
 				if pbl.PieceCID.Equals(pieceCID) && pbl.BlockLocation == blockLocation {
 					return nil
@@ -36,9 +37,9 @@ func (ps *badgerCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocat
 	return nil
 }
 
-func (ps *badgerCidInfoRepo) ListCidInfoKeys() ([]cid.Cid, error) {
+func (ps *badgerCidInfoRepo) ListCidInfoKeys(ctx context.Context) ([]cid.Cid, error) {
 	var cis []piecestore.CIDInfo
-	if err := ps.cidInfos.List(&cis); err != nil {
+	if err := ps.cidInfos.List(ctx, &cis); err != nil {
 		return nil, err
 	}
 
@@ -51,16 +52,16 @@ func (ps *badgerCidInfoRepo) ListCidInfoKeys() ([]cid.Cid, error) {
 }
 
 // Retrieve the CIDInfo associated with `pieceCID` from the CID info store.
-func (ps *badgerCidInfoRepo) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error) {
+func (ps *badgerCidInfoRepo) GetCIDInfo(ctx context.Context, payloadCID cid.Cid) (piecestore.CIDInfo, error) {
 	var out piecestore.CIDInfo
-	if err := ps.cidInfos.Get(payloadCID).Get(&out); err != nil {
+	if err := ps.cidInfos.Get(payloadCID).Get(ctx, &out); err != nil {
 		return piecestore.CIDInfo{}, err
 	}
 	return out, nil
 }
 
-func (ps *badgerCidInfoRepo) ensureCIDInfo(c cid.Cid) error {
-	has, err := ps.cidInfos.Has(c)
+func (ps *badgerCidInfoRepo) ensureCIDInfo(ctx context.Context, c cid.Cid) error {
+	has, err := ps.cidInfos.Has(ctx, c)
 
 	if err != nil {
 		return err
@@ -71,14 +72,14 @@ func (ps *badgerCidInfoRepo) ensureCIDInfo(c cid.Cid) error {
 	}
 
 	cidInfo := piecestore.CIDInfo{CID: c}
-	return ps.cidInfos.Save(c, &cidInfo)
+	return ps.cidInfos.Save(ctx, c, &cidInfo)
 }
 
-func (ps *badgerCidInfoRepo) mutateCIDInfo(c cid.Cid, mutator interface{}) error {
-	err := ps.ensureCIDInfo(c)
+func (ps *badgerCidInfoRepo) mutateCIDInfo(ctx context.Context, c cid.Cid, mutator interface{}) error {
+	err := ps.ensureCIDInfo(ctx, c)
 	if err != nil {
 		return err
 	}
 
-	return ps.cidInfos.Get(c).Mutate(mutator)
+	return ps.cidInfos.Get(c).Mutate(ctx, mutator)
 }

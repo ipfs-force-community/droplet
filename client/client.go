@@ -66,11 +66,10 @@ import (
 
 	marketNetwork "github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/utils"
-	"github.com/filecoin-project/venus/app/client/apiface"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
@@ -82,7 +81,7 @@ const DefaultDAGStoreDir = "dagstore"
 type API struct {
 	fx.In
 
-	Full apiface.FullNode
+	Full v1api.FullNode
 
 	SMDealClient storagemarket.StorageClient
 	RetDiscovery discovery.PeerResolver
@@ -138,7 +137,7 @@ func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStatel
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find blockstore for root CID: %w", err)
 		}
-		if has, err := bs.Has(params.Data.Root); err != nil {
+		if has, err := bs.Has(ctx, params.Data.Root); err != nil {
 			return nil, xerrors.Errorf("failed to query blockstore for root CID: %w", err)
 		} else if !has {
 			return nil, xerrors.Errorf("failed to find root CID in blockstore: %w", err)
@@ -249,8 +248,8 @@ func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStatel
 		return nil, xerrors.Errorf("failed to serialize deal proposal: %w", err)
 	}
 
-	dealProposalSig, err := a.Full.WalletSign(ctx, walletKey, dealProposalSerialized, wallet.MsgMeta{
-		Type:  wallet.MTDealProposal,
+	dealProposalSig, err := a.Full.WalletSign(ctx, walletKey, dealProposalSerialized, types.MsgMeta{
+		Type:  types.MTDealProposal,
 		Extra: dealProposalSerialized,
 	})
 	if err != nil {
@@ -498,7 +497,7 @@ func (a *API) ClientImport(ctx context.Context, ref FileRef) (res *ImportRes, er
 		carPath string
 	)
 
-	id, err = imgr.CreateImport()
+	id, err = imgr.CreateImport(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create import: %w", err)
 	}
@@ -512,7 +511,7 @@ func (a *API) ClientImport(ctx context.Context, ref FileRef) (res *ImportRes, er
 		}
 		defer f.Close() //nolint:errcheck
 
-		hd, _, err := car.ReadHeader(bufio.NewReader(f))
+		hd, err := car.ReadHeader(bufio.NewReader(f))
 		if err != nil {
 			return nil, xerrors.Errorf("failed to read CAR header: %w", err)
 		}
@@ -526,7 +525,7 @@ func (a *API) ClientImport(ctx context.Context, ref FileRef) (res *ImportRes, er
 		carPath = ref.Path
 		root = hd.Roots[0]
 	} else {
-		carPath, err = imgr.AllocateCAR(id)
+		carPath, err = imgr.AllocateCAR(ctx, id)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create car path for import: %w", err)
 		}
@@ -535,7 +534,7 @@ func (a *API) ClientImport(ctx context.Context, ref FileRef) (res *ImportRes, er
 		defer func() {
 			if err != nil {
 				_ = os.Remove(carPath)
-				_ = imgr.Remove(id)
+				_ = imgr.Remove(ctx, id)
 			}
 		}()
 
@@ -546,16 +545,16 @@ func (a *API) ClientImport(ctx context.Context, ref FileRef) (res *ImportRes, er
 		}
 	}
 
-	if err = imgr.AddLabel(id, imports.LSource, "import"); err != nil {
+	if err = imgr.AddLabel(ctx, id, imports.LSource, "import"); err != nil {
 		return nil, err
 	}
-	if err = imgr.AddLabel(id, imports.LFileName, ref.Path); err != nil {
+	if err = imgr.AddLabel(ctx, id, imports.LFileName, ref.Path); err != nil {
 		return nil, err
 	}
-	if err = imgr.AddLabel(id, imports.LCARPath, carPath); err != nil {
+	if err = imgr.AddLabel(ctx, id, imports.LCARPath, carPath); err != nil {
 		return nil, err
 	}
-	if err = imgr.AddLabel(id, imports.LRootCid, root.String()); err != nil {
+	if err = imgr.AddLabel(ctx, id, imports.LRootCid, root.String()); err != nil {
 		return nil, err
 	}
 	return &ImportRes{
@@ -565,7 +564,7 @@ func (a *API) ClientImport(ctx context.Context, ref FileRef) (res *ImportRes, er
 }
 
 func (a *API) ClientRemoveImport(ctx context.Context, id imports.ID) error {
-	info, err := a.importManager().Info(id)
+	info, err := a.importManager().Info(ctx, id)
 	if err != nil {
 		return xerrors.Errorf("failed to get import metadata: %w", err)
 	}
@@ -578,7 +577,7 @@ func (a *API) ClientRemoveImport(ctx context.Context, id imports.ID) error {
 		_ = os.Remove(path)
 	}
 
-	return a.importManager().Remove(id)
+	return a.importManager().Remove(ctx, id)
 }
 
 // ClientImportLocal imports a standard file into this node as a UnixFS payload,
@@ -589,15 +588,15 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	file := files.NewReaderFile(r)
 
 	// write payload to temp file
-	id, err := a.importManager().CreateImport()
+	id, err := a.importManager().CreateImport(ctx)
 	if err != nil {
 		return cid.Undef, err
 	}
-	if err := a.importManager().AddLabel(id, imports.LSource, "import-local"); err != nil {
+	if err := a.importManager().AddLabel(ctx, id, imports.LSource, "import-local"); err != nil {
 		return cid.Undef, err
 	}
 
-	path, err := a.importManager().AllocateCAR(id)
+	path, err := a.importManager().AllocateCAR(ctx, id)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -638,7 +637,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	}
 
 	// record the root in the import manager.
-	if err := a.importManager().AddLabel(id, imports.LRootCid, root.String()); err != nil {
+	if err := a.importManager().AddLabel(ctx, id, imports.LRootCid, root.String()); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to record root CID in import manager: %w", err)
 	}
 
@@ -694,15 +693,15 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	return root, nil
 }
 
-func (a *API) ClientListImports(_ context.Context) ([]Import, error) {
-	ids, err := a.importManager().List()
+func (a *API) ClientListImports(ctx context.Context) ([]Import, error) {
+	ids, err := a.importManager().List(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to fetch imports: %w", err)
 	}
 
 	out := make([]Import, len(ids))
 	for i, id := range ids {
-		info, err := a.importManager().Info(id)
+		info, err := a.importManager().Info(ctx, id)
 		if err != nil {
 			out[i] = Import{
 				Key: id,
@@ -987,7 +986,7 @@ func (a *API) outputCAR(ctx context.Context, ds format.DAGService, bs bstore.Blo
 						}
 
 						if cs.Visit(c) {
-							nb, err := bs.Get(c)
+							nb, err := bs.Get(ctx, c)
 							if err != nil {
 								return xerrors.Errorf("getting block data: %w", err)
 							}
@@ -1273,7 +1272,7 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*CommPRet, er
 	}
 
 	// check that the data is a car file; if it's not, retrieval won't work
-	_, _, err = car.ReadHeader(bufio.NewReader(rdr))
+	_, err = car.ReadHeader(bufio.NewReader(rdr))
 	if err != nil {
 		return nil, xerrors.Errorf("not a car file: %w", err)
 	}
@@ -1351,13 +1350,13 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (DataCIDSize
 
 func (a *API) ClientGenCar(ctx context.Context, ref FileRef, outputPath string) error {
 	// create a temporary import to represent this job and obtain a staging CAR.
-	id, err := a.importManager().CreateImport()
+	id, err := a.importManager().CreateImport(ctx)
 	if err != nil {
 		return xerrors.Errorf("failed to create temporary import: %w", err)
 	}
-	defer a.importManager().Remove(id) //nolint:errcheck
+	defer a.importManager().Remove(ctx, id) //nolint:errcheck
 
-	tmp, err := a.importManager().AllocateCAR(id)
+	tmp, err := a.importManager().AllocateCAR(ctx, id)
 	if err != nil {
 		return xerrors.Errorf("failed to allocate temporary CAR: %w", err)
 	}

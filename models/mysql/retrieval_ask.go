@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"time"
 
 	"github.com/filecoin-project/venus-market/types"
@@ -16,13 +17,13 @@ import (
 const retrievalAskTableName = "retrieval_asks"
 
 type retrievalAskRepo struct {
-	ds *gorm.DB
+	*gorm.DB
 }
 
 var _ repo.IRetrievalAskRepo = (*retrievalAskRepo)(nil)
 
-func NewRetrievalAskRepo(ds *gorm.DB) repo.IRetrievalAskRepo {
-	return &retrievalAskRepo{ds: ds}
+func NewRetrievalAskRepo(db *gorm.DB) repo.IRetrievalAskRepo {
+	return &retrievalAskRepo{db}
 }
 
 type retrievalAsk struct {
@@ -39,9 +40,9 @@ func (a *retrievalAsk) TableName() string {
 	return retrievalAskTableName
 }
 
-func (r *retrievalAskRepo) GetAsk(addr address.Address) (*types.RetrievalAsk, error) {
+func (rar *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (*types.RetrievalAsk, error) {
 	var mAsk retrievalAsk
-	if err := r.ds.Take(&mAsk, "address = ?", DBAddress(addr).String()).Error; err != nil {
+	if err := rar.WithContext(ctx).Take(&mAsk, "address = ?", DBAddress(addr).String()).Error; err != nil {
 		return nil, err
 	}
 	return &types.RetrievalAsk{
@@ -53,8 +54,8 @@ func (r *retrievalAskRepo) GetAsk(addr address.Address) (*types.RetrievalAsk, er
 	}, nil
 }
 
-func (r *retrievalAskRepo) SetAsk(ask *types.RetrievalAsk) error {
-	return r.ds.Clauses(clause.OnConflict{
+func (rar *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk) error {
+	return rar.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "address"}},
 		UpdateAll: true,
 	}).Save(&retrievalAsk{
@@ -67,9 +68,9 @@ func (r *retrievalAskRepo) SetAsk(ask *types.RetrievalAsk) error {
 	}).Error
 }
 
-func (r *retrievalAskRepo) ListAsk() ([]*types.RetrievalAsk, error) {
+func (rar *retrievalAskRepo) ListAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {
 	var dbAsks []retrievalAsk
-	err := r.ds.Table("retrieval_asks").Find(&dbAsks).Error
+	err := rar.WithContext(ctx).Table("retrieval_asks").Find(&dbAsks).Error
 	if err != nil {
 		return nil, err
 	}

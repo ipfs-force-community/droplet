@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -14,8 +14,8 @@ import (
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	tutils2 "github.com/filecoin-project/specs-actors/v6/support/testing"
 
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych"
-	paychmock "github.com/filecoin-project/venus/pkg/types/specactors/builtin/paych/mock"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
 )
 
 // TestPaychAddVoucherAfterAddFunds tests adding a voucher to a channel with

@@ -5,10 +5,8 @@ import (
 	"github.com/filecoin-project/venus-market/api"
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/client"
-	mTypes "github.com/filecoin-project/venus-messager/types"
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
 	"github.com/filecoin-project/venus/pkg/constants"
-	vTypes "github.com/filecoin-project/venus/pkg/types"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 )
 
@@ -20,15 +18,15 @@ type MarketClientNodeImpl struct {
 	Messager clients2.IMixMessage
 }
 
-func (m *MarketClientNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*apitypes.MsgLookup, error) {
+func (m *MarketClientNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error) {
 	//WaitMsg method has been replace in messager mode
 	return m.Messager.WaitMsg(ctx, mid, constants.MessageConfidence, constants.LookbackNoLimit, false)
 }
 
-func (m *MarketClientNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *mTypes.MsgMeta) (cid.Cid, error) {
-	var spec *mTypes.MsgMeta
+func (m *MarketClientNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *vTypes.MessageSendSpec) (cid.Cid, error) {
+	var spec *vTypes.MessageSendSpec
 	if meta != nil {
-		spec = &mTypes.MsgMeta{
+		spec = &vTypes.MessageSendSpec{
 			MaxFee:            meta.MaxFee,
 			GasOverEstimation: meta.GasOverEstimation,
 		}

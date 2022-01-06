@@ -149,7 +149,7 @@ func (rv *ProviderRequestValidator) validatePull(ctx context.Context, isRestart 
 		pds.FundsReceived = abi.NewTokenAmount(0)
 	}
 
-	err = rv.retrievalDeal.SaveDeal(&pds)
+	err = rv.retrievalDeal.SaveDeal(ctx, &pds)
 	if err != nil {
 		response.Message = err.Error()
 		return &response, err
@@ -174,7 +174,7 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 
 	//todo how to select deal
 	deal.SelStorageProposalCid = minerdeals[0].ProposalCid
-	ask, err := rv.retrievalAsk.GetAsk(rv.paymentAddr)
+	ask, err := rv.retrievalAsk.GetAsk(ctx, rv.paymentAddr)
 	if err != nil {
 		return retrievalmarket.DealStatusErrored, err
 	}

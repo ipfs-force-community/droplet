@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus/app/client/apiface"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"math"
 	"time"
 
@@ -50,7 +50,7 @@ type RetrievalProvider struct {
 func NewProvider(network rmnet.RetrievalMarketNetwork,
 	dagStore stores.DAGStoreWrapper,
 	dataTransfer network.ProviderDataTransfer,
-	fullNode apiface.FullNode,
+	fullNode v1api.FullNode,
 	payAPI *paychmgr.PaychAPI,
 	repo repo.Repo,
 	cfg *config.MarketConfig,
@@ -140,8 +140,8 @@ func (p *RetrievalProvider) Start(ctx context.Context) error {
 }
 
 // ListDeals lists all known retrieval deals
-func (p *RetrievalProvider) ListDeals() (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error) {
-	deals, err := p.retrievalDealRepo.ListDeals(0, math.MaxInt32)
+func (p *RetrievalProvider) ListDeals(ctx context.Context) (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error) {
+	deals, err := p.retrievalDealRepo.ListDeals(ctx, 0, math.MaxInt32)
 	if err != nil {
 		return nil, err
 	}

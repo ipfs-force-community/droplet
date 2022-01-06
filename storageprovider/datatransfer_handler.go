@@ -29,15 +29,14 @@ func NewDataTransferProcess(
 	}
 }
 
-func (d *DataTransferHandler) HandleCompleteFor(proposalid cid.Cid) error {
+func (d *DataTransferHandler) HandleCompleteFor(ctx context.Context, proposalid cid.Cid) error {
 	//should never failed
-	ctx := context.TODO()
-	deal, err := d.deals.GetDeal(proposalid)
+	deal, err := d.deals.GetDeal(ctx, proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
 	}
 	deal.State = storagemarket.StorageDealVerifyData
-	err = d.deals.SaveDeal(deal)
+	err = d.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return xerrors.Errorf("save deal while transfer completed %w", err)
 	}
@@ -45,66 +44,66 @@ func (d *DataTransferHandler) HandleCompleteFor(proposalid cid.Cid) error {
 	return nil
 }
 
-func (d *DataTransferHandler) HandleCancelForDeal(proposalid cid.Cid) error {
-	deal, err := d.deals.GetDeal(proposalid)
+func (d *DataTransferHandler) HandleCancelForDeal(ctx context.Context, proposalid cid.Cid) error {
+	deal, err := d.deals.GetDeal(ctx, proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
 	}
-	return d.dealProcess.HandleError(deal, xerrors.Errorf("proposal %v data transfer cancelled", proposalid))
+	return d.dealProcess.HandleError(ctx, deal, xerrors.Errorf("proposal %v data transfer cancelled", proposalid))
 }
 
-func (d *DataTransferHandler) HandleRestartForDeal(proposalid cid.Cid, channelId datatransfer.ChannelID) error {
-	deal, err := d.deals.GetDeal(proposalid)
+func (d *DataTransferHandler) HandleRestartForDeal(ctx context.Context, proposalid cid.Cid, channelId datatransfer.ChannelID) error {
+	deal, err := d.deals.GetDeal(ctx, proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
 	}
 	deal.Message = ""
 	deal.State = storagemarket.StorageDealProviderTransferAwaitRestart
 	deal.TransferChannelId = &channelId
-	err = d.deals.SaveDeal(deal)
+	err = d.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return xerrors.Errorf("save deal while transfer completed %w", err)
 	}
 	return nil
 }
 
-func (d *DataTransferHandler) HandleStalledForDeal(proposalid cid.Cid) error {
-	deal, err := d.deals.GetDeal(proposalid)
+func (d *DataTransferHandler) HandleStalledForDeal(ctx context.Context, proposalid cid.Cid) error {
+	deal, err := d.deals.GetDeal(ctx, proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
 	}
 	deal.Message = "data transfer appears to be stalled, awaiting reconnect from client"
 	deal.State = storagemarket.StorageDealProviderTransferAwaitRestart
-	err = d.deals.SaveDeal(deal)
+	err = d.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return xerrors.Errorf("save deal while transfer completed %w", err)
 	}
 	return nil
 }
 
-func (d *DataTransferHandler) HandleInitForDeal(proposalid cid.Cid, channelId datatransfer.ChannelID) error {
-	deal, err := d.deals.GetDeal(proposalid)
+func (d *DataTransferHandler) HandleInitForDeal(ctx context.Context, proposalid cid.Cid, channelId datatransfer.ChannelID) error {
+	deal, err := d.deals.GetDeal(ctx, proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
 	}
 	deal.Message = ""
 	deal.State = storagemarket.StorageDealProviderTransferAwaitRestart
 	deal.TransferChannelId = &channelId
-	err = d.deals.SaveDeal(deal)
+	err = d.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return xerrors.Errorf("save deal while transfer completed %w", err)
 	}
 	return nil
 }
 
-func (d *DataTransferHandler) HandleFailedForDeal(proposalid cid.Cid, reason error) error {
-	deal, err := d.deals.GetDeal(proposalid)
+func (d *DataTransferHandler) HandleFailedForDeal(ctx context.Context, proposalid cid.Cid, reason error) error {
+	deal, err := d.deals.GetDeal(ctx, proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
 	}
 	deal.Message = xerrors.Errorf("error transferring data: %w", reason).Error()
 	deal.State = storagemarket.StorageDealProviderTransferAwaitRestart
-	err = d.deals.SaveDeal(deal)
+	err = d.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return xerrors.Errorf("save deal while transfer completed %w", err)
 	}

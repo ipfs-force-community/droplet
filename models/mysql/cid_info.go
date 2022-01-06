@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"time"
@@ -14,16 +15,6 @@ import (
 )
 
 const cidInfoTableName = "cid_infos"
-
-type mysqlCidInfoRepo struct {
-	ds *gorm.DB
-}
-
-var _ repo.ICidInfoRepo = (*mysqlCidInfoRepo)(nil)
-
-func NewMysqlCidInfoRepo(ds *gorm.DB) *mysqlCidInfoRepo {
-	return &mysqlCidInfoRepo{ds: ds}
-}
 
 type mysqlBlockLocation piecestore.BlockLocation
 
@@ -50,7 +41,17 @@ func (m cidInfo) TableName() string {
 	return cidInfoTableName
 }
 
-func (m *mysqlCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
+type mysqlCidInfoRepo struct {
+	*gorm.DB
+}
+
+var _ repo.ICidInfoRepo = (*mysqlCidInfoRepo)(nil)
+
+func NewMysqlCidInfoRepo(ds *gorm.DB) *mysqlCidInfoRepo {
+	return &mysqlCidInfoRepo{ds}
+}
+
+func (m *mysqlCidInfoRepo) AddPieceBlockLocations(ctx context.Context, pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
 	mysqlInfos := make([]cidInfo, len(blockLocations))
 	idx := 0
 	for blockCid, location := range blockLocations {
@@ -61,16 +62,16 @@ func (m *mysqlCidInfoRepo) AddPieceBlockLocations(pieceCID cid.Cid, blockLocatio
 		idx++
 	}
 
-	return m.ds.Table(cidInfoTableName).Clauses(clause.OnConflict{
+	return m.Table(cidInfoTableName).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "piece_cid"}, {Name: "payload_cid"}},
 		UpdateAll: true,
 	}).Save(mysqlInfos).Error
 
 }
 
-func (m *mysqlCidInfoRepo) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, error) {
+func (m *mysqlCidInfoRepo) GetCIDInfo(ctx context.Context, payloadCID cid.Cid) (piecestore.CIDInfo, error) {
 	cidInfo := cidInfo{}
-	if err := m.ds.Model(&cidInfo).Find(&cidInfo, "payload_cid = ?", DBCid(payloadCID).String()).Error; err != nil {
+	if err := m.Model(&cidInfo).Find(&cidInfo, "payload_cid = ?", DBCid(payloadCID).String()).Error; err != nil {
 		return piecestore.CIDInfo{}, err
 	}
 	return piecestore.CIDInfo{
@@ -82,9 +83,9 @@ func (m *mysqlCidInfoRepo) GetCIDInfo(payloadCID cid.Cid) (piecestore.CIDInfo, e
 		}}, nil
 }
 
-func (m *mysqlCidInfoRepo) ListCidInfoKeys() ([]cid.Cid, error) {
+func (m *mysqlCidInfoRepo) ListCidInfoKeys(ctx context.Context) ([]cid.Cid, error) {
 	var cidsStr []string
-	err := m.ds.Table(cidInfoTableName).Select("payload_cid").Scan(&cidsStr).Error
+	err := m.Table(cidInfoTableName).Select("payload_cid").Scan(&cidsStr).Error
 	if err != nil {
 		return nil, err
 	}

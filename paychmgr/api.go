@@ -9,8 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
-	"github.com/filecoin-project/venus/app/submodule/apitypes"
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 type PaychAPI struct {
@@ -21,26 +20,26 @@ func NewPaychAPI(p *Manager) *PaychAPI {
 	return &PaychAPI{p}
 }
 
-type PaychStatus = types.PaychStatus //nolint
+type PaychStatus = types.Status //nolint
 
-func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*apitypes.ChannelInfo, error) {
+func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*types.ChannelInfo, error) {
 	ch, mcid, err := a.paychMgr.GetPaych(ctx, from, to, amt)
 	if err != nil {
 		return nil, err
 	}
 
-	return &apitypes.ChannelInfo{
+	return &types.ChannelInfo{
 		Channel:      ch,
 		WaitSentinel: mcid,
 	}, nil
 }
 
 func (a *PaychAPI) PaychAvailableFunds(ctx context.Context, ch address.Address) (*ChannelAvailableFunds, error) {
-	return a.paychMgr.AvailableFunds(ch)
+	return a.paychMgr.AvailableFunds(ctx, ch)
 }
 
 func (a *PaychAPI) PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*ChannelAvailableFunds, error) {
-	return a.paychMgr.AvailableFundsByFromTo(from, to)
+	return a.paychMgr.AvailableFundsByFromTo(ctx, from, to)
 }
 
 func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (address.Address, error) {
@@ -48,10 +47,10 @@ func (a *PaychAPI) PaychGetWaitReady(ctx context.Context, sentinel cid.Cid) (add
 }
 
 func (a *PaychAPI) PaychAllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
-	return a.paychMgr.AllocateLane(ch)
+	return a.paychMgr.AllocateLane(ctx, ch)
 }
 
-func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []apitypes.VoucherSpec) (*apitypes.PaymentInfo, error) {
+func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address, vouchers []types.VoucherSpec) (*types.PaymentInfo, error) {
 	amount := vouchers[len(vouchers)-1].Amount
 
 	// TODO: Fix free fund tracking in PaychGet
@@ -61,7 +60,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 		return nil, err
 	}
 
-	lane, err := a.paychMgr.AllocateLane(ch.Channel)
+	lane, err := a.paychMgr.AllocateLane(ctx, ch.Channel)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +87,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 		svs[i] = sv.Voucher
 	}
 
-	return &apitypes.PaymentInfo{
+	return &types.PaymentInfo{
 		Channel:      ch.Channel,
 		WaitSentinel: ch.WaitSentinel,
 		Vouchers:     svs,
@@ -96,15 +95,15 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 }
 
 func (a *PaychAPI) PaychList(ctx context.Context) ([]address.Address, error) {
-	return a.paychMgr.ListChannels()
+	return a.paychMgr.ListChannels(ctx)
 }
 
-func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*types.PaychStatus, error) {
-	ci, err := a.paychMgr.GetChannelInfo(pch)
+func (a *PaychAPI) PaychStatus(ctx context.Context, pch address.Address) (*types.Status, error) {
+	ci, err := a.paychMgr.GetChannelInfo(ctx, pch)
 	if err != nil {
 		return nil, err
 	}
-	return &types.PaychStatus{
+	return &types.Status{
 		ControlAddr: ci.Control,
 		Direction:   types.PCHDir(ci.Direction),
 	}, nil
