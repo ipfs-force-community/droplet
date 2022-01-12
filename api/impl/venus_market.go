@@ -125,7 +125,7 @@ func (m MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Add
 
 func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]types.ProviderDealState, error) {
 	var out []types.ProviderDealState
-	deals, err := m.RetrievalProvider.ListDeals()
+	deals, err := m.RetrievalProvider.ListDeals(ctx)
 	if err != nil {
 		return nil, err
 	}

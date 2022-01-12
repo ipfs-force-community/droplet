@@ -41,7 +41,7 @@ func PrivKey(home config.IHome, cfg *config.Libp2p) (crypto.PrivKey, error) {
 		return nil, err
 	}
 
-	kbytes, err := pk.Raw()
+	kbytes, err := crypto.MarshalPrivateKey(pk)
 	if err != nil {
 		return nil, err
 	}

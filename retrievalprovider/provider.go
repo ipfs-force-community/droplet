@@ -27,8 +27,10 @@ var log = logging.Logger("retrievaladapter")
 type IRetrievalProvider interface {
 	Stop() error
 	Start(ctx context.Context) error
-	ListDeals() (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error)
+	ListDeals(ctx context.Context) (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error)
 }
+
+var _ IRetrievalProvider = (*RetrievalProvider)(nil)
 
 // RetrievalProvider is the production implementation of the RetrievalProvider interface
 type RetrievalProvider struct {
