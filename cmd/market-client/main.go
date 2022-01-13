@@ -28,7 +28,7 @@ import (
 	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus-market/version"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 
@@ -98,7 +98,7 @@ func main() {
 	app := &cli.App{
 		Name:                 "market-client",
 		Usage:                "venus stores or retrieves the market client",
-		Version:              constants.UserVersion(),
+		Version:              version.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			RepoFlag,

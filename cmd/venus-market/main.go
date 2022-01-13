@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/filecoin-project/venus-market/version"
 	"log"
 	"os"
 	"strings"
@@ -17,7 +18,6 @@ import (
 	_ "github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piecestorage"
 
-	"github.com/filecoin-project/venus/pkg/constants"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 )
@@ -102,7 +102,7 @@ func main() {
 	app := &cli.App{
 		Name:                 "venus-market",
 		Usage:                "venus-market",
-		Version:              constants.UserVersion(),
+		Version:              version.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			RepoFlag,
