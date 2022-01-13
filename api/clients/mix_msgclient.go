@@ -189,7 +189,7 @@ func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetK
 	if msgClient.messager == nil || mCid.Prefix() != utils.MidPrefix {
 		return msgClient.full.StateSearchMsg(ctx, from, mCid, loopbackLimit, allowReplaced)
 	} else {
-		msg, err := msgClient.messager.GetMessageByCid(ctx, mCid)
+		msg, err := msgClient.messager.GetMessageByUid(ctx, mCid.String())
 		if err != nil {
 			log.Warnw("get message fail while wait %w", err)
 			time.Sleep(time.Second * 5)

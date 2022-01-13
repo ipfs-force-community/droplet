@@ -29,7 +29,7 @@ require (
 	github.com/filecoin-project/specs-storage v0.1.1-0.20211228030229-6d460d25a0c9
 	github.com/filecoin-project/venus v1.2.0-rc1
 	github.com/filecoin-project/venus-auth v1.3.1
-	github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220113034609-782297f2e358
+	github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220113095437-36c9939fefe2
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/golang/mock v1.6.0
