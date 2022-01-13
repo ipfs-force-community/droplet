@@ -55,7 +55,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 
 	"github.com/filecoin-project/venus-market/config"

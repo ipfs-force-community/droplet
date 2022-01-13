@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	paych2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/paych"
+	paych7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/paych"
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/messagepool"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
@@ -595,15 +595,15 @@ func (m MockFullnode) PaychCollect(ctx context.Context, addr address.Address) (c
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych2.SignedVoucher) error {
+func (m MockFullnode) PaychVoucherCheckValid(ctx context.Context, ch address.Address, sv *paych7.SignedVoucher) error {
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych2.SignedVoucher, secret []byte, proof []byte) (bool, error) {
+func (m MockFullnode) PaychVoucherCheckSpendable(ctx context.Context, ch address.Address, sv *paych7.SignedVoucher, secret []byte, proof []byte) (bool, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych2.SignedVoucher, proof []byte, minDelta big.Int) (big.Int, error) {
+func (m MockFullnode) PaychVoucherAdd(ctx context.Context, ch address.Address, sv *paych7.SignedVoucher, proof []byte, minDelta big.Int) (big.Int, error) {
 	panic("implement me")
 }
 
@@ -611,11 +611,11 @@ func (m MockFullnode) PaychVoucherCreate(ctx context.Context, pch address.Addres
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych2.SignedVoucher, error) {
+func (m MockFullnode) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych7.SignedVoucher, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych2.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
+func (m MockFullnode) PaychVoucherSubmit(ctx context.Context, ch address.Address, sv *paych7.SignedVoucher, secret []byte, proof []byte) (cid.Cid, error) {
 	panic("implement me")
 }
 

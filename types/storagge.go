@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 )
 

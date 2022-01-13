@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/events"
@@ -276,7 +276,7 @@ func dealSectorInPreCommitMsg(msg *types.Message, res CurrentDealInfo) (*abi.Sec
 			}
 		}
 	case miner.Methods.PreCommitSectorBatch:
-		var params miner5.PreCommitSectorBatchParams
+		var params miner7.PreCommitSectorBatchParams
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 			return nil, xerrors.Errorf("unmarshal pre commit: %w", err)
 		}
@@ -309,7 +309,7 @@ func sectorInCommitMsg(msg *types.Message, sectorNumber abi.SectorNumber) (bool,
 		return params.SectorNumber == sectorNumber, nil
 
 	case miner.Methods.ProveCommitAggregate:
-		var params miner5.ProveCommitAggregateParams
+		var params miner7.ProveCommitAggregateParams
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 			return false, xerrors.Errorf("failed to unmarshal prove commit sector params: %w", err)
 		}

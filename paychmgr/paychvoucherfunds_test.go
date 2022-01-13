@@ -11,8 +11,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	tutils2 "github.com/filecoin-project/specs-actors/v6/support/testing"
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+	tutils2 "github.com/filecoin-project/specs-actors/v7/support/testing"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
@@ -39,7 +39,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	mock.setAccountAddress(toAcct, to)
 	mock.addSigningKey(fromKeyPrivate)
 
-	mgr, err := newManager(newRepo(), mock)
+	mgr, err := newManager(ctx, newRepo(), mock)
 	require.NoError(t, err)
 
 	// Send create message for a channel with value 10
@@ -53,7 +53,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 
 	// Create an actor in state for the channel with the initial channel balance
 	act := &types.Actor{
-		Code:    builtin2.AccountActorCodeID,
+		Code:    builtin7.AccountActorCodeID,
 		Head:    cid.Cid{},
 		Nonce:   0,
 		Balance: createAmt,

@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -285,7 +285,7 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.A
 				// 填充 全0 piece
 				if dealOfFsize == nil {
 					combined.Pieces = append(combined.Pieces, &types.DealInfoIncludePath{
-						DealProposal: market2.DealProposal{
+						DealProposal: market7.DealProposal{
 							PieceSize: fsize.Padded(),
 							PieceCID:  zerocomm.ZeroPieceCommitment(fsize),
 						},

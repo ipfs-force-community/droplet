@@ -7,7 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/big"
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
+	tutils "github.com/filecoin-project/specs-actors/v7/support/testing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +22,7 @@ func TestPaychSettle(t *testing.T) {
 	mock := newMockManagerAPI()
 	defer mock.close()
 
-	mgr, err := newManager(newRepo(), mock)
+	mgr, err := newManager(ctx, newRepo(), mock)
 	require.NoError(t, err)
 
 	amt := big.NewInt(10)
@@ -60,7 +60,7 @@ func TestPaychSettle(t *testing.T) {
 	require.NotEqual(t, ch, ch2)
 
 	// There should now be two channels
-	cis, err := mgr.ListChannels()
+	cis, err := mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 2)
 }

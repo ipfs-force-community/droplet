@@ -1,7 +1,5 @@
 package types
 
-// copy from github.com/filecoin-project/venus/pkg/paychmgr/store.go
-
 import (
 	"database/sql/driver"
 	"encoding/json"

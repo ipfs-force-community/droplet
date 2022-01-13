@@ -14,7 +14,7 @@ import (
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	abi "github.com/filecoin-project/go-state-types/abi"
-	paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	cid "github.com/ipfs/go-cid"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"

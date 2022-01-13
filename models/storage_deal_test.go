@@ -2,6 +2,7 @@ package models
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/models/badger"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/stretchr/testify/assert"
@@ -105,6 +106,7 @@ func testCborMarshal(t *testing.T) {
 }
 
 func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
+	ctx := context.TODO()
 	pid, err := peer.Decode("12D3KooWG8tR9PHjjXcMknbNPVWT75BuXXA2RaYx3fMwwg2oPZXd")
 	if err != nil {
 		assert.Nil(t, err)
@@ -112,17 +114,17 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 
 	deal := getTestMinerDeal(t)
 	// test save and get
-	assert.Nil(t, dealRepo.SaveDeal(deal))
-	deal2, err := dealRepo.GetDeal(deal.ProposalCid)
+	assert.Nil(t, dealRepo.SaveDeal(ctx, deal))
+	deal2, err := dealRepo.GetDeal(ctx, deal.ProposalCid)
 	require.NoError(t, err)
 	compareDeal(t, deal, deal2)
-	assert.Nil(t, dealRepo.SaveDeal(deal2))
+	assert.Nil(t, dealRepo.SaveDeal(ctx, deal2))
 
 	// test update
 	deal.Offset = 90000
-	assert.Nil(t, dealRepo.SaveDeal(deal))
+	assert.Nil(t, dealRepo.SaveDeal(ctx, deal))
 
-	deal2, err = dealRepo.GetDeal(deal.ProposalCid)
+	deal2, err = dealRepo.GetDeal(ctx, deal.ProposalCid)
 	require.NoError(t, err)
 	compareDeal(t, deal, deal2)
 
@@ -133,25 +135,25 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 		ID:        10,
 	}
 	deal2.Proposal.Provider = randAddress(t)
-	assert.Nil(t, dealRepo.SaveDeal(deal2))
+	assert.Nil(t, dealRepo.SaveDeal(ctx, deal2))
 
-	res, err := dealRepo.GetDeal(deal.ProposalCid)
+	res, err := dealRepo.GetDeal(ctx, deal.ProposalCid)
 	assert.Nil(t, err)
 	compareDeal(t, res, deal)
 
-	res2, err := dealRepo.GetDeal(deal2.ProposalCid)
+	res2, err := dealRepo.GetDeal(ctx, deal2.ProposalCid)
 	assert.Nil(t, err)
 	compareDeal(t, res2, deal2)
 
 	// test list
-	list, err := dealRepo.ListDeal()
+	list, err := dealRepo.ListDeal(ctx)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(list))
 
-	_, err = dealRepo.GetDeal(randCid(t))
+	_, err = dealRepo.GetDeal(ctx, randCid(t))
 	require.Error(t, err, "recode shouldn't be found")
 
-	pieceCids, err := dealRepo.ListPieceInfoKeys()
+	pieceCids, err := dealRepo.ListPieceInfoKeys(ctx)
 	assert.Nil(t, err)
 	assert.Len(t, pieceCids, 2)
 }

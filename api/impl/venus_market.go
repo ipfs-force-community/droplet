@@ -9,10 +9,9 @@ import (
 
 	"github.com/filecoin-project/venus-market/models/repo"
 
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-
 	"github.com/filecoin-project/venus-market/minermgr"
 	"github.com/filecoin-project/venus-market/retrievalprovider"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"

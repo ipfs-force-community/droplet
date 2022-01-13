@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	init7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/init"
 	"github.com/filecoin-project/venus-market/types"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -433,7 +433,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID str
 	// TODO: ActorUpgrade abstract over this.
 	// This "works" because it hasn't changed from v0 to v2, but we still
 	// need an abstraction here.
-	var decodedReturn init2.ExecReturn
+	var decodedReturn init7.ExecReturn
 	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
 		log.Error(err)
