@@ -259,8 +259,6 @@ type MarketClientConfig struct {
 	Messager Messager
 	Signer   Signer
 
-	Market Market // reserve
-
 	// The maximum number of parallel online data transfers (piecestorage+retrieval)
 	SimultaneousTransfersForRetrieval uint64
 	SimultaneousTransfersForStorage   uint64
@@ -304,6 +302,9 @@ func (addr *Address) UnmarshalText(text []byte) error {
 }
 
 func (dur Address) MarshalText() ([]byte, error) {
+	if address.Address(dur) == address.Undef {
+		return []byte{}, nil
+	}
 	return []byte(address.Address(dur).String()), nil
 }
 

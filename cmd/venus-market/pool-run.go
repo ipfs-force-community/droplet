@@ -44,9 +44,9 @@ var poolRunCmd = &cli.Command{
 		AuthTokeFlag,
 		MessagerUrlFlag,
 		MessagerTokenFlag,
-		SignerTypeFlag,
-		SignerUrlFlag,
-		SignerTokenFlag,
+		HidenSignerTypeFlag,
+		GatewayUrlFlag,
+		GatewayTokenFlag,
 		PieceStorageFlag,
 		MysqlDsnFlag,
 		MinerListFlag,
@@ -58,6 +58,7 @@ var poolRunCmd = &cli.Command{
 func poolDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
 	ctx := cctx.Context
+	cctx.Set(HidenSignerTypeFlag.Name, "gateway")
 	cfg, err := prepare(cctx)
 	if err != nil {
 		return err

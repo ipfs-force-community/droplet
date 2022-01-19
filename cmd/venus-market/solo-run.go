@@ -40,6 +40,9 @@ var soloRunCmd = &cli.Command{
 	Flags: []cli.Flag{
 		NodeUrlFlag,
 		NodeTokenFlag,
+		HidenSignerTypeFlag,
+		WalletUrlFlag,
+		WalletTokenFlag,
 		PieceStorageFlag,
 		MysqlDsnFlag,
 		MinerListFlag,
@@ -52,6 +55,7 @@ func soloDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
 	ctx := cctx.Context
 
+	cctx.Set(HidenSignerTypeFlag.Name, "wallet")
 	cfg, err := prepare(cctx)
 	if err != nil {
 		return err

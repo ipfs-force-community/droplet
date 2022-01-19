@@ -69,6 +69,13 @@ var (
 		Usage:       "signer service type（wallet, gateway）",
 		DefaultText: "wallet",
 	}
+	HidenSignerTypeFlag = &cli.StringFlag{
+		Name:        "signer-type",
+		Usage:       "signer service type（wallet, gateway）",
+		DefaultText: "wallet",
+		Hidden:      true,
+	}
+
 	SignerUrlFlag = &cli.StringFlag{
 		Name:  "signer-url",
 		Usage: "used to connect signer service for sign",
@@ -76,6 +83,28 @@ var (
 	SignerTokenFlag = &cli.StringFlag{
 		Name:  "signer-token",
 		Usage: "auth token for connect signer service",
+	}
+
+	GatewayUrlFlag = &cli.StringFlag{
+		Name:    "gateway-url",
+		Aliases: []string{"signer-url"},
+		Usage:   "used to connect gateway service for sign",
+	}
+	GatewayTokenFlag = &cli.StringFlag{
+		Name:    "gateway-token",
+		Aliases: []string{"signer-token"},
+		Usage:   "used to connect gateway service for sign",
+	}
+
+	WalletUrlFlag = &cli.StringFlag{
+		Name:    "wallet-url",
+		Aliases: []string{"signer-url"},
+		Usage:   "used to connect signer wallet for sign",
+	}
+	WalletTokenFlag = &cli.StringFlag{
+		Name:    "wallet-token",
+		Aliases: []string{"signer-token"},
+		Usage:   "auth token for connect wallet service",
 	}
 
 	PieceStorageFlag = &cli.StringFlag{
