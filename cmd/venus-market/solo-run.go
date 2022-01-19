@@ -55,7 +55,9 @@ func soloDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
 	ctx := cctx.Context
 
-	cctx.Set(HidenSignerTypeFlag.Name, "wallet")
+	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
+		cctx.Set(HidenSignerTypeFlag.Name, "wallet")
+	}
 	cfg, err := prepare(cctx)
 	if err != nil {
 		return err

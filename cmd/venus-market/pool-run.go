@@ -58,7 +58,9 @@ var poolRunCmd = &cli.Command{
 func poolDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
 	ctx := cctx.Context
-	cctx.Set(HidenSignerTypeFlag.Name, "gateway")
+	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
+		cctx.Set(HidenSignerTypeFlag.Name, "gateway")
+	}
 	cfg, err := prepare(cctx)
 	if err != nil {
 		return err
