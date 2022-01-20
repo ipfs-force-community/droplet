@@ -2,15 +2,12 @@
 
 venus-market will deliver a complete deal making experience as what lotus offers. This includes compatibility with lotus client where one can make deal with venus-market using lotus client, retrieve deal/data in the same way as lotus retrieves its data, setup storage ask and etc.
 
-* Implementation of the one-to-one model of lotus market like module and fully interoperable with lotus implementation, which means compatibility with lotus client and more
-* venus-market deployed as independent module, like venus-sealer and venus-wallet
-* Implementation of a reliable market module that runs a seperate process from the main storage process
-* A clear module boundary that allows interoperability and user customizations
-* Flexibilities of market module to interact with existing venus infrastructures using RPC APIs
-* Supports for mainnet, calibration and Nerpa
-* Lightweight client: compatibility with Lotus and support for venus-market unique features including client running seperately as a process and remove dependencies for node; great for bootstraping tests on deal making process
-
-![](https://raw.githubusercontent.com/hunjixin/imgpool/master/market.png)
+# # feature
+1. market 2.0 mainly implements the aggregation of multiple storage miners. clients can issue orders or retrieve any providers registered to venus-market. 
+2. all metadata of provider server is stored in the mysql database that providing better data security.
+3. providers do not need to pay attention for the details of the deal,  only need to query the market regularly to see if you have any deal to seal. 
+4. market maintain a piece pool, that is, to provide the provider with the data for sealing deals, and it can also speed up the retrieval speed. ask miners for unseal operations, only when missing piece in venus-market.
+5. for clients, it is fully compatible with lotus.
 
 ## build
 
@@ -20,51 +17,40 @@ cd venus-market
 make deps
 make
 ```
+## how to setup venus-market
 
-
-## start venus-market
-
-```sh
-./venus-market run --node-url <node url> --messager-url <messager-url> --auth-token <auth token>  --signer-url <wallet url> --signer-token  <wallet token> --piecestorage <piece storeage path> --miner <miner:account>
+run as venus-pool service
+```shell script
+./venus-market pool-run --auth-url <auth url> --node-url <node url> --messager-url <messager url>  --gateway-url <signer url>  --auth-token <auth token>  --piecestorage fs:/xx  --payment-addr <addr:account>
 ```
 
-## start market-client
-
-### full node
-
-this is example to use market-client only depend on full daemon
-```shell
-./market-client run --node-url <node url> --auth-token <auth token>  
+run in local 
+```shell script
+./venus-market solo-run --node-url <node url>  --node-token <auth token> --wallet-url <local wallet url>  --wallet-token <local wallet token>   --piecestorage fs:/xx --miner <f0xxx>  --payment-addr <addr:account>
 ```
 
-### use remote wallet and daemon service
+set peerid and address
 
-use wallet for sign, use daemon for chain information,  all data about fund (market message, paych) store in local, so you can use chain service such powergate as daemon
-
-```shell
-./market-client run --node-url <node url> --auth-token <auth token> --signer-url <remote wallet url> --signer-token <remote wallet token> 
+```shell script
+./venus-market net  listen                               #query venus-market address and peerid
+./venus-market actor set-peer-id --miner <f0xxxx> <id>   #set peer id
+./venus-market actor set-addrs --miner <f0xxxx> <addr>   #set miner address
+./venus-market actor info --miner <f0xxxx>               #query miner address and peerid on chain
 ```
 
-### venus pool
-if want use messsager to trick message, use messager-url and messager-token
-
-if want use remote wallet to sign message, use signer-url and signer-token
-
-this is the example for using venus-market in venus pool
-```shell
-./market-client run --node-url <node url> --messager-url <messager-url> --auth-token <auth token>  --signer-url <wallet url> --signer-token  <wallet token> --addr <client default address>
+set storage ask
+```shell script
+./venus-market storage-deals set-ask --price <price> --verified-price <price> --min-piece-size  <minsize >=256B>  --max-piece-size <max size <=sector-size> --miner <f0xxxx>
 ```
 
-## make deal
-
-```shell
- ./market-client generate-car  <file> <car file>
- ./market-client import <file>
- ./market-client deal
+set retrieval ask
+```shell script
+./venus-market retrieval-deals set-ask --price <pirce> --unseal-price <price> --payment-interval <bytes> --payment-interval-increase <bytes> --payment-addr <fxxx>
 ```
 
-## retrieval file
+## how to setup market client
 
-```shell
-./market-client retrieve --miner <miner addr> <data-cid> <dst path>
+```shell script
+./market-client run --node-url <node url> --node-token <auth token>  --wallet-url <wallet url> --wallet-token  <wallet token> --addr <client default address>
 ```
+Note:**please use a seperate address, or maybe nonce confiction**
