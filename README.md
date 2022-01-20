@@ -1,5 +1,7 @@
 # venus-market
 
+Use [Venus Issues](https://github.com/filecoin-project/venus/issues) for reporting issues about this repository.
+
 venus-market will deliver a complete deal making experience as what lotus offers. This includes compatibility with lotus client where one can make deal with venus-market using lotus client, retrieve deal/data in the same way as lotus retrieves its data, setup storage ask and etc.
 
 * Implementation of the one-to-one model of lotus market like module and fully interoperable with lotus implementation, which means compatibility with lotus client and more
@@ -11,6 +13,7 @@ venus-market will deliver a complete deal making experience as what lotus offers
 * Lightweight client: compatibility with Lotus and support for venus-market unique features including client running seperately as a process and remove dependencies for node; great for bootstraping tests on deal making process
 
 ![](https://raw.githubusercontent.com/hunjixin/imgpool/master/market.png)
+
 
 ## build
 
