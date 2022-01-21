@@ -12,33 +12,16 @@ type INonceAssigner interface {
 }
 
 type nonceAssigner struct {
-	lk     sync.Mutex
-	nonces map[address.Address]uint64
-	full   v1api.FullNode
+	lk   sync.Mutex
+	full v1api.FullNode
 }
 
 func newNonceAssign(full v1api.FullNode) *nonceAssigner {
-	return &nonceAssigner{full: full, lk: sync.Mutex{}, nonces: map[address.Address]uint64{}}
+	return &nonceAssigner{full: full, lk: sync.Mutex{}}
 }
 func (nonceAssign *nonceAssigner) AssignNonce(ctx context.Context, addr address.Address) (uint64, error) {
 	nonceAssign.lk.Lock()
 	defer nonceAssign.lk.Unlock()
 
-	mpoolNextNonce, err := nonceAssign.full.MpoolGetNonce(ctx, addr)
-	if err != nil {
-		return 0, nil
-	}
-	curNonce, ok := nonceAssign.nonces[addr]
-	if ok {
-		if mpoolNextNonce > curNonce {
-			nonceAssign.nonces[addr] = mpoolNextNonce + 1
-			return mpoolNextNonce, nil
-		} else {
-			nonceAssign.nonces[addr] = curNonce + 1
-			return curNonce, nil
-		}
-	} else {
-		nonceAssign.nonces[addr] = mpoolNextNonce + 1
-		return mpoolNextNonce, nil
-	}
+	return nonceAssign.full.MpoolGetNonce(ctx, addr)
 }
