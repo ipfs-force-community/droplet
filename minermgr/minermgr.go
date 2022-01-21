@@ -70,7 +70,7 @@ func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode v1api.FullNode, cfg *config.
 	if err != nil {
 		return nil, err
 	}
-	defer func() { m.refreshworker(ctx) }()
+	defer func() { go m.refreshUsers(ctx) }()
 	return m, m.distAddress(ctx, miners...)
 
 }
@@ -259,7 +259,7 @@ func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...types.User) erro
 	return nil
 }
 
-func (m *UserMgrImpl) refreshworker(ctx context.Context) {
+func (m *UserMgrImpl) refreshUsers(ctx context.Context) {
 	tm := time.NewTicker(time.Minute)
 	defer tm.Stop()
 	for {
