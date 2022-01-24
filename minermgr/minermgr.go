@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -69,7 +70,7 @@ func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode v1api.FullNode, cfg *config.
 	if err != nil {
 		return nil, err
 	}
-
+	defer func() { go m.refreshUsers(ctx) }()
 	return m, m.distAddress(ctx, miners...)
 
 }
@@ -258,6 +259,25 @@ func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...types.User) erro
 	return nil
 }
 
+func (m *UserMgrImpl) refreshUsers(ctx context.Context) {
+	tm := time.NewTicker(time.Minute)
+	defer tm.Stop()
+	for {
+		select {
+		case <-tm.C:
+			miners, err := m.getMinerFromVenusAuth(context.TODO(), 0, 0)
+			if err != nil {
+				log.Errorf("unable to get venus miner from venus auth %s", err)
+			}
+
+			err = m.distAddress(ctx, miners...)
+			if err != nil {
+				log.Errorf("unable to append new user to address manager %s", err)
+			}
+		}
+	}
+
+}
 func convertConfigAddress(addrs []config.User) []types.User {
 	addrs2 := make([]types.User, len(addrs))
 	for index, miner := range addrs {
