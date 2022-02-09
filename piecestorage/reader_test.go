@@ -3,6 +3,7 @@ package piecestorage
 import (
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/stretchr/testify/require"
 	"io"
 	"os"
@@ -18,7 +19,7 @@ func TestReWrite(t *testing.T) {
 	os.Remove(filepath)
 
 	ctx := context.TODO()
-	ifs, err := newFsPieceStorage(path)
+	ifs, err := newFsPieceStorage(config.FsPieceStorage{Enable: true, Path: path})
 	require.NoErrorf(t, err, "open file storage")
 	wlen, err := ifs.SaveTo(ctx, name, r)
 

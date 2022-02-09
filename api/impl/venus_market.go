@@ -710,3 +710,17 @@ func (m MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pag
 func (m MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
 	return m.PaychAPI.PaychVoucherList(ctx, pch)
 }
+
+func (m MarketNodeImpl) GetReadUrl(ctx context.Context, s2 string) (string, error) {
+	if m.PieceStorage.Type() != piecestorage.S3 {
+		return "", xerrors.New("presign read only support s3")
+	}
+	return m.PieceStorage.GetReadUrl(ctx, s2)
+}
+
+func (m MarketNodeImpl) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
+	if m.PieceStorage.Type() != piecestorage.S3 {
+		return "", xerrors.New("presign read only support s3")
+	}
+	return m.PieceStorage.GetWriteUrl(ctx, s2)
+}

@@ -148,6 +148,10 @@ type MarketFullNode interface {
 
 	// Paych
 	PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) //perm:read
+
+	//piece storage
+	GetReadUrl(context.Context, string) (string, error)
+	GetWriteUrl(ctx context.Context, resource string) (string, error)
 }
 
 type MarketClientNode interface {
