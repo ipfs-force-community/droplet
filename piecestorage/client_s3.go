@@ -57,6 +57,11 @@ func (c PresignS3Storage) Read(ctx context.Context, s string) (io.ReadCloser, er
 	if err != nil {
 		return nil, err
 	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("response status code:%d != 200", resp.StatusCode)
+	}
+
 	return resp.Body, nil
 }
 
