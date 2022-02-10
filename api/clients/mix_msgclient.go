@@ -2,7 +2,7 @@ package clients
 
 import (
 	"context"
-	types2 "github.com/filecoin-project/venus-messager/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/types/messager"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"

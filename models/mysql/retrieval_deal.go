@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/types"
-	mtypes "github.com/filecoin-project/venus-messager/types"
+	"github.com/filecoin-project/venus-messager/models/mtypes"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"gorm.io/gorm"

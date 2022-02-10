@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	mtypes "github.com/filecoin-project/venus-messager/types"
+	"github.com/filecoin-project/venus-messager/models/mtypes"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"gorm.io/driver/mysql"
@@ -197,7 +197,7 @@ func (c DBCid) cidPtr() *cid.Cid {
 
 func convertBigInt(v big.Int) mtypes.Int {
 	if v.Nil() {
-		return mtypes.Zero()
+		return mtypes.NewInt(0)
 	}
 	return mtypes.NewFromGo(v.Int)
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/types"
-	mtypes "github.com/filecoin-project/venus-messager/types"
+	"github.com/filecoin-project/venus-messager/models/mtypes"
 	"gorm.io/gorm"
 )
 

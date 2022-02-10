@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -31,14 +32,15 @@ func doTestCidinfo(t *testing.T, repo repo.ICidInfoRepo) {
 	payLoadCid1 := randCid(t)
 	payLoadCid2 := randCid(t)
 
+	ctx := context.Background()
 	blkLocations := map[cid.Cid]piecestore.BlockLocation{
 		payLoadCid1: {BlockSize: 10, RelOffset: 999},
 		payLoadCid2: {BlockSize: 30, RelOffset: 25},
 	}
-	err := repo.AddPieceBlockLocations(pieceCid, blkLocations)
+	err := repo.AddPieceBlockLocations(ctx, pieceCid, blkLocations)
 	assert.NoError(t, err)
 
-	cidInfo, err := repo.GetCIDInfo(payLoadCid1)
+	cidInfo, err := repo.GetCIDInfo(ctx, payLoadCid1)
 	assert.NoError(t, err)
 
 	require.Equal(t, len(cidInfo.PieceBlockLocations), 1)
@@ -47,7 +49,7 @@ func doTestCidinfo(t *testing.T, repo repo.ICidInfoRepo) {
 	require.Equal(t, cidInfo.PieceBlockLocations[0].BlockSize, uint64(10))
 	require.Equal(t, cidInfo.PieceBlockLocations[0].RelOffset, uint64(999))
 
-	cids, err := repo.ListCidInfoKeys()
+	cids, err := repo.ListCidInfoKeys(ctx)
 
 	require.NoError(t, err)
 	require.LessOrEqual(t, 2, len(cids))

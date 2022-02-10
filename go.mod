@@ -25,11 +25,12 @@ require (
 	github.com/filecoin-project/go-state-types v0.1.3
 	github.com/filecoin-project/go-statemachine v1.0.1
 	github.com/filecoin-project/go-statestore v0.2.0
+	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
 	github.com/filecoin-project/specs-storage v0.1.1-0.20211228030229-6d460d25a0c9
-	github.com/filecoin-project/venus v1.2.0-rc1
+	github.com/filecoin-project/venus v1.2.0-rc5
 	github.com/filecoin-project/venus-auth v1.3.1
-	github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220113095437-36c9939fefe2
+	github.com/filecoin-project/venus-messager v1.4.0-rc2
 	github.com/gbrlsnchs/jwt/v3 v3.0.0
 	github.com/go-resty/resty/v2 v2.4.0
 	github.com/golang/mock v1.6.0
@@ -37,7 +38,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab79c62a
-	github.com/ipfs-force-community/venus-gateway v1.1.2-0.20220113034500-827d4971ea63
+	github.com/ipfs-force-community/venus-gateway v1.2.0-rc2
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.2.1
 	github.com/ipfs/go-cid v0.1.0
