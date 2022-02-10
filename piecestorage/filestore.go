@@ -3,6 +3,7 @@ package piecestorage
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
 	xerrors "github.com/pkg/errors"
 	"io"
@@ -11,13 +12,21 @@ import (
 	"path"
 )
 
+type IPreSignOp interface {
+	GetReadUrl(context.Context, string) (string, error)
+	GetWriteUrl(ctx context.Context, s2 string) (string, error)
+}
+
 type IPieceStorage interface {
+	Type() Protocol
 	SaveTo(context.Context, string, io.Reader) (int64, error)
 	Read(context.Context, string) (io.ReadCloser, error)
 	Len(ctx context.Context, string2 string) (int64, error)
 	ReadOffset(context.Context, string, int, int) (io.ReadCloser, error)
 	Has(context.Context, string) (bool, error)
 	Validate(s string) error
+
+	IPreSignOp
 }
 
 type fsPieceStorage struct {
@@ -95,9 +104,21 @@ func (f fsPieceStorage) Validate(s string) error {
 	return nil
 }
 
-func newFsPieceStorage(baseUlr string) (IPieceStorage, error) {
-	fs := &fsPieceStorage{baseUrl: baseUlr}
-	if err := fs.Validate(baseUlr); err != nil {
+func (f fsPieceStorage) Type() Protocol {
+	return FS
+}
+
+func (f fsPieceStorage) GetReadUrl(ctx context.Context, s2 string) (string, error) {
+	return path.Join(f.baseUrl, s2), nil
+}
+
+func (f fsPieceStorage) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
+	return path.Join(f.baseUrl, s2), nil
+}
+
+func newFsPieceStorage(fsCfg config.FsPieceStorage) (IPieceStorage, error) {
+	fs := &fsPieceStorage{baseUrl: fsCfg.Path}
+	if err := fs.Validate(fsCfg.Path); err != nil {
 		return nil, err
 	}
 	return fs, nil

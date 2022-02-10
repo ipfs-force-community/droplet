@@ -1,6 +1,7 @@
 package piecestorage
 
 import (
+	"fmt"
 	"github.com/filecoin-project/venus-market/config"
 	"reflect"
 	"testing"
@@ -60,13 +61,18 @@ func TestParserProtocol(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParserProtocol(tt.protocol)
+			cfg := config.PieceStorage{}
+			err := ParserProtocol(tt.protocol, &cfg)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParserProtocol() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParserProtocol() got = %v, want %v", got, tt.want)
+			t1 := reflect.TypeOf(cfg)
+			t2 := reflect.TypeOf(tt.want)
+			fmt.Println(t1.String())
+			fmt.Println(t2.String())
+			if !reflect.DeepEqual(cfg, tt.want) {
+				t.Errorf("ParserProtocol() got = %v, want %v", cfg, tt.want)
 			}
 		})
 	}
