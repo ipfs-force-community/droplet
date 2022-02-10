@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
 	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 	"io"
 	"net/url"
 	"strings"
@@ -174,6 +175,12 @@ func (s s3PieceStorage) Has(ctx context.Context, piececid string) (bool, error) 
 
 //todo 下面presign两个方法用于给客户端使用，暂时仅仅支持对象存储。 可能需要一个更合适的抽象模式
 func (s s3PieceStorage) GetReadUrl(ctx context.Context, s2 string) (string, error) {
+	if has, err := s.Has(ctx, s2); err != nil {
+		return "", xerrors.Errorf("check object:%s exist error:%w", err)
+	} else if !has {
+		return "", xerrors.Errorf("object : %s not exists", s2)
+	}
+
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(s2),
