@@ -250,6 +250,8 @@ type MarketConfig struct {
 	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
 	RetrievalFilter string
 
+	TransfePath string
+
 	RetrievalPricing *RetrievalPricing
 
 	MaxPublishDealsFee     types.FIL

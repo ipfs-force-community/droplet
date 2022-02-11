@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/filecoin-project/venus-market/api/clients"
+	"github.com/mitchellh/go-homedir"
 	"io"
 	"time"
 
@@ -103,6 +104,7 @@ func providerDispatcher(evt pubsub.Event, fn pubsub.SubscriberFn) error {
 func NewStorageProviderV2(
 	storedAsk IStorageAsk,
 	h host.Host,
+	cfg *config.MarketConfig,
 	homeDir *config.HomeDir,
 	pieceStorage piecestorage.IPieceStorage,
 	dataTransfer network.ProviderDataTransfer,
@@ -114,7 +116,16 @@ func NewStorageProviderV2(
 ) (StorageProviderV2, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
-	store, err := filestore.NewLocalFileStore(filestore.OsPath(string(*homeDir)))
+	var err error
+	transferPath := cfg.TransfePath
+	if len(transferPath) == 0 {
+		transferPath = string(*homeDir)
+	}
+	transferPath, err = homedir.Expand(transferPath)
+	if err != nil {
+		return nil, err
+	}
+	store, err := filestore.NewLocalFileStore(filestore.OsPath(transferPath))
 	if err != nil {
 		return nil, err
 	}
