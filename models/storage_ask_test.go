@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -26,6 +27,7 @@ func TestStorageAsk(t *testing.T) {
 }
 
 func testStorageAsk(t *testing.T, askRepo repo.IStorageAskRepo) {
+	ctx := context.Background()
 	ask := &storagemarket.SignedStorageAsk{
 		Ask: &storagemarket.StorageAsk{
 			Price:         abi.NewTokenAmount(10),
@@ -57,13 +59,13 @@ func testStorageAsk(t *testing.T, askRepo repo.IStorageAskRepo) {
 		},
 	}
 
-	assert.Nil(t, askRepo.SetAsk(ask))
-	assert.Nil(t, askRepo.SetAsk(ask2))
+	assert.Nil(t, askRepo.SetAsk(ctx, ask))
+	assert.Nil(t, askRepo.SetAsk(ctx, ask2))
 
-	res, err := askRepo.GetAsk(ask.Ask.Miner)
+	res, err := askRepo.GetAsk(ctx, ask.Ask.Miner)
 	assert.Nil(t, err)
 	assert.Equal(t, res, ask)
-	res2, err := askRepo.GetAsk(ask2.Ask.Miner)
+	res2, err := askRepo.GetAsk(ctx, ask2.Ask.Miner)
 	assert.Nil(t, err)
 	assert.Equal(t, res2, ask2)
 }

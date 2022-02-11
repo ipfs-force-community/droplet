@@ -155,7 +155,7 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 
 	pieceCids, err := dealRepo.ListPieceInfoKeys(ctx)
 	assert.Nil(t, err)
-	assert.Len(t, pieceCids, 2)
+	assert.Len(t, pieceCids, 1)
 }
 
 func compareDeal(t *testing.T, actual, excepted *types.MinerDeal) {

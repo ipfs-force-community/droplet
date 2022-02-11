@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -23,6 +24,7 @@ func TestFund(t *testing.T) {
 
 func testFund(t *testing.T, fundRepo repo.FundRepo) {
 	msgCid := randCid(t)
+	ctx := context.Background()
 	state := &types.FundedAddressState{
 		Addr:        randAddress(t),
 		AmtReserved: abi.NewTokenAmount(100),
@@ -34,26 +36,26 @@ func testFund(t *testing.T, fundRepo repo.FundRepo) {
 		AmtReserved: abi.NewTokenAmount(10),
 	}
 
-	assert.Nil(t, fundRepo.SaveFundedAddressState(state))
-	assert.Nil(t, fundRepo.SaveFundedAddressState(state2))
+	assert.Nil(t, fundRepo.SaveFundedAddressState(ctx, state))
+	assert.Nil(t, fundRepo.SaveFundedAddressState(ctx, state2))
 
-	res, err := fundRepo.GetFundedAddressState(state.Addr)
+	res, err := fundRepo.GetFundedAddressState(ctx, state.Addr)
 	assert.Nil(t, err)
 	assert.Equal(t, res, state)
-	res2, err := fundRepo.GetFundedAddressState(state2.Addr)
+	res2, err := fundRepo.GetFundedAddressState(ctx, state2.Addr)
 	assert.Nil(t, err)
 	assert.Equal(t, res2, state2)
 
 	res.AmtReserved = abi.NewTokenAmount(101)
 	newCid := randCid(t)
 	res.MsgCid = &newCid
-	assert.Nil(t, fundRepo.SaveFundedAddressState(res))
-	res3, err := fundRepo.GetFundedAddressState(res.Addr)
+	assert.Nil(t, fundRepo.SaveFundedAddressState(ctx, res))
+	res3, err := fundRepo.GetFundedAddressState(ctx, res.Addr)
 	assert.Nil(t, err)
 
 	assert.Equal(t, res, res3)
 
-	list, err := fundRepo.ListFundedAddressState()
+	list, err := fundRepo.ListFundedAddressState(ctx)
 	assert.Nil(t, err)
 	assert.GreaterOrEqual(t, len(list), 2)
 }

@@ -1,6 +1,7 @@
 package storageprovider
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -28,6 +29,7 @@ func TestStorageAsk(t *testing.T) {
 }
 
 func testStorageAsk(t *testing.T, repo *StorageAsk) {
+	ctx := context.Background()
 	miner, _ := address.NewFromString("f02438")
 	price := abi.NewTokenAmount(100)
 	verifyPrice := abi.NewTokenAmount(10333)
@@ -39,9 +41,9 @@ func testStorageAsk(t *testing.T, repo *StorageAsk) {
 		Miner:         miner,
 	}
 
-	require.NoError(t, repo.SetAsk(miner, ask.Price, ask.VerifiedPrice, dur))
+	require.NoError(t, repo.SetAsk(ctx, miner, ask.Price, ask.VerifiedPrice, dur))
 
-	ask2, err := repo.GetAsk(miner)
+	ask2, err := repo.GetAsk(ctx, miner)
 	require.NoError(t, err)
 
 	require.Equal(t, ask2.Ask.Miner, miner, "miner should equals : %s", miner.String())
@@ -53,9 +55,9 @@ func testStorageAsk(t *testing.T, repo *StorageAsk) {
 	ask.Price = price
 	ask.VerifiedPrice = verifyPrice
 
-	require.NoError(t, repo.SetAsk(miner, ask.Price, ask.VerifiedPrice, dur))
+	require.NoError(t, repo.SetAsk(ctx, miner, ask.Price, ask.VerifiedPrice, dur))
 
-	ask2, err = repo.GetAsk(miner)
+	ask2, err = repo.GetAsk(ctx, miner)
 	require.NoError(t, err)
 
 	require.Equal(t, ask2.Ask.Price, price, "price should equals : %s", price.String())

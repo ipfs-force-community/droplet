@@ -16,16 +16,17 @@ import (
 func TestLazyBlockstoreGet(t *testing.T) {
 	b := shared_testutil.GenerateBlocksOfSize(1, 1024)[0]
 
+	ctx := context.Background()
 	ds := ds.NewMapDatastore()
 	bs := bstore.NewBlockstore(ds)
-	err := bs.Put(b)
+	err := bs.Put(ctx, b)
 	require.NoError(t, err)
 
 	lbs := newLazyBlockstore(func() (dagstore.ReadBlockstore, error) {
 		return bs, nil
 	})
 
-	blk, err := lbs.Get(b.Cid())
+	blk, err := lbs.Get(ctx, b.Cid())
 	require.NoError(t, err)
 	require.Equal(t, b, blk)
 }
@@ -33,11 +34,12 @@ func TestLazyBlockstoreGet(t *testing.T) {
 func TestLazyBlockstoreAllKeysChan(t *testing.T) {
 	blks := shared_testutil.GenerateBlocksOfSize(2, 1024)
 
+	ctx := context.Background()
 	ds := ds.NewMapDatastore()
 	bs := bstore.NewBlockstore(ds)
 
 	for _, b := range blks {
-		err := bs.Put(b)
+		err := bs.Put(ctx, b)
 		require.NoError(t, err)
 	}
 
@@ -51,7 +53,7 @@ func TestLazyBlockstoreAllKeysChan(t *testing.T) {
 	var count int
 	for k := range ch {
 		count++
-		has, err := bs.Has(k)
+		has, err := bs.Has(ctx, k)
 		require.NoError(t, err)
 		require.True(t, has)
 	}
@@ -61,16 +63,17 @@ func TestLazyBlockstoreAllKeysChan(t *testing.T) {
 func TestLazyBlockstoreHas(t *testing.T) {
 	b := shared_testutil.GenerateBlocksOfSize(1, 1024)[0]
 
+	ctx := context.Background()
 	ds := ds.NewMapDatastore()
 	bs := bstore.NewBlockstore(ds)
-	err := bs.Put(b)
+	err := bs.Put(ctx, b)
 	require.NoError(t, err)
 
 	lbs := newLazyBlockstore(func() (dagstore.ReadBlockstore, error) {
 		return bs, nil
 	})
 
-	has, err := lbs.Has(b.Cid())
+	has, err := lbs.Has(ctx, b.Cid())
 	require.NoError(t, err)
 	require.True(t, has)
 }
@@ -78,16 +81,17 @@ func TestLazyBlockstoreHas(t *testing.T) {
 func TestLazyBlockstoreGetSize(t *testing.T) {
 	b := shared_testutil.GenerateBlocksOfSize(1, 1024)[0]
 
+	ctx := context.Background()
 	ds := ds.NewMapDatastore()
 	bs := bstore.NewBlockstore(ds)
-	err := bs.Put(b)
+	err := bs.Put(ctx, b)
 	require.NoError(t, err)
 
 	lbs := newLazyBlockstore(func() (dagstore.ReadBlockstore, error) {
 		return bs, nil
 	})
 
-	sz, err := lbs.GetSize(b.Cid())
+	sz, err := lbs.GetSize(ctx, b.Cid())
 	require.NoError(t, err)
 	require.Equal(t, 1024, sz)
 }
@@ -95,9 +99,10 @@ func TestLazyBlockstoreGetSize(t *testing.T) {
 func TestLazyBlockstoreMultipleInvocations(t *testing.T) {
 	b := shared_testutil.GenerateBlocksOfSize(1, 1024)[0]
 
+	ctx := context.Background()
 	ds := ds.NewMapDatastore()
 	bs := bstore.NewBlockstore(ds)
-	err := bs.Put(b)
+	err := bs.Put(ctx, b)
 	require.NoError(t, err)
 
 	// Count the number of times that the init function is invoked
@@ -108,10 +113,10 @@ func TestLazyBlockstoreMultipleInvocations(t *testing.T) {
 	})
 
 	// Invoke Get twice
-	_, err = lbs.Get(b.Cid())
+	_, err = lbs.Get(ctx, b.Cid())
 	require.NoError(t, err)
 
-	_, err = lbs.Get(b.Cid())
+	_, err = lbs.Get(ctx, b.Cid())
 	require.NoError(t, err)
 
 	// Verify that the init function is only invoked once

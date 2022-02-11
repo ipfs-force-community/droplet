@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/venus-market/types"
@@ -28,8 +29,9 @@ func TestRetrievalAsk(t *testing.T) {
 }
 
 func testRetrievalAsk(t *testing.T, rtAskRepo repo.IRetrievalAskRepo) {
+	ctx := context.Background()
 	addr := randAddress(t)
-	_, err := rtAskRepo.GetAsk(addr)
+	_, err := rtAskRepo.GetAsk(ctx, addr)
 	assert.Equal(t, err.Error(), repo.ErrNotFound.Error(), "must be an not found error")
 
 	ask := &types.RetrievalAsk{
@@ -39,9 +41,9 @@ func testRetrievalAsk(t *testing.T, rtAskRepo repo.IRetrievalAskRepo) {
 		PaymentInterval:         20,
 		PaymentIntervalIncrease: 10,
 	}
-	require.NoError(t, rtAskRepo.SetAsk(ask))
+	require.NoError(t, rtAskRepo.SetAsk(ctx, ask))
 
-	ask2, err := rtAskRepo.GetAsk(addr)
+	ask2, err := rtAskRepo.GetAsk(ctx, addr)
 	require.NoError(t, err)
 	assert.Equal(t, ask, ask2)
 
@@ -50,8 +52,8 @@ func testRetrievalAsk(t *testing.T, rtAskRepo repo.IRetrievalAskRepo) {
 	ask.PaymentInterval = 1000
 	ask.PaymentIntervalIncrease = 1000
 
-	require.NoError(t, rtAskRepo.SetAsk(ask))
-	ask2, err = rtAskRepo.GetAsk(addr)
+	require.NoError(t, rtAskRepo.SetAsk(ctx, ask))
+	ask2, err = rtAskRepo.GetAsk(ctx, addr)
 	assert.Nil(t, err)
 	assert.Equal(t, ask, ask2)
 }

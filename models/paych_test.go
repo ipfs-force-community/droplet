@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filecoin-project/venus-market/models/badger"
@@ -29,13 +30,15 @@ func TestPaych(t *testing.T) {
 }
 
 func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRepo repo.PaychMsgInfoRepo) {
+	ctx := context.Background()
 	msgInfo := &types.MsgInfo{
 		ChannelID: uuid.New().String(),
 		MsgCid:    randCid(t),
 		Received:  false,
 		Err:       "",
 	}
-	assert.Nil(t, msgRepo.SaveMessage(msgInfo))
+
+	assert.Nil(t, msgRepo.SaveMessage(ctx, msgInfo))
 
 	addr := randAddress(t)
 	msgCid := randCid(t)
@@ -92,59 +95,60 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 	ci3.Channel = nil
 	ci3.ChannelID = uuid.NewString()
 
-	assert.Nil(t, channelRepo.SaveChannel(ci))
-	assert.Nil(t, channelRepo.SaveChannel(ci2))
-	assert.Nil(t, channelRepo.SaveChannel(ci3))
+	assert.Nil(t, channelRepo.SaveChannel(ctx, ci))
+	assert.Nil(t, channelRepo.SaveChannel(ctx, ci2))
+	assert.Nil(t, channelRepo.SaveChannel(ctx, ci3))
 
-	res, err := channelRepo.GetChannelByChannelID(ci.ChannelID)
+	res, err := channelRepo.GetChannelByChannelID(ctx, ci.ChannelID)
 	assert.Nil(t, err)
 	assert.Equal(t, res, ci)
-	res2, err := channelRepo.GetChannelByChannelID(ci2.ChannelID)
+	res2, err := channelRepo.GetChannelByChannelID(ctx, ci2.ChannelID)
 	assert.Nil(t, err)
 	assert.Equal(t, res2, ci2)
-	res_3, err := channelRepo.GetChannelByChannelID(ci3.ChannelID)
+	res_3, err := channelRepo.GetChannelByChannelID(ctx, ci3.ChannelID)
 	assert.Nil(t, err)
 	ci3.Channel = nil
 	assert.Equal(t, res_3, ci3)
 
-	res3, err := channelRepo.GetChannelByAddress(*ci.Channel)
+	res3, err := channelRepo.GetChannelByAddress(ctx, *ci.Channel)
 	assert.Nil(t, err)
 	assert.Equal(t, res3, ci)
 
-	res4, err := channelRepo.GetChannelByMessageCid(msgInfo.MsgCid)
+	res4, err := channelRepo.GetChannelByMessageCid(ctx, msgInfo.MsgCid)
 	assert.Nil(t, err)
 	assert.Equal(t, res4, ci)
 
 	from, to := randAddress(t), randAddress(t)
 	chMsgCid := randCid(t)
 	amt := big.NewInt(101)
-	ciRes, err := channelRepo.CreateChannel(from, to, chMsgCid, amt)
+	ciRes, err := channelRepo.CreateChannel(ctx, from, to, chMsgCid, amt)
 	assert.Nil(t, err)
-	ciRes2, err := channelRepo.GetChannelByChannelID(ciRes.ChannelID)
+	ciRes2, err := channelRepo.GetChannelByChannelID(ctx, ciRes.ChannelID)
 	assert.Nil(t, err)
 	assert.Equal(t, ciRes.Control, ciRes2.Control)
 	assert.Equal(t, ciRes.Target, ciRes2.Target)
 	assert.Equal(t, ciRes.CreateMsg, ciRes2.CreateMsg)
 	assert.Equal(t, ciRes.PendingAmount, ciRes2.PendingAmount)
-	msgInfoRes, err := msgRepo.GetMessage(chMsgCid)
+	msgInfoRes, err := msgRepo.GetMessage(ctx, chMsgCid)
 	assert.Nil(t, err)
 	assert.Equal(t, msgInfoRes.ChannelID, ciRes.ChannelID)
 
-	addrs, err := channelRepo.ListChannel()
+	addrs, err := channelRepo.ListChannel(ctx)
 	assert.Nil(t, err)
 	assert.GreaterOrEqual(t, len(addrs), 2)
 
-	res5, err := channelRepo.WithPendingAddFunds()
+	res5, err := channelRepo.WithPendingAddFunds(ctx)
 	assert.Nil(t, err)
 	assert.GreaterOrEqual(t, len(res5), 1)
 	//assert.Equal(t, res5[0].ChannelID, ci.ChannelID)
 
-	res6, err := channelRepo.OutboundActiveByFromTo(ci.Control, ci.Target)
+	res6, err := channelRepo.OutboundActiveByFromTo(ctx, ci.Control, ci.Target)
 	assert.Nil(t, err)
 	assert.Equal(t, res6.ChannelID, ci.ChannelID)
 }
 
 func testMsgInfo(t *testing.T, msgRepo repo.PaychMsgInfoRepo) {
+	ctx := context.Background()
 	info := &types.MsgInfo{
 		ChannelID: uuid.New().String(),
 		MsgCid:    randCid(t),
@@ -159,19 +163,19 @@ func testMsgInfo(t *testing.T, msgRepo repo.PaychMsgInfoRepo) {
 		Err:       "err",
 	}
 
-	assert.Nil(t, msgRepo.SaveMessage(info))
-	assert.Nil(t, msgRepo.SaveMessage(info2))
+	assert.Nil(t, msgRepo.SaveMessage(ctx, info))
+	assert.Nil(t, msgRepo.SaveMessage(ctx, info2))
 
-	res, err := msgRepo.GetMessage(info.MsgCid)
+	res, err := msgRepo.GetMessage(ctx, info.MsgCid)
 	assert.Nil(t, err)
 	assert.Equal(t, res, info)
-	res2, err := msgRepo.GetMessage(info2.MsgCid)
+	res2, err := msgRepo.GetMessage(ctx, info2.MsgCid)
 	assert.Nil(t, err)
 	assert.Equal(t, res2, info2)
 
 	errMsg := xerrors.Errorf("test err")
-	assert.Nil(t, msgRepo.SaveMessageResult(info.MsgCid, errMsg))
-	res3, err := msgRepo.GetMessage(info.MsgCid)
+	assert.Nil(t, msgRepo.SaveMessageResult(ctx, info.MsgCid, errMsg))
+	res3, err := msgRepo.GetMessage(ctx, info.MsgCid)
 	assert.Nil(t, err)
 	assert.Equal(t, res3.Err, errMsg.Error())
 }
