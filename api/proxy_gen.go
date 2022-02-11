@@ -164,6 +164,8 @@ type MarketFullNodeStruct struct {
 
 		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
 
+		ImportV1Data func(p0 context.Context, p1 string) error ``
+
 		ListenMarketEvent func(p0 context.Context, p1 *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) `perm:"read"`
 
 		MarkDealsAsPacking func(p0 context.Context, p1 address.Address, p2 []abi.DealID) error `perm:"write"`
@@ -773,6 +775,14 @@ func (s *MarketFullNodeStruct) ID(p0 context.Context) (peer.ID, error) {
 
 func (s *MarketFullNodeStub) ID(p0 context.Context) (peer.ID, error) {
 	return *new(peer.ID), xerrors.New("method not supported")
+}
+
+func (s *MarketFullNodeStruct) ImportV1Data(p0 context.Context, p1 string) error {
+	return s.Internal.ImportV1Data(p0, p1)
+}
+
+func (s *MarketFullNodeStub) ImportV1Data(p0 context.Context, p1 string) error {
+	return xerrors.New("method not supported")
 }
 
 func (s *MarketFullNodeStruct) ListenMarketEvent(p0 context.Context, p1 *marketevent.MarketRegisterPolicy) (<-chan *types2.RequestEvent, error) {

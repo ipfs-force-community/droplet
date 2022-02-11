@@ -152,6 +152,8 @@ type MarketFullNode interface {
 	//piece storage
 	GetReadUrl(context.Context, string) (string, error)
 	GetWriteUrl(ctx context.Context, resource string) (string, error)
+
+	ImportV1Data(ctx context.Context, src string) error
 }
 
 type MarketClientNode interface {

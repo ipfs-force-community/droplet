@@ -146,6 +146,7 @@ func main() {
 			cli2.NetCmd,
 			cli2.DataTransfersCmd,
 			cli2.DagstoreCmd,
+			cli2.MigrateCmd,
 		},
 	}
 

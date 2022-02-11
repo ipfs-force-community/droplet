@@ -713,15 +713,20 @@ func (m MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Addres
 	return m.PaychAPI.PaychVoucherList(ctx, pch)
 }
 
-func (m MarketNodeImpl) ImportData(ctx context.Context, src string) error {
+func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
+	type minerDealsIncludeStatus struct {
+		MinerDeal storagemarket.MinerDeal
+		DealInfo  piecestore.DealInfo
+		Status    string
+	}
+
 	type exportData struct {
 		Miner          address.Address
-		MinerDeals     []storagemarket.MinerDeal
-		SignedVoucher  map[address.Address]*types.ChannelInfo
+		MinerDeals     []minerDealsIncludeStatus
+		SignedVoucher  map[string]*types.ChannelInfo
 		StorageAsk     *storagemarket.SignedStorageAsk
 		RetrievalAsk   *retrievalmarket.Ask
-		RetrievalDeals map[retrievalmarket.ProviderDealIdentifier]retrievalmarket.ProviderDealState
-		PieceInfos     map[cid.Cid]piecestore.PieceInfo
+		RetrievalDeals []retrievalmarket.ProviderDealState
 	}
 
 	srcBytes, err := ioutil.ReadFile(src)
@@ -751,45 +756,35 @@ func (m MarketNodeImpl) ImportData(ctx context.Context, src string) error {
 		return err
 	}
 
-	/*	for pach, voucher := range data.SignedVoucher {
-		m.Repo.PaychChannelInfoRepo().SaveChannel(ctx, )
-	}*/
+	for _, channelInfo := range data.SignedVoucher {
+		m.Repo.PaychChannelInfoRepo().SaveChannel(ctx, channelInfo)
+	}
 
 	for _, minerDeal := range data.MinerDeals {
-
-		pieceInfo := data.PieceInfos[minerDeal.Proposal.PieceCID]
-		//found := false
-		selDeal := piecestore.DealInfo{}
-		for _, deal := range pieceInfo.Deals {
-			if deal.DealID == minerDeal.DealID {
-				//found = true
-				selDeal = deal
-			}
-		}
 		m.Repo.StorageDealRepo().SaveDeal(ctx, &types.MinerDeal{
-			ClientDealProposal: minerDeal.ClientDealProposal,
-			ProposalCid:        minerDeal.ProposalCid,
-			AddFundsCid:        minerDeal.AddFundsCid,
-			PublishCid:         minerDeal.PublishCid,
-			Miner:              minerDeal.Miner,
-			Client:             minerDeal.Client,
-			State:              minerDeal.State,
-			PiecePath:          minerDeal.PiecePath,
+			ClientDealProposal: minerDeal.MinerDeal.ClientDealProposal,
+			ProposalCid:        minerDeal.MinerDeal.ProposalCid,
+			AddFundsCid:        minerDeal.MinerDeal.AddFundsCid,
+			PublishCid:         minerDeal.MinerDeal.PublishCid,
+			Miner:              minerDeal.MinerDeal.Miner,
+			Client:             minerDeal.MinerDeal.Client,
+			State:              minerDeal.MinerDeal.State,
+			PiecePath:          minerDeal.MinerDeal.PiecePath,
 			//	PayloadSize:           ,//
-			MetadataPath:          minerDeal.MetadataPath,
-			SlashEpoch:            minerDeal.SlashEpoch,
-			FastRetrieval:         minerDeal.FastRetrieval,
-			Message:               minerDeal.Message,
-			FundsReserved:         minerDeal.FundsReserved,
-			Ref:                   minerDeal.Ref,
-			AvailableForRetrieval: minerDeal.AvailableForRetrieval,
-			DealID:                minerDeal.DealID,
-			CreationTime:          minerDeal.CreationTime,
-			TransferChannelId:     minerDeal.TransferChannelId,
-			SectorNumber:          minerDeal.SectorNumber,
-			Offset:                selDeal.Offset,
-			//		PieceStatus:           selDeal.sta
-			InboundCAR: minerDeal.InboundCAR,
+			MetadataPath:          minerDeal.MinerDeal.MetadataPath,
+			SlashEpoch:            minerDeal.MinerDeal.SlashEpoch,
+			FastRetrieval:         minerDeal.MinerDeal.FastRetrieval,
+			Message:               minerDeal.MinerDeal.Message,
+			FundsReserved:         minerDeal.MinerDeal.FundsReserved,
+			Ref:                   minerDeal.MinerDeal.Ref,
+			AvailableForRetrieval: minerDeal.MinerDeal.AvailableForRetrieval,
+			DealID:                minerDeal.MinerDeal.DealID,
+			CreationTime:          minerDeal.MinerDeal.CreationTime,
+			TransferChannelId:     minerDeal.MinerDeal.TransferChannelId,
+			SectorNumber:          minerDeal.MinerDeal.SectorNumber,
+			Offset:                minerDeal.DealInfo.Offset,
+			PieceStatus:           minerDeal.Status,
+			InboundCAR:            minerDeal.MinerDeal.InboundCAR,
 		})
 	}
 
@@ -797,7 +792,7 @@ func (m MarketNodeImpl) ImportData(ctx context.Context, src string) error {
 		m.Repo.RetrievalDealRepo().SaveDeal(ctx, &types.ProviderDealState{
 			DealProposal: retrievalDeal.DealProposal,
 			StoreID:      retrievalDeal.StoreID,
-			//	SelStorageProposalCid: cid.Undef,
+			//SelStorageProposalCid: retrievalDeal,
 			ChannelID:       retrievalDeal.ChannelID,
 			Status:          retrievalDeal.Status,
 			Receiver:        retrievalDeal.Receiver,
