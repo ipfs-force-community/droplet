@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	init7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/init"
-	"github.com/filecoin-project/venus-market/types"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 // paychFundsRes is the response to a create channel or add funds request

@@ -43,7 +43,7 @@ import (
 	api2 "github.com/filecoin-project/venus-market/api"
 	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/cli/tablewriter"
-	"github.com/filecoin-project/venus-market/client"
+	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 )
 
 var storageCmd = &cli.Command{

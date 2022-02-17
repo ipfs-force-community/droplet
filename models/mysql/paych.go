@@ -2,14 +2,15 @@ package mysql
 
 import (
 	"context"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"gorm.io/gorm"
-	"time"
 )
 
 const (

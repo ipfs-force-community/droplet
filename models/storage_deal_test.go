@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/venus-market/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/stretchr/testify/require"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -88,7 +88,7 @@ func getTestMinerDeal(t *testing.T) *types.MinerDeal {
 		AvailableForRetrieval: false,
 		DealID:                10,
 		CreationTime:          typegen.CborTime(time.Unix(0, time.Now().UnixNano()).UTC()),
-		TransferChannelId:     nil,
+		TransferChannelID:     nil,
 		SectorNumber:          10,
 		InboundCAR:            "InboundCAR",
 		Offset:                1022222,
@@ -129,7 +129,7 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	compareDeal(t, deal, deal2)
 
 	deal2.ProposalCid = randCid(t)
-	deal2.TransferChannelId = &datatransfer.ChannelID{
+	deal2.TransferChannelID = &datatransfer.ChannelID{
 		Initiator: pid,
 		Responder: pid,
 		ID:        10,
@@ -175,7 +175,7 @@ func compareDeal(t *testing.T, actual, excepted *types.MinerDeal) {
 	assert.Equal(t, excepted.AvailableForRetrieval, actual.AvailableForRetrieval)
 	assert.Equal(t, excepted.DealID, actual.DealID)
 	assert.Equal(t, excepted.CreationTime.Time().UTC(), actual.CreationTime.Time().UTC())
-	assert.Equal(t, actual.TransferChannelId, excepted.TransferChannelId)
+	assert.Equal(t, actual.TransferChannelID, excepted.TransferChannelID)
 	assert.Equal(t, excepted.SectorNumber, actual.SectorNumber)
 	assert.Equal(t, excepted.InboundCAR, actual.InboundCAR)
 	assert.Equal(t, excepted.Offset, actual.Offset)

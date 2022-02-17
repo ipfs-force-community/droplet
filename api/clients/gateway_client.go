@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-market/config"
@@ -11,8 +12,6 @@ import (
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
-	wallet2 "github.com/ipfs-force-community/venus-gateway/types/wallet"
-	"unsafe"
 )
 
 func newGatewayWalletClient(mctx metrics.MetricsCtx, mgr minermgr.IAddrMgr, nodeCfg *config.Signer) (ISinger, jsonrpc.ClientCloser, error) {
@@ -50,5 +49,5 @@ func (gatewayClient *GatewayClient) WalletSign(ctx context.Context, addr address
 		return nil, err
 	}
 
-	return gatewayClient.innerClient.WalletSign(ctx, account, addr, msg, *(*wallet2.MsgMeta)(unsafe.Pointer(&meta)))
+	return gatewayClient.innerClient.WalletSign(ctx, account, addr, msg, meta)
 }

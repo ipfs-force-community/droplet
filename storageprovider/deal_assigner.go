@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -15,11 +16,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 type DealAssiger interface {
@@ -172,7 +171,7 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 		}
 		if ((spec.MaxPieceSize > 0 && uint64(md.Proposal.PieceSize)+curPieceSize < spec.MaxPieceSize) || spec.MaxPieceSize == 0) && numberPiece+1 < spec.MaxPiece {
 			result = append(result, &types.DealInfoIncludePath{
-				DealProposal:    md.Proposal,
+				DealProposal:    market.DealProposal(md.Proposal),
 				Offset:          md.Offset,
 				Length:          md.Proposal.PieceSize,
 				PayloadSize:     md.PayloadSize,
@@ -285,7 +284,7 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.A
 				// 填充 全0 piece
 				if dealOfFsize == nil {
 					combined.Pieces = append(combined.Pieces, &types.DealInfoIncludePath{
-						DealProposal: market7.DealProposal{
+						DealProposal: market.DealProposal{
 							PieceSize: fsize.Padded(),
 							PieceCID:  zerocomm.ZeroPieceCommitment(fsize),
 						},

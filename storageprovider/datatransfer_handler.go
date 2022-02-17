@@ -59,7 +59,7 @@ func (d *DataTransferHandler) HandleRestartForDeal(ctx context.Context, proposal
 	}
 	deal.Message = ""
 	deal.State = storagemarket.StorageDealProviderTransferAwaitRestart
-	deal.TransferChannelId = &channelId
+	deal.TransferChannelID = &channelId
 	err = d.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return xerrors.Errorf("save deal while transfer completed %w", err)
@@ -88,7 +88,7 @@ func (d *DataTransferHandler) HandleInitForDeal(ctx context.Context, proposalid 
 	}
 	deal.Message = ""
 	deal.State = storagemarket.StorageDealProviderTransferAwaitRestart
-	deal.TransferChannelId = &channelId
+	deal.TransferChannelID = &channelId
 	err = d.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return xerrors.Errorf("save deal while transfer completed %w", err)

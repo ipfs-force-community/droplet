@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/venus-market/models/repo"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/venus-market/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -187,11 +187,11 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 			md.Ref.PieceCid = DBCid(*src.Ref.PieceCid)
 		}
 	}
-	if src.TransferChannelId != nil {
+	if src.TransferChannelID != nil {
 		md.TransferChannelId = ChannelID{
-			Initiator: src.TransferChannelId.Initiator.String(),
-			Responder: src.TransferChannelId.Responder.String(),
-			ID:        uint64(src.TransferChannelId.ID),
+			Initiator: src.TransferChannelID.Initiator.String(),
+			Responder: src.TransferChannelID.Responder.String(),
+			ID:        uint64(src.TransferChannelID.ID),
 		}
 	}
 
@@ -248,13 +248,13 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 	var err error
 
 	if len(src.TransferChannelId.Initiator) > 0 {
-		md.TransferChannelId = &datatransfer.ChannelID{}
-		md.TransferChannelId.ID = datatransfer.TransferID(src.TransferChannelId.ID)
-		md.TransferChannelId.Initiator, err = decodePeerId(src.TransferChannelId.Initiator)
+		md.TransferChannelID = &datatransfer.ChannelID{}
+		md.TransferChannelID.ID = datatransfer.TransferID(src.TransferChannelId.ID)
+		md.TransferChannelID.Initiator, err = decodePeerId(src.TransferChannelId.Initiator)
 		if err != nil {
 			return nil, err
 		}
-		md.TransferChannelId.Responder, err = decodePeerId(src.TransferChannelId.Responder)
+		md.TransferChannelID.Responder, err = decodePeerId(src.TransferChannelId.Responder)
 		if err != nil {
 			return nil, err
 		}

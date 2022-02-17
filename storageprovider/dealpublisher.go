@@ -3,28 +3,26 @@ package storageprovider
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/api/clients"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus/venus-shared/actors"
-	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	"go.uber.org/fx"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-
-	marketTypes "github.com/filecoin-project/venus-market/types"
-
+	"github.com/filecoin-project/venus-market/api/clients"
+	"github.com/filecoin-project/venus-market/config"
+	types2 "github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	marketTypes "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs/go-cid"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 )
 
 type dealPublisherAPI interface {
@@ -273,7 +271,7 @@ func (p *singleDealPublisher) processNewDeal(pdeal *pendingDeal) {
 func (p *singleDealPublisher) waitForMoreDeals() {
 	// Check if we're already waiting for deals
 	if !p.publishPeriodStart.IsZero() {
-		elapsed := marketTypes.Clock.Since(p.publishPeriodStart)
+		elapsed := types2.Clock.Since(p.publishPeriodStart)
 		log.Infof("%s elapsed of / %s until publish deals queue is published",
 			elapsed, p.publishPeriod)
 		return
@@ -282,11 +280,11 @@ func (p *singleDealPublisher) waitForMoreDeals() {
 	// Set a timeout to wait for more deals to arrive
 	log.Infof("waiting publish deals queue period of %s before publishing", p.publishPeriod)
 	ctx, cancel := context.WithCancel(p.ctx)
-	p.publishPeriodStart = marketTypes.Clock.Now()
+	p.publishPeriodStart = types2.Clock.Now()
 	p.cancelWaitForMoreDeals = cancel
 
 	go func() {
-		timer := marketTypes.Clock.NewTimer(p.publishPeriod)
+		timer := types2.Clock.NewTimer(p.publishPeriod)
 		select {
 		case <-ctx.Done():
 			timer.Stop()

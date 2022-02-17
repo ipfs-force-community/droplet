@@ -37,7 +37,7 @@ import (
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piecestorage"
 	"github.com/filecoin-project/venus-market/storageprovider"
-	"github.com/filecoin-project/venus-market/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/filecoin-project/venus-market/paychmgr"
 
@@ -120,7 +120,7 @@ func (m MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.Ci
 	return m.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
 }
 
-func (m MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error) {
+func (m MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Address) ([]vTypes.MarketDeal, error) {
 	return m.listDeals(ctx, addrs)
 }
 
@@ -397,7 +397,7 @@ func (m MarketNodeImpl) MessagerGetMessage(ctx context.Context, mid cid.Cid) (*v
 	return m.Messager.GetMessage(ctx, mid)
 }
 
-func (m MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) ([]types.MarketDeal, error) {
+func (m MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) ([]vTypes.MarketDeal, error) {
 	ts, err := m.FullNode.ChainHead(ctx)
 	if err != nil {
 		return nil, err
@@ -408,7 +408,7 @@ func (m MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) 
 		return nil, err
 	}
 
-	var out []types.MarketDeal
+	var out []vTypes.MarketDeal
 
 	has := func(addr address.Address) bool {
 		for _, a := range addrs {
@@ -780,7 +780,7 @@ func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 			AvailableForRetrieval: minerDeal.MinerDeal.AvailableForRetrieval,
 			DealID:                minerDeal.MinerDeal.DealID,
 			CreationTime:          minerDeal.MinerDeal.CreationTime,
-			TransferChannelId:     minerDeal.MinerDeal.TransferChannelId,
+			TransferChannelID:     minerDeal.MinerDeal.TransferChannelId,
 			SectorNumber:          minerDeal.MinerDeal.SectorNumber,
 			Offset:                minerDeal.DealInfo.Offset,
 			PieceStatus:           minerDeal.Status,

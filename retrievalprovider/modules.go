@@ -2,7 +2,8 @@ package retrievalprovider
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/types"
+
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/libp2p/go-libp2p-core/host"

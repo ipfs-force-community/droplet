@@ -18,12 +18,12 @@ import (
 	paych7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/paych"
 	tutils "github.com/filecoin-project/specs-actors/v7/support/testing"
 
-	"github.com/filecoin-project/venus-market/types"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 func TestCheckVoucherValid(t *testing.T) {

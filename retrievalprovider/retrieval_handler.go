@@ -3,7 +3,8 @@ package retrievalprovider
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/venus-market/types"
+
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-statemachine"

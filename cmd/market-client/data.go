@@ -11,10 +11,8 @@ import (
 	"golang.org/x/xerrors"
 
 	cli2 "github.com/filecoin-project/venus-market/cli"
-	"github.com/filecoin-project/venus-market/client"
-	"github.com/filecoin-project/venus-market/imports"
-
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 )
 
 var dataCmd = &cli.Command{
@@ -114,7 +112,7 @@ var dataDropCmd = &cli.Command{
 		}
 
 		for _, id := range ids {
-			if err := api.ClientRemoveImport(ctx, imports.ID(id)); err != nil {
+			if err := api.ClientRemoveImport(ctx, client.ImportID(id)); err != nil {
 				return xerrors.Errorf("removing import %d: %w", id, err)
 			}
 		}

@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 type stateAccessor struct {
