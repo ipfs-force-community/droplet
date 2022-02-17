@@ -27,7 +27,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
 	github.com/filecoin-project/specs-storage v0.2.0
-	github.com/filecoin-project/venus v1.2.0-rc5.0.20220217030042-428489a0a268
+	github.com/filecoin-project/venus v1.2.0-rc5.0.20220217071332-24c473123e60
 	github.com/filecoin-project/venus-auth v1.3.1
 	github.com/filecoin-project/venus-messager v1.4.0-rc2.0.20220217052233-5af06cf07687
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
@@ -37,7 +37,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab79c62a
-	github.com/ipfs-force-community/venus-gateway v1.2.0-rc2.0.20220217025509-6d65ede4f067
+	github.com/ipfs-force-community/venus-gateway v1.2.0-rc2.0.20220217075140-73363cee768b
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.2.1
 	github.com/ipfs/go-cid v0.1.0

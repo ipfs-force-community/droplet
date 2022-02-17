@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/filecoin-project/go-data-transfer/channelmonitor"
 	"github.com/filecoin-project/venus-market/models/badger"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
@@ -84,7 +85,27 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Gra
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(string(*homeDir), "data-transfer"), net, transport)
+
+	// data-transfer push / pull channel restart configuration:
+	dtRestartConfig := dtimpl.ChannelRestartConfig(channelmonitor.Config{
+		// Disable Accept and Complete timeouts until this issue is resolved:
+		// https://github.com/filecoin-project/lotus/issues/6343#
+		// Wait for the other side to respond to an Open channel message
+		AcceptTimeout: 0,
+		// Wait for the other side to send a Complete message once all
+		// data has been sent / received
+		CompleteTimeout: 0,
+
+		// When an error occurs, wait a little while until all related errors
+		// have fired before sending a restart message
+		RestartDebounce: 10 * time.Second,
+		// After sending a restart, wait for at least 1 minute before sending another
+		RestartBackoff: time.Minute,
+		// After trying to restart 3 times, give up and fail the transfer
+		MaxConsecutiveRestarts: 3,
+	})
+
+	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(string(*homeDir), "data-transfer"), net, transport, dtRestartConfig)
 	if err != nil {
 		return nil, err
 	}
