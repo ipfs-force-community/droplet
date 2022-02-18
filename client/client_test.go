@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -59,7 +60,7 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, local)
 
-	order := ExportRef{
+	order := types.ExportRef{
 		Root:         root,
 		FromLocalCAR: it.CARPath,
 	}
@@ -67,7 +68,7 @@ func TestImportLocal(t *testing.T) {
 	// retrieve as UnixFS.
 	out1 := filepath.Join(dir, "retrieval1.data") // as unixfs
 	out2 := filepath.Join(dir, "retrieval2.data") // as car
-	err = a.ClientExport(ctx, order, FileRef{
+	err = a.ClientExport(ctx, order, types.FileRef{
 		Path: out1,
 	})
 	require.NoError(t, err)
@@ -76,7 +77,7 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, b, outBytes)
 
-	err = a.ClientExport(ctx, order, FileRef{
+	err = a.ClientExport(ctx, order, types.FileRef{
 		Path:  out2,
 		IsCAR: true,
 	})

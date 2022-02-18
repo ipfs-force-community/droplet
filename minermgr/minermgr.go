@@ -19,8 +19,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/types"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 const CoMinersLimit = 200

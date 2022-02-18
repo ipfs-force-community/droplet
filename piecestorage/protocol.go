@@ -2,11 +2,12 @@ package piecestorage
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus-market/config"
-	"golang.org/x/xerrors"
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/filecoin-project/venus-market/config"
+	"golang.org/x/xerrors"
 )
 
 type Protocol string

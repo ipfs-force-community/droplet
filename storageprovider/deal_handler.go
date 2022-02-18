@@ -33,8 +33,8 @@ import (
 	"github.com/filecoin-project/venus-market/models/repo"
 	network2 "github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piecestorage"
-	"github.com/filecoin-project/venus-market/types"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 // TODO: These are copied from spec-actors master, use spec-actors exports when we update

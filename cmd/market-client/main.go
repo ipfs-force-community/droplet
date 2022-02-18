@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"os"
+
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
-	"os"
 
 	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
@@ -25,7 +26,7 @@ import (
 	"github.com/filecoin-project/venus-market/paychmgr"
 	"github.com/filecoin-project/venus-market/rpc"
 	"github.com/filecoin-project/venus-market/storageprovider"
-	"github.com/filecoin-project/venus-market/types"
+	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 
 	"github.com/filecoin-project/venus-market/version"
@@ -236,7 +237,7 @@ func marketClient(cctx *cli.Context) error {
 		builder.Override(new(metrics.MetricsCtx), func() context.Context {
 			return metrics2.CtxScope(context.Background(), "venus-market")
 		}),
-		builder.Override(new(types.ShutdownChan), shutdownChan),
+		builder.Override(new(types2.ShutdownChan), shutdownChan),
 
 		config.ConfigClientOpts(cfg),
 

@@ -3,15 +3,16 @@ package fundmgr
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"sync"
 
 	"github.com/filecoin-project/venus-market/models/repo"
 
-	"github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"

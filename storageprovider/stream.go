@@ -2,10 +2,11 @@ package storageprovider
 
 import (
 	"context"
+	"os"
+
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/utils"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
-	"os"
 
 	"golang.org/x/xerrors"
 
@@ -19,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 
 	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var _ network.StorageReceiver = (*StorageDealStream)(nil)

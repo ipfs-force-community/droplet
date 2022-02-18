@@ -21,15 +21,12 @@ import (
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-jsonrpc"
-
-	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-
-	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/cli/tablewriter"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus-market/utils"
-
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
+	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 )
 
@@ -73,7 +70,7 @@ var requiredMinerFlag = &cli.StringFlag{
 	Required: true,
 }
 
-func NewMarketNode(cctx *cli.Context) (api.MarketFullNode, jsonrpc.ClientCloser, error) {
+func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, error) {
 	homePath, err := homedir.Expand(cctx.String("repo"))
 	if err != nil {
 		return nil, nil, err
@@ -94,15 +91,10 @@ func NewMarketNode(cctx *cli.Context) (api.MarketFullNode, jsonrpc.ClientCloser,
 		return nil, nil, err
 	}
 
-	impl := &api.MarketFullNodeStruct{}
-	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, API_NAMESPACE_VENUS_MARKET, []interface{}{impl}, apiInfo.AuthHeader())
-	if err != nil {
-		return nil, nil, err
-	}
-	return impl, closer, nil
+	return marketapi.NewIMarketRPC(cctx.Context, addr, apiInfo.AuthHeader())
 }
 
-func NewMarketClientNode(cctx *cli.Context) (api.MarketClientNode, jsonrpc.ClientCloser, error) {
+func NewMarketClientNode(cctx *cli.Context) (clientapi.IMarketClient, jsonrpc.ClientCloser, error) {
 	homePath, err := homedir.Expand(cctx.String("repo"))
 	if err != nil {
 		return nil, nil, err
@@ -122,12 +114,7 @@ func NewMarketClientNode(cctx *cli.Context) (api.MarketClientNode, jsonrpc.Clien
 		return nil, nil, err
 	}
 
-	impl := &api.MarketClientNodeStruct{}
-	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, API_NAMESPACE_MARKET_CLIENT, []interface{}{impl}, apiInfo.AuthHeader())
-	if err != nil {
-		return nil, nil, err
-	}
-	return impl, closer, nil
+	return clientapi.NewIMarketClientRPC(cctx.Context, addr, apiInfo.AuthHeader())
 }
 
 func NewFullNode(cctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
@@ -143,12 +130,7 @@ func NewFullNode(cctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error
 		return nil, nil, err
 	}
 
-	impl := &v1api.FullNodeStruct{}
-	closer, err := jsonrpc.NewMergeClient(cctx.Context, addr, "Filecoin", utils.GetInternalStructs(impl), apiInfo.AuthHeader())
-	if err != nil {
-		return nil, nil, err
-	}
-	return impl, closer, nil
+	return v1api.NewFullNodeRPC(cctx.Context, addr, apiInfo.AuthHeader())
 }
 
 func WithCategory(cat string, cmd *cli.Command) *cli.Command {

@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/venus-market/retrievalprovider"
 	"github.com/filecoin-project/venus-market/rpc"
 	"github.com/filecoin-project/venus-market/storageprovider"
-	"github.com/filecoin-project/venus-market/types"
+	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
 )
 
@@ -59,7 +59,9 @@ func poolDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
 	ctx := cctx.Context
 	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
-		cctx.Set(HidenSignerTypeFlag.Name, "gateway")
+		if err := cctx.Set(HidenSignerTypeFlag.Name, "gateway"); err != nil {
+			return xerrors.Errorf("set %s with gateway failed %v", HidenSignerTypeFlag.Name, err)
+		}
 	}
 	cfg, err := prepare(cctx)
 	if err != nil {
@@ -78,7 +80,7 @@ func poolDaemon(cctx *cli.Context) error {
 		builder.Override(new(metrics.MetricsCtx), func() context.Context {
 			return metrics2.CtxScope(context.Background(), "venus-market")
 		}),
-		builder.Override(new(types.ShutdownChan), shutdownChan),
+		builder.Override(new(types2.ShutdownChan), shutdownChan),
 		//config
 		config.ConfigServerOpts(cfg),
 

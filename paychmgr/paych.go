@@ -17,7 +17,7 @@ import (
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 // insufficientFundsErr indicates that there are not enough funds in the

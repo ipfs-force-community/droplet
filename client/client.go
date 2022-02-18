@@ -5,6 +5,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
+	"time"
+
 	"github.com/filecoin-project/venus-auth/log"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car/util"
@@ -13,11 +19,6 @@ import (
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/traversal"
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
-	"io"
-	"os"
-	"sort"
-	"strings"
-	"time"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -62,14 +63,15 @@ import (
 	"github.com/filecoin-project/venus-market/imports"
 	"github.com/filecoin-project/venus-market/retrievalprovider"
 	"github.com/filecoin-project/venus-market/storageprovider"
-	types2 "github.com/filecoin-project/venus-market/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	marketNetwork "github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	"github.com/filecoin-project/venus/venus-shared/types"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 )
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
@@ -116,15 +118,15 @@ func (a *API) importManager() *imports.Manager {
 	return a.Imports
 }
 
-func (a *API) ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) {
+func (a *API) ClientStartDeal(ctx context.Context, params *types.StartDealParams) (*cid.Cid, error) {
 	return a.dealStarter(ctx, params, false)
 }
 
-func (a *API) ClientStatelessDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) {
+func (a *API) ClientStatelessDeal(ctx context.Context, params *types.StartDealParams) (*cid.Cid, error) {
 	return a.dealStarter(ctx, params, true)
 }
 
-func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStateless bool) (*cid.Cid, error) {
+func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, isStateless bool) (*cid.Cid, error) {
 	if isStateless {
 		if params.Data.TransferType != storagemarket.TTManual {
 			return nil, xerrors.Errorf("invalid transfer type %s for stateless storage deal", params.Data.TransferType)
@@ -145,7 +147,7 @@ func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStatel
 		onDone()
 	}
 
-	walletKey, err := a.Full.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
+	walletKey, err := a.Full.StateAccountKey(ctx, params.Wallet, vTypes.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed resolving params.Wallet addr (%s): %w", params.Wallet, err)
 	}
@@ -158,12 +160,12 @@ func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStatel
 		return nil, xerrors.Errorf("provided address doesn't exist in signer")
 	}
 
-	mi, err := a.Full.StateMinerInfo(ctx, params.Miner, types.EmptyTSK)
+	mi, err := a.Full.StateMinerInfo(ctx, params.Miner, vTypes.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting peer ID: %w", err)
 	}
 
-	md, err := a.Full.StateMinerProvingDeadline(ctx, params.Miner, types.EmptyTSK)
+	md, err := a.Full.StateMinerProvingDeadline(ctx, params.Miner, vTypes.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner's deadline info: %w", err)
 	}
@@ -183,7 +185,7 @@ func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStatel
 		dealStart = ts.Height() + abi.ChainEpoch(int(dealStartBufferHours)*blocksPerHour) // TODO: Get this from storage ask
 	}
 
-	networkVersion, err := a.Full.StateNetworkVersion(ctx, types.EmptyTSK)
+	networkVersion, err := a.Full.StateNetworkVersion(ctx, vTypes.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get network version: %w", err)
 	}
@@ -236,7 +238,7 @@ func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStatel
 	}
 
 	if dealProposal.ProviderCollateral.IsZero() {
-		networkCollateral, err := a.Full.StateDealProviderCollateralBounds(ctx, params.Data.PieceSize.Padded(), params.VerifiedDeal, types.EmptyTSK)
+		networkCollateral, err := a.Full.StateDealProviderCollateralBounds(ctx, params.Data.PieceSize.Padded(), params.VerifiedDeal, vTypes.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to determine minimum provider collateral: %w", err)
 		}
@@ -248,8 +250,8 @@ func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStatel
 		return nil, xerrors.Errorf("failed to serialize deal proposal: %w", err)
 	}
 
-	dealProposalSig, err := a.Full.WalletSign(ctx, walletKey, dealProposalSerialized, types.MsgMeta{
-		Type:  types.MTDealProposal,
+	dealProposalSig, err := a.Full.WalletSign(ctx, walletKey, dealProposalSerialized, vTypes.MsgMeta{
+		Type:  vTypes.MTDealProposal,
 		Extra: dealProposalSerialized,
 	})
 	if err != nil {
@@ -303,7 +305,7 @@ func (a *API) dealStarter(ctx context.Context, params *StartDealParams, isStatel
 	return &resp.Response.Proposal, nil
 }
 
-func (a *API) ClientListDeals(ctx context.Context) ([]DealInfo, error) {
+func (a *API) ClientListDeals(ctx context.Context) ([]types.DealInfo, error) {
 	deals, err := a.SMDealClient.ListLocalDeals(ctx)
 	if err != nil {
 		return nil, err
@@ -315,7 +317,7 @@ func (a *API) ClientListDeals(ctx context.Context) ([]DealInfo, error) {
 		return nil, err
 	}
 
-	out := make([]DealInfo, len(deals))
+	out := make([]types.DealInfo, len(deals))
 	for k, v := range deals {
 		// Find the data transfer associated with this deal
 		var transferCh *types2.DataTransferChannel
@@ -345,7 +347,7 @@ func (a *API) transfersByID(ctx context.Context) (map[datatransfer.ChannelID]typ
 	return dataTransfersByID, nil
 }
 
-func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*DealInfo, error) {
+func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*types.DealInfo, error) {
 	v, err := a.SMDealClient.GetLocalDeal(ctx, d)
 	if err != nil {
 		return nil, err
@@ -355,8 +357,8 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*DealInfo, erro
 	return &di, nil
 }
 
-func (a *API) ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error) {
-	updates := make(chan DealInfo)
+func (a *API) ClientGetDealUpdates(ctx context.Context) (<-chan types.DealInfo, error) {
+	updates := make(chan types.DealInfo)
 
 	unsub := a.SMDealClient.SubscribeToEvents(func(_ storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
 		updates <- a.newDealInfo(ctx, deal)
@@ -370,7 +372,7 @@ func (a *API) ClientGetDealUpdates(ctx context.Context) (<-chan DealInfo, error)
 	return updates, nil
 }
 
-func (a *API) newDealInfo(ctx context.Context, v storagemarket.ClientDeal) DealInfo {
+func (a *API) newDealInfo(ctx context.Context, v storagemarket.ClientDeal) types.DealInfo {
 	// Find the data transfer associated with this deal
 	var transferCh *types2.DataTransferChannel
 	if v.TransferChannelID != nil {
@@ -390,8 +392,8 @@ func (a *API) newDealInfo(ctx context.Context, v storagemarket.ClientDeal) DealI
 	return di
 }
 
-func (a *API) newDealInfoWithTransfer(transferCh *types2.DataTransferChannel, v storagemarket.ClientDeal) DealInfo {
-	return DealInfo{
+func (a *API) newDealInfoWithTransfer(transferCh *types2.DataTransferChannel, v storagemarket.ClientDeal) types.DealInfo {
+	return types.DealInfo{
 		ProposalCid:       v.ProposalCid,
 		DataRef:           v.DataRef,
 		State:             v.State,
@@ -418,13 +420,13 @@ func (a *API) ClientHasLocal(_ context.Context, root cid.Cid) (bool, error) {
 	return true, nil
 }
 
-func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]QueryOffer, error) {
+func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) ([]types.QueryOffer, error) {
 	peers, err := a.RetDiscovery.GetPeers(root)
 	if err != nil {
 		return nil, err
 	}
 
-	out := make([]QueryOffer, 0, len(peers))
+	out := make([]types.QueryOffer, 0, len(peers))
 	for _, p := range peers {
 		if piece != nil && !piece.Equals(*p.PieceCID) {
 			continue
@@ -432,7 +434,7 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) 
 
 		// do not rely on local data with respect to peer id
 		// fetch an up-to-date miner peer id from chain
-		mi, err := a.Full.StateMinerInfo(ctx, p.Address, types.EmptyTSK)
+		mi, err := a.Full.StateMinerInfo(ctx, p.Address, vTypes.EmptyTSK)
 		if err != nil {
 			return nil, err
 		}
@@ -447,10 +449,10 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) 
 	return out, nil
 }
 
-func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (QueryOffer, error) {
-	mi, err := a.Full.StateMinerInfo(ctx, miner, types.EmptyTSK)
+func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (types.QueryOffer, error) {
+	mi, err := a.Full.StateMinerInfo(ctx, miner, vTypes.EmptyTSK)
 	if err != nil {
-		return QueryOffer{}, err
+		return types.QueryOffer{}, err
 	}
 	rp := rm.RetrievalPeer{
 		Address: miner,
@@ -459,10 +461,10 @@ func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, 
 	return a.makeRetrievalQuery(ctx, rp, root, piece, rm.QueryParams{}), nil
 }
 
-func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, piece *cid.Cid, qp rm.QueryParams) QueryOffer {
+func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, piece *cid.Cid, qp rm.QueryParams) types.QueryOffer {
 	queryResponse, err := a.Retrieval.Query(ctx, rp, payload, qp)
 	if err != nil {
-		return QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeer: rp}
+		return types.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeer: rp}
 	}
 	var errStr string
 	switch queryResponse.Status {
@@ -474,7 +476,7 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 		errStr = fmt.Sprintf("retrieval query offer errored: %s", queryResponse.Message)
 	}
 
-	return QueryOffer{
+	return types.QueryOffer{
 		Root:                    payload,
 		Piece:                   piece,
 		Size:                    queryResponse.Size,
@@ -489,10 +491,10 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 	}
 }
 
-func (a *API) ClientImport(ctx context.Context, ref FileRef) (res *ImportRes, err error) {
+func (a *API) ClientImport(ctx context.Context, ref types.FileRef) (res *types.ImportRes, err error) {
 	var (
 		imgr    = a.importManager()
-		id      imports.ID
+		id      types.ImportID
 		root    cid.Cid
 		carPath string
 	)
@@ -557,13 +559,13 @@ func (a *API) ClientImport(ctx context.Context, ref FileRef) (res *ImportRes, er
 	if err = imgr.AddLabel(ctx, id, imports.LRootCid, root.String()); err != nil {
 		return nil, err
 	}
-	return &ImportRes{
+	return &types.ImportRes{
 		Root:     root,
 		ImportID: id,
 	}, nil
 }
 
-func (a *API) ClientRemoveImport(ctx context.Context, id imports.ID) error {
+func (a *API) ClientRemoveImport(ctx context.Context, id types.ImportID) error {
 	info, err := a.importManager().Info(ctx, id)
 	if err != nil {
 		return xerrors.Errorf("failed to get import metadata: %w", err)
@@ -693,24 +695,24 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	return root, nil
 }
 
-func (a *API) ClientListImports(ctx context.Context) ([]Import, error) {
+func (a *API) ClientListImports(ctx context.Context) ([]types.Import, error) {
 	ids, err := a.importManager().List(ctx)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to fetch imports: %w", err)
 	}
 
-	out := make([]Import, len(ids))
+	out := make([]types.Import, len(ids))
 	for i, id := range ids {
 		info, err := a.importManager().Info(ctx, id)
 		if err != nil {
-			out[i] = Import{
+			out[i] = types.Import{
 				Key: id,
 				Err: xerrors.Errorf("getting info: %w", err).Error(),
 			}
 			continue
 		}
 
-		ai := Import{
+		ai := types.Import{
 			Key:      id,
 			Source:   info.Labels[imports.LSource],
 			FilePath: info.Labels[imports.LFileName],
@@ -755,7 +757,7 @@ func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID retrievalmar
 	}
 }
 
-func (a *API) ClientRetrieve(ctx context.Context, params RetrievalOrder) (*RestrievalRes, error) {
+func (a *API) ClientRetrieve(ctx context.Context, params types.RetrievalOrder) (*types.RestrievalRes, error) {
 	sel, err := getDataSelector(params.DataSelector, false)
 	if err != nil {
 		return nil, err
@@ -766,14 +768,14 @@ func (a *API) ClientRetrieve(ctx context.Context, params RetrievalOrder) (*Restr
 		return nil, err
 	}
 
-	return &RestrievalRes{
+	return &types.RestrievalRes{
 		DealID: di,
 	}, nil
 }
 
-func (a *API) doRetrieval(ctx context.Context, order RetrievalOrder, sel datamodel.Node) (rm.DealID, error) {
+func (a *API) doRetrieval(ctx context.Context, order types.RetrievalOrder, sel datamodel.Node) (rm.DealID, error) {
 	if order.MinerPeer == nil || order.MinerPeer.ID == "" {
-		mi, err := a.Full.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
+		mi, err := a.Full.StateMinerInfo(ctx, order.Miner, vTypes.EmptyTSK)
 		if err != nil {
 			return 0, err
 		}
@@ -792,7 +794,7 @@ func (a *API) doRetrieval(ctx context.Context, order RetrievalOrder, sel datamod
 		return 0, xerrors.Errorf("cannot make retrieval deal for zero bytes")
 	}
 
-	ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
+	ppb := vTypes.BigDiv(order.Total, vTypes.NewInt(order.Size))
 
 	params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, sel, order.Piece, order.UnsealPrice)
 	if err != nil {
@@ -891,11 +893,11 @@ func (ed *ExportDest) doWrite(cb func(io.Writer) error) error {
 	return f.Close()
 }
 
-func (a *API) ClientExport(ctx context.Context, exportRef ExportRef, ref FileRef) error {
+func (a *API) ClientExport(ctx context.Context, exportRef types.ExportRef, ref types.FileRef) error {
 	return a.ClientExportInto(ctx, exportRef, ref.IsCAR, ExportDest{Path: ref.Path})
 }
 
-func (a *API) ClientExportInto(ctx context.Context, exportRef ExportRef, car bool, dest ExportDest) error {
+func (a *API) ClientExportInto(ctx context.Context, exportRef types.ExportRef, car bool, dest ExportDest) error {
 	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievalprovider.ProxyBlockstoreAccessor)
 	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievalprovider.CARBlockstoreAccessor)
 	carPath := exportRef.FromLocalCAR
@@ -1041,7 +1043,7 @@ type dagSpec struct {
 	selector ipld.Node
 }
 
-func parseDagSpec(ctx context.Context, root cid.Cid, dsp []DagSpec, ds format.DAGService, car bool) ([]dagSpec, error) {
+func parseDagSpec(ctx context.Context, root cid.Cid, dsp []types.DagSpec, ds format.DAGService, car bool) ([]dagSpec, error) {
 	if len(dsp) == 0 {
 		return []dagSpec{
 			{
@@ -1123,7 +1125,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []DagSpec, ds format.DA
 	return out, nil
 }
 
-func getDataSelector(dps *Selector, matchPath bool) (datamodel.Node, error) {
+func getDataSelector(dps *types.DataSelector, matchPath bool) (datamodel.Node, error) {
 	sel := selectorparse.CommonSelector_ExploreAllRecursively
 	if dps != nil {
 
@@ -1156,7 +1158,7 @@ func getDataSelector(dps *Selector, matchPath bool) (datamodel.Node, error) {
 	return sel, nil
 }
 
-func (a *API) ClientListRetrievals(ctx context.Context) ([]RetrievalInfo, error) {
+func (a *API) ClientListRetrievals(ctx context.Context) ([]types.RetrievalInfo, error) {
 	deals, err := a.Retrieval.ListDeals()
 	if err != nil {
 		return nil, err
@@ -1165,7 +1167,7 @@ func (a *API) ClientListRetrievals(ctx context.Context) ([]RetrievalInfo, error)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]RetrievalInfo, 0, len(deals))
+	out := make([]types.RetrievalInfo, 0, len(deals))
 	for _, v := range deals {
 		// Find the data transfer associated with this deal
 		var transferCh *types2.DataTransferChannel
@@ -1182,8 +1184,8 @@ func (a *API) ClientListRetrievals(ctx context.Context) ([]RetrievalInfo, error)
 	return out, nil
 }
 
-func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan RetrievalInfo, error) {
-	updates := make(chan RetrievalInfo)
+func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan types.RetrievalInfo, error) {
+	updates := make(chan types.RetrievalInfo)
 
 	unsub := a.Retrieval.SubscribeToEvents(func(_ rm.ClientEvent, deal rm.ClientDealState) {
 		updates <- a.newRetrievalInfo(ctx, deal)
@@ -1197,8 +1199,8 @@ func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan RetrievalIn
 	return updates, nil
 }
 
-func (a *API) newRetrievalInfoWithTransfer(ch *types2.DataTransferChannel, deal rm.ClientDealState) RetrievalInfo {
-	return RetrievalInfo{
+func (a *API) newRetrievalInfoWithTransfer(ch *types2.DataTransferChannel, deal rm.ClientDealState) types.RetrievalInfo {
+	return types.RetrievalInfo{
 		PayloadCID:        deal.PayloadCID,
 		ID:                deal.ID,
 		PieceCID:          deal.PieceCID,
@@ -1215,7 +1217,7 @@ func (a *API) newRetrievalInfoWithTransfer(ch *types2.DataTransferChannel, deal 
 	}
 }
 
-func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) RetrievalInfo {
+func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) types.RetrievalInfo {
 	// Find the data transfer associated with this deal
 	var transferCh *types2.DataTransferChannel
 	if v.ChannelID != nil {
@@ -1234,7 +1236,7 @@ func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) Retrie
 }
 
 func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) {
-	mi, err := a.Full.StateMinerInfo(ctx, miner, types.EmptyTSK)
+	mi, err := a.Full.StateMinerInfo(ctx, miner, vTypes.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner info: %w", err)
 	}
@@ -1248,7 +1250,7 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 	return ask, nil
 }
 
-func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*CommPRet, error) {
+func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*types.CommPRet, error) {
 
 	// Hard-code the sector type to 32GiBV1_1, because:
 	// - ffiwrapper.GeneratePieceCIDFromFile requires a RegisteredSealProof
@@ -1288,7 +1290,7 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*CommPRet, er
 		return nil, xerrors.Errorf("computing commP failed: %w", err)
 	}
 
-	return &CommPRet{
+	return &types.CommPRet{
 		Root: commP,
 		Size: pieceSize,
 	}, nil
@@ -1301,10 +1303,10 @@ func (w *lenWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (DataSize, error) {
+func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (types.DataSize, error) {
 	bs, onDone, err := a.dealBlockstore(root)
 	if err != nil {
-		return DataSize{}, err
+		return types.DataSize{}, err
 	}
 	defer onDone()
 
@@ -1313,21 +1315,21 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (DataSize, error
 	var w lenWriter
 	err = car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
 	if err != nil {
-		return DataSize{}, err
+		return types.DataSize{}, err
 	}
 
 	up := padreader.PaddedSize(uint64(w))
 
-	return DataSize{
+	return types.DataSize{
 		PayloadSize: int64(w),
 		PieceSize:   up.Padded(),
 	}, nil
 }
 
-func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (DataCIDSize, error) {
+func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (types.DataCIDSize, error) {
 	bs, onDone, err := a.dealBlockstore(root)
 	if err != nil {
-		return DataCIDSize{}, err
+		return types.DataCIDSize{}, err
 	}
 	defer onDone()
 
@@ -1337,18 +1339,18 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (DataCIDSize
 
 	err = car.WriteCar(ctx, dag, []cid.Cid{root}, w)
 	if err != nil {
-		return DataCIDSize{}, err
+		return types.DataCIDSize{}, err
 	}
 
 	if err := bw.Flush(); err != nil {
-		return DataCIDSize{}, err
+		return types.DataCIDSize{}, err
 	}
 
 	dataCIDSize, err := w.Sum()
-	return DataCIDSize(dataCIDSize), err
+	return types.DataCIDSize(dataCIDSize), err
 }
 
-func (a *API) ClientGenCar(ctx context.Context, ref FileRef, outputPath string) error {
+func (a *API) ClientGenCar(ctx context.Context, ref types.FileRef, outputPath string) error {
 	// create a temporary import to represent this job and obtain a staging CAR.
 	id, err := a.importManager().CreateImport(ctx)
 	if err != nil {

@@ -4,6 +4,7 @@ package storageprovider
 
 import (
 	"context"
+
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/api/clients"
 
@@ -32,8 +33,8 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/fundmgr"
-	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
+	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 )
 

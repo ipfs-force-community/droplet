@@ -2,8 +2,9 @@ package cli
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus-market/types"
 	"os"
+
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"

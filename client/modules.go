@@ -2,17 +2,18 @@ package client
 
 import (
 	"context"
-	"github.com/filecoin-project/venus-market/models/badger"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/filecoin-project/go-data-transfer/channelmonitor"
+	"github.com/filecoin-project/venus-market/models/badger"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-data-transfer/channelmonitor"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
@@ -103,6 +104,7 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Gra
 		// After trying to restart 3 times, give up and fail the transfer
 		MaxConsecutiveRestarts: 3,
 	})
+
 	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(string(*homeDir), "data-transfer"), net, transport, dtRestartConfig)
 	if err != nil {
 		return nil, err

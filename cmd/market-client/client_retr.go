@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/api"
-	cli2 "github.com/filecoin-project/venus-market/cli"
-	"github.com/filecoin-project/venus-market/client"
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"io"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/venus-market/api"
+	cli2 "github.com/filecoin-project/venus-market/cli"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
@@ -24,7 +25,7 @@ import (
 
 const DefaultMaxRetrievePrice = "0"
 
-func retrieve(ctx context.Context, cctx *cli.Context, fapi api.MarketClientNode, sel *client.Selector, printf func(string, ...interface{})) (*client.ExportRef, error) {
+func retrieve(ctx context.Context, cctx *cli.Context, fapi api.MarketClientNode, sel *client.DataSelector, printf func(string, ...interface{})) (*client.ExportRef, error) {
 	var payer address.Address
 	var err error
 	if cctx.String("from") != "" {
@@ -164,7 +165,7 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi api.MarketClientNode,
 				types2.FIL(evt.TotalPaid),
 				strings.TrimPrefix(event, "ClientEvent"),
 				strings.TrimPrefix(retrievalmarket.DealStatuses[evt.Status], "DealStatus"),
-				time.Now().Sub(start).Truncate(time.Millisecond),
+				time.Since(start).Truncate(time.Millisecond),
 			)
 
 			switch evt.Status {
@@ -282,8 +283,8 @@ Examples:
 		ctx := cli2.ReqContext(cctx)
 		afmt := cli2.NewAppFmt(cctx.App)
 
-		var s *client.Selector
-		if sel := client.Selector(cctx.String("data-selector")); sel != "" {
+		var s *client.DataSelector
+		if sel := client.DataSelector(cctx.String("data-selector")); sel != "" {
 			s = &sel
 		}
 

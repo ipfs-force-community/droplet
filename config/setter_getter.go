@@ -2,10 +2,11 @@ package config
 
 import (
 	"context"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/venus-market/types"
-	"github.com/ipfs/go-cid"
 	"time"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs/go-cid"
 )
 
 // ConsiderOnlineStorageDealsConfigFunc is a function which reads from miner

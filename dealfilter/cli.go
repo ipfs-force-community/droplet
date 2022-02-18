@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os/exec"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/types"
-	"os/exec"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 func CliStorageDealFilter(cmd string) config.StorageDealFilter {

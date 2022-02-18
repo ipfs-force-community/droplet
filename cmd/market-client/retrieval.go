@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
@@ -13,11 +15,10 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
-	"io"
 
 	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/cli/tablewriter"
-	"github.com/filecoin-project/venus-market/client"
+	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 )
 
 var retrievalCmd = &cli.Command{

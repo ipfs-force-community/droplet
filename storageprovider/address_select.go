@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/venus-market/config"
-	marketTypes "github.com/filecoin-project/venus-market/types"
+	marketTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"

@@ -2,13 +2,14 @@ package retrievalprovider
 
 import (
 	"context"
+	"math"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/paychmgr"
-	"github.com/filecoin-project/venus-market/types"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	"math"
-	"time"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/dtutils"

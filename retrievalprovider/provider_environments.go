@@ -3,9 +3,10 @@ package retrievalprovider
 import (
 	"context"
 	"errors"
+
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"

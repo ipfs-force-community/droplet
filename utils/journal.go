@@ -3,7 +3,7 @@ package utils
 import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/venus-market/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/ipfs-force-community/venus-common-utils/journal"
 )

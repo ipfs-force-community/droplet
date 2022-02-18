@@ -4,27 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/venus-market/models/badger"
 	"os"
 	"path/filepath"
 	"strconv"
 
+	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/filecoin-project/venus-market/models/badger"
+	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-fil-markets/shared"
-	"github.com/ipfs/go-datastore"
 )
 
 var log = logging.Logger("importmgr")
-
-type ID uint64
-
-func (id ID) dsKey() datastore.Key {
-	return datastore.NewKey(fmt.Sprintf("%d", id))
-}
 
 type Manager struct {
 	ds      datastore.Batching
@@ -103,8 +97,8 @@ type Meta struct {
 
 // CreateImport initializes a new import, returning its ID and optionally a
 // CAR path where to place the data, if requested.
-func (m *Manager) CreateImport(ctx context.Context) (id ID, err error) {
-	id = ID(m.counter.Next())
+func (m *Manager) CreateImport(ctx context.Context) (id types.ImportID, err error) {
+	id = types.ImportID(m.counter.Next())
 
 	meta := &Meta{Labels: map[LabelKey]LabelValue{
 		LSource: "unknown",
@@ -115,7 +109,7 @@ func (m *Manager) CreateImport(ctx context.Context) (id ID, err error) {
 		return 0, xerrors.Errorf("marshaling store metadata: %w", err)
 	}
 
-	err = m.ds.Put(ctx, id.dsKey(), metajson)
+	err = m.ds.Put(ctx, id.DsKey(), metajson)
 	if err != nil {
 		return 0, xerrors.Errorf("failed to insert import metadata: %w", err)
 	}
@@ -125,8 +119,8 @@ func (m *Manager) CreateImport(ctx context.Context) (id ID, err error) {
 
 // AllocateCAR creates a new CAR allocated to the supplied import under the
 // root directory.
-func (m *Manager) AllocateCAR(ctx context.Context, id ID) (path string, err error) {
-	meta, err := m.ds.Get(ctx, id.dsKey())
+func (m *Manager) AllocateCAR(ctx context.Context, id types.ImportID) (path string, err error) {
+	meta, err := m.ds.Get(ctx, id.DsKey())
 	if err != nil {
 		return "", xerrors.Errorf("getting metadata form datastore: %w", err)
 	}
@@ -160,14 +154,14 @@ func (m *Manager) AllocateCAR(ctx context.Context, id ID) (path string, err erro
 		return "", xerrors.Errorf("marshaling store metadata: %w", err)
 	}
 
-	err = m.ds.Put(ctx, id.dsKey(), meta)
+	err = m.ds.Put(ctx, id.DsKey(), meta)
 	return path, err
 }
 
 // AddLabel adds a label associated with an import, such as the source,
 // car path, CID, etc.
-func (m *Manager) AddLabel(ctx context.Context, id ID, key LabelKey, value LabelValue) error {
-	meta, err := m.ds.Get(ctx, id.dsKey())
+func (m *Manager) AddLabel(ctx context.Context, id types.ImportID, key LabelKey, value LabelValue) error {
+	meta, err := m.ds.Get(ctx, id.DsKey())
 	if err != nil {
 		return xerrors.Errorf("getting metadata form datastore: %w", err)
 	}
@@ -184,12 +178,12 @@ func (m *Manager) AddLabel(ctx context.Context, id ID, key LabelKey, value Label
 		return xerrors.Errorf("marshaling store meta: %w", err)
 	}
 
-	return m.ds.Put(ctx, id.dsKey(), meta)
+	return m.ds.Put(ctx, id.DsKey(), meta)
 }
 
 // List returns all import IDs known by this Manager.
-func (m *Manager) List(ctx context.Context) ([]ID, error) {
-	var keys []ID
+func (m *Manager) List(ctx context.Context) ([]types.ImportID, error) {
+	var keys []types.ImportID
 
 	qres, err := m.ds.Query(ctx, query.Query{KeysOnly: true})
 	if err != nil {
@@ -207,15 +201,15 @@ func (m *Manager) List(ctx context.Context) ([]ID, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("failed to parse key %s to uint64, err=%w", r.Key, err)
 		}
-		keys = append(keys, ID(id))
+		keys = append(keys, types.ImportID(id))
 	}
 
 	return keys, nil
 }
 
 // Info returns the metadata known to this store for the specified import ID.
-func (m *Manager) Info(ctx context.Context, id ID) (*Meta, error) {
-	meta, err := m.ds.Get(ctx, id.dsKey())
+func (m *Manager) Info(ctx context.Context, id types.ImportID) (*Meta, error) {
+	meta, err := m.ds.Get(ctx, id.DsKey())
 	if err != nil {
 		return nil, xerrors.Errorf("getting metadata form datastore: %w", err)
 	}
@@ -229,8 +223,8 @@ func (m *Manager) Info(ctx context.Context, id ID) (*Meta, error) {
 }
 
 // Remove drops all data associated with the supplied import ID.
-func (m *Manager) Remove(ctx context.Context, id ID) error {
-	if err := m.ds.Delete(ctx, id.dsKey()); err != nil {
+func (m *Manager) Remove(ctx context.Context, id types.ImportID) error {
+	if err := m.ds.Delete(ctx, id.DsKey()); err != nil {
 		return xerrors.Errorf("removing import metadata: %w", err)
 	}
 	return nil

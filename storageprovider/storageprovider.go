@@ -3,10 +3,11 @@ package storageprovider
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/api/clients"
-	"github.com/mitchellh/go-homedir"
 	"io"
 	"time"
+
+	"github.com/filecoin-project/venus-market/api/clients"
+	"github.com/mitchellh/go-homedir"
 
 	"github.com/filecoin-project/venus-market/utils"
 
@@ -35,7 +36,7 @@ import (
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piecestorage"
-	"github.com/filecoin-project/venus-market/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 // StorageProviderV2 provides an interface to the storage market for a single
