@@ -4,6 +4,8 @@ export CGO_CFLAGS=-D__BLST_PORTABLE__
 all: build
 .PHONY: all
 
+## variables
+
 # git modules that need to be loaded
 MODULES:=
 
@@ -13,16 +15,6 @@ ifneq ($(strip $(LDFLAGS)),)
 	endif
 
 GOFLAGS+=-ldflags="$(ldflags)"
-
-build-dep:
-	mkdir $@
-
-$(MODULES): build/.update-modules ;
-# dummy file that marks the last time modules were updated
-build/.update-modules:
-	git submodule update --init --recursive
-	touch $@
-
 
 ## FFI
 
@@ -40,13 +32,18 @@ MODULES+=$(FFI_PATH)
 BUILD_DEPS+=build-dep/.filecoin-install
 CLEAN+=build-dep/.filecoin-install
 
-$(MODULES): build-dep/.update-modules ;
+## modules
+build-dep:
+	mkdir $@
+
+$(MODULES): build-dep/.update-modules build-dep;
 # dummy file that marks the last time modules were updated
 build-dep/.update-modules:
 	git submodule update --init --recursive
 	touch $@
 
 
+## build
 
 test:
 	rm -rf models/test_sqlite_db*
