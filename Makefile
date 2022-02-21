@@ -9,7 +9,7 @@ all: build
 # git modules that need to be loaded
 MODULES:=
 
-ldflags=-X=github.com/filecoin-project/venus-market/version/build.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
+ldflags=-X=github.com/ipfs-force-community/venus-gateway/version/build.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
 ifneq ($(strip $(LDFLAGS)),)
 	    ldflags+=-extldflags=$(LDFLAGS)
 	endif
@@ -42,21 +42,15 @@ build-dep/.update-modules: build-dep;
 	git submodule update --init --recursive
 	touch $@
 
-ffi-version-check:
-	@[[ "$$(awk '/const Version/{print $$5}' extern/filecoin-ffi/version.go)" -eq 3 ]] || (echo "FFI version mismatch, update submodules"; exit 1)
-BUILD_DEPS+=ffi-version-check
-
-.PHONY: ffi-version-check
-
-
 ## build
 
 test:
-	rm -rf models/test_sqlite_db*
 	go test -race ./...
 
 lint: $(BUILD_DEPS)
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+	staticcheck ./...
+
+deps: $(BUILD_DEPS)
 
 dist-clean:
 	git clean -xdff

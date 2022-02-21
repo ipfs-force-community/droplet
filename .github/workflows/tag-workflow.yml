@@ -99,7 +99,7 @@ jobs:
         run: sudo apt-get install make ncftp mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
       - name: Build
         run: |
-          go clean --modcache && make deps && make
+          go clean --modcache && make
           mkdir ./release && mv ./market-client ./venus-market ./release
 
       - name: Zip Release
