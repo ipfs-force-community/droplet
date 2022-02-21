@@ -16,7 +16,6 @@ Use [Venus Issues](https://github.com/filecoin-project/venus/issues) for reporti
 ```sh
 git clone https://github.com/filecoin-project/venus-market.git
 cd venus-market
-make deps
 make
 ```
 ## how to setup venus-market
