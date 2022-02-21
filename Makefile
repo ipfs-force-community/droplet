@@ -36,9 +36,9 @@ CLEAN+=build-dep/.filecoin-install
 build-dep:
 	mkdir $@
 
-$(MODULES): build-dep/.update-modules build-dep;
+$(MODULES): build-dep/.update-modules;
 # dummy file that marks the last time modules were updated
-build-dep/.update-modules:
+build-dep/.update-modules: build-dep;
 	git submodule update --init --recursive
 	touch $@
 
