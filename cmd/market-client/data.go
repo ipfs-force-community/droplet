@@ -227,7 +227,7 @@ var dataCommPCmd = &cli.Command{
 		}
 
 		fmt.Println("CID: ", encoder.Encode(ret.Root))
-		fmt.Println("Piece size: ", types.SizeStr(types.NewInt(uint64(ret.Size))))
+		fmt.Printf("Piece size:(%d), %s\n", ret.Size, types.SizeStr(types.NewInt(uint64(ret.Size))))
 		return nil
 	},
 }
