@@ -57,6 +57,7 @@ dist-clean:
 	git submodule deinit --all -f
 
 build: $(BUILD_DEPS)
-	rm -f chain-co
+	rm -f market-client
+	rm -f venus-market
 	go build -o ./market-client $(GOFLAGS) ./cmd/market-client
-	go build -o ./market-client $(GOFLAGS) ./cmd/market-client
+	go build -o ./venus-market $(GOFLAGS) ./cmd/venus-market
