@@ -288,8 +288,6 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 		cleanup()
 		return xerrors.Errorf("failed to generate commP: %w", err)
 	}
-	log.Debugw("generated pieceCid for imported file", "propCid", propCid)
-
 	if carSizePadded := padreader.PaddedSize(carSize).Padded(); carSizePadded < d.Proposal.PieceSize {
 		// need to pad up!
 		rawPaddedCommp, err := commp.PadCommP(
@@ -319,7 +317,10 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 	log.Infof("deal %s piece path: %s", propCid, d.PiecePath)
 
 	d.State = storagemarket.StorageDealReserveProviderFunds
-
+	d.PieceStatus = types.Undefine
+	if err := p.dealStore.SaveDeal(ctx, d); err != nil {
+		return xerrors.Errorf("save deal(%d) failed:%w", d.DealID, err)
+	}
 	go func() {
 		err := p.dealProcess.HandleOff(context.TODO(), d)
 		if err != nil {
