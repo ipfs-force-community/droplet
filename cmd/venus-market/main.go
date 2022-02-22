@@ -1,10 +1,12 @@
 package main
 
 import (
-	"github.com/filecoin-project/venus-market/version"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/filecoin-project/venus-market/version"
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -21,6 +23,8 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 )
+
+var mainLog = logging.Logger("main")
 
 // Invokes are called in the order they are defined.
 // nolint:golint
@@ -158,10 +162,12 @@ func main() {
 
 func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 	cfg := config.DefaultMarketConfig
+	cfg.HomeDir = cctx.String(RepoFlag.Name)
 	cfgPath, err := cfg.ConfigPath()
 	if err != nil {
 		return nil, err
 	}
+	mainLog.Info("load config from path ", cfgPath)
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		//create
 		err = flagData(cctx, cfg)
@@ -191,10 +197,6 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
-	if cctx.IsSet(RepoFlag.Name) {
-		cfg.HomeDir = cctx.String(RepoFlag.Name)
-	}
-
 	if cctx.IsSet(NodeUrlFlag.Name) {
 		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
 	}

@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/mitchellh/go-homedir"
 	"path"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 type HomeDir string
@@ -14,7 +15,7 @@ type IHome interface {
 	HomeJoin(sep ...string) (string, error)
 }
 type Home struct {
-	HomeDir string
+	HomeDir string `toml:"-"`
 }
 
 func (m *Home) HomePath() (HomeDir, error) {
