@@ -131,10 +131,6 @@ func main() {
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
-	if cctx.IsSet(RepoFlag.Name) {
-		cfg.HomeDir = cctx.String(RepoFlag.Name)
-	}
-
 	if cctx.IsSet(NodeUrlFlag.Name) {
 		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
 	}
