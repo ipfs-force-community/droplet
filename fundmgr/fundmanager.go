@@ -241,7 +241,8 @@ func (a *fundedAddress) requestAndWait(ctx context.Context, wallet address.Addre
 }
 
 // Used by the tests
-func (a *fundedAddress) onProcessStart(fn func() bool) { // nolint
+//lint:ignore U1000 ingore this for now
+func (a *fundedAddress) onProcessStart(fn func() bool) {
 	a.lk.Lock()
 	defer a.lk.Unlock()
 

@@ -1,0 +1,34 @@
+name: Go
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+
+    - name: install deps
+      run: sudo apt-get install make ftp git bzr curl hwloc libhwloc-dev mesa-opencl-icd ocl-icd-opencl-dev wget -y && sudo apt upgrade -y
+
+    - name: Build
+      env:
+        GOPROXY: "https://proxy.golang.org,direct"
+        GO111MODULE: "on"
+      run: |
+        make
+
+    - name: Test
+      run: go test -v ./...

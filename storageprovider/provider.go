@@ -24,7 +24,6 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/pkg/events/state"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
@@ -46,7 +45,6 @@ type ProviderNodeAdapter struct {
 
 	fundMgr   *fundmgr.FundManager
 	msgClient clients.IMixMessage
-	ev        *events.Events
 
 	dealPublisher *DealPublisher
 

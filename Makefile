@@ -42,21 +42,15 @@ build-dep/.update-modules: build-dep;
 	git submodule update --init --recursive
 	touch $@
 
-ffi-version-check:
-	@[[ "$$(awk '/const Version/{print $$5}' extern/filecoin-ffi/version.go)" -eq 3 ]] || (echo "FFI version mismatch, update submodules"; exit 1)
-BUILD_DEPS+=ffi-version-check
-
-.PHONY: ffi-version-check
-
-
 ## build
 
 test:
-	rm -rf models/test_sqlite_db*
 	go test -race ./...
 
 lint: $(BUILD_DEPS)
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+	staticcheck ./...
+
+deps: $(BUILD_DEPS)
 
 dist-clean:
 	git clean -xdff

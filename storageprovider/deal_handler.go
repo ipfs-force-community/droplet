@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 
 	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
@@ -156,7 +155,7 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 
 	// Check that the delta between the start and end epochs (the deal
 	// duration) is within acceptable bounds
-	minDuration, maxDuration := market7.DealDurationBounds(proposal.PieceSize)
+	minDuration, maxDuration := market.DealDurationBounds(proposal.PieceSize)
 	if proposal.Duration() < minDuration || proposal.Duration() > maxDuration {
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("deal duration out of bounds (min, max, provided): %d, %d, %d", minDuration, maxDuration, proposal.Duration()))
 	}

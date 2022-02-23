@@ -262,21 +262,17 @@ func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...types.User) erro
 func (m *UserMgrImpl) refreshUsers(ctx context.Context) {
 	tm := time.NewTicker(time.Minute)
 	defer tm.Stop()
-	for {
-		select {
-		case <-tm.C:
-			miners, err := m.getMinerFromVenusAuth(context.TODO(), 0, 0)
-			if err != nil {
-				log.Errorf("unable to get venus miner from venus auth %s", err)
-			}
+	for range tm.C {
+		miners, err := m.getMinerFromVenusAuth(context.TODO(), 0, 0)
+		if err != nil {
+			log.Errorf("unable to get venus miner from venus auth %s", err)
+		}
 
-			err = m.distAddress(ctx, miners...)
-			if err != nil {
-				log.Errorf("unable to append new user to address manager %s", err)
-			}
+		err = m.distAddress(ctx, miners...)
+		if err != nil {
+			log.Errorf("unable to append new user to address manager %s", err)
 		}
 	}
-
 }
 func convertConfigAddress(addrs []config.User) []types.User {
 	addrs2 := make([]types.User, len(addrs))

@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	_ "github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
 	logging "github.com/ipfs/go-log/v2"
@@ -75,11 +74,10 @@ func ParseS3Endpoint(endPoint string) (string, string, string, error) {
 }
 
 type s3PieceStorage struct {
-	s3Cfg      config.S3PieceStorage
-	bucket     string
-	s3Client   *s3.S3
-	uploader   *s3manager.Uploader
-	downloader *s3manager.Downloader
+	s3Cfg    config.S3PieceStorage
+	bucket   string
+	s3Client *s3.S3
+	uploader *s3manager.Uploader
 }
 
 func newS3PieceStorage(s3Cfg config.S3PieceStorage) (IPieceStorage, error) {

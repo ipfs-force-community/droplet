@@ -131,7 +131,7 @@ func ParserProtocol(pro string, cfg interface{}) error {
 
 func lookupMethod(val reflect.Type, name string) (string, error) {
 	for i := 0; i < val.NumField(); i++ {
-		if strings.ToLower(val.Field(i).Name) == strings.ToLower(name) {
+		if strings.EqualFold(val.Field(i).Name, name) {
 			return val.Field(i).Name, nil
 		}
 	}
