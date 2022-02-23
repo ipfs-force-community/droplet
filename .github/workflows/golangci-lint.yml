@@ -21,14 +21,6 @@ jobs:
       - name: Make dep
         run: make deps
 
-      - name: golangci-lint
-        env:
-          GOPROXY: "https://proxy.golang.org,direct"
-          GO111MODULE: "on"
-        uses: golangci/golangci-lint-action@v2
-        with:
-          # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
-          version: v1.29
-          args: --timeout=30m --skip-dirs='[extern]'
-          skip-pkg-cache: true
-          skip-build-cache: true
+    - uses: dominikh/staticcheck-action@v1.1.0
+      with:
+        version: "2021.1.1"
