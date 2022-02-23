@@ -51,7 +51,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
@@ -87,7 +86,7 @@ type API struct {
 
 	SMDealClient storagemarket.StorageClient
 	RetDiscovery discovery.PeerResolver
-	Retrieval    rm.RetrievalClient
+	Retrieval    retrievalmarket.RetrievalClient
 
 	// accessors for imports and retrievals.
 	Imports                   ClientImportMgr
@@ -438,12 +437,12 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) 
 		if err != nil {
 			return nil, err
 		}
-		pp := rm.RetrievalPeer{
+		pp := retrievalmarket.RetrievalPeer{
 			Address: p.Address,
 			ID:      *mi.PeerId,
 		}
 
-		out = append(out, a.makeRetrievalQuery(ctx, pp, root, piece, rm.QueryParams{}))
+		out = append(out, a.makeRetrievalQuery(ctx, pp, root, piece, retrievalmarket.QueryParams{}))
 	}
 
 	return out, nil
@@ -454,25 +453,25 @@ func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, 
 	if err != nil {
 		return types.QueryOffer{}, err
 	}
-	rp := rm.RetrievalPeer{
+	rp := retrievalmarket.RetrievalPeer{
 		Address: miner,
 		ID:      *mi.PeerId,
 	}
-	return a.makeRetrievalQuery(ctx, rp, root, piece, rm.QueryParams{}), nil
+	return a.makeRetrievalQuery(ctx, rp, root, piece, retrievalmarket.QueryParams{}), nil
 }
 
-func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, payload cid.Cid, piece *cid.Cid, qp rm.QueryParams) types.QueryOffer {
+func (a *API) makeRetrievalQuery(ctx context.Context, rp retrievalmarket.RetrievalPeer, payload cid.Cid, piece *cid.Cid, qp retrievalmarket.QueryParams) types.QueryOffer {
 	queryResponse, err := a.Retrieval.Query(ctx, rp, payload, qp)
 	if err != nil {
 		return types.QueryOffer{Err: err.Error(), Miner: rp.Address, MinerPeer: rp}
 	}
 	var errStr string
 	switch queryResponse.Status {
-	case rm.QueryResponseAvailable:
+	case retrievalmarket.QueryResponseAvailable:
 		errStr = ""
-	case rm.QueryResponseUnavailable:
+	case retrievalmarket.QueryResponseUnavailable:
 		errStr = fmt.Sprintf("retrieval query offer was unavailable: %s", queryResponse.Message)
-	case rm.QueryResponseError:
+	case retrievalmarket.QueryResponseError:
 		errStr = fmt.Sprintf("retrieval query offer errored: %s", queryResponse.Message)
 	}
 
@@ -773,14 +772,14 @@ func (a *API) ClientRetrieve(ctx context.Context, params types.RetrievalOrder) (
 	}, nil
 }
 
-func (a *API) doRetrieval(ctx context.Context, order types.RetrievalOrder, sel datamodel.Node) (rm.DealID, error) {
+func (a *API) doRetrieval(ctx context.Context, order types.RetrievalOrder, sel datamodel.Node) (retrievalmarket.DealID, error) {
 	if order.MinerPeer == nil || order.MinerPeer.ID == "" {
 		mi, err := a.Full.StateMinerInfo(ctx, order.Miner, vTypes.EmptyTSK)
 		if err != nil {
 			return 0, err
 		}
 
-		order.MinerPeer = &rm.RetrievalPeer{
+		order.MinerPeer = &retrievalmarket.RetrievalPeer{
 			ID:      *mi.PeerId,
 			Address: order.Miner,
 		}
@@ -796,7 +795,7 @@ func (a *API) doRetrieval(ctx context.Context, order types.RetrievalOrder, sel d
 
 	ppb := vTypes.BigDiv(order.Total, vTypes.NewInt(order.Size))
 
-	params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, sel, order.Piece, order.UnsealPrice)
+	params, err := retrievalmarket.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, sel, order.Piece, order.UnsealPrice)
 	if err != nil {
 		return 0, xerrors.Errorf("Error in retrieval params: %s", err)
 	}
@@ -820,13 +819,13 @@ func (a *API) doRetrieval(ctx context.Context, order types.RetrievalOrder, sel d
 	return id, nil
 }
 
-func (a *API) ClientRetrieveWait(ctx context.Context, deal rm.DealID) error {
+func (a *API) ClientRetrieveWait(ctx context.Context, deal retrievalmarket.DealID) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	subscribeEvents := make(chan rm.ClientDealState, 1)
+	subscribeEvents := make(chan retrievalmarket.ClientDealState, 1)
 
-	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
+	unsubscribe := a.Retrieval.SubscribeToEvents(func(event retrievalmarket.ClientEvent, state retrievalmarket.ClientDealState) {
 		// We'll check the deal IDs inside consumeAllEvents.
 		if state.ID != deal {
 			return
@@ -855,15 +854,15 @@ func (a *API) ClientRetrieveWait(ctx context.Context, deal rm.DealID) error {
 			return xerrors.New("Retrieval Timed Out")
 		case state := <-subscribeEvents:
 			switch state.Status {
-			case rm.DealStatusCompleted:
+			case retrievalmarket.DealStatusCompleted:
 				return nil
-			case rm.DealStatusRejected:
+			case retrievalmarket.DealStatusRejected:
 				return xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
-			case rm.DealStatusCancelled:
+			case retrievalmarket.DealStatusCancelled:
 				return xerrors.Errorf("Retrieval was cancelled externally: %s", state.Message)
 			case
-				rm.DealStatusDealNotFound,
-				rm.DealStatusErrored:
+				retrievalmarket.DealStatusDealNotFound,
+				retrievalmarket.DealStatusErrored:
 				return xerrors.Errorf("Retrieval Error: %s", state.Message)
 			}
 		}
@@ -1187,7 +1186,7 @@ func (a *API) ClientListRetrievals(ctx context.Context) ([]types.RetrievalInfo, 
 func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan types.RetrievalInfo, error) {
 	updates := make(chan types.RetrievalInfo)
 
-	unsub := a.Retrieval.SubscribeToEvents(func(_ rm.ClientEvent, deal rm.ClientDealState) {
+	unsub := a.Retrieval.SubscribeToEvents(func(_ retrievalmarket.ClientEvent, deal retrievalmarket.ClientDealState) {
 		updates <- a.newRetrievalInfo(ctx, deal)
 	})
 
@@ -1199,7 +1198,7 @@ func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan types.Retri
 	return updates, nil
 }
 
-func (a *API) newRetrievalInfoWithTransfer(ch *types2.DataTransferChannel, deal rm.ClientDealState) types.RetrievalInfo {
+func (a *API) newRetrievalInfoWithTransfer(ch *types2.DataTransferChannel, deal retrievalmarket.ClientDealState) types.RetrievalInfo {
 	return types.RetrievalInfo{
 		PayloadCID:        deal.PayloadCID,
 		ID:                deal.ID,
@@ -1217,7 +1216,7 @@ func (a *API) newRetrievalInfoWithTransfer(ch *types2.DataTransferChannel, deal 
 	}
 }
 
-func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) types.RetrievalInfo {
+func (a *API) newRetrievalInfo(ctx context.Context, v retrievalmarket.ClientDealState) types.RetrievalInfo {
 	// Find the data transfer associated with this deal
 	var transferCh *types2.DataTransferChannel
 	if v.ChannelID != nil {

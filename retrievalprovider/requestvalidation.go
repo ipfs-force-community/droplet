@@ -50,7 +50,7 @@ func NewProviderRequestValidator(paymentAddr address.Address, storageDeals repo.
 
 // ValidatePush validates a push request received from the peer that will send data
 func (rv *ProviderRequestValidator) ValidatePush(isRestart bool, _ datatransfer.ChannelID, sender peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.VoucherResult, error) {
-	return nil, errors.New("No pushes accepted")
+	return nil, errors.New("no pushes accepted")
 }
 
 // ValidatePull validates a pull request received from the peer that will receive data

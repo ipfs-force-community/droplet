@@ -144,7 +144,7 @@ var transferRestartCmd = &cli.Command{
 
 		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
 		if err != nil {
-			return fmt.Errorf("Error reading transfer ID: %w", err)
+			return fmt.Errorf("error reading transfer ID: %w", err)
 		}
 		transferID := datatransfer.TransferID(transferUint)
 		initiator := cctx.Bool("initiator")
@@ -209,7 +209,7 @@ var transferCancelCmd = &cli.Command{
 
 		transferUint, err := strconv.ParseUint(cctx.Args().First(), 10, 64)
 		if err != nil {
-			return fmt.Errorf("Error reading transfer ID: %w", err)
+			return fmt.Errorf("error reading transfer ID: %w", err)
 		}
 		transferID := datatransfer.TransferID(transferUint)
 		initiator := cctx.Bool("initiator")

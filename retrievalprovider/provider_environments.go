@@ -23,16 +23,16 @@ import (
 // CheckDealParams verifies the given deal params are acceptable
 func CheckDealParams(ask *types.RetrievalAsk, pricePerByte abi.TokenAmount, paymentInterval uint64, paymentIntervalIncrease uint64, unsealPrice abi.TokenAmount) error {
 	if pricePerByte.LessThan(ask.PricePerByte) {
-		return errors.New("Price per byte too low")
+		return errors.New("price per byte too low")
 	}
 	if paymentInterval > ask.PaymentInterval {
-		return errors.New("Payment interval too large")
+		return errors.New("payment interval too large")
 	}
 	if paymentIntervalIncrease > ask.PaymentIntervalIncrease {
-		return errors.New("Payment interval increase too large")
+		return errors.New("payment interval increase too large")
 	}
 	if !ask.UnsealPrice.Nil() && unsealPrice.LessThan(ask.UnsealPrice) {
-		return errors.New("Unseal price too small")
+		return errors.New("unseal price too small")
 	}
 	return nil
 }
