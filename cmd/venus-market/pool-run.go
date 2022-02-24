@@ -113,6 +113,8 @@ func poolDaemon(cctx *cli.Context) error {
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
 	mux := mux.NewRouter()
-	mux.Handle("resource", rpc.NewPieceStorageServer(resAPI.PieceStorage))
+	if err = mux.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorage)).GetError(); err != nil {
+		return xerrors.Errorf("handle 'resource' failed: %w", err)
+	}
 	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, cfg.AuthNode.Url, api.MarketFullNode(resAPI), finishCh)
 }
