@@ -27,7 +27,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
 	github.com/filecoin-project/specs-storage v0.2.0
-	github.com/filecoin-project/venus v1.2.0-rc6
+	github.com/filecoin-project/venus v1.2.3-0.20220308015952-1748f646f03b
 	github.com/filecoin-project/venus-auth v1.3.2
 	github.com/filecoin-project/venus-messager v1.4.0-rc2.0.20220218091700-29caa578c124
 	github.com/gbrlsnchs/jwt/v3 v3.0.1

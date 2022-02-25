@@ -133,12 +133,23 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr add
 	return storageDeals, err
 }
 
-func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus) error {
+func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState string) error {
 	deal, err := sdr.GetDeal(ctx, proposalCid)
 	if err != nil {
 		return err
 	}
-	deal.State = status
+	var updateColumns = 0
+	if status != storagemarket.StorageDealUnknown {
+		deal.State = status
+		updateColumns++
+	}
+	if len(pieceState) != 0 {
+		deal.PieceStatus = pieceState
+		updateColumns++
+	}
+	if updateColumns == 0 {
+		return nil
+	}
 	return sdr.SaveDeal(ctx, deal)
 }
 
