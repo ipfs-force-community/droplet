@@ -1,5 +1,7 @@
 # venus-market
 
+Use [Venus Issues](https://github.com/filecoin-project/venus/issues) for reporting issues about this repository.
+
 venus-market will deliver a complete deal making experience as what lotus offers. This includes compatibility with lotus client where one can make deal with venus-market using lotus client, retrieve deal/data in the same way as lotus retrieves its data, setup storage ask and etc.
 
 Use [Venus Issues](https://github.com/filecoin-project/venus/issues) for reporting issues about this repository.
@@ -10,6 +12,7 @@ Use [Venus Issues](https://github.com/filecoin-project/venus/issues) for reporti
 3. providers do not need to pay attention for the details of the deal,  only need to query the market regularly to see if you have any deal to seal. 
 4. market maintain a piece pool, that is, to provide the provider with the data for sealing deals, and it can also speed up the retrieval speed. ask miners for unseal operations, only when missing piece in venus-market.
 5. for clients, it is fully compatible with lotus.
+
 
 ## build
 

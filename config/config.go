@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-
 	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
