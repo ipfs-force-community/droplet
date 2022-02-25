@@ -2,8 +2,8 @@ package storageprovider
 
 import (
 	"context"
+	"fmt"
 	"math"
-	"math/bits"
 	"sort"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -12,9 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -202,8 +200,8 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.A
 	// 按照尺寸, 时间, 价格排序
 	sort.Slice(deals, func(i, j int) bool {
 		left, right := deals[i], deals[j]
-		if left.PieceSize.Unpadded() != right.PieceSize.Unpadded() {
-			return left.PieceSize.Unpadded() < right.PieceSize.Unpadded()
+		if left.PieceSize != right.PieceSize {
+			return left.PieceSize < right.PieceSize
 		}
 
 		if left.StartEpoch != right.StartEpoch {
@@ -213,115 +211,16 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.A
 		return left.StoragePricePerEpoch.GreaterThan(right.StoragePricePerEpoch)
 	})
 
-	dealsBySize := [][]*types.DealInfoIncludePath{}
-	dealSizeIdxMap := map[abi.UnpaddedPieceSize]int{}
-
-	// 按尺寸分组
-	sectorCap := abi.PaddedPieceSize(ssize).Unpadded()
-	for di, deal := range deals {
-		if deal.PieceSize.Unpadded() > sectorCap {
-			log.Infow("deals too large are ignored", "count", len(deals[di:]), "gt", deal.PieceSize.Unpadded(), "max", sectorCap)
-			break
-		}
-
-		length := len(dealsBySize)
-		if length == 0 {
-			dealsBySize = append(dealsBySize, []*types.DealInfoIncludePath{deal})
-			dealSizeIdxMap[deal.PieceSize.Unpadded()] = length
-			continue
-		}
-
-		last := length - 1
-
-		if deal.PieceSize.Unpadded() != dealsBySize[last][0].PieceSize.Unpadded() {
-			dealsBySize = append(dealsBySize, []*types.DealInfoIncludePath{deal})
-			dealSizeIdxMap[deal.PieceSize.Unpadded()] = length
-			continue
-		}
-
-		dealsBySize[last] = append(dealsBySize[last], deal)
-	}
-
-	// 合并
-	fillers, err := fillersFromRem(sectorCap)
+	pieces, err := pickAndAlign(deals, ssize, spec)
 	if err != nil {
-		log.Warnw("unable to get fillers", "size", sectorCap, "err", err)
-		return nil, err
-	}
-	combinedAll := make([]*CombinedPieces, 0, len(deals))
-	for i := range dealsBySize {
-		if len(dealsBySize[i]) == 0 {
-			continue
-		}
-
-		// 消费掉当前尺寸内的所有订单
-		for len(dealsBySize[i]) > 0 {
-			first := dealsBySize[i][0]
-			dealsBySize[i] = dealsBySize[i][1:]
-
-			dlog := log.With("first", first.DealID, "first-size", first.PieceSize.Unpadded())
-
-			dlog.Info("init combined deals")
-			combined := &CombinedPieces{
-				Pieces:     []*types.DealInfoIncludePath{first},
-				DealIDs:    []abi.DealID{first.DealID},
-				MinStart:   first.StartEpoch,
-				PriceTotal: first.TotalStorageFee,
-			}
-
-			// 遍历所有填充尺寸
-			for i, fsize := range fillers {
-				var dealOfFsize *types.DealInfoIncludePath
-
-				// 如果允许填充更多订单, 尝试找出当前填充尺寸对应的下一个订单
-				if len(combined.DealIDs) < spec.MaxPiece {
-					if sizeIdx, has := dealSizeIdxMap[fsize]; has && len(dealsBySize[sizeIdx]) > 0 {
-						dealOfFsize = dealsBySize[sizeIdx][0]
-						dealsBySize[sizeIdx] = dealsBySize[sizeIdx][1:]
-					}
-				}
-
-				// 填充 全0 piece
-				if dealOfFsize == nil {
-					combined.Pieces = append(combined.Pieces, &types.DealInfoIncludePath{
-						DealProposal: market.DealProposal{
-							PieceSize: fsize.Padded(),
-							PieceCID:  zerocomm.ZeroPieceCommitment(fsize),
-						},
-					})
-					continue
-				}
-
-				dlog.Infow("filling combined deals", "piece", dealOfFsize.DealID, "piece-size", dealOfFsize.PieceSize, "piece-index", i+1)
-				// 填充订单 piece
-				combined.Pieces = append(combined.Pieces, dealOfFsize)
-				combined.DealIDs = append(combined.DealIDs, dealOfFsize.DealID)
-				if dealOfFsize.StartEpoch < combined.MinStart {
-					combined.MinStart = dealOfFsize.StartEpoch
-				}
-				combined.PriceTotal = big.Add(combined.PriceTotal, dealOfFsize.TotalStorageFee)
-
-			}
-
-			combinedAll = append(combinedAll, combined)
-		}
+		return nil, fmt.Errorf("unable to pick and align pieces from deals: %w", err)
 	}
 
-	// 按开始时间, 价格排序
-	sort.Slice(combinedAll, func(i, j int) bool {
-		if combinedAll[i].MinStart != combinedAll[j].MinStart {
-			return combinedAll[i].MinStart < combinedAll[j].MinStart
-		}
-
-		return combinedAll[i].PriceTotal.GreaterThan(combinedAll[j].PriceTotal)
-	})
-
-	pieces := []*types.DealInfoIncludePath{}
-	for _, cp := range combinedAll {
-		pieces = append(pieces, cp.Pieces...)
-
+	if len(pieces) == 0 {
+		return nil, nil
 	}
 
+	// TODO: is this concurrent safe?
 	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
 		for _, piece := range pieces {
 			md, err := txRepo.StorageDealRepo().GetDealByDealID(ctx, miner, piece.DealID)
@@ -340,42 +239,6 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.A
 	}
 
 	return pieces, nil
-}
-
-func fillersFromRem(in abi.UnpaddedPieceSize) ([]abi.UnpaddedPieceSize, error) {
-	// Convert to in-sector bytes for easier math:
-	//
-	// Sector size to user bytes ratio is constant, e.g. for 1024B we have 1016B
-	// of user-usable data.
-	//
-	// (1024/1016 = 128/127)
-	//
-	// Given that we can get sector size by simply adding 1/127 of the user
-	// bytes
-	//
-	// (we convert to sector bytes as they are nice round binary numbers)
-
-	toFill := uint64(in + (in / 127))
-
-	// We need to fill the sector with pieces that are powers of 2. Conveniently
-	// computers store numbers in binary, which means we can look at 1s to get
-	// all the piece sizes we need to fill the sector. It also means that number
-	// of pieces is the number of 1s in the number of remaining bytes to fill
-	out := make([]abi.UnpaddedPieceSize, bits.OnesCount64(toFill))
-	for i := range out {
-		// Extract the next lowest non-zero bit
-		next := bits.TrailingZeros64(toFill)
-		psize := uint64(1) << uint64(next)
-		// e.g: if the number is 0b010100, psize will be 0b000100
-
-		// set that bit to 0 by XORing it, so the next iteration looks at the
-		// next bit
-		toFill ^= psize
-
-		// Add the piece size to the list of pieces we need to create
-		out[i] = abi.PaddedPieceSize(psize).Unpadded()
-	}
-	return out, nil
 }
 
 type CombinedPieces struct {
