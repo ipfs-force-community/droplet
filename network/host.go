@@ -3,8 +3,8 @@ package network
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/metrics"
 	"github.com/filecoin-project/venus-market/version"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -23,8 +23,6 @@ type P2PHostIn struct {
 
 // ////////////////////////
 func Host(mctx metrics.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (host.Host, error) {
-	ctx := metrics.LifecycleCtx(mctx, lc)
-
 	pkey := params.Peerstore.PrivKey(params.ID)
 	if pkey == nil {
 		return nil, fmt.Errorf("missing private key for node ID: %s", params.ID.Pretty())
@@ -35,13 +33,13 @@ func Host(mctx metrics.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (host.Host
 		libp2p.Peerstore(params.Peerstore),
 		libp2p.NoListenAddrs,
 		libp2p.Ping(true),
-		libp2p.UserAgent("lotus-" + version.UserVersion()),
+		libp2p.UserAgent("venus-" + version.UserVersion()),
 	}
 	for _, o := range params.Opts {
 		opts = append(opts, o...)
 	}
 
-	h, err := libp2p.New(ctx, opts...)
+	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
 	}

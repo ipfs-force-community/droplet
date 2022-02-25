@@ -5,12 +5,14 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/docker/go-units"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/venus/pkg/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var RetrievalDealsCmd = &cli.Command{
@@ -124,6 +126,9 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 var retrievalDealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all active retrieval deals for this miner",
+	Flags: []cli.Flag{
+		minerFlag,
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
@@ -131,26 +136,35 @@ var retrievalDealsListCmd = &cli.Command{
 		}
 		defer closer()
 
-		deals, err := api.MarketListRetrievalDeals(DaemonContext(cctx))
+		var mAddr address.Address
+		if cctx.IsSet("miner") {
+			mAddr, err = address.NewFromString(cctx.String("miner"))
+			if err != nil {
+				return err
+			}
+		}
+
+		deals, err := api.MarketListRetrievalDeals(DaemonContext(cctx), mAddr)
 		if err != nil {
 			return err
 		}
-
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 
-		_, _ = fmt.Fprintf(w, "Receiver\tDealID\tPayload\tState\tPricePerByte\tBytesSent\tMessage\n")
+		_, _ = fmt.Fprintf(w, "Receiver\tDealID\tPayload\tState\tPricePerByte\tBytesSent\tPaied\tInterval\tMessage\n")
 
 		for _, deal := range deals {
 			payloadCid := deal.PayloadCID.String()
 
 			_, _ = fmt.Fprintf(w,
-				"%s\t%d\t%s\t%s\t%s\t%d\t%s\n",
+				"%s\t%d\t%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
 				deal.Receiver.String(),
 				deal.ID,
 				"..."+payloadCid[len(payloadCid)-8:],
 				retrievalmarket.DealStatuses[deal.Status],
 				deal.PricePerByte.String(),
 				deal.TotalSent,
+				deal.FundsReceived,
+				deal.CurrentInterval,
 				deal.Message,
 			)
 		}
@@ -181,6 +195,10 @@ var retrievalSetAskCmd = &cli.Command{
 			Usage:       "Set the payment interval increase (in bytes) for retrieval",
 			DefaultText: "1MiB",
 		},
+		&cli.StringFlag{
+			Name:     "payment-addr",
+			Required: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := DaemonContext(cctx)
@@ -191,9 +209,17 @@ var retrievalSetAskCmd = &cli.Command{
 		}
 		defer closer()
 
-		ask, err := api.MarketGetRetrievalAsk(ctx)
+		mAddr, err := address.NewFromString(cctx.String("payment-addr"))
 		if err != nil {
 			return err
+		}
+
+		ask, err := api.MarketGetRetrievalAsk(ctx, mAddr)
+		if err != nil {
+			if err.Error() != "record not found" {
+				return err
+			}
+			ask = &retrievalmarket.Ask{}
 		}
 
 		if cctx.IsSet("price") {
@@ -228,14 +254,16 @@ var retrievalSetAskCmd = &cli.Command{
 			ask.PaymentIntervalIncrease = uint64(v)
 		}
 
-		return api.MarketSetRetrievalAsk(ctx, ask)
+		return api.MarketSetRetrievalAsk(ctx, mAddr, ask)
 	},
 }
 
 var retrievalGetAskCmd = &cli.Command{
 	Name:  "get-ask",
 	Usage: "Get the provider's current retrieval ask",
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		requiredMinerFlag,
+	},
 	Action: func(cctx *cli.Context) error {
 		ctx := DaemonContext(cctx)
 
@@ -245,7 +273,12 @@ var retrievalGetAskCmd = &cli.Command{
 		}
 		defer closer()
 
-		ask, err := api.MarketGetRetrievalAsk(ctx)
+		mAddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return err
+		}
+
+		ask, err := api.MarketGetRetrievalAsk(ctx, mAddr)
 		if err != nil {
 			return err
 		}

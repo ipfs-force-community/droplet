@@ -5,11 +5,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/metrics"
+	"github.com/filecoin-project/venus-market/minermgr"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/pkg/wallet"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 )
 
 type MsgMeta struct {
@@ -21,13 +23,13 @@ type MsgMeta struct {
 
 type ISinger interface {
 	WalletHas(ctx context.Context, addr address.Address) (bool, error)
-	WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*vCrypto.Signature, error)
+	WalletSign(ctx context.Context, k address.Address, msg []byte, meta types2.MsgMeta) (*vCrypto.Signature, error)
 }
 
 type WalletClient struct {
 	Internal struct {
 		WalletHas  func(ctx context.Context, addr address.Address) (bool, error)
-		WalletSign func(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*vCrypto.Signature, error)
+		WalletSign func(ctx context.Context, k address.Address, msg []byte, meta types2.MsgMeta) (*vCrypto.Signature, error)
 	}
 }
 
@@ -35,20 +37,38 @@ func (walletClient *WalletClient) WalletHas(ctx context.Context, addr address.Ad
 	return walletClient.Internal.WalletHas(ctx, addr)
 }
 
-func (walletClient *WalletClient) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*vCrypto.Signature, error) {
+func (walletClient *WalletClient) WalletSign(ctx context.Context, k address.Address, msg []byte, meta types2.MsgMeta) (*vCrypto.Signature, error) {
 	return walletClient.Internal.WalletSign(ctx, k, msg, meta)
 }
 
-func NewWalletClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, cfg *config.Signer) (ISinger, error) {
-	client, closer, err := newWalletClient(context.Background(), cfg.Token, cfg.Url)
+type SignerParams struct {
+	fx.In
+	SignerCfg *config.Signer
+	Mgr       minermgr.IAddrMgr `optional:"true"`
+}
+
+func NewISignerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, params SignerParams) (ISinger, error) {
+	var signer ISinger
+	var closer jsonrpc.ClientCloser
+	var err error
+	switch params.SignerCfg.SignerType {
+	case "wallet":
+		signer, closer, err = newWalletClient(context.Background(), params.SignerCfg.Token, params.SignerCfg.Url)
+	case "gateway":
+		signer, closer, err = newGatewayWalletClient(context.Background(), params.Mgr, params.SignerCfg)
+	default:
+		return nil, xerrors.Errorf("unsupport sign type %s", params.SignerCfg.SignerType)
+	}
+
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {
-			closer()
+			if closer != nil {
+				closer()
+			}
 			return nil
 		},
 	})
-
-	return client, err
+	return signer, err
 }
 
 func newWalletClient(ctx context.Context, token, url string) (*WalletClient, jsonrpc.ClientCloser, error) {

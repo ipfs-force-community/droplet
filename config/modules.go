@@ -1,9 +1,11 @@
 package config
 
 import (
-	"github.com/filecoin-project/venus-market/builder"
-	"github.com/ipfs/go-cid"
 	"time"
+
+	"github.com/ipfs/go-cid"
+
+	"github.com/ipfs-force-community/venus-common-utils/builder"
 )
 
 func NewConsiderOnlineStorageDealsConfigFunc(cfg *MarketConfig) (ConsiderOnlineStorageDealsConfigFunc, error) {
@@ -131,8 +133,9 @@ var ConfigServerOpts = func(cfg *MarketConfig) builder.Option {
 		builder.Override(new(*Node), &cfg.Node),
 		builder.Override(new(*Messager), &cfg.Messager),
 		builder.Override(new(*Signer), &cfg.Signer),
+		builder.Override(new(*Mysql), &cfg.Mysql),
 		builder.Override(new(*Libp2p), &cfg.Libp2p),
-		builder.Override(new(*PieceStorageString), &cfg.PieceStorage),
+		builder.Override(new(*PieceStorage), &cfg.PieceStorage),
 		builder.Override(new(*DAGStoreConfig), &cfg.DAGStore),
 
 		// Config (todo: get a real property system)

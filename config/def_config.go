@@ -1,19 +1,21 @@
 package config
 
 import (
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs/go-cid"
 	"time"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
 )
 
 const (
 	DefaultSimultaneousTransfers = uint64(20)
+
+	HomePath = "~/.venusmarket"
 )
 
 var DefaultMarketConfig = &MarketConfig{
-	Home:         Home{"~/.venusmarket"},
-	MinerAddress: "maddr",
+	Home: Home{HomePath},
 	Common: Common{
 		API: API{
 			ListenAddress: "/ip4/127.0.0.1/tcp/41235",
@@ -29,15 +31,26 @@ var DefaultMarketConfig = &MarketConfig{
 		},
 	},
 	Node: Node{
-		Url:   "/ip4/<ip>/tcp/3453",
+		Url:   "", // "/ip4/<ip>/tcp/3453",
 		Token: "",
 	},
 	Messager: Messager{
-		Url:   "/ip4/<ip>/tcp/39812",
+		Url:   "", // /ip4/<ip>/tcp/39812
 		Token: "",
 	},
 	Signer: Signer{
-		Url:   "/ip4/<ip>/tcp/5678",
+		Url:   "", // /ip4/<ip>/tcp/5678
+		Token: "",
+	},
+	Mysql: Mysql{
+		ConnectionString: "",
+		MaxOpenConn:      100,
+		MaxIdleConn:      100,
+		ConnMaxLifeTime:  "1m",
+		Debug:            false,
+	},
+	AuthNode: AuthNode{
+		Url:   "", // "http://<ip>:8989",
 		Token: "",
 	},
 	DAGStore: DAGStoreConfig{
@@ -45,9 +58,11 @@ var DefaultMarketConfig = &MarketConfig{
 		MaxConcurrencyStorageCalls: 100,
 		GCInterval:                 Duration(1 * time.Minute),
 	},
-	Journal:                        Journal{Path: "journal"},
-	PieceStorage:                   "fs:/mnt/piece",
-	TransferPath:                   "~/.venusmarket",
+	Journal: Journal{Path: "journal"},
+	PieceStorage: PieceStorage{Fs: FsPieceStorage{
+		Enable: true,
+		Path:   "/mnt/piece",
+	}},
 	ConsiderOnlineStorageDeals:     true,
 	ConsiderOfflineStorageDeals:    true,
 	ConsiderOnlineRetrievalDeals:   true,
@@ -63,7 +78,9 @@ var DefaultMarketConfig = &MarketConfig{
 	MaxDealsPerPublishMsg:           8,
 	MaxProviderCollateralMultiplier: 2,
 
-	SimultaneousTransfers: DefaultSimultaneousTransfers,
+	SimultaneousTransfersForRetrieval:        DefaultSimultaneousTransfers,
+	SimultaneousTransfersForStoragePerClient: DefaultSimultaneousTransfers,
+	SimultaneousTransfersForStorage:          DefaultSimultaneousTransfers,
 
 	RetrievalPricing: &RetrievalPricing{
 		Strategy: RetrievalPricingDefaultMode,
@@ -96,17 +113,18 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		},
 	},
 	Node: Node{
-		Url:   "/ip4/<ip>/tcp/3453",
+		Url:   "", // "/ip4/<ip>/tcp/3453",
 		Token: "",
 	},
 	Signer: Signer{
-		Url:   "/ip4/<ip>/tcp/5678",
+		Url:   "", // "/ip4/<ip>/tcp/5678",
 		Token: "",
 	},
 	Messager: Messager{
-		Url:   "/ip4/<ip>/tcp/39812",
+		Url:   "", // "/ip4/<ip>/tcp/39812",
 		Token: "",
 	},
-	DefaultMarketAddress:  Address(address.Undef),
-	SimultaneousTransfers: DefaultSimultaneousTransfers,
+	DefaultMarketAddress:              Address(address.Undef),
+	SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
+	SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
 }

@@ -1,12 +1,11 @@
 package network
 
 import (
-	"github.com/filecoin-project/venus-market/builder"
+	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 )
 
 //nolint:golint
@@ -19,19 +18,20 @@ var (
 	SecurityKey          = builder.Special{ID: 6} // Libp2p option
 )
 
+// Invokes are called in the order they are defined.
 var (
-	PstoreAddSelfKeysKey builder.Invoke = builder.NextInvoke()
-	StartListeningKey    builder.Invoke = builder.NextInvoke()
+	PstoreAddSelfKeysKey = builder.NextInvoke()
+	StartListeningKey    = builder.NextInvoke()
 )
 
-var NetworkOpts = func(server bool, simultaneousTransfers uint64) builder.Option {
+var NetworkOpts = func(server bool, simultaneousTransfersForRetrieval, simultaneousTransfersForStoragePerClient, simultaneousTransfersForStorage uint64) builder.Option {
 	opts := builder.Options(
 		builder.Override(new(host.Host), Host),
 		//libp2p
 		builder.Override(new(crypto.PrivKey), PrivKey),
 		builder.Override(new(crypto.PubKey), crypto.PrivKey.GetPublic),
 		builder.Override(new(peer.ID), peer.IDFromPublicKey),
-		builder.Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
+		builder.Override(new(peerstore.Peerstore), NewPeerstore),
 		builder.Override(PstoreAddSelfKeysKey, PstoreAddSelfKeys),
 		builder.Override(StartListeningKey, StartListening),
 		builder.Override(AddrsFactoryKey, AddrsFactory),
@@ -42,11 +42,12 @@ var NetworkOpts = func(server bool, simultaneousTransfers uint64) builder.Option
 	)
 	if server {
 		return builder.Options(opts,
-			builder.Override(new(StagingGraphsync), NewStagingGraphsync(simultaneousTransfers)),
+			builder.Override(new(StagingGraphsync), NewStagingGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfersForStoragePerClient, simultaneousTransfersForStorage)),
 		)
 	} else {
 		return builder.Options(opts,
-			builder.Override(new(Graphsync), NewGraphsync(simultaneousTransfers)),
+			// retrieval/storage reverse for server/client
+			builder.Override(new(Graphsync), NewGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfersForStorage)),
 		)
 	}
 }

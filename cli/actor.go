@@ -1,25 +1,61 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/filecoin-project/go-state-types/abi"
+	"text/tabwriter"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/filecoin-project/venus/pkg/types/specactors"
-	"github.com/filecoin-project/venus/pkg/types/specactors/builtin/miner"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var ActorCmd = &cli.Command{
 	Name:  "actor",
 	Usage: "manipulate the miner actor",
 	Subcommands: []*cli.Command{
+		actorListCmd,
 		actorSetAddrsCmd,
 		actorSetPeeridCmd,
 		actorInfoCmd,
+	},
+}
+
+var actorListCmd = &cli.Command{
+	Name:  "list",
+	Usage: "find miners in the system",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		nodeAPI, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		miners, err := nodeAPI.ActorList(cctx.Context)
+		if err != nil {
+			return err
+		}
+
+		buf := &bytes.Buffer{}
+		tw := tabwriter.NewWriter(buf, 2, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "miner\taccount")
+		for _, miner := range miners {
+			_, _ = fmt.Fprintf(tw, "%s\t%s\n", miner.Addr.String(), miner.Account)
+		}
+		if err := tw.Flush(); err != nil {
+			return err
+		}
+		fmt.Println(buf.String())
+
+		return nil
 	},
 }
 
@@ -36,6 +72,10 @@ var actorSetAddrsCmd = &cli.Command{
 			Name:  "unset",
 			Usage: "unset address",
 			Value: false,
+		},
+		&cli.StringFlag{
+			Name:     "miner",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -79,9 +119,13 @@ var actorSetAddrsCmd = &cli.Command{
 			addrs = append(addrs, maddrNop2p.Bytes())
 		}
 
-		maddr, err := nodeAPI.ActorAddress(ctx)
+		maddr, err := address.NewFromString(cctx.String("miner"))
 		if err != nil {
-			return err
+			return nil
+		}
+
+		if bHas, _ := nodeAPI.ActorExist(ctx, maddr); !bHas {
+			return fmt.Errorf("actor [%s] not found", maddr)
 		}
 
 		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
@@ -89,7 +133,7 @@ var actorSetAddrsCmd = &cli.Command{
 			return err
 		}
 
-		params, err := specactors.SerializeParams(&miner2.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
+		params, err := actors.SerializeParams(&miner7.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
 		if err != nil {
 			return err
 		}
@@ -123,6 +167,10 @@ var actorSetPeeridCmd = &cli.Command{
 			Usage: "set gas limit",
 			Value: 0,
 		},
+		&cli.StringFlag{
+			Name:     "miner",
+			Required: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeAPI, closer, err := NewMarketNode(cctx)
@@ -144,9 +192,13 @@ var actorSetPeeridCmd = &cli.Command{
 			return fmt.Errorf("failed to parse input as a peerId: %w", err)
 		}
 
-		maddr, err := nodeAPI.ActorAddress(ctx)
+		maddr, err := address.NewFromString(cctx.String("miner"))
 		if err != nil {
-			return err
+			return nil
+		}
+
+		if bHas, _ := nodeAPI.ActorExist(ctx, maddr); !bHas {
+			return fmt.Errorf("actor [%s] not found", maddr)
 		}
 
 		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
@@ -154,7 +206,7 @@ var actorSetPeeridCmd = &cli.Command{
 			return err
 		}
 
-		params, err := specactors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(pid)})
+		params, err := actors.SerializeParams(&miner7.ChangePeerIDParams{NewID: abi.PeerID(pid)})
 		if err != nil {
 			return err
 		}
@@ -182,7 +234,12 @@ var actorSetPeeridCmd = &cli.Command{
 var actorInfoCmd = &cli.Command{
 	Name:  "info",
 	Usage: "query info of your miner",
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "miner",
+			Required: true,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		nodeAPI, closer, err := NewMarketNode(cctx)
 		if err != nil {
@@ -198,16 +255,25 @@ var actorInfoCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		maddr, err := nodeAPI.ActorAddress(ctx)
+		maddr, err := address.NewFromString(cctx.String("miner"))
 		if err != nil {
-			return err
+			return nil
+		}
+
+		if bHas, _ := nodeAPI.ActorExist(ctx, maddr); !bHas {
+			return fmt.Errorf("actor [%s] not found", maddr)
 		}
 
 		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
-		fmt.Println("peers:", minfo.PeerId.String())
+
+		peerIdStr := ""
+		if minfo.PeerId != nil {
+			peerIdStr = minfo.PeerId.String()
+		}
+		fmt.Println("peers:", peerIdStr)
 		fmt.Println("addr:")
 		for _, addrBytes := range minfo.Multiaddrs {
 			addr, err := ma.NewMultiaddrBytes(addrBytes)
@@ -217,6 +283,7 @@ var actorInfoCmd = &cli.Command{
 			}
 			fmt.Println("\t", addr.String())
 		}
+
 		return nil
 	},
 }

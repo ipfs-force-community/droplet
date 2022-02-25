@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	p2pbhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	mafilter "github.com/libp2p/go-maddr-filter"
 	ma "github.com/multiformats/go-multiaddr"
@@ -40,7 +41,7 @@ func PrivKey(home config.IHome, cfg *config.Libp2p) (crypto.PrivKey, error) {
 		return nil, err
 	}
 
-	kbytes, err := pk.Bytes()
+	kbytes, err := crypto.MarshalPrivateKey(pk)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +65,11 @@ func simpleOpt(opt libp2p.Option) func() (opts Libp2pOpts, err error) {
 	}
 }
 
+// There are no 'pstoremem.Option' provider, so wrap it for not asking 'options'.
+func NewPeerstore() (peerstore.Peerstore, error) {
+	return pstoremem.NewPeerstore()
+}
+
 func PstoreAddSelfKeys(id peer.ID, sk crypto.PrivKey, ps peerstore.Peerstore) error {
 	if err := ps.AddPubKey(id, sk.GetPublic()); err != nil {
 		return err
@@ -77,19 +83,6 @@ func NoRelay() func() (opts Libp2pOpts, err error) {
 		// always disabled, it's an eclipse attack vector
 		opts.Opts = append(opts.Opts, libp2p.DisableRelay())
 		return
-	}
-}
-
-func AddrFilters(filters []string) func() (opts Libp2pOpts, err error) {
-	return func() (opts Libp2pOpts, err error) {
-		for _, s := range filters {
-			f, err := mamask.NewMask(s)
-			if err != nil {
-				return opts, fmt.Errorf("incorrectly formatted address filter in config: %s", s)
-			}
-			opts.Opts = append(opts.Opts, libp2p.FilterAddresses(f)) //nolint:staticcheck
-		}
-		return opts, nil
 	}
 }
 

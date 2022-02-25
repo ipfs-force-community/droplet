@@ -2,7 +2,18 @@ package client
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/filecoin-project/go-data-transfer/channelmonitor"
+	"github.com/filecoin-project/venus-market/models/badger"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
+
+	"github.com/libp2p/go-libp2p-core/host"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
@@ -14,23 +25,18 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/venus-market/builder"
+
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/imports"
-	"github.com/filecoin-project/venus-market/journal"
-	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/retrievaladapter"
-	"github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/paychmgr"
+	"github.com/filecoin-project/venus-market/retrievalprovider"
+	"github.com/filecoin-project/venus-market/storageprovider"
 	marketevents "github.com/filecoin-project/venus-market/utils"
-	"github.com/filecoin-project/venus/app/client/apiface"
-	paych3 "github.com/filecoin-project/venus/app/submodule/paych"
-	"github.com/libp2p/go-libp2p-core/host"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
-	"os"
-	"path/filepath"
-	"time"
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
+
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )
 
 type StorageProviderEvt struct {
@@ -38,7 +44,7 @@ type StorageProviderEvt struct {
 	Deal  storagemarket.MinerDeal
 }
 
-func NewLocalDiscovery(lc fx.Lifecycle, ds models.ClientDealsDS) (*discoveryimpl.Local, error) {
+func NewLocalDiscovery(lc fx.Lifecycle, ds badger.ClientDealsDS) (*discoveryimpl.Local, error) {
 	local, err := discoveryimpl.NewLocal(ds) //todo need new discoveryimpl base on sql
 	if err != nil {
 		return nil, err
@@ -56,25 +62,25 @@ func RetrievalResolver(l *discoveryimpl.Local) discovery.PeerResolver {
 	return discoveryimpl.Multi(l)
 }
 
-func NewClientImportMgr(ns models.ImportClientDS, r *config.HomeDir) (ClientImportMgr, error) {
+func NewClientImportMgr(ctx metrics.MetricsCtx, ns badger.ImportClientDS, r *config.HomeDir) (ClientImportMgr, error) {
 	// store the imports under the repo's `imports` subdirectory.
 	dir := filepath.Join(string(*r), "imports")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, xerrors.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
-	return imports.NewManager(ns, dir), nil
+	return imports.NewManager(ctx, ns, dir), nil
 }
 
 // NewClientGraphsyncDataTransfer returns a data transfer manager that just
 // uses the clients's Client DAG service for transfers
-func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Graphsync, dtDs models.ClientTransferDS, homeDir *config.HomeDir) (network.ClientDataTransfer, error) {
+func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Graphsync, dtDs badger.ClientTransferDS, homeDir *config.HomeDir) (network.ClientDataTransfer, error) {
 	// go-data-transfer protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
 	dtRetryParams := dtnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
 	net := dtnet.NewFromLibp2pHost(h, dtRetryParams)
 
-	transport := dtgstransport.NewTransport(h.ID(), gs)
+	transport := dtgstransport.NewTransport(h.ID(), gs, net)
 	err := os.MkdirAll(filepath.Join(string(*homeDir), "data-transfer"), 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err
@@ -98,6 +104,7 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Gra
 		// After trying to restart 3 times, give up and fail the transfer
 		MaxConsecutiveRestarts: 3,
 	})
+
 	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(string(*homeDir), "data-transfer"), net, transport, dtRestartConfig)
 	if err != nil {
 		return nil, err
@@ -119,7 +126,7 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Gra
 // StorageBlockstoreAccessor returns the default storage blockstore accessor
 // from the import manager.
 func StorageBlockstoreAccessor(importmgr ClientImportMgr) storagemarket.BlockstoreAccessor {
-	return storageadapter.NewImportsBlockstoreAccessor(importmgr)
+	return storageprovider.NewImportsBlockstoreAccessor(importmgr)
 }
 
 // RetrievalBlockstoreAccessor returns the default retrieval blockstore accessor
@@ -129,11 +136,11 @@ func RetrievalBlockstoreAccessor(r *config.HomeDir) (retrievalmarket.BlockstoreA
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, xerrors.Errorf("failed to create directory %s: %w", dir, err)
 	}
-	return retrievaladapter.NewCARBlockstoreAccessor(dir), nil
+	return retrievalprovider.NewCARBlockstoreAccessor(dir), nil
 }
 
 func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientDataTransfer, discovery *discoveryimpl.Local,
-	deals models.ClientDatastore, scn storagemarket.StorageClientNode, accessor storagemarket.BlockstoreAccessor, j journal.Journal) (storagemarket.StorageClient, error) {
+	deals badger.ClientDatastore, scn storagemarket.StorageClientNode, accessor storagemarket.BlockstoreAccessor, j journal.Journal) (storagemarket.StorageClient, error) {
 	// go-fil-markets protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
 	marketsRetryParams := smnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
@@ -161,10 +168,10 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientData
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(lc fx.Lifecycle, h host.Host, dt network.ClientDataTransfer, payAPI *paych3.PaychAPI, resolver discovery.PeerResolver,
-	ds models.RetrievalClientDS, fullApi apiface.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+func RetrievalClient(lc fx.Lifecycle, h host.Host, dt network.ClientDataTransfer, payAPI *paychmgr.PaychAPI, resolver discovery.PeerResolver,
+	ds badger.RetrievalClientDS, fullApi v1api.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 
-	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, fullApi)
+	adapter := retrievalprovider.NewRetrievalClientNode(payAPI, fullApi)
 	libP2pHost := rmnet.NewFromLibp2pHost(h)
 	client, err := retrievalimpl.NewClient(libP2pHost, dt, adapter, resolver, ds, accessor)
 	if err != nil {

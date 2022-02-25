@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -23,21 +24,21 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/venus-market/imports"
-	"github.com/filecoin-project/venus-market/storageadapter"
+	"github.com/filecoin-project/venus-market/storageprovider"
 )
 
 //go:embed testdata/*
 var testdata embed.FS
 
 func TestImportLocal(t *testing.T) {
+	ctx := context.Background()
 	ds := dssync.MutexWrap(datastore.NewMapDatastore())
 	dir := t.TempDir()
-	im := imports.NewManager(ds, dir)
-	ctx := context.Background()
+	im := imports.NewManager(ctx, ds, dir)
 
 	a := &API{
 		Imports:                   im,
-		StorageBlockstoreAccessor: storageadapter.NewImportsBlockstoreAccessor(im),
+		StorageBlockstoreAccessor: storageprovider.NewImportsBlockstoreAccessor(im),
 	}
 
 	b, err := testdata.ReadFile("testdata/payload.txt")
@@ -59,7 +60,7 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, local)
 
-	order := RetrievalOrder{
+	order := types.ExportRef{
 		Root:         root,
 		FromLocalCAR: it.CARPath,
 	}
@@ -67,7 +68,7 @@ func TestImportLocal(t *testing.T) {
 	// retrieve as UnixFS.
 	out1 := filepath.Join(dir, "retrieval1.data") // as unixfs
 	out2 := filepath.Join(dir, "retrieval2.data") // as car
-	err = a.ClientRetrieve(ctx, order, &FileRef{
+	err = a.ClientExport(ctx, order, types.FileRef{
 		Path: out1,
 	})
 	require.NoError(t, err)
@@ -76,7 +77,7 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, b, outBytes)
 
-	err = a.ClientRetrieve(ctx, order, &FileRef{
+	err = a.ClientExport(ctx, order, types.FileRef{
 		Path:  out2,
 		IsCAR: true,
 	})
@@ -106,7 +107,7 @@ func TestImportLocal(t *testing.T) {
 	// recreate the unixfs dag, and see if it matches the original file byte by byte
 	// import the car into a memory blockstore, then export the unixfs file.
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	_, err = car.LoadCar(bs, exported.DataReader())
+	_, err = car.LoadCar(ctx, bs, exported.DataReader())
 	require.NoError(t, err)
 
 	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))

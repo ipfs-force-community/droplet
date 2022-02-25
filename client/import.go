@@ -7,8 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"golang.org/x/xerrors"
-
+	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
@@ -20,10 +19,7 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
-
-	"github.com/filecoin-project/go-fil-markets/stores"
-
-	"github.com/filecoin-project/venus-market/config"
+	"golang.org/x/xerrors"
 )
 
 func unixFSCidBuilder() (cid.Builder, error) {
@@ -121,6 +117,10 @@ func (a *API) createUnixFSFilestore(ctx context.Context, srcPath string, dstPath
 	return finalRoot1, nil
 }
 
+// TODO ???
+const UnixfsChunkSize uint64 = 1 << 20
+const UnixfsLinksPerLevel = 1024
+
 // buildUnixFS builds a UnixFS DAG out of the supplied reader,
 // and imports the DAG into the supplied service.
 func buildUnixFS(ctx context.Context, reader io.Reader, into bstore.Blockstore, filestore bool) (cid.Cid, error) {
@@ -134,14 +134,14 @@ func buildUnixFS(ctx context.Context, reader io.Reader, into bstore.Blockstore, 
 	bufdag := ipld.NewBufferedDAG(ctx, dags)
 
 	params := ihelper.DagBuilderParams{
-		Maxlinks:   config.UnixfsLinksPerLevel,
+		Maxlinks:   UnixfsLinksPerLevel,
 		RawLeaves:  true,
 		CidBuilder: b,
 		Dagserv:    bufdag,
 		NoCopy:     filestore,
 	}
 
-	db, err := params.New(chunker.NewSizeSplitter(reader, int64(config.UnixfsChunkSize)))
+	db, err := params.New(chunker.NewSizeSplitter(reader, int64(UnixfsChunkSize)))
 	if err != nil {
 		return cid.Undef, err
 	}

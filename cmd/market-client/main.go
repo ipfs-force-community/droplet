@@ -2,71 +2,83 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/api"
-	clients2 "github.com/filecoin-project/venus-market/api/clients"
-	"github.com/filecoin-project/venus-market/api/impl"
-	"github.com/filecoin-project/venus-market/builder"
-	cli2 "github.com/filecoin-project/venus-market/cli"
-	"github.com/filecoin-project/venus-market/client"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/fundmgr"
-	"github.com/filecoin-project/venus-market/journal"
-	"github.com/filecoin-project/venus-market/metrics"
-	"github.com/filecoin-project/venus-market/models"
-	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/paychmgr"
-	"github.com/filecoin-project/venus-market/rpc"
-	"github.com/filecoin-project/venus-market/storageadapter"
-	"github.com/filecoin-project/venus-market/types"
-	"github.com/filecoin-project/venus-market/utils"
-	"github.com/filecoin-project/venus/pkg/constants"
-	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
-	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+	"os"
+
+	"github.com/gorilla/mux"
+	logging "github.com/ipfs/go-log/v2"
+
 	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
-	"log"
-	"os"
+
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/venus-market/api"
+	clients2 "github.com/filecoin-project/venus-market/api/clients"
+	"github.com/filecoin-project/venus-market/api/impl"
+	cli2 "github.com/filecoin-project/venus-market/cli"
+	"github.com/filecoin-project/venus-market/client"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/fundmgr"
+	"github.com/filecoin-project/venus-market/models"
+	"github.com/filecoin-project/venus-market/network"
+	"github.com/filecoin-project/venus-market/paychmgr"
+	"github.com/filecoin-project/venus-market/rpc"
+	"github.com/filecoin-project/venus-market/storageprovider"
+	types2 "github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus-market/utils"
+
+	"github.com/filecoin-project/venus-market/version"
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 )
 
-var ExtractApiKey builder.Invoke = builder.NextInvoke()
+var ExtractApiKey = builder.NextInvoke()
+var log = logging.Logger("main")
 
 var (
 	RepoFlag = &cli.StringFlag{
-		Name:  "repo",
+		Name:    "repo",
 		EnvVars: []string{"VENUS_MARKET_CLIENT_PATH"},
-		Value: "~/.marketclient",
+		Value:   "~/.marketclient",
 	}
+
 	NodeUrlFlag = &cli.StringFlag{
 		Name:  "node-url",
-		Usage: "url to connect to daemon service",
+		Usage: "url to connect to full node",
+	}
+	NodeTokenFlag = &cli.StringFlag{
+		Name:  "node-token",
+		Usage: "token for connect full node",
 	}
 
 	MessagerUrlFlag = &cli.StringFlag{
 		Name:  "messager-url",
-		Usage: "url to connect messager service",
-	}
-
-	AuthTokenFlag = &cli.StringFlag{
-		Name:  "auth-token",
-		Usage: "token for connect venus componets, this flag can set token for messager and node",
+		Usage: "url to connect the venus-messager service of the chain service layer",
 	}
 
 	MessagerTokenFlag = &cli.StringFlag{
 		Name:  "messager-token",
-		Usage: "token for connect venus messager， if specify this flag ,override token set by venus-auth flag ",
+		Usage: "messager token",
+	}
+
+	AuthTokenFlag = &cli.StringFlag{
+		Name:  "auth-token",
+		Usage: "token used to connect venus chain service components, eg. venus-meassger, venus",
 	}
 
 	SignerUrlFlag = &cli.StringFlag{
-		Name:  "signer-url",
-		Usage: "used to connect signer service for sign",
+		Name:  "wallet-url",
+		Usage: "used to connect wallet service for sign",
 	}
 	SignerTokenFlag = &cli.StringFlag{
-		Name:  "signer-token",
-		Usage: "auth token for connect signer service",
+		Name:  "wallet-token",
+		Usage: "wallet token for connect signer service",
 	}
 
 	DefaultAddressFlag = &cli.StringFlag{
@@ -76,33 +88,94 @@ var (
 )
 
 func main() {
+	localCommand := []*cli.Command{
+		cli2.WithCategory("storage", storageCmd),
+		cli2.WithCategory("retrieval", retrievalCmd),
+		cli2.WithCategory("data", dataCmd),
+		cli2.WithCategory("transfer", transferCmd),
+		cli2.WithCategory("actor-funds", actorFundsCmd),
+	}
+
 	app := &cli.App{
-		Name:                 "venus-market-client",
-		Usage:                "venus-market client",
-		Version:              constants.UserVersion(),
+		Name:                 "market-client",
+		Usage:                "venus stores or retrieves the market client",
+		Version:              version.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			RepoFlag,
 		},
-		Commands: append(cli2.ClientCmds, &cli.Command{
-			Name:  "run",
-			Usage: "run market daemon",
-			Flags: []cli.Flag{
-				NodeUrlFlag,
-				MessagerUrlFlag,
-				AuthTokenFlag,
-				SignerUrlFlag,
-				SignerTokenFlag,
-				DefaultAddressFlag,
-			},
-			Action: marketClient,
-		}),
+		Commands: append(
+			localCommand,
+			&cli.Command{
+				Name: "run",
+				Usage: "run market client daemon,(1) connect full node service: ./market-client run --node-url=<...> --node-token=<...> --addr=<WALLET_ADDR>;" +
+					"(2) connect venus shared service: ./market-client run --node-url=<...> --messager-url=<...> --auth-token=<...>  --signer-url=<...> --signer-token=<...> --addr=<WALLET_ADDR>.",
+				Flags: []cli.Flag{
+					NodeUrlFlag,
+					NodeTokenFlag,
+					MessagerUrlFlag,
+					MessagerTokenFlag,
+					AuthTokenFlag,
+					SignerUrlFlag,
+					SignerTokenFlag,
+					DefaultAddressFlag,
+				},
+				Action: marketClient,
+			}),
 	}
 
 	app.Setup()
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
+	if cctx.IsSet(NodeUrlFlag.Name) {
+		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
+	}
+
+	if cctx.IsSet(MessagerUrlFlag.Name) {
+		if !cctx.IsSet(AuthTokenFlag.Name) {
+			return xerrors.Errorf("the auth-token must be set when connecting to the venus chain service")
+		}
+
+		cfg.Messager.Url = cctx.String(MessagerUrlFlag.Name)
+	}
+
+	if cctx.IsSet(AuthTokenFlag.Name) {
+		cfg.Messager.Token = cctx.String(AuthTokenFlag.Name)
+		cfg.Node.Token = cctx.String(AuthTokenFlag.Name)
+	}
+
+	if cctx.IsSet(NodeTokenFlag.Name) {
+		cfg.Node.Token = cctx.String(NodeTokenFlag.Name)
+	}
+
+	if cctx.IsSet(MessagerTokenFlag.Name) {
+		cfg.Messager.Token = cctx.String(MessagerTokenFlag.Name)
+	}
+
+	if cctx.IsSet(SignerUrlFlag.Name) {
+		if !cctx.IsSet(SignerTokenFlag.Name) {
+			return xerrors.Errorf("signer-url is set, but signer-token is not set")
+		}
+
+		cfg.Signer.SignerType = "wallet"
+		cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
+		cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
+	}
+
+	if cctx.IsSet(DefaultAddressFlag.Name) {
+		addr, err := address.NewFromString(cctx.String(DefaultAddressFlag.Name))
+		if err != nil {
+			return err
+		}
+		log.Infof("set default client address %s", addr.String())
+		cfg.DefaultMarketAddress = config.Address(addr)
+	}
+
+	return nil
 }
 
 func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
@@ -112,8 +185,9 @@ func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
-		//create
+		// create
 		err = flagData(cctx, cfg)
 		if err != nil {
 			return nil, xerrors.Errorf("parser data from flag %w", err)
@@ -124,7 +198,7 @@ func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 			return nil, xerrors.Errorf("save config to %s %w", cfgPath, err)
 		}
 	} else if err == nil {
-		//loadConfig
+		// loadConfig
 		err = config.LoadConfig(cfgPath, cfg)
 		if err != nil {
 			return nil, err
@@ -136,6 +210,7 @@ func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 	} else {
 		return nil, err
 	}
+
 	return cfg, nil
 }
 
@@ -149,23 +224,25 @@ func marketClient(cctx *cli.Context) error {
 	resAPI := &impl.MarketClientNodeImpl{}
 	shutdownChan := make(chan struct{})
 	_, err = builder.New(ctx,
-		//defaults
+		// defaults
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
-		builder.Override(new(journal.Journal), journal.OpenFilesystemJournal),
+		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
+			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "market-client", disabled)
+		}),
 
 		builder.Override(new(metrics.MetricsCtx), func() context.Context {
 			return metrics2.CtxScope(context.Background(), "venus-market")
 		}),
-		builder.Override(new(types.ShutdownChan), shutdownChan),
+		builder.Override(new(types2.ShutdownChan), shutdownChan),
 
 		config.ConfigClientOpts(cfg),
 
-		clients2.ClientsOpts(false, &cfg.Messager, &cfg.Signer),
-		models.DBOptions(false),
-		network.NetworkOpts(false, cfg.SimultaneousTransfers),
+		clients2.ClientsOpts(false, "", &cfg.Messager, &cfg.Signer),
+		models.DBOptions(false, nil),
+		network.NetworkOpts(false, cfg.SimultaneousTransfersForStorage, 0, cfg.SimultaneousTransfersForRetrieval),
 		paychmgr.PaychOpts,
 		fundmgr.FundMgrOpts,
-		storageadapter.StorageClientOpts,
+		storageprovider.StorageClientOpts,
 		client.MarketClientOpts,
 		func(s *builder.Settings) error {
 			s.Invokes[ExtractApiKey] = builder.InvokeOption{
@@ -179,45 +256,5 @@ func marketClient(cctx *cli.Context) error {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := utils.MonitorShutdown(shutdownChan)
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, (api.MarketClientNode)(resAPI), finishCh, 1000, "")
-}
-
-func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
-	if cctx.IsSet("repo") {
-		cfg.HomeDir = cctx.String("repo")
-	}
-	if cctx.IsSet("node-url") {
-		cfg.Node.Url = cctx.String("node-url")
-	}
-	if cctx.IsSet("auth-token") {
-		cfg.Node.Token = cctx.String("auth-token")
-	}
-
-	if cctx.IsSet("messager-url") {
-		cfg.Messager.Url = cctx.String("messager-url")
-	}
-	if cctx.IsSet("auth-token") {
-		cfg.Messager.Token = cctx.String("auth-token")
-	}
-	if cctx.IsSet("messager-token") {
-		cfg.Messager.Token = cctx.String("messager-token")
-	}
-
-	if cctx.IsSet("signer-url") {
-		cfg.Signer.Url = cctx.String("signer-url")
-	}
-	if cctx.IsSet("signer-token") {
-		cfg.Signer.Token = cctx.String("signer-token")
-	}
-
-	if cctx.IsSet("addr") {
-		addr, err := address.NewFromString(cctx.String("addr"))
-		if err != nil {
-			return err
-		}
-		fmt.Println("set default address ", addr.String())
-		cfg.DefaultMarketAddress = config.Address(addr)
-	}
-
-	return nil
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux.NewRouter(), 1000, cli2.API_NAMESPACE_MARKET_CLIENT, "", (api.MarketClientNode)(resAPI), finishCh)
 }

@@ -4,6 +4,12 @@
 *.dll
 *.so
 *.dylib
+badgerStAskDb/
+*.puml
+market-client
+venus-market
+sequence_chart.md
+.idea
 
 # Test binary, built with `go test -c`
 *.test
@@ -15,3 +21,4 @@
 # vendor/
 
 .idea
+build-dep

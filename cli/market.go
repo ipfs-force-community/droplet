@@ -5,7 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus-market/storageprovider"
 	"io"
 	"log"
 	"os"
@@ -26,7 +27,9 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/pkg/types"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 var storageDealSelectionCmd = &cli.Command{
@@ -178,8 +181,12 @@ var setAskCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:        "max-piece-size",
-			Usage:       "Set maximum piece size (w/bit-padding, in bytes) in ask to `SIZE`",
+			Usage:       "Set maximum piece size (w/bit-padding, in bytes) in ask to `SIZE`, eg. KiB, MiB, GiB, TiB, PiB",
 			DefaultText: "miner sector size",
+		},
+		&cli.StringFlag{
+			Name:     "miner",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -222,9 +229,9 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("cannot parse max-piece-size to quantity of bytes: %w", err)
 		}
 
-		maddr, err := api.ActorAddress(ctx)
+		maddr, err := address.NewFromString(cctx.String("miner"))
 		if err != nil {
-			return err
+			return nil
 		}
 
 		ssize, err := api.ActorSectorSize(ctx, maddr)
@@ -242,14 +249,19 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
-		return api.MarketSetAsk(ctx, types.BigInt(pri), types.BigInt(vpri), abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
+		return api.MarketSetAsk(ctx, maddr, types.BigInt(pri), types.BigInt(vpri), abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
 	},
 }
 
 var getAskCmd = &cli.Command{
 	Name:  "get-ask",
 	Usage: "Print the miner's ask",
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "miner",
+			Required: true,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		ctx := DaemonContext(cctx)
 
@@ -265,7 +277,12 @@ var getAskCmd = &cli.Command{
 		}
 		defer closer()
 
-		sask, err := smapi.MarketGetAsk(ctx)
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return nil
+		}
+
+		sask, err := smapi.MarketGetAsk(ctx, maddr)
 		if err != nil {
 			return err
 		}
@@ -305,6 +322,7 @@ var StorageDealsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
 		dealsListCmd,
+		updateStorageDealStateCmd,
 		storageDealSelectionCmd,
 		setAskCmd,
 		getAskCmd,
@@ -357,6 +375,9 @@ var dealsListCmd = &cli.Command{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
+		&cli.StringFlag{
+			Name: "miner",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
@@ -364,10 +385,17 @@ var dealsListCmd = &cli.Command{
 			return err
 		}
 		defer closer()
+		var maddr = address.Undef
+		if cctx.IsSet("miner") {
+			var err error
+			maddr, err = address.NewFromString(cctx.String("miner"))
+			if err != nil {
+				return nil
+			}
+		}
 
 		ctx := DaemonContext(cctx)
-
-		deals, err := api.MarketListIncompleteDeals(ctx)
+		deals, err := api.MarketListIncompleteDeals(ctx, maddr)
 		if err != nil {
 			return err
 		}
@@ -415,6 +443,36 @@ var dealsListCmd = &cli.Command{
 	},
 }
 
+var updateStorageDealStateCmd = &cli.Command{
+	Name:  "update",
+	Usage: "update deal status",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "proposalcid",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "state",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := DaemonContext(cctx)
+		proposalCid, err := cid.Decode(cctx.String("proposalcid"))
+		if err != nil {
+			return err
+		}
+		state := storageprovider.StringToStorageState[cctx.String("state")]
+		return api.UpdateStorageDealStatus(ctx, proposalCid, state)
+	},
+}
+
 func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose bool) error {
 	sort.Slice(deals, func(i, j int) bool {
 		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
@@ -423,9 +481,9 @@ func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose 
 	w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
 
 	if verbose {
-		_, _ = fmt.Fprintf(w, "Creation\tVerified\tProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tInboundCAR\tTransferChannelID\tMessage\n")
+		_, _ = fmt.Fprintf(w, "Creation\tVerified\tProposalCid\tDealId\tState\tClient\tProvider\tSize\tPrice\tDuration\tTransferChannelID\tAddFundCid\tPublishCid\tMessage\n")
 	} else {
-		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tSize\tPrice\tDuration\tInboundCAR\n")
+		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tProvider\tSize\tPrice\tDuration\n")
 	}
 
 	for _, deal := range deals {
@@ -440,14 +498,26 @@ func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose 
 			_, _ = fmt.Fprintf(w, "%s\t%t\t", deal.CreationTime.Time().Format(time.Stamp), deal.Proposal.VerifiedDeal)
 		}
 
-		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration(), deal.InboundCAR)
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, deal.Proposal.Provider, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
 		if verbose {
-			_, _ = fmt.Fprintf(w, "\t%s", deal.InboundCAR)
 			tchid := ""
 			if deal.TransferChannelId != nil {
 				tchid = deal.TransferChannelId.String()
 			}
+
+			addFundcid := ""
+			if deal.AddFundsCid != nil {
+				addFundcid = deal.AddFundsCid.String()
+			}
+
+			pubcid := ""
+			if deal.PublishCid != nil {
+				pubcid = deal.PublishCid.String()
+			}
+
 			_, _ = fmt.Fprintf(w, "\t%s", tchid)
+			_, _ = fmt.Fprintf(w, "\t%s", addFundcid)
+			_, _ = fmt.Fprintf(w, "\t%s", pubcid)
 			_, _ = fmt.Fprintf(w, "\t%s", deal.Message)
 		}
 
@@ -824,28 +894,30 @@ var dealsPendingPublish = &cli.Command{
 			return nil
 		}
 
-		pending, err := api.MarketPendingDeals(ctx)
+		pendings, err := api.MarketPendingDeals(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting pending deals: %w", err)
 		}
 
-		if len(pending.Deals) > 0 {
-			endsIn := time.Until(pending.PublishPeriodStart.Add(pending.PublishPeriod))
-			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-			_, _ = fmt.Fprintf(w, "Publish period:             %s (ends in %s)\n", pending.PublishPeriod, endsIn.Round(time.Second))
-			_, _ = fmt.Fprintf(w, "First deal queued at:       %s\n", pending.PublishPeriodStart)
-			_, _ = fmt.Fprintf(w, "Deals will be published at: %s\n", pending.PublishPeriodStart.Add(pending.PublishPeriod))
-			_, _ = fmt.Fprintf(w, "%d deals queued to be published:\n", len(pending.Deals))
-			_, _ = fmt.Fprintf(w, "ProposalCID\tClient\tSize\n")
-			for _, deal := range pending.Deals {
-				proposalNd, err := cborutil.AsIpld(&deal) // nolint
-				if err != nil {
-					return err
-				}
+		for _, pending := range pendings {
+			if len(pending.Deals) > 0 {
+				endsIn := time.Until(pending.PublishPeriodStart.Add(pending.PublishPeriod))
+				w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+				_, _ = fmt.Fprintf(w, "Publish period:             %s (ends in %s)\n", pending.PublishPeriod, endsIn.Round(time.Second))
+				_, _ = fmt.Fprintf(w, "First deal queued at:       %s\n", pending.PublishPeriodStart)
+				_, _ = fmt.Fprintf(w, "Deals will be published at: %s\n", pending.PublishPeriodStart.Add(pending.PublishPeriod))
+				_, _ = fmt.Fprintf(w, "%d deals queued to be published:\n", len(pending.Deals))
+				_, _ = fmt.Fprintf(w, "ProposalCID\tClient\tSize\n")
+				for _, deal := range pending.Deals {
+					proposalNd, err := cborutil.AsIpld(&deal) // nolint
+					if err != nil {
+						return err
+					}
 
-				_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", proposalNd.Cid(), deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)))
+					_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", proposalNd.Cid(), deal.Proposal.Client, units.BytesSize(float64(deal.Proposal.PieceSize)))
+				}
+				return w.Flush()
 			}
-			return w.Flush()
 		}
 
 		fmt.Println("No deals queued to be published")

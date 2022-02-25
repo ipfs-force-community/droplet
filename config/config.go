@@ -2,10 +2,11 @@ package config
 
 import (
 	"encoding"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/pkg/types"
-	"github.com/ipfs/go-cid"
 	"time"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/ipfs/go-cid"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 // API contains configs for API endpoint
@@ -42,6 +43,7 @@ type ConnectConfig struct {
 type Node ConnectConfig
 type Messager ConnectConfig
 type Market ConnectConfig
+type AuthNode ConnectConfig
 
 type Common struct {
 	API    API
@@ -49,8 +51,17 @@ type Common struct {
 }
 
 type Signer struct {
-	Url   string
-	Token string
+	SignerType string `toml:"Type"` // wallet/gateway
+	Url        string
+	Token      string
+}
+
+type Mysql struct {
+	ConnectionString string
+	MaxOpenConn      int
+	MaxIdleConn      int
+	ConnMaxLifeTime  string
+	Debug            bool
 }
 
 type Journal struct {
@@ -87,16 +98,21 @@ type RetrievalPricingDefault struct {
 }
 
 type AddressConfig struct {
-	DealPublishControl []address.Address
+	DealPublishControl []User
 
-	// DisableOwnerFallback disables usage of the owner address for messages
-	// sent automatically
-	DisableOwnerFallback bool
 	// DisableWorkerFallback disables usage of the worker address for messages
 	// sent automatically, if control addresses are configured.
 	// A control address that doesn't have enough funds will still be chosen
 	// over the worker address if this flag is set.
 	DisableWorkerFallback bool
+}
+
+func (ac AddressConfig) Address() []address.Address {
+	addrs := make([]address.Address, len(ac.DealPublishControl))
+	for index, miner := range ac.DealPublishControl {
+		addrs[index] = address.Address(miner.Addr)
+	}
+	return addrs
 }
 
 type DAGStoreConfig struct {
@@ -133,7 +149,34 @@ type DAGStoreConfig struct {
 	GCInterval Duration
 }
 
-type PieceStorageString string
+type PieceStorage struct {
+	Fs        FsPieceStorage
+	S3        S3PieceStorage
+	PreSignS3 PreSignS3PieceStorage
+}
+
+type PreSignS3PieceStorage struct {
+	Enable bool
+}
+
+type FsPieceStorage struct {
+	Enable bool
+	Path   string
+}
+
+type S3PieceStorage struct {
+	Enable   bool
+	EndPoint string
+
+	AccessKey string
+	SecretKey string
+	Token     string
+}
+
+type User struct {
+	Addr    Address
+	Account string
+}
 
 // StorageMiner is a miner config
 type MarketConfig struct {
@@ -144,15 +187,18 @@ type MarketConfig struct {
 	Node     Node
 	Messager Messager
 	Signer   Signer
+	AuthNode AuthNode
 
-	PieceStorage  PieceStorageString
-	TransferPath  string
+	Mysql Mysql
 
+	PieceStorage  PieceStorage
 	Journal       Journal
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
 
-	MinerAddress string
+	StorageMiners           []User
+	RetrievalPaymentAddress User
+
 	// When enabled, the miner can accept online deals
 	ConsiderOnlineStorageDeals bool
 	// When enabled, the miner can accept offline deals
@@ -183,8 +229,17 @@ type MarketConfig struct {
 	// as a multiplier of the minimum collateral bound
 	MaxProviderCollateralMultiplier uint64
 
-	// The maximum number of parallel online data transfers (piecestorage+retrieval)
-	SimultaneousTransfers uint64
+	// The maximum number of parallel online data transfers for storage deals
+	SimultaneousTransfersForStorage uint64
+	// The maximum number of simultaneous data transfers from any single client
+	// for storage deals.
+	// Unset by default (0), and values higher than SimultaneousTransfersForStorage
+	// will have no effect; i.e. the total number of simultaneous data transfers
+	// across all storage clients is bound by SimultaneousTransfersForStorage
+	// regardless of this number.
+	SimultaneousTransfersForStoragePerClient uint64
+	// The maximum number of parallel online data transfers for retrieval deals
+	SimultaneousTransfersForRetrieval uint64
 
 	// A command used for fine-grained evaluation of piecestorage deals
 	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
@@ -192,6 +247,8 @@ type MarketConfig struct {
 	// A command used for fine-grained evaluation of retrieval deals
 	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
 	RetrievalFilter string
+
+	TransfePath string
 
 	RetrievalPricing *RetrievalPricing
 
@@ -202,15 +259,15 @@ type MarketConfig struct {
 type MarketClientConfig struct {
 	Home `toml:"-"`
 	Common
+
 	Node     Node
 	Messager Messager
 	Signer   Signer
 
-	Market Market //reserve
-
 	// The maximum number of parallel online data transfers (piecestorage+retrieval)
-	SimultaneousTransfers uint64
-	DefaultMarketAddress  Address
+	SimultaneousTransfersForRetrieval uint64
+	SimultaneousTransfersForStorage   uint64
+	DefaultMarketAddress              Address
 }
 
 var _ encoding.TextMarshaler = (*Duration)(nil)
@@ -250,5 +307,16 @@ func (addr *Address) UnmarshalText(text []byte) error {
 }
 
 func (dur Address) MarshalText() ([]byte, error) {
+	if address.Address(dur) == address.Undef {
+		return []byte{}, nil
+	}
 	return []byte(address.Address(dur).String()), nil
+}
+
+func ConvertConfigAddress(addrs []Address) []address.Address {
+	addrs2 := make([]address.Address, len(addrs))
+	for index, addr := range addrs {
+		addrs2[index] = address.Address(addr)
+	}
+	return addrs2
 }
