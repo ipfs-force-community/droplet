@@ -16,7 +16,7 @@ var (
 	errDealsUnOrdered       = fmt.Errorf("deals un-ordered")
 )
 
-func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize) ([]*mtypes.DealInfoIncludePath, error) {
+func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spec *mtypes.GetDealSpec) ([]*mtypes.DealInfoIncludePath, error) {
 	dealCount := len(deals)
 	if dealCount == 0 {
 		return nil, nil
@@ -32,17 +32,25 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize) ([]
 		return nil, fmt.Errorf("%w: first deal size: %d", errInvalidDealPieceSize, psize)
 	}
 
+	var dealLimit *int
+	var dealSizeLimit *abi.PaddedPieceSize
+	if spec != nil {
+		if spec.MaxPiece > 0 {
+			dealLimit = &spec.MaxPiece
+		}
+
+		if spec.MaxPieceSize > 0 {
+			limit := abi.PaddedPieceSize(spec.MaxPieceSize)
+			dealSizeLimit = &limit
+		}
+	}
+
 	res := make([]*mtypes.DealInfoIncludePath, 0)
 	di := 0
 	checked := 0
 
 	for di < dealCount {
 		deal := deals[di]
-		// not enough for next deal
-		if deal.PieceSize > space {
-			break
-		}
-
 		if di != checked {
 			if psize := deal.PieceSize; psize.Validate() != nil {
 				return nil, fmt.Errorf("%w: #%d deal size: %d", errInvalidDealPieceSize, di, psize)
@@ -56,8 +64,23 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize) ([]
 			checked = di
 		}
 
+		// deal limit
+		if dealLimit != nil && di >= *dealLimit {
+			break
+		}
+
+		// deal size limit
+		if dealSizeLimit != nil && deal.PieceSize > *dealSizeLimit {
+			break
+		}
+
+		// not enough for next deal
+		if deal.PieceSize > space {
+			break
+		}
+
 		nextPiece := nextAlignedPiece(space)
-		// next piece is not enough, we should put a zeroed-piece
+		// next piece cantainer is not enough, we should put a zeroed-piece
 		if deal.PieceSize > nextPiece {
 			res = append(res, &mtypes.DealInfoIncludePath{
 				DealProposal: market.DealProposal{

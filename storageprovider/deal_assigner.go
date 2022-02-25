@@ -211,7 +211,7 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.A
 		return left.StoragePricePerEpoch.GreaterThan(right.StoragePricePerEpoch)
 	})
 
-	pieces, err := pickAndAlign(deals, ssize)
+	pieces, err := pickAndAlign(deals, ssize, spec)
 	if err != nil {
 		return nil, fmt.Errorf("unable to pick and align pieces from deals: %w", err)
 	}
