@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/venus-market/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus/venus-shared/api/permission"
 )
 
 var soloRunCmd = &cli.Command{
@@ -111,5 +112,9 @@ func soloDaemon(cctx *cli.Context) error {
 
 	mux := mux.NewRouter()
 	mux.Handle("resource", rpc.NewPieceStorageServer(resAPI.PieceStorage))
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, "", api.MarketFullNode(resAPI), finishCh)
+
+	var fullAPI api.MarketFullStruct
+	permission.PermissionProxy(api.MarketFullNode(resAPI), &fullAPI)
+
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, "", &fullAPI, finishCh)
 }

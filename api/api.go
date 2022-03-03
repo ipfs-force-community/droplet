@@ -11,5 +11,7 @@ import (
 var _ = xerrors.New("") // nolint
 
 type MarketFullNode = marketapi.IMarket
+type MarketFullStruct = marketapi.IMarketStruct
 
 type MarketClientNode = clientapi.IMarketClient
+type MarketClientStruct = clientapi.IMarketClientStruct

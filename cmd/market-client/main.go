@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/venus-market/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus/venus-shared/api/permission"
 
 	"github.com/filecoin-project/venus-market/version"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
@@ -256,5 +257,9 @@ func marketClient(cctx *cli.Context) error {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := utils.MonitorShutdown(shutdownChan)
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux.NewRouter(), 1000, cli2.API_NAMESPACE_MARKET_CLIENT, "", (api.MarketClientNode)(resAPI), finishCh)
+
+	var marketCli api.MarketClientStruct
+	permission.PermissionProxy((api.MarketClientNode)(resAPI), &marketCli)
+
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux.NewRouter(), 1000, cli2.API_NAMESPACE_MARKET_CLIENT, "", &marketCli, finishCh)
 }

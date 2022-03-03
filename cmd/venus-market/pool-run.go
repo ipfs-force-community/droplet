@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/venus-market/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus/venus-shared/api/permission"
 )
 
 var poolRunCmd = &cli.Command{
@@ -116,5 +117,9 @@ func poolDaemon(cctx *cli.Context) error {
 	if err = mux.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorage)).GetError(); err != nil {
 		return xerrors.Errorf("handle 'resource' failed: %w", err)
 	}
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, cfg.AuthNode.Url, api.MarketFullNode(resAPI), finishCh)
+
+	var fullAPI api.MarketFullStruct
+	permission.PermissionProxy(api.MarketFullNode(resAPI), &fullAPI)
+
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, cfg.AuthNode.Url, &fullAPI, finishCh)
 }
