@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/storageprovider"
+	"github.com/filecoin-project/venus/venus-shared/types/market"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -443,6 +445,31 @@ var dealsListCmd = &cli.Command{
 	},
 }
 
+var dealStateUsage = func() string {
+	const c, spliter = 5, " | "
+	size := len(storageprovider.StringToStorageState)
+	states := make([]string, 0, size+size/c)
+	idx := 0
+	for s, _ := range storageprovider.StringToStorageState {
+		states = append(states, s)
+		idx++
+		states = append(states, spliter)
+		if idx%c == 0 {
+			states = append(states, "\n\t")
+			continue
+		}
+	}
+
+	usage := strings.Join(states, "")
+	{
+		size := len(usage)
+		if size > 3 && usage[size-3:] == spliter {
+			usage = usage[:size-3]
+		}
+	}
+	return usage + ", set to 'StorageDealUnknown' means no change"
+}
+
 var updateStorageDealStateCmd = &cli.Command{
 	Name:  "update",
 	Usage: "update deal status",
@@ -451,9 +478,18 @@ var updateStorageDealStateCmd = &cli.Command{
 			Name:     "proposalcid",
 			Required: true,
 		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+			Value: false,
+		},
 		&cli.StringFlag{
-			Name:     "state",
-			Required: true,
+			Name:  "piece-state",
+			Usage: "Undefine | Assigned | Packing | Proving, empty means no change",
+		},
+		&cli.StringFlag{
+			Name:  "state",
+			Usage: dealStateUsage(),
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -468,12 +504,34 @@ var updateStorageDealStateCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		state := storageprovider.StringToStorageState[cctx.String("state")]
-		return api.UpdateStorageDealStatus(ctx, proposalCid, state)
+		var isParamOk bool
+		var state storagemarket.StorageDealStatus
+		var pieceState string
+
+		if cctx.IsSet("state") {
+			isParamOk = true
+			state = storageprovider.StringToStorageState[cctx.String("state")]
+		}
+
+		if cctx.IsSet("piece-state") {
+			pieceState = cctx.String("piece-state")
+			isParamOk = true
+		}
+
+		if !isParamOk {
+			return xerrors.Errorf("must set 'state' or 'piece-state'")
+		}
+
+		if !cctx.Bool("really-do-it") {
+			fmt.Println("Pass --really-do-it to actually execute this action")
+			return nil
+		}
+
+		return api.UpdateStorageDealStatus(ctx, proposalCid, state, pieceState)
 	},
 }
 
-func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose bool) error {
+func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool) error {
 	sort.Slice(deals, func(i, j int) bool {
 		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
 	})
@@ -481,9 +539,9 @@ func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose 
 	w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
 
 	if verbose {
-		_, _ = fmt.Fprintf(w, "Creation\tVerified\tProposalCid\tDealId\tState\tClient\tProvider\tSize\tPrice\tDuration\tTransferChannelID\tAddFundCid\tPublishCid\tMessage\n")
+		_, _ = fmt.Fprintf(w, "Creation\tVerified\tProposalCid\tDealId\tState\tPieceState\tClient\tProvider\tSize\tPrice\tDuration\tTransferChannelID\tAddFundCid\tPublishCid\tMessage\n")
 	} else {
-		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tClient\tProvider\tSize\tPrice\tDuration\n")
+		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tPieceState\tClient\tProvider\tSize\tPrice\tDuration\n")
 	}
 
 	for _, deal := range deals {
@@ -498,11 +556,12 @@ func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose 
 			_, _ = fmt.Fprintf(w, "%s\t%t\t", deal.CreationTime.Time().Format(time.Stamp), deal.Proposal.VerifiedDeal)
 		}
 
-		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.Proposal.Client, deal.Proposal.Provider, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.PieceStatus,
+			deal.Proposal.Client, deal.Proposal.Provider, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
 		if verbose {
 			tchid := ""
-			if deal.TransferChannelId != nil {
-				tchid = deal.TransferChannelId.String()
+			if deal.TransferChannelID != nil {
+				tchid = deal.TransferChannelID.String()
 			}
 
 			addFundcid := ""

@@ -7,7 +7,6 @@ import (
 	"sort"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -169,7 +168,7 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 		}
 		if ((spec.MaxPieceSize > 0 && uint64(md.Proposal.PieceSize)+curPieceSize < spec.MaxPieceSize) || spec.MaxPieceSize == 0) && numberPiece+1 < spec.MaxPiece {
 			result = append(result, &types.DealInfoIncludePath{
-				DealProposal:    market.DealProposal(md.Proposal),
+				DealProposal:    md.Proposal,
 				Offset:          md.Offset,
 				Length:          md.Proposal.PieceSize,
 				PayloadSize:     md.PayloadSize,

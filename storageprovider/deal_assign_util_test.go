@@ -1,10 +1,10 @@
 package storageprovider
 
 import (
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	mtypes "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +19,7 @@ func generateTestingDeals(sizes []abi.PaddedPieceSize) []*mtypes.DealInfoInclude
 	for si, size := range sizes {
 		deals[si] = &mtypes.DealInfoIncludePath{
 			DealID: isDeal,
-			DealProposal: market.DealProposal{
+			DealProposal: market7.DealProposal{
 				PieceSize: size,
 			},
 		}

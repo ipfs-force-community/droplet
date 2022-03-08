@@ -233,7 +233,7 @@ var actorSetPeeridCmd = &cli.Command{
 
 var actorInfoCmd = &cli.Command{
 	Name:  "info",
-	Usage: "query info of your miner",
+	Usage: "query info of specified miner",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "miner",

@@ -363,7 +363,20 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr add
 	return deals, nil
 }
 
-func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus) error {
+func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState string) error {
+	updataColumns := make(map[string]interface{})
+
+	if status != storagemarket.StorageDealUnknown {
+		updataColumns["state"] = status
+	}
+
+	if len(pieceState) != 0 {
+		updataColumns["piece_status"] = pieceState
+	}
+
+	if len(updataColumns) == 0 {
+		return nil
+	}
 	return sdr.WithContext(ctx).Model(storageDeal{}).Where("proposal_cid = ?", DBCid(proposalCid).String()).
 		UpdateColumns(map[string]interface{}{"state": status, "updated_at": time.Now().Unix()}).Error
 }

@@ -84,7 +84,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 			continue
 		}
 		if dealProposal.State.SectorStartEpoch > -1 { //include in sector
-			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealActive)
+			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealActive, "")
 			if err != nil {
 				log.Errorf("update deal status to active for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			}
@@ -97,7 +97,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 				log.Debugf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 				continue
 			}
-			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealSealing)
+			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealSealing, "")
 			if err != nil {
 				log.Errorf("update deal status to sealing for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			}
@@ -120,7 +120,7 @@ func (dealTracker *DealTracker) checkSlash(ctx metrics.MetricsCtx, addr address.
 			continue
 		}
 		if dealProposal.State.SlashEpoch > -1 { //include in sector
-			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealSlashed)
+			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealSlashed, "")
 			if err != nil {
 				log.Errorf("update deal status to slash for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			}

@@ -15,16 +15,19 @@ type MarketEventAPI struct {
 	Event marketevent.IMarketEventAPI `optional:"true"`
 }
 
+var errNotSupportGateWayMode = xerrors.Errorf("MarketEvent api supported only when it runs in 'solo' mode")
+
+
 func (marketEvent *MarketEventAPI) ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error {
 	if marketEvent.Event == nil {
-		return xerrors.Errorf("unsupport in gateway model")
+		return errNotSupportGateWayMode
 	}
 	return marketEvent.Event.ResponseMarketEvent(ctx, resp)
 }
 
 func (marketEvent *MarketEventAPI) ListenMarketEvent(ctx context.Context, policy *gateway.MarketRegisterPolicy) (<-chan *gateway.RequestEvent, error) {
 	if marketEvent.Event == nil {
-		return nil, xerrors.Errorf("unsupport in gateway model")
+		return nil, errNotSupportGateWayMode
 	}
 	return marketEvent.Event.ListenMarketEvent(ctx, policy)
 }

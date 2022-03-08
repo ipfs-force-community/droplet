@@ -143,11 +143,16 @@ func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr addr
 	return out, nil
 }
 
-func (m MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error) {
-	results := make(chan storagemarket.MinerDeal)
+func (m MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan types.MinerDeal, error) {
+	results := make(chan types.MinerDeal)
 	unsub := m.StorageProvider.SubscribeToEvents(func(evt storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
+		mDeal, err := m.Repo.StorageDealRepo().GetDeal(ctx, deal.ProposalCid)
+		if err != nil {
+			log.Errorf("find deal by proposalCid failed:%s", err.Error())
+			return
+		}
 		select {
-		case results <- deal:
+		case results <- *mDeal:
 		case <-ctx.Done():
 		}
 	})
@@ -159,7 +164,7 @@ func (m MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan storag
 	return results, nil
 }
 
-func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]storagemarket.MinerDeal, error) {
+func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]types.MinerDeal, error) {
 	var deals []*types.MinerDeal
 	var err error
 	if mAddr == address.Undef {
@@ -174,16 +179,16 @@ func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr add
 		}
 	}
 
-	resDeals := make([]storagemarket.MinerDeal, len(deals))
+	resDeals := make([]types.MinerDeal, len(deals))
 	for idx, deal := range deals {
-		resDeals[idx] = *deal.FilMarketMinerDeal()
+		resDeals[idx] = *deal
 	}
 
 	return resDeals, nil
 }
 
-func (m MarketNodeImpl) UpdateStorageDealStatus(ctx context.Context, dealProposal cid.Cid, state storagemarket.StorageDealStatus) error {
-	return m.Repo.StorageDealRepo().UpdateDealStatus(ctx, dealProposal, state)
+func (m MarketNodeImpl) UpdateStorageDealStatus(ctx context.Context, dealProposal cid.Cid, state storagemarket.StorageDealStatus, pieceState string) error {
+	return m.Repo.StorageDealRepo().UpdateDealStatus(ctx, dealProposal, state, pieceState)
 }
 
 func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
