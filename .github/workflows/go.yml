@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-  build:
+  check:
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2
@@ -30,5 +30,24 @@ jobs:
       run: |
         make
 
+    - name: Lint
+      uses: dominikh/staticcheck-action@v1.1.0
+      with:
+        install-go: false
+        version: "2021.1.1"
+
     - name: Test
       run: go test -v ./...
+
+    - name: Run coverage
+      run: go test ./... -race -coverprofile=coverage.txt -covermode=atomic
+
+    - name: upload
+      uses: codecov/codecov-action@v2
+      with:
+        token:
+        files: ./coverage.txt
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: true
+        verbose: true

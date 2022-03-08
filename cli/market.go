@@ -450,7 +450,7 @@ var dealStateUsage = func() string {
 	size := len(storageprovider.StringToStorageState)
 	states := make([]string, 0, size+size/c)
 	idx := 0
-	for s, _ := range storageprovider.StringToStorageState {
+	for s := range storageprovider.StringToStorageState {
 		states = append(states, s)
 		idx++
 		states = append(states, spliter)
