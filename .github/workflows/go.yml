@@ -50,12 +50,12 @@ jobs:
       - name: Run coverage
         run:  go test ./... -coverprofile=coverage.txt -covermode=atomic
 
-      - name: upload
+      - name: Upload
         uses: codecov/codecov-action@v2
         with:
           token:
           files: ./coverage.txt
           flags: unittests
-          name: codecov-umbrella
+          name: venus-market
           fail_ci_if_error: true
           verbose: true
