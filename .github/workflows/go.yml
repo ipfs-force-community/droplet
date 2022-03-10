@@ -48,7 +48,7 @@ jobs:
           make
 
       - name: Run coverage
-        run:  go test ./... -coverprofile=coverage.txt -covermode=atomic
+        run:  go test -coverpkg=./... -race -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Upload
         uses: codecov/codecov-action@v2
