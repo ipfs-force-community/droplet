@@ -1,8 +1,9 @@
 package utils
 
 import (
-	logging "github.com/ipfs/go-log/v2"
 	"os"
+
+	logging "github.com/ipfs/go-log/v2"
 )
 
 func SetupLogLevels() {

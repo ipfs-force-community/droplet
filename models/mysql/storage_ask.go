@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	"golang.org/x/xerrors"
 	"gorm.io/gorm"
@@ -83,7 +84,7 @@ type storageAskRepo struct {
 	*gorm.DB
 }
 
-func NewStorageAskRepo(db *gorm.DB) *storageAskRepo {
+func NewStorageAskRepo(db *gorm.DB) repo.IStorageAskRepo {
 	return &storageAskRepo{db}
 }
 

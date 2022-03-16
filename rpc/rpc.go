@@ -22,7 +22,7 @@ import (
 
 var log = logging.Logger("modules")
 
-func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.Router, maxRequestSize int64, namespace string, authUrl string, api interface{}, shutdownCh <-chan struct{}) error {
+func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.Router, maxRequestSize int64, namespace string, authURL string, api interface{}, shutdownCh <-chan struct{}) error {
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
@@ -50,8 +50,8 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 	}
 
 	var handler http.Handler
-	if len(authUrl) > 0 {
-		cli := jwtclient.NewJWTClient(authUrl)
+	if len(authURL) > 0 {
+		cli := jwtclient.NewJWTClient(authURL)
 		handler = jwtclient.NewAuthMux(localJwtClient, jwtclient.WarpIJwtAuthClient(cli), mux, logging.Logger("auth"))
 	} else {
 		handler = jwtclient.NewAuthMux(localJwtClient, nil, mux, logging.Logger("auth"))

@@ -59,6 +59,7 @@ var storageCmd = &cli.Command{
 // TODO ???
 // Actor consts
 // TODO: pieceSize unused from actors
+//nolint
 var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
 
 const BlockDelaySecs = uint64(builtin7.EpochDurationSeconds)

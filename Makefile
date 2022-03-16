@@ -48,7 +48,7 @@ test:
 	go test -race ./...
 
 lint: $(BUILD_DEPS)
-	staticcheck ./...
+	golangci-lint run
 
 deps: $(BUILD_DEPS)
 

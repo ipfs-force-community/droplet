@@ -32,10 +32,9 @@ jobs:
           make deps
 
       - name: Lint
-        uses: dominikh/staticcheck-action@v1.1.0
-        with:
-          install-go: false
-          version: "2021.1.1"
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.44.2
+          golangci-lint run --timeout 10m
 
       - name: Test
         run: go test -v ./...

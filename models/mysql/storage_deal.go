@@ -279,7 +279,7 @@ type storageDealRepo struct {
 
 var _ repo.StorageDealRepo = (*storageDealRepo)(nil)
 
-func NewStorageDealRepo(db *gorm.DB) *storageDealRepo {
+func NewStorageDealRepo(db *gorm.DB) repo.StorageDealRepo {
 	return &storageDealRepo{db}
 }
 

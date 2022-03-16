@@ -1,11 +1,12 @@
 package piecestorage
 
 import (
+	"reflect"
+	"strings"
+
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"golang.org/x/xerrors"
-	"reflect"
-	"strings"
 )
 
 var PieceStorageOpts = func(cfg *config.MarketConfig) builder.Option {

@@ -44,10 +44,10 @@ var NetworkOpts = func(server bool, simultaneousTransfersForRetrieval, simultane
 		return builder.Options(opts,
 			builder.Override(new(StagingGraphsync), NewStagingGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfersForStoragePerClient, simultaneousTransfersForStorage)),
 		)
-	} else {
-		return builder.Options(opts,
-			// retrieval/storage reverse for server/client
-			builder.Override(new(Graphsync), NewGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfersForStorage)),
-		)
 	}
+
+	return builder.Options(opts,
+		// retrieval/storage reverse for server/client
+		builder.Override(new(Graphsync), NewGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfersForStorage)),
+	)
 }

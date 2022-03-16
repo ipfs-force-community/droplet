@@ -2,8 +2,9 @@ package test_helper
 
 import (
 	"flag"
-	"github.com/filecoin-project/venus/pkg/testhelpers"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/testhelpers"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"

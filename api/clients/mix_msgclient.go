@@ -2,8 +2,9 @@ package clients
 
 import (
 	"context"
-	types2 "github.com/filecoin-project/venus/venus-shared/types/messager"
 	"time"
+
+	types2 "github.com/filecoin-project/venus/venus-shared/types/messager"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/minermgr"
@@ -91,96 +92,94 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Messag
 		}
 		log.Warnf("push message %s to daemon", signedCid.String())
 		return signedCid, nil
-	} else {
-		msgid, err := utils.NewMId()
+	}
+	msgid, err := utils.NewMId()
+	if err != nil {
+		return cid.Undef, err
+	}
+	if msgClient.addrMgr != nil {
+		fromAddr, err := msgClient.full.StateAccountKey(ctx, p1.From, types.EmptyTSK)
 		if err != nil {
 			return cid.Undef, err
 		}
-		if msgClient.addrMgr != nil {
-			fromAddr, err := msgClient.full.StateAccountKey(ctx, p1.From, types.EmptyTSK)
-			if err != nil {
-				return cid.Undef, err
-			}
-			account, err := msgClient.addrMgr.GetAccount(ctx, fromAddr)
-			if err != nil {
-				return cid.Undef, err
-			}
-			_, err = msgClient.messager.ForcePushMessageWithId(ctx, account, msgid.String(), p1, nil)
-			if err != nil {
-				return cid.Undef, err
-			}
-		} else {
-			//for client account has in token
-			_, err = msgClient.messager.PushMessageWithId(ctx, msgid.String(), p1, nil)
-			if err != nil {
-				return cid.Undef, err
-			}
+		account, err := msgClient.addrMgr.GetAccount(ctx, fromAddr)
+		if err != nil {
+			return cid.Undef, err
 		}
-
-		log.Warnf("push message %s to venus-messager", msgid.String())
-		return msgid, nil
+		_, err = msgClient.messager.ForcePushMessageWithId(ctx, account, msgid.String(), p1, nil)
+		if err != nil {
+			return cid.Undef, err
+		}
+	} else {
+		//for client account has in token
+		_, err = msgClient.messager.PushMessageWithId(ctx, msgid.String(), p1, nil)
+		if err != nil {
+			return cid.Undef, err
+		}
 	}
+
+	log.Warnf("push message %s to venus-messager", msgid.String())
+	return msgid, nil
 }
 
 func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confidence uint64, loopbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	if msgClient.messager == nil || mCid.Prefix() != utils.MidPrefix {
 		return msgClient.full.StateWaitMsg(ctx, mCid, confidence, loopbackLimit, allowReplaced)
-	} else {
-		tm := time.NewTicker(time.Second * 30)
-		defer tm.Stop()
+	}
+	tm := time.NewTicker(time.Second * 30)
+	defer tm.Stop()
 
-		doneCh := make(chan struct{}, 1)
-		doneCh <- struct{}{}
+	doneCh := make(chan struct{}, 1)
+	doneCh <- struct{}{}
 
-		for {
-			select {
-			case <-doneCh:
-				msg, err := msgClient.messager.GetMessageByUid(ctx, mCid.String())
-				if err != nil {
-					log.Warnf("get message %s fail while wait %v", mCid, err)
-					time.Sleep(time.Second * 5)
-					continue
-				}
-
-				switch msg.State {
-				//OffChain
-				case types2.FillMsg:
-					fallthrough
-				case types2.UnFillMsg:
-					fallthrough
-				case types2.UnKnown:
-					continue
-				//OnChain
-				case types2.ReplacedMsg:
-					fallthrough
-				case types2.OnChainMsg:
-					if msg.Confidence > int64(confidence) {
-						return &types.MsgLookup{
-							Message: mCid,
-							Receipt: types.MessageReceipt{
-								ExitCode: msg.Receipt.ExitCode,
-								Return:   msg.Receipt.Return,
-								GasUsed:  msg.Receipt.GasUsed,
-							},
-							TipSet: msg.TipSetKey,
-							Height: abi.ChainEpoch(msg.Height),
-						}, nil
-					}
-					continue
-				//Error
-				case types2.FailedMsg:
-					var reason string
-					if msg.Receipt != nil {
-						reason = string(msg.Receipt.Return)
-					}
-					return nil, xerrors.Errorf("msg failed due to %s", reason)
-				}
-
-			case <-tm.C:
-				doneCh <- struct{}{}
-			case <-ctx.Done():
-				return nil, xerrors.Errorf("get message fail while wait")
+	for {
+		select {
+		case <-doneCh:
+			msg, err := msgClient.messager.GetMessageByUid(ctx, mCid.String())
+			if err != nil {
+				log.Warnf("get message %s fail while wait %v", mCid, err)
+				time.Sleep(time.Second * 5)
+				continue
 			}
+
+			switch msg.State {
+			//OffChain
+			case types2.FillMsg:
+				fallthrough
+			case types2.UnFillMsg:
+				fallthrough
+			case types2.UnKnown:
+				continue
+			//OnChain
+			case types2.ReplacedMsg:
+				fallthrough
+			case types2.OnChainMsg:
+				if msg.Confidence > int64(confidence) {
+					return &types.MsgLookup{
+						Message: mCid,
+						Receipt: types.MessageReceipt{
+							ExitCode: msg.Receipt.ExitCode,
+							Return:   msg.Receipt.Return,
+							GasUsed:  msg.Receipt.GasUsed,
+						},
+						TipSet: msg.TipSetKey,
+						Height: abi.ChainEpoch(msg.Height),
+					}, nil
+				}
+				continue
+			//Error
+			case types2.FailedMsg:
+				var reason string
+				if msg.Receipt != nil {
+					reason = string(msg.Receipt.Return)
+				}
+				return nil, xerrors.Errorf("msg failed due to %s", reason)
+			}
+
+		case <-tm.C:
+			doneCh <- struct{}{}
+		case <-ctx.Done():
+			return nil, xerrors.Errorf("get message fail while wait")
 		}
 	}
 }
@@ -188,74 +187,69 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetKey, mCid cid.Cid, loopbackLimit abi.ChainEpoch, allowReplaced bool) (*types.MsgLookup, error) {
 	if msgClient.messager == nil || mCid.Prefix() != utils.MidPrefix {
 		return msgClient.full.StateSearchMsg(ctx, from, mCid, loopbackLimit, allowReplaced)
-	} else {
-		msg, err := msgClient.messager.GetMessageByUid(ctx, mCid.String())
-		if err != nil {
-			log.Warnw("get message fail while wait %w", err)
-			time.Sleep(time.Second * 5)
-			return nil, err
-		}
+	}
+	msg, err := msgClient.messager.GetMessageByUid(ctx, mCid.String())
+	if err != nil {
+		log.Warnw("get message fail while wait %w", err)
+		time.Sleep(time.Second * 5)
+		return nil, err
+	}
 
-		switch msg.State {
-		//OffChain
-		case types2.FillMsg:
-			fallthrough
-		case types2.UnFillMsg:
-			fallthrough
-		case types2.UnKnown:
-			return nil, nil
-		//OnChain
-		case types2.ReplacedMsg:
-			fallthrough
-		case types2.OnChainMsg:
-			return &types.MsgLookup{
-				Message: mCid,
-				Receipt: types.MessageReceipt{
-					ExitCode: msg.Receipt.ExitCode,
-					Return:   msg.Receipt.Return,
-					GasUsed:  msg.Receipt.GasUsed,
-				},
-				TipSet: msg.TipSetKey,
-				Height: abi.ChainEpoch(msg.Height),
-			}, nil
-		//Error
-		case types2.FailedMsg:
-			var reason string
-			if msg.Receipt != nil {
-				reason = string(msg.Receipt.Return)
-			}
-			return nil, xerrors.Errorf("msg failed due to %s", reason)
-		default:
-			return nil, xerrors.Errorf("unexpect status for %v", msg.State)
+	switch msg.State {
+	//OffChain
+	case types2.FillMsg:
+		fallthrough
+	case types2.UnFillMsg:
+		fallthrough
+	case types2.UnKnown:
+		return nil, nil
+	//OnChain
+	case types2.ReplacedMsg:
+		fallthrough
+	case types2.OnChainMsg:
+		return &types.MsgLookup{
+			Message: mCid,
+			Receipt: types.MessageReceipt{
+				ExitCode: msg.Receipt.ExitCode,
+				Return:   msg.Receipt.Return,
+				GasUsed:  msg.Receipt.GasUsed,
+			},
+			TipSet: msg.TipSetKey,
+			Height: abi.ChainEpoch(msg.Height),
+		}, nil
+	//Error
+	case types2.FailedMsg:
+		var reason string
+		if msg.Receipt != nil {
+			reason = string(msg.Receipt.Return)
 		}
+		return nil, xerrors.Errorf("msg failed due to %s", reason)
+	default:
+		return nil, xerrors.Errorf("unexpect status for %v", msg.State)
 	}
 }
 
 func (msgClient *MixMsgClient) GetMessage(ctx context.Context, mCid cid.Cid) (*types.Message, error) {
 	if msgClient.messager == nil || mCid.Prefix() != utils.MidPrefix {
 		return msgClient.full.ChainGetMessage(ctx, mCid)
-	} else {
-		msg, err := msgClient.messager.GetMessageByUid(ctx, mCid.String())
-		if err != nil {
-			return nil, err
-		}
-		return msg.VMMessage(), nil
 	}
+	msg, err := msgClient.messager.GetMessageByUid(ctx, mCid.String())
+	if err != nil {
+		return nil, err
+	}
+	return msg.VMMessage(), nil
 }
 
 func (msgClient *MixMsgClient) GetMessageChainCid(ctx context.Context, mid cid.Cid) (*cid.Cid, error) {
 	if mid.Prefix() == utils.MidPrefix {
 		if msgClient.messager == nil {
 			return nil, xerrors.Errorf("unable to get message chain cid from messager,no messager configured")
-		} else {
-			msg, err := msgClient.messager.GetMessageByUid(ctx, mid.String())
-			if err != nil {
-				return nil, err
-			}
-			return msg.SignedCid, nil
 		}
-	} else {
-		return &mid, nil
+		msg, err := msgClient.messager.GetMessageByUid(ctx, mid.String())
+		if err != nil {
+			return nil, err
+		}
+		return msg.SignedCid, nil
 	}
-
+	return &mid, nil
 }

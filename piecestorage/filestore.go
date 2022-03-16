@@ -3,13 +3,14 @@ package piecestorage
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/utils"
-	xerrors "github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
+
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/utils"
+	xerrors "github.com/pkg/errors"
 )
 
 type IPreSignOp interface {
@@ -52,7 +53,7 @@ func (f fsPieceStorage) SaveTo(ctx context.Context, s string, r io.Reader) (int6
 		return 0, err
 	}
 
-	defer tempFile.Close()
+	defer func() { _ = tempFile.Close() }()
 	wlen, err := io.Copy(tempFile, r)
 	if err != nil {
 		return -1, fmt.Errorf("unable to write file to %s %w", dstPath, err)
@@ -75,7 +76,7 @@ func (f fsPieceStorage) ReadOffset(ctx context.Context, s string, offset int, si
 	if err != nil {
 		return nil, fmt.Errorf("unable to seek position to %din file %s %w", offset, dstPath, err)
 	}
-	return utils.NewLimitedBufferReader(fs, int(size)), nil
+	return utils.NewLimitedBufferReader(fs, size), nil
 }
 
 func (f fsPieceStorage) Has(ctx context.Context, s string) (bool, error) {

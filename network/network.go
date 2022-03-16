@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/filecoin-project/venus-market/config"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"

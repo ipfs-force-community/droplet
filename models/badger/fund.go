@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/venus-market/models/repo"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
@@ -17,7 +18,7 @@ type fundRepo struct {
 	ds datastore.Batching
 }
 
-func NewFundRepo(ds FundMgrDS) *fundRepo {
+func NewFundRepo(ds FundMgrDS) repo.FundRepo {
 	return &fundRepo{
 		ds: ds,
 	}

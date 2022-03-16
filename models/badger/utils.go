@@ -3,12 +3,13 @@ package badger
 import (
 	"bytes"
 	"context"
+	"reflect"
+
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-	"reflect"
 )
 
 func checkCallbackAndGetParamType(i interface{}) (reflect.Type, error) {

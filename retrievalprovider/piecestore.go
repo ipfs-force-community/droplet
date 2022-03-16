@@ -27,18 +27,18 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 			return nil, err
 		}
 		return minerDeals, nil
-	} else {
-		var allMinerDeals []*types.MinerDeal
-		for _, pieceBlockLocation := range cidInfo.PieceBlockLocations {
-			minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus(ctx, pieceBlockLocation.PieceCID, storageprovider.ReadyRetrievalDealStatus...)
-			if err != nil {
-				return nil, err
-			}
-			allMinerDeals = append(allMinerDeals, minerDeals...)
+	}
+
+	var allMinerDeals []*types.MinerDeal
+	for _, pieceBlockLocation := range cidInfo.PieceBlockLocations {
+		minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus(ctx, pieceBlockLocation.PieceCID, storageprovider.ReadyRetrievalDealStatus...)
+		if err != nil {
+			return nil, err
 		}
-		if len(allMinerDeals) > 0 {
-			return allMinerDeals, nil
-		}
+		allMinerDeals = append(allMinerDeals, minerDeals...)
+	}
+	if len(allMinerDeals) > 0 {
+		return allMinerDeals, nil
 	}
 	return nil, xerrors.Errorf("unable to find ready data for piece (%s) payload (%s)", piececid, payloadCID)
 }

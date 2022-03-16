@@ -55,10 +55,9 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 	if err != nil {
 		if err == repo.ErrNotFound {
 			return nil, nil
-		} else {
-			_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
-			return finalResponse(errorDealResponse(retrievalmarket.ProviderDealIdentifier{Receiver: channelID.Initiator, DealID: payment.ID}, err), legacyProtocol), err
 		}
+		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
+		return finalResponse(errorDealResponse(retrievalmarket.ProviderDealIdentifier{Receiver: channelID.Initiator, DealID: payment.ID}, err), legacyProtocol), err
 	}
 
 	response, err := pr.processPayment(ctx, deal, payment)

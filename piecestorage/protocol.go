@@ -13,7 +13,7 @@ import (
 type Protocol string
 
 type ProtocolParser func(cfg string) (interface{}, error)
-type PieceStorageCtor func(cfg interface{}) (IPieceStorage, error)
+type PieceStorageCtor func(cfg interface{}) (IPieceStorage, error) //nolint
 
 type ProtocolResolver struct {
 	Parser      ProtocolParser

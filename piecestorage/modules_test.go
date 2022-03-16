@@ -1,9 +1,10 @@
 package piecestorage
 
 import (
+	"testing"
+
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestNewPieceStorage(t *testing.T) {

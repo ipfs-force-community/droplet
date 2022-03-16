@@ -2,9 +2,10 @@ package piecestorage
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus-market/config"
 	"reflect"
 	"testing"
+
+	"github.com/filecoin-project/venus-market/config"
 )
 
 func TestParserProtocol(t *testing.T) {

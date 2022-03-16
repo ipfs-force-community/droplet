@@ -1,8 +1,9 @@
 package storageprovider
 
 import (
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"testing"
+
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	mtypes "github.com/filecoin-project/venus/venus-shared/types/market"

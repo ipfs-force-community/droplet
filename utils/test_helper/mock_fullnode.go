@@ -3,6 +3,9 @@ package test_helper
 import (
 	"context"
 	"encoding/json"
+	"testing"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	auth2 "github.com/filecoin-project/go-jsonrpc/auth"
@@ -17,8 +20,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
-	"testing"
-	"time"
 )
 
 type MockFullnode struct {
@@ -188,7 +189,7 @@ func (m MockFullnode) ChainList(ctx context.Context, tsKey types.TipSetKey, coun
 func (m MockFullnode) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	addr := address.NewForTestGetter()()
 	mockCid, _ := cid.Parse("bafy2bzaceddx2jhct4mvnnhsvbsptvr4gp3ta7jjfhk43ikjdxyubuixav6cw")
-	ts, _ := types.NewTipSet([]*types.BlockHeader{&types.BlockHeader{
+	ts, _ := types.NewTipSet([]*types.BlockHeader{{
 		Miner:                 addr,
 		Ticket:                nil,
 		ElectionProof:         nil,

@@ -22,7 +22,7 @@ func TestStorageAsk(t *testing.T) {
 	})
 	t.Run("badger", func(t *testing.T) {
 		db := BadgerDB(t)
-		testStorageAsk(t, repo.IStorageAskRepo(badger.NewStorageAskRepo(db)))
+		testStorageAsk(t, badger.NewStorageAskRepo(db))
 	})
 }
 

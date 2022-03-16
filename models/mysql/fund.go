@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"gorm.io/gorm"
@@ -52,7 +53,7 @@ type fundedAddressStateRepo struct {
 	*gorm.DB
 }
 
-func NewFundedAddressStateRepo(db *gorm.DB) *fundedAddressStateRepo {
+func NewFundedAddressStateRepo(db *gorm.DB) repo.FundRepo {
 	return &fundedAddressStateRepo{db}
 }
 

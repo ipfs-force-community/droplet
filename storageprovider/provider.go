@@ -81,7 +81,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal types2.Mine
 	return n.dealPublisher.Publish(ctx, deal.ClientDealProposal)
 }
 
-func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
+func (n *ProviderNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, _ shared.TipSetToken) (bool, error) {
 	addr, err := n.StateAccountKey(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return false, err

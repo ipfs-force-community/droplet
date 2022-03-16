@@ -256,7 +256,11 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 	if err != nil {
 		return xerrors.Errorf("failed to create temp file for data import: %w", err)
 	}
-	defer tempfi.Close()
+	defer func() {
+		if err := tempfi.Close(); err != nil {
+			log.Errorf("unable to close stream %v", err)
+		}
+	}()
 	cleanup := func() {
 		_ = tempfi.Close()
 		_ = p.fs.Delete(tempfi.Path())

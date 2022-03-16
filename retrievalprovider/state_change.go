@@ -5,9 +5,10 @@ import (
 	"github.com/filecoin-project/go-statemachine/fsm"
 	"github.com/modern-go/reflect2"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/providerstates"
 	"sync"
 	"unsafe"
+
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/providerstates"
 )
 
 // some code rely on event and current status, todo remote state chang

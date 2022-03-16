@@ -52,14 +52,14 @@ func (d *DataTransferHandler) HandleCancelForDeal(ctx context.Context, proposali
 	return d.dealProcess.HandleError(ctx, deal, xerrors.Errorf("proposal %v data transfer cancelled", proposalid))
 }
 
-func (d *DataTransferHandler) HandleRestartForDeal(ctx context.Context, proposalid cid.Cid, channelId datatransfer.ChannelID) error {
+func (d *DataTransferHandler) HandleRestartForDeal(ctx context.Context, proposalid cid.Cid, channelID datatransfer.ChannelID) error {
 	deal, err := d.deals.GetDeal(ctx, proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
 	}
 	deal.Message = ""
 	deal.State = storagemarket.StorageDealProviderTransferAwaitRestart
-	deal.TransferChannelID = &channelId
+	deal.TransferChannelID = &channelID
 	err = d.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return xerrors.Errorf("save deal while transfer completed %w", err)
@@ -81,14 +81,14 @@ func (d *DataTransferHandler) HandleStalledForDeal(ctx context.Context, proposal
 	return nil
 }
 
-func (d *DataTransferHandler) HandleInitForDeal(ctx context.Context, proposalid cid.Cid, channelId datatransfer.ChannelID) error {
+func (d *DataTransferHandler) HandleInitForDeal(ctx context.Context, proposalid cid.Cid, channelID datatransfer.ChannelID) error {
 	deal, err := d.deals.GetDeal(ctx, proposalid)
 	if err != nil {
 		return xerrors.Errorf("get deal while transfer completed %w", err)
 	}
 	deal.Message = ""
 	deal.State = storagemarket.StorageDealProviderTransferAwaitRestart
-	deal.TransferChannelID = &channelId
+	deal.TransferChannelID = &channelID
 	err = d.deals.SaveDeal(ctx, deal)
 	if err != nil {
 		return xerrors.Errorf("save deal while transfer completed %w", err)

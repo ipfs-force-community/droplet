@@ -5,6 +5,7 @@ package storageprovider
 import (
 	"bytes"
 	"context"
+
 	"github.com/filecoin-project/venus-market/api/clients"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
@@ -38,7 +39,7 @@ import (
 )
 
 type ClientNodeAdapter struct {
-	*clientApi
+	*clientAPI
 
 	msgClient clients.IMixMessage
 	fundmgr   *fundmgr.FundManager
@@ -48,12 +49,12 @@ type ClientNodeAdapter struct {
 	cfg       *config.MarketClientConfig
 }
 
-type clientApi struct {
+type clientAPI struct {
 	full v1api.FullNode
 }
 
 func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode v1api.FullNode, msgClient clients.IMixMessage, fundmgr *fundmgr.FundManager, cfg *config.MarketClientConfig) storagemarket.StorageClientNode {
-	capi := &clientApi{fullNode}
+	capi := &clientAPI{fullNode}
 	ctx := metrics.LifecycleCtx(mctx, lc)
 
 	ev, err := events.NewEvents(ctx, capi.full)
@@ -62,7 +63,7 @@ func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode v1a
 		log.Fatal(err)
 	}
 	a := &ClientNodeAdapter{
-		clientApi: capi,
+		clientAPI: capi,
 
 		msgClient: msgClient,
 		fundmgr:   fundmgr,
@@ -78,8 +79,8 @@ func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode v1a
 	return a
 }
 
-func (c *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs shared.TipSetToken) ([]*storagemarket.StorageProviderInfo, error) {
-	tsk, err := types.TipSetKeyFromBytes(encodedTs)
+func (c *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTS shared.TipSetToken) ([]*storagemarket.StorageProviderInfo, error) {
+	tsk, err := types.TipSetKeyFromBytes(encodedTS)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func (c *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 	var out []*storagemarket.StorageProviderInfo
 
 	for _, addr := range addresses {
-		mi, err := c.GetMinerInfo(ctx, addr, encodedTs)
+		mi, err := c.GetMinerInfo(ctx, addr, encodedTS)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +104,7 @@ func (c *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs 
 	return out, nil
 }
 
-func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
+func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, _ shared.TipSetToken) (bool, error) {
 	addr, err := c.full.StateAccountKey(ctx, addr, types.EmptyTSK)
 	if err != nil {
 		return false, err
@@ -137,8 +138,8 @@ func (c *ClientNodeAdapter) ReleaseFunds(ctx context.Context, addr address.Addre
 	return c.fundmgr.Release(addr, amt)
 }
 
-func (c *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (storagemarket.Balance, error) {
-	tsk, err := types.TipSetKeyFromBytes(encodedTs)
+func (c *ClientNodeAdapter) GetBalance(ctx context.Context, addr address.Address, encodedTS shared.TipSetToken) (storagemarket.Balance, error) {
+	tsk, err := types.TipSetKeyFromBytes(encodedTS)
 	if err != nil {
 		return storagemarket.Balance{}, err
 	}
@@ -422,8 +423,8 @@ func (c *ClientNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, cb
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
-func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*storagemarket.StorageProviderInfo, error) {
-	tsk, err := types.TipSetKeyFromBytes(encodedTs)
+func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Address, encodedTS shared.TipSetToken) (*storagemarket.StorageProviderInfo, error) {
+	tsk, err := types.TipSetKeyFromBytes(encodedTS)
 	if err != nil {
 		return nil, err
 	}

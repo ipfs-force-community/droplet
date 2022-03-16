@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
-type addrSelectApi interface {
+type addrSelectAPI interface {
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletHas(context.Context, address.Address) (bool, error)
 
@@ -27,7 +27,7 @@ type AddressSelector struct {
 	marketTypes.User
 }
 
-func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, use marketTypes.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, big.Int, error) {
+func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectAPI, mi miner.MinerInfo, use marketTypes.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, big.Int, error) {
 	if as == nil {
 		// should only happen in some tests
 		log.Warnw("smart address selection disabled, using worker address")
@@ -73,7 +73,7 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi m
 	return pickAddress(ctx, a, mi, goodFunds, minFunds, addrs)
 }
 
-func pickAddress(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
+func pickAddress(ctx context.Context, a addrSelectAPI, mi miner.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
 	leastBad := mi.Worker
 	bestAvail := minFunds
 
@@ -107,7 +107,7 @@ func pickAddress(ctx context.Context, a addrSelectApi, mi miner.MinerInfo, goodF
 	return leastBad, bestAvail, nil
 }
 
-func maybeUseAddress(ctx context.Context, a addrSelectApi, addr address.Address, goodFunds abi.TokenAmount, leastBad *address.Address, bestAvail *abi.TokenAmount) bool {
+func maybeUseAddress(ctx context.Context, a addrSelectAPI, addr address.Address, goodFunds abi.TokenAmount, leastBad *address.Address, bestAvail *abi.TokenAmount) bool {
 	b, err := a.WalletBalance(ctx, addr)
 	if err != nil {
 		log.Errorw("checking control address balance", "addr", addr, "error", err)

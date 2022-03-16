@@ -18,7 +18,7 @@ func TestFund(t *testing.T) {
 
 	t.Run("badger", func(t *testing.T) {
 		db := BadgerDB(t)
-		testFund(t, repo.FundRepo(badger.NewFundRepo(db)))
+		testFund(t, badger.NewFundRepo(db))
 	})
 }
 

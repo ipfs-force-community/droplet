@@ -47,7 +47,7 @@ type mysqlCidInfoRepo struct {
 
 var _ repo.ICidInfoRepo = (*mysqlCidInfoRepo)(nil)
 
-func NewMysqlCidInfoRepo(ds *gorm.DB) *mysqlCidInfoRepo {
+func NewMysqlCidInfoRepo(ds *gorm.DB) repo.ICidInfoRepo {
 	return &mysqlCidInfoRepo{ds}
 }
 
