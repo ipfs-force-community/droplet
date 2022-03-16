@@ -362,7 +362,7 @@ func (p *StorageProviderV2Impl) ImportPublishedDeal(ctx context.Context, deal ty
 
 	//check if local exit
 	if _, err := p.dealStore.GetDeal(ctx, deal.ProposalCid); err == nil {
-		fmt.Errorf("deal exit proposal cid %s id %d", deal.ProposalCid, deal.DealID)
+		return fmt.Errorf("deal exit proposal cid %s id %d", deal.ProposalCid, deal.DealID)
 	}
 
 	improtDeal := &types.MinerDeal{
