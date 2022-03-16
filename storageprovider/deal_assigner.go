@@ -21,7 +21,7 @@ import (
 type DealAssiger interface {
 	MarkDealsAsPacking(ctx context.Context, miner address.Address, dealIDs []abi.DealID) error
 	UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error
-	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error
+	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus types.PieceStatus) error
 	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error)
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
 	AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
@@ -89,7 +89,7 @@ func (ps *dealAssigner) UpdateDealOnPacking(ctx context.Context, miner address.A
 }
 
 // Store `dealInfo` in the dealAssigner with key `pieceCID`.
-func (ps *dealAssigner) UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus string) error {
+func (ps *dealAssigner) UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus types.PieceStatus) error {
 	md, err := ps.repo.StorageDealRepo().GetDealByDealID(ctx, miner, dealID)
 	if err != nil {
 		log.Error("get deal [%d] error for %s", dealID, miner)

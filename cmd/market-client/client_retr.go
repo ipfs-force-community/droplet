@@ -9,11 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/venus-market/api"
 	cli2 "github.com/filecoin-project/venus-market/cli"
+	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
-
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -25,7 +24,7 @@ import (
 
 const DefaultMaxRetrievePrice = "0"
 
-func retrieve(ctx context.Context, cctx *cli.Context, fapi api.MarketClientNode, sel *client.DataSelector, printf func(string, ...interface{})) (*client.ExportRef, error) {
+func retrieve(ctx context.Context, cctx *cli.Context, fapi clientapi.IMarketClient, sel *client.DataSelector, printf func(string, ...interface{})) (*client.ExportRef, error) {
 	var payer address.Address
 	var err error
 	if cctx.String("from") != "" {

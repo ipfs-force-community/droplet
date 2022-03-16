@@ -133,7 +133,7 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr add
 	return storageDeals, err
 }
 
-func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState string) error {
+func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState types.PieceStatus) error {
 	deal, err := sdr.GetDeal(ctx, proposalCid)
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid ci
 		updateColumns++
 	}
 	if len(pieceState) != 0 {
-		deal.PieceStatus = pieceState
+		deal.PieceStatus = types.PieceStatus(pieceState)
 		updateColumns++
 	}
 	if updateColumns == 0 {
@@ -242,7 +242,7 @@ func (dsr *storageDealRepo) GetDealByDealID(ctx context.Context, mAddr address.A
 	return deal, err
 }
 
-func (dsr *storageDealRepo) GetDealsByPieceStatusV0(ctx context.Context, mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
+func (dsr *storageDealRepo) GetDealsByPieceStatusV0(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus) ([]*types.MinerDeal, error) {
 	var deals []*types.MinerDeal
 	var err error
 	if err = travelDeals(ctx, dsr.ds,
@@ -258,7 +258,7 @@ func (dsr *storageDealRepo) GetDealsByPieceStatusV0(ctx context.Context, mAddr a
 	return deals, nil
 }
 
-func (dsr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
+func (dsr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus) ([]*types.MinerDeal, error) {
 	var deals []*types.MinerDeal
 
 	return deals, travelDeals(ctx, dsr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
@@ -269,7 +269,7 @@ func (dsr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr add
 	})
 }
 
-func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error) {
+func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error) {
 	var deal *types.MinerDeal
 
 	err := travelDeals(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {

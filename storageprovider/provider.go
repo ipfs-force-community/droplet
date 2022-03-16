@@ -306,6 +306,7 @@ func (n *ProviderNodeAdapter) GetMessage(ctx context.Context, mc cid.Cid) (*type
 
 // StorageProviderNode are common interfaces provided by a filecoin Node to both StorageClient and StorageProvider
 type StorageProviderNode interface {
+	v1api.FullNode
 	// Sign sign the given data with the given address's private key
 	Sign(ctx context.Context, data interface{}) (*crypto.Signature, error)
 

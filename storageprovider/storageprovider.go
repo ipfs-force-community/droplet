@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/filecoin-project/venus-market/api/clients"
-	"github.com/mitchellh/go-homedir"
-
 	"github.com/filecoin-project/venus-market/utils"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/mitchellh/go-homedir"
 
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
@@ -59,6 +60,9 @@ type StorageProviderV2 interface {
 
 	// ImportDataForDeal manually imports data for an offline storage deal
 	ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error
+
+	//ImportPublishedDeal manually import published deals to storage deals
+	ImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error
 
 	// SubscribeToEvents listens for events that happen related to storage deals on a provider
 	SubscribeToEvents(subscriber storagemarket.ProviderSubscriber) shared.Unsubscribe
@@ -328,6 +332,72 @@ func (p *StorageProviderV2Impl) ImportDataForDeal(ctx context.Context, propCid c
 		}
 	}()
 	return nil
+}
+
+//ImportPublishedDeal manually import published deals for an storage deal
+//It will verify that the deal is actually online
+func (p *StorageProviderV2Impl) ImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error {
+	//check is deal online
+	onlineDeal, err := p.spn.StateMarketStorageDeal(ctx, deal.DealID, types2.EmptyTSK)
+	if err != nil {
+		return fmt.Errorf("cannt find deal(%d) ", deal.DealID)
+	}
+	//confirm deal proposal in params is correct
+	proposalBytes, err := cbornode.DumpObject(onlineDeal.Proposal)
+	if err != nil {
+		return fmt.Errorf("dump proposal to bytes %w", err)
+	}
+	pCid, err := abi.CidBuilder.Sum(proposalBytes)
+	if err != nil {
+		return fmt.Errorf("fail build ci %w", err)
+	}
+
+	onlinePCid, err := deal.ClientDealProposal.Proposal.Cid()
+	if err != nil {
+		return fmt.Errorf("unable to get proposal cid from deal online %w", err)
+	}
+	if pCid != onlinePCid && onlinePCid == deal.ProposalCid {
+		return fmt.Errorf("deal proposal(%s) not match with proposal(%s) online", pCid, onlinePCid)
+	}
+
+	//check if local exit
+	if _, err := p.dealStore.GetDeal(ctx, deal.ProposalCid); err == nil {
+		fmt.Errorf("deal exit proposal cid %s id %d", deal.ProposalCid, deal.DealID)
+	}
+
+	improtDeal := &types.MinerDeal{
+		ClientDealProposal: deal.ClientDealProposal, //checked
+		ProposalCid:        deal.ProposalCid,        //checked
+		PublishCid:         deal.PublishCid,         //unable to check, msg maybe unable found
+		Client:             deal.Client,             //not necessary
+		PayloadSize:        deal.PayloadSize,        //unable to check
+		Ref: &storagemarket.DataRef{
+			TransferType: "import",
+			Root:         deal.Ref.Root, //unable to check
+			PieceCid:     &deal.Proposal.PieceCID,
+			PieceSize:    deal.Proposal.PieceSize.Unpadded(),
+			RawBlockSize: uint64(deal.PayloadSize),
+		},
+		AvailableForRetrieval: deal.AvailableForRetrieval,
+		DealID:                deal.DealID,
+		//default
+		AddFundsCid:       nil,
+		Miner:             p.net.ID(),
+		State:             storagemarket.StorageDealAwaitingPreCommit,
+		PiecePath:         "",
+		MetadataPath:      "",
+		SlashEpoch:        0,
+		FastRetrieval:     true,
+		Message:           "",
+		FundsReserved:     abi.TokenAmount{},
+		CreationTime:      cbg.CborTime(time.Now()),
+		TransferChannelID: nil,
+		SectorNumber:      0,
+		Offset:            0,
+		PieceStatus:       types.Undefine,
+		InboundCAR:        "",
+	}
+	return p.dealStore.SaveDeal(ctx, improtDeal)
 }
 
 // AddStorageCollateral adds storage collateral

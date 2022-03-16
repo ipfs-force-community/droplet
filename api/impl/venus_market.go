@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/venus-market/retrievalprovider"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -31,12 +32,11 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus-market/api"
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
-	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piecestorage"
 	"github.com/filecoin-project/venus-market/storageprovider"
+	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/filecoin-project/venus-market/paychmgr"
@@ -46,7 +46,7 @@ import (
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
 
-var _ api.MarketFullNode = (*MarketNodeImpl)(nil)
+var _ marketapi.IMarket = (*MarketNodeImpl)(nil)
 var log = logging.Logger("market_api")
 
 type MarketNodeImpl struct {
@@ -120,6 +120,10 @@ func (m MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.Ci
 	return m.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
 }
 
+func (m MarketNodeImpl) MarketImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error {
+	return m.StorageProvider.ImportPublishedDeal(ctx, deal)
+}
+
 func (m MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Address) ([]vTypes.MarketDeal, error) {
 	return m.listDeals(ctx, addrs)
 }
@@ -187,7 +191,7 @@ func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr add
 	return resDeals, nil
 }
 
-func (m MarketNodeImpl) UpdateStorageDealStatus(ctx context.Context, dealProposal cid.Cid, state storagemarket.StorageDealStatus, pieceState string) error {
+func (m MarketNodeImpl) UpdateStorageDealStatus(ctx context.Context, dealProposal cid.Cid, state storagemarket.StorageDealStatus, pieceState types.PieceStatus) error {
 	return m.Repo.StorageDealRepo().UpdateDealStatus(ctx, dealProposal, state, pieceState)
 }
 
@@ -696,7 +700,7 @@ func (m MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.A
 	return m.DealAssigner.UpdateDealOnPacking(ctx, miner, dealId, sectorid, offset)
 }
 
-func (m MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status string) error {
+func (m MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status types.PieceStatus) error {
 	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, status)
 }
 
@@ -722,7 +726,7 @@ func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 	type minerDealsIncludeStatus struct {
 		MinerDeal storagemarket.MinerDeal
 		DealInfo  piecestore.DealInfo
-		Status    string
+		Status    types.PieceStatus
 	}
 
 	type exportData struct {

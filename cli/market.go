@@ -5,9 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/storageprovider"
-	"github.com/filecoin-project/venus/venus-shared/types/market"
 	"io"
 	"log"
 	"os"
@@ -17,6 +14,10 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus-market/storageprovider"
+	"github.com/filecoin-project/venus/venus-shared/types/market"
 
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
@@ -506,7 +507,7 @@ var updateStorageDealStateCmd = &cli.Command{
 		}
 		var isParamOk bool
 		var state storagemarket.StorageDealStatus
-		var pieceState string
+		var pieceState market.PieceStatus
 
 		if cctx.IsSet("state") {
 			isParamOk = true
@@ -514,7 +515,7 @@ var updateStorageDealStateCmd = &cli.Command{
 		}
 
 		if cctx.IsSet("piece-state") {
-			pieceState = cctx.String("piece-state")
+			pieceState = market.PieceStatus(cctx.String("piece-state"))
 			isParamOk = true
 		}
 
