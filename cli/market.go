@@ -507,7 +507,7 @@ var updateStorageDealStateCmd = &cli.Command{
 		}
 		var isParamOk bool
 		var state storagemarket.StorageDealStatus
-		var pieceState market.PieceStatus
+		var pieceStatus market.PieceStatus
 
 		if cctx.IsSet("state") {
 			isParamOk = true
@@ -515,7 +515,7 @@ var updateStorageDealStateCmd = &cli.Command{
 		}
 
 		if cctx.IsSet("piece-state") {
-			pieceState = market.PieceStatus(cctx.String("piece-state"))
+			pieceStatus = market.PieceStatus(cctx.String("piece-state"))
 			isParamOk = true
 		}
 
@@ -528,7 +528,7 @@ var updateStorageDealStateCmd = &cli.Command{
 			return nil
 		}
 
-		return api.UpdateStorageDealStatus(ctx, proposalCid, state, pieceState)
+		return api.UpdateStorageDealStatus(ctx, proposalCid, state, pieceStatus)
 	},
 }
 
