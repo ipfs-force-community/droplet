@@ -5,9 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filecoin-project/venus-market/version"
 	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -19,6 +17,7 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	_ "github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/version"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
@@ -111,9 +110,14 @@ var (
 		Usage:   "auth token for connect wallet service",
 	}
 
+	ExternalFsPieceStorageFlag = &cli.StringFlag{
+		Name:  "ex-fs-ps",
+		Usage: "config external file system storage for piece  (eg  /mnt/store/f01000}",
+	}
+
 	PieceStorageFlag = &cli.StringFlag{
 		Name:  "piecestorage",
-		Usage: "config storage for piece  (eg  fs:/mnt/piece   s3:{access key}:{secret key}:{option token}@{region}host/{bucket}",
+		Usage: "config storage for piece  (eg  fs:/mnt/piece   s3:{access key}:{secret key}:{option token}@{region}host/{bucket})",
 	}
 
 	MysqlDsnFlag = &cli.StringFlag{
@@ -253,6 +257,14 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		cfg.PieceStorage = pieceStorage
 	}
 
+	if cctx.IsSet(ExternalFsPieceStorageFlag.Name) {
+		cfg.ExternalFsPieceStore.Paths = make([]string, 0)
+		paths := cctx.StringSlice(ExternalFsPieceStorageFlag.Name)
+		for _, path := range paths {
+			cfg.ExternalFsPieceStore.Paths = append(cfg.ExternalFsPieceStore.Paths, path)
+		}
+	}
+
 	if cctx.IsSet(MysqlDsnFlag.Name) {
 		cfg.Mysql.ConnectionString = cctx.String(MysqlDsnFlag.Name)
 	}
@@ -269,6 +281,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 			if len(addrStr) >= 2 {
 				account = addrStr[1]
 			}
+			// todo 这里是追加不是替换
 			cfg.StorageMiners = append(cfg.StorageMiners, config.User{
 				Addr:    config.Address(addr),
 				Account: account,

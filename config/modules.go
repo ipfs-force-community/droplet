@@ -136,6 +136,7 @@ var ConfigServerOpts = func(cfg *MarketConfig) builder.Option {
 		builder.Override(new(*Mysql), &cfg.Mysql),
 		builder.Override(new(*Libp2p), &cfg.Libp2p),
 		builder.Override(new(*PieceStorage), &cfg.PieceStorage),
+		builder.Override(new(*ExternalFsPieceStore), &cfg.ExternalFsPieceStore),
 		builder.Override(new(*DAGStoreConfig), &cfg.DAGStore),
 
 		// Config (todo: get a real property system)

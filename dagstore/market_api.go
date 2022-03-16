@@ -4,13 +4,15 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/go-padreader"
-	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/piecestorage"
-
-	"github.com/filecoin-project/dagstore/throttle"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/dagstore/throttle"
+	"github.com/filecoin-project/go-padreader"
+
+	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/piecestorage/external"
 )
 
 type MarketAPI interface {
@@ -21,18 +23,20 @@ type MarketAPI interface {
 }
 
 type marketAPI struct {
-	pieceStorage piecestorage.IPieceStorage
-	pieceRepo    repo.StorageDealRepo
-	throttle     throttle.Throttler
+	pieceStorage     piecestorage.IPieceStorage
+	exFsPieceStorage external.IExternalPieceStorage
+	pieceRepo        repo.StorageDealRepo
+	throttle         throttle.Throttler
 }
 
 var _ MarketAPI = (*marketAPI)(nil)
 
-func NewMinerAPI(repo repo.Repo, pieceStorage piecestorage.IPieceStorage, concurrency int) MarketAPI {
+func NewMinerAPI(repo repo.Repo, pieceStorage piecestorage.IPieceStorage, exFsPieceStorage external.IExternalPieceStorage, concurrency int) MarketAPI {
 	return &marketAPI{
-		pieceRepo:    repo.StorageDealRepo(),
-		pieceStorage: pieceStorage,
-		throttle:     throttle.Fixed(concurrency),
+		pieceRepo:        repo.StorageDealRepo(),
+		pieceStorage:     pieceStorage,
+		exFsPieceStorage: exFsPieceStorage,
+		throttle:         throttle.Fixed(concurrency),
 	}
 }
 
@@ -41,7 +45,16 @@ func (m *marketAPI) Start(_ context.Context) error {
 }
 
 func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
-	return m.pieceStorage.Has(ctx, pieceCid.String())
+	bUnsealed, err := m.pieceStorage.Has(ctx, pieceCid.String())
+	if err != nil {
+		return bUnsealed, err
+	}
+
+	if bUnsealed {
+		return bUnsealed, nil
+	}
+
+	return m.exFsPieceStorage.Has(ctx, pieceCid.String())
 }
 
 func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
@@ -64,9 +77,23 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (i
 			return nil, err
 		}
 		return iocloser{r, padR}, nil
+	} else {
+		if has, _ = m.exFsPieceStorage.Has(ctx, pieceCid.String()); has {
+			r, err := m.exFsPieceStorage.Read(ctx, pieceCid.String())
+			if err != nil {
+				return nil, err
+			}
+
+			padR, err := padreader.NewInflator(r, uint64(payloadSize), pieceSize.Unpadded())
+			if err != nil {
+				return nil, err
+			}
+
+			return iocloser{r, padR}, nil
+		}
 	}
 
-	// todo unseal  ask miner who have this data, send unseal cmd, and read and pay after receive data
+	// todo unseal: ask miner who have this data, send unseal cmd, and read and pay after receive data
 	// 1. select miner
 	// 2. send unseal request
 	// 3. receive data and return

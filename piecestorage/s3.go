@@ -8,16 +8,18 @@ import (
 	"strings"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
-	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("piece-storage")
@@ -175,9 +177,9 @@ func (s s3PieceStorage) Has(ctx context.Context, piececid string) (bool, error) 
 //todo 下面presign两个方法用于给客户端使用，暂时仅仅支持对象存储。 可能需要一个更合适的抽象模式
 func (s s3PieceStorage) GetReadUrl(ctx context.Context, s2 string) (string, error) {
 	if has, err := s.Has(ctx, s2); err != nil {
-		return "", xerrors.Errorf("check object:%s exist error:%w", s2, err)
+		return "", xerrors.Errorf("check object: %s exist error:%w", s2, err)
 	} else if !has {
-		return "", xerrors.Errorf("object : %s not exists", s2)
+		return "", xerrors.Errorf("object: %s not exists", s2)
 	}
 
 	params := &s3.GetObjectInput{
@@ -197,7 +199,7 @@ func (s s3PieceStorage) GetWriteUrl(ctx context.Context, s2 string) (string, err
 	return req.Presign(time.Minute * 30)
 }
 
-func (s s3PieceStorage) Validate(piececid string) error {
+func (s s3PieceStorage) Validate() error {
 	_, err := s.s3Client.GetBucketAcl(&s3.GetBucketAclInput{
 		Bucket: aws.String(s.bucket),
 	})

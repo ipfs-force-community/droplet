@@ -74,8 +74,6 @@ func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
 
 var RetrievalProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
-
-		builder.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
 		// Markets (retrieval)
 		builder.Override(new(rmnet.RetrievalMarketNetwork), RetrievalNetwork),
 		builder.Override(new(IRetrievalProvider), NewProvider), // save to metadata /retrievals/provider

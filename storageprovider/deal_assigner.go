@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
@@ -32,8 +31,8 @@ var _ DealAssiger = (*dealAssigner)(nil)
 
 // NewProviderPieceStore creates a statestore for storing metadata about pieces
 // shared by the piecestorage and retrieval providers
-func NewDealAssigner(lc fx.Lifecycle, pieceStorage *config.PieceStorage, r repo.Repo) (DealAssiger, error) {
-	ps, err := newPieceStoreEx(pieceStorage, r)
+func NewDealAssigner(lc fx.Lifecycle, r repo.Repo) (DealAssiger, error) {
+	ps, err := newPieceStoreEx(r)
 	if err != nil {
 		return nil, xerrors.Errorf("construct extend piece store %w", err)
 	}
@@ -41,15 +40,12 @@ func NewDealAssigner(lc fx.Lifecycle, pieceStorage *config.PieceStorage, r repo.
 }
 
 type dealAssigner struct {
-	pieceStorage config.PieceStorage
-	repo         repo.Repo
+	repo repo.Repo
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func newPieceStoreEx(pieceStorage *config.PieceStorage, r repo.Repo) (DealAssiger, error) {
+func newPieceStoreEx(r repo.Repo) (DealAssiger, error) {
 	return &dealAssigner{
-		pieceStorage: *pieceStorage,
-
 		repo: r,
 	}, nil
 }

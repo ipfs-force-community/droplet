@@ -8,9 +8,10 @@ import (
 	"os"
 	"path"
 
+	xerrors "github.com/pkg/errors"
+
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
-	xerrors "github.com/pkg/errors"
 )
 
 type IPreSignOp interface {
@@ -25,7 +26,7 @@ type IPieceStorage interface {
 	Len(ctx context.Context, string2 string) (int64, error)
 	ReadOffset(context.Context, string, int, int) (io.ReadCloser, error)
 	Has(context.Context, string) (bool, error)
-	Validate(s string) error
+	Validate() error
 
 	IPreSignOp
 }
@@ -74,7 +75,7 @@ func (f fsPieceStorage) ReadOffset(ctx context.Context, s string, offset int, si
 	}
 	_, err = fs.Seek(int64(offset), 0)
 	if err != nil {
-		return nil, fmt.Errorf("unable to seek position to %din file %s %w", offset, dstPath, err)
+		return nil, fmt.Errorf("unable to seek position to %d in file %s %w", offset, dstPath, err)
 	}
 	return utils.NewLimitedBufferReader(fs, size), nil
 }
@@ -90,7 +91,7 @@ func (f fsPieceStorage) Has(ctx context.Context, s string) (bool, error) {
 	return true, nil
 }
 
-func (f fsPieceStorage) Validate(s string) error {
+func (f fsPieceStorage) Validate() error {
 	st, err := os.Stat(f.baseUrl)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -119,7 +120,7 @@ func (f fsPieceStorage) GetWriteUrl(ctx context.Context, s2 string) (string, err
 
 func newFsPieceStorage(fsCfg config.FsPieceStorage) (IPieceStorage, error) {
 	fs := &fsPieceStorage{baseUrl: fsCfg.Path}
-	if err := fs.Validate(fsCfg.Path); err != nil {
+	if err := fs.Validate(); err != nil {
 		return nil, err
 	}
 	return fs, nil
