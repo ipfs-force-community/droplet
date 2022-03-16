@@ -376,7 +376,7 @@ func (p *StorageProviderV2Impl) ImportPublishedDeal(ctx context.Context, deal ty
 			Root:         deal.Ref.Root, //unable to check
 			PieceCid:     &deal.Proposal.PieceCID,
 			PieceSize:    deal.Proposal.PieceSize.Unpadded(),
-			RawBlockSize: uint64(deal.PayloadSize),
+			RawBlockSize: deal.PayloadSize,
 		},
 		AvailableForRetrieval: deal.AvailableForRetrieval,
 		DealID:                deal.DealID,

@@ -766,11 +766,14 @@ func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 	}
 
 	for _, channelInfo := range data.SignedVoucher {
-		m.Repo.PaychChannelInfoRepo().SaveChannel(ctx, channelInfo)
+		err = m.Repo.PaychChannelInfoRepo().SaveChannel(ctx, channelInfo)
+		if err != nil {
+			return fmt.Errorf("save channel fail %w", err)
+		}
 	}
 
 	for _, minerDeal := range data.MinerDeals {
-		m.Repo.StorageDealRepo().SaveDeal(ctx, &types.MinerDeal{
+		err = m.Repo.StorageDealRepo().SaveDeal(ctx, &types.MinerDeal{
 			ClientDealProposal: minerDeal.MinerDeal.ClientDealProposal,
 			ProposalCid:        minerDeal.MinerDeal.ProposalCid,
 			AddFundsCid:        minerDeal.MinerDeal.AddFundsCid,
@@ -795,10 +798,13 @@ func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 			PieceStatus:           minerDeal.Status,
 			InboundCAR:            minerDeal.MinerDeal.InboundCAR,
 		})
+		if err != nil {
+			return fmt.Errorf("save storage deal fail %w", err)
+		}
 	}
 
 	for _, retrievalDeal := range data.RetrievalDeals {
-		m.Repo.RetrievalDealRepo().SaveDeal(ctx, &types.ProviderDealState{
+		err = m.Repo.RetrievalDealRepo().SaveDeal(ctx, &types.ProviderDealState{
 			DealProposal: retrievalDeal.DealProposal,
 			StoreID:      retrievalDeal.StoreID,
 			//SelStorageProposalCid: retrievalDeal,
@@ -811,6 +817,9 @@ func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 			CurrentInterval: retrievalDeal.CurrentInterval,
 			LegacyProtocol:  retrievalDeal.LegacyProtocol,
 		})
+		if err != nil {
+			return fmt.Errorf("retrieval storage deal fail %w", err)
+		}
 	}
 
 	return nil
