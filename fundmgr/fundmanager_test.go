@@ -615,7 +615,10 @@ type scaffold struct {
 func setup(t *testing.T) *scaffold {
 	ctx := context.Background()
 
-	wllt, err := wallet.NewDSBackend(ctx, ds.NewMapDatastore(), config.DefaultPassphraseConfig(), []byte{1, 23, 4})
+	wllt, err := wallet.NewDSBackend(ctx, ds.NewMapDatastore(), config.PassphraseConfig{
+		ScryptN: 1 << 8,
+		ScryptP: 1,
+	}, []byte{1, 23, 4})
 	if err != nil {
 		t.Fatal(err)
 	}
