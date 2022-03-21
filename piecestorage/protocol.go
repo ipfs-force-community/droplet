@@ -21,6 +21,7 @@ type ProtocolResolver struct {
 }
 
 const (
+	MemStore  Protocol = "mem" //for test
 	FS        Protocol = "fs"
 	S3        Protocol = "s3"
 	PreSignS3 Protocol = "presigns3"

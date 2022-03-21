@@ -13,7 +13,7 @@ sequence_chart.md
 coverage.*
 # Test binary, built with `go test -c`
 *.test
-
+data-transfer
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 

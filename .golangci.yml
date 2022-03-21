@@ -49,6 +49,5 @@ linters-settings:
 
 run:
 skip-dirs-use-default: false
-skip-dirs:
-  - pkg/constants$
-  - pkg/util/test$
+skip-files:
+  - testhelper.go

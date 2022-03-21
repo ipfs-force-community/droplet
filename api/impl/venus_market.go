@@ -56,7 +56,7 @@ type MarketNodeImpl struct {
 
 	FullNode          v1api.FullNode
 	Host              host.Host
-	StorageProvider   storageprovider.StorageProviderV2
+	StorageProvider   storageprovider.StorageProvider
 	RetrievalProvider retrievalprovider.IRetrievalProvider
 	DataTransfer      network.ProviderDataTransfer
 	DealPublisher     *storageprovider.DealPublisher
