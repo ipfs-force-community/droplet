@@ -374,7 +374,7 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 	if err != nil {
 		return fmt.Errorf("unable to get proposal cid from deal online %w", err)
 	}
-	if pCid != onlinePCid && onlinePCid == deal.ProposalCid {
+	if pCid != onlinePCid || onlinePCid == deal.ProposalCid {
 		return fmt.Errorf("deal proposal(%s) not match with proposal(%s) online", pCid, onlinePCid)
 	}
 

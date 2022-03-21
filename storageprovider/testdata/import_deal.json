@@ -534,6 +534,64 @@
           "StartEpoch": 70690,
           "EndEpoch": 592818,
           "StoragePricePerEpoch": "1250000000000",
+          "ProviderCollateral": "10",
+          "ClientCollateral": "0"
+        },
+        "ClientSignature": {
+          "Type": 1,
+          "Data": "RfXhxzigbEBth7zphyxS9zz8mtgDzh8Gi+hrjVWTHVVzO8bduzJgrGfJ3hoWksWHdLnbGbqmBlFmywbsbqVglgE="
+        },
+        "ProposalCid": {
+          "/": "bafyreif72iiuzzn3ktycmikwph6o3zzswwdgh27qkzvtmndnnly52n6de4"
+        },
+        "AddFundsCid": null,
+        "PublishCid": {
+          "/": "bafk4bzacib4lc7v6qdihmtukx74nkfz6aelzya6mmshaoaw7lfjlmt4v26b3w47t7mwgjl6qi5i46yiyp6vcl4vhhfj2rrxczvumr6mag6hx6qxt"
+        },
+        "Miner": "12D3KooWJXLLG3KQjSrWcaKVzssBLyEViJ1ZV34E7Hac4KRhKe5X",
+        "Client": "12D3KooWQDUVEXkVcpG13oexqhiVEqvhMvZPk8D91cmSjS5oCyqz",
+        "State": 7,
+        "PiecePath": "",
+        "PayloadSize": 129813315,
+        "MetadataPath": "",
+        "SlashEpoch": 0,
+        "FastRetrieval": true,
+        "Message": "",
+        "FundsReserved": "0",
+        "Ref": {
+          "TransferType": "",
+          "Root": {
+            "/": "bafykbzacea6rs6x7n42hp2udjnyk7evbxdfdy22olmsz2vvc2lzlmqdbz6pzy"
+          },
+          "PieceCid": null,
+          "PieceSize": 0,
+          "RawBlockSize": 0
+        },
+        "AvailableForRetrieval": true,
+        "DealID": 3045,
+        "CreationTime": "2022-02-21T18:28:03.930184575+08:00",
+        "TransferChannelId": null,
+        "SectorNumber": 0,
+        "Offset": 0,
+        "PieceStatus": "",
+        "InboundCAR": ""
+      },
+      "Result": false
+    },
+    {
+      "Proposal": {
+        "Proposal": {
+          "PieceCID": {
+            "/": "baga6ea4seaqnxaqz3vx63uvn2yctsj2r6ywfctdoutsvhempq2zjapeu5aztydy"
+          },
+          "PieceSize": 134217728,
+          "VerifiedDeal": false,
+          "Client": "t16qnfduxzpneb2m3rbdasvhgk7rmmo32zpiypkaq",
+          "Provider": "t01043",
+          "Label": "mAXCg5AIgPRl6/280d+qDS3CvkqG4yjxrTlslnVai0vK2QGHPn5w",
+          "StartEpoch": 70690,
+          "EndEpoch": 592818,
+          "StoragePricePerEpoch": "1250000000000",
           "ProviderCollateral": "0",
           "ClientCollateral": "0"
         },
@@ -577,6 +635,64 @@
         "InboundCAR": ""
       },
       "Result": true
+    },
+    {
+      "Proposal": {
+        "Proposal": {
+          "PieceCID": {
+            "/": "baga6ea4seaqnxaqz3vx63uvn2yctsj2r6ywfctdoutsvhempq2zjapeu5aztydy"
+          },
+          "PieceSize": 134217728,
+          "VerifiedDeal": false,
+          "Client": "t16qnfduxzpneb2m3rbdasvhgk7rmmo32zpiypkaq",
+          "Provider": "t01043",
+          "Label": "mAXCg5AIgPRl6/280d+qDS3CvkqG4yjxrTlslnVai0vK2QGHPn5w",
+          "StartEpoch": 70690,
+          "EndEpoch": 592818,
+          "StoragePricePerEpoch": "1250000000000",
+          "ProviderCollateral": "0",
+          "ClientCollateral": "0"
+        },
+        "ClientSignature": {
+          "Type": 1,
+          "Data": "RfXhxzigbEBth7zphyxS9zz8mtgDzh8Gi+hrjVWTHVVzO8bduzJgrGfJ3hoWksWHdLnbGbqmBlFmywbsbqVglgE="
+        },
+        "ProposalCid": {
+          "/": "bafyreif72iiuzzn3ktycmikwph6o3zzswwdgh27qkzvtmndnnly52n6de4"
+        },
+        "AddFundsCid": null,
+        "PublishCid": {
+          "/": "bafk4bzacib4lc7v6qdihmtukx74nkfz6aelzya6mmshaoaw7lfjlmt4v26b3w47t7mwgjl6qi5i46yiyp6vcl4vhhfj2rrxczvumr6mag6hx6qxt"
+        },
+        "Miner": "12D3KooWJXLLG3KQjSrWcaKVzssBLyEViJ1ZV34E7Hac4KRhKe5X",
+        "Client": "12D3KooWQDUVEXkVcpG13oexqhiVEqvhMvZPk8D91cmSjS5oCyqz",
+        "State": 7,
+        "PiecePath": "",
+        "PayloadSize": 129813315,
+        "MetadataPath": "",
+        "SlashEpoch": 0,
+        "FastRetrieval": true,
+        "Message": "",
+        "FundsReserved": "0",
+        "Ref": {
+          "TransferType": "",
+          "Root": {
+            "/": "bafykbzacea6rs6x7n42hp2udjnyk7evbxdfdy22olmsz2vvc2lzlmqdbz6pzy"
+          },
+          "PieceCid": null,
+          "PieceSize": 0,
+          "RawBlockSize": 0
+        },
+        "AvailableForRetrieval": true,
+        "DealID": 3045,
+        "CreationTime": "2022-02-21T18:28:03.930184575+08:00",
+        "TransferChannelId": null,
+        "SectorNumber": 0,
+        "Offset": 0,
+        "PieceStatus": "",
+        "InboundCAR": ""
+      },
+      "Result": false
     },
     {
       "Proposal": {
@@ -686,6 +802,61 @@
         "AvailableForRetrieval": true,
         "DealID": 3068,
         "CreationTime": "2022-03-02T09:59:39.722058551+08:00",
+        "TransferChannelId": null,
+        "SectorNumber": 0,
+        "Offset": 0,
+        "PieceStatus": "",
+        "InboundCAR": ""
+      },
+      "Result": false
+    },
+    {
+      "Proposal": {
+        "Proposal": {
+          "PieceSize": 67108864,
+          "VerifiedDeal": false,
+          "Client": "t16qnfduxzpneb2m3rbdasvhgk7rmmo32zpiypkaq",
+          "Provider": "t01043",
+          "Label": "mAXCg5AIgoXIDf0ewLF32+a8/A0GQHc7mwxBsxcZZKJyQf9BzsO4",
+          "StartEpoch": 61890,
+          "EndEpoch": 1116978,
+          "StoragePricePerEpoch": "625000000000",
+          "ProviderCollateral": "0",
+          "ClientCollateral": "0"
+        },
+        "ClientSignature": {
+          "Type": 1,
+          "Data": "e2AgUg/ZdtRbBkkloFUOiOxCL/cGShFQwtDTr00juj1UnDyL+CXt6OBTpzTJ+vYOHIXXDstMuTfsHSI95+5C3gA="
+        },
+        "ProposalCid": {
+          "/": "bafyreigqd5mpklvmjncom6m2hmejsi5ckbe2ziaemxubsvdwrngolz6zcq"
+        },
+        "AddFundsCid": null,
+        "PublishCid": {
+          "/": "bafk4bzacibrwh2u77bwdrankiywtzcvgqzjxrsng6vlhf5jzahg3q25jlpf7zuylvyp4cf7xlmw3lfmvbc5cx62gjn7wpyzcwk3vdk4wksgk3e4w"
+        },
+        "Miner": "12D3KooWJXLLG3KQjSrWcaKVzssBLyEViJ1ZV34E7Hac4KRhKe5X",
+        "Client": "12D3KooWQDUVEXkVcpG13oexqhiVEqvhMvZPk8D91cmSjS5oCyqz",
+        "State": 7,
+        "PiecePath": "",
+        "PayloadSize": 60159769,
+        "MetadataPath": "",
+        "SlashEpoch": 0,
+        "FastRetrieval": true,
+        "Message": "",
+        "FundsReserved": "0",
+        "Ref": {
+          "TransferType": "",
+          "Root": {
+            "/": "bafykbzacecqxea37i6ycyxpw7gxt6a2bsao45zwdcbwmlrszfcoja76qooyo4"
+          },
+          "PieceCid": null,
+          "PieceSize": 0,
+          "RawBlockSize": 0
+        },
+        "AvailableForRetrieval": true,
+        "DealID": 3043,
+        "CreationTime": "2022-02-18T17:08:19.931886316+08:00",
         "TransferChannelId": null,
         "SectorNumber": 0,
         "Offset": 0,

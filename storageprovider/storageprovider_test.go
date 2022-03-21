@@ -66,7 +66,7 @@ func setup(t *testing.T) StorageProvider {
 	}
 
 	for did, c := range testGround.DealsOnChain {
-		spn.addDeal(ctx, did, &c)
+		spn.addDeal(ctx, did, c)
 	}
 
 	r := models.NewInMemoryRepo()
@@ -127,7 +127,7 @@ func (m mockAddrMgr) AddAddress(ctx context.Context, user market.User) error {
 type mockProviderNode struct {
 	mock.MockFullNode
 	dataLk sync.Mutex
-	data   map[abi.DealID]*types.MarketDeal
+	data   map[abi.DealID]types.MarketDeal
 	head   *types.TipSet
 }
 
@@ -135,12 +135,12 @@ func newMockProviderNode() *mockProviderNode {
 	return &mockProviderNode{
 		MockFullNode: mock.MockFullNode{},
 		dataLk:       sync.Mutex{},
-		data:         make(map[abi.DealID]*types.MarketDeal),
+		data:         make(map[abi.DealID]types.MarketDeal),
 		head:         nil,
 	}
 }
 
-func (m *mockProviderNode) addDeal(ctx context.Context, dealID abi.DealID, deal *types.MarketDeal) {
+func (m *mockProviderNode) addDeal(ctx context.Context, dealID abi.DealID, deal types.MarketDeal) {
 	m.dataLk.Lock()
 	defer m.dataLk.Unlock()
 	m.data[dealID] = deal
@@ -149,8 +149,8 @@ func (m *mockProviderNode) addDeal(ctx context.Context, dealID abi.DealID, deal 
 func (m *mockProviderNode) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*types.MarketDeal, error) {
 	m.dataLk.Lock()
 	defer m.dataLk.Unlock()
-	if market, ok := m.data[dealID]; ok {
-		return market, nil
+	if marketDeal, ok := m.data[dealID]; ok {
+		return &marketDeal, nil
 	}
 	return nil, fmt.Errorf("unable to find deal %d", dealID)
 }
