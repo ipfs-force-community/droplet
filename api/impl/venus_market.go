@@ -9,13 +9,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/venus-market/models/repo"
-
-	"github.com/filecoin-project/venus-market/minermgr"
-	"github.com/filecoin-project/venus-market/retrievalprovider"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
-
-	"github.com/filecoin-project/venus-market/config"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -33,17 +26,21 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/minermgr"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/piecestorage"
-	"github.com/filecoin-project/venus-market/storageprovider"
-	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
-
 	"github.com/filecoin-project/venus-market/paychmgr"
+	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/retrievalprovider"
+	"github.com/filecoin-project/venus-market/storageprovider"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var _ marketapi.IMarket = (*MarketNodeImpl)(nil)
@@ -174,12 +171,12 @@ func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr add
 	if mAddr == address.Undef {
 		deals, err = m.Repo.StorageDealRepo().ListDeal(ctx)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get deal: %s", err)
 		}
 	} else {
 		deals, err = m.Repo.StorageDealRepo().ListDealByAddr(ctx, mAddr)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("get deal for %s: %s", mAddr.String(), err)
 		}
 	}
 

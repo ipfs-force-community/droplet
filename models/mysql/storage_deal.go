@@ -253,21 +253,23 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		md.TransferChannelID.ID = datatransfer.TransferID(src.TransferChannelId.ID)
 		md.TransferChannelID.Initiator, err = decodePeerId(src.TransferChannelId.Initiator)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decode tci_initiator: %s", err)
 		}
 		md.TransferChannelID.Responder, err = decodePeerId(src.TransferChannelId.Responder)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decode tci_responder: %s", err)
 		}
 	}
 
+	// todo 导入的数据没有此字段
 	md.Miner, err = decodePeerId(src.Miner)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode miner_peer: %s", err)
 	}
+
 	md.Client, err = decodePeerId(src.Client)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode client_peer: %s", err)
 	}
 
 	return md, nil

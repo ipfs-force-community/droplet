@@ -16,6 +16,8 @@ const (
 	TTFromForce = "import"
 )
 
+ const DefaultPeerID = "12D3KooWQztpkQoRR1k3xmRowa3pwA8qDg9yKyiqQLGr6Y4tWkq5"
+
 type ForceDeal struct {
 	ID               uint64    `gorm:"primary_key;column:id;type:bigint(20) unsigned AUTO_INCREMENT;not null" json:"id"`
 	Dealid           uint64    `gorm:"column:dealid;unique_index:uq_dealid_ttype;type:bigint(20) unsigned" json:"dealid"`
@@ -53,6 +55,7 @@ func (fd *ForceDeal) ToDeal() *Deal {
 	md := &Deal{
 		ClientDealProposal: mysql.ClientDealProposal{
 			PieceCID:             mysql.DBCid(pCid),
+			VerifiedDeal:         true,
 			Client:               mysql.DBAddress(client),
 			Provider:             mysql.DBAddress(provider),
 			StartEpoch:           int64(fd.Start),
@@ -61,6 +64,7 @@ func (fd *ForceDeal) ToDeal() *Deal {
 			ClientCollateral:     convertBigInt(fd.ClientCollateral),
 		},
 		ProposalCid: mysql.DBCid(proposalCid),
+		Miner:       DefaultPeerID, // todo 反序列化时需要能解析
 		Client:      fd.Peerid,
 		State:       storagemarket.StorageDealActive,
 		PayloadSize: int64(fd.Filesize),
@@ -75,6 +79,7 @@ func (fd *ForceDeal) ToDeal() *Deal {
 		SectorNumber: uint64(fd.Sectorid),
 
 		Offset: fd.Offset,
+		PieceStatus: "Proving",
 	}
 
 	return md
