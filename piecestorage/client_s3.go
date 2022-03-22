@@ -78,7 +78,7 @@ func (c PresignS3Storage) Has(ctx context.Context, s string) (bool, error) {
 	panic("implement me")
 }
 
-func (c PresignS3Storage) Validate() error {
+func (c PresignS3Storage) Validate(s string) error {
 	if c.presignUrl == nil {
 		return fmt.Errorf("client s3 storage must has presign url")
 	}

@@ -199,7 +199,7 @@ func (s s3PieceStorage) GetWriteUrl(ctx context.Context, s2 string) (string, err
 	return req.Presign(time.Minute * 30)
 }
 
-func (s s3PieceStorage) Validate() error {
+func (s s3PieceStorage) Validate(piececid string) error {
 	_, err := s.s3Client.GetBucketAcl(&s3.GetBucketAclInput{
 		Bucket: aws.String(s.bucket),
 	})
