@@ -383,7 +383,7 @@ func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid ci
 
 func (sdr *storageDealRepo) ListDealByAddr(ctx context.Context, miner address.Address) ([]*types.MinerDeal, error) {
 	var storageDeals []*storageDeal
-	if err := sdr.Table(storageDealTableName).Find(storageDeals, "cdp_provider = ?", DBAddress(miner).String()).Error; err != nil {
+	if err := sdr.Table(storageDealTableName).Find(&storageDeals, "cdp_provider = ?", DBAddress(miner).String()).Error; err != nil {
 		return nil, err
 	}
 	return fromDbDeals(storageDeals)
