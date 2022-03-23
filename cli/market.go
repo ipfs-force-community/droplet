@@ -233,7 +233,7 @@ var setAskCmd = &cli.Command{
 
 		maddr, err := address.NewFromString(cctx.String("miner"))
 		if err != nil {
-			return nil
+			return fmt.Errorf("para `miner` is invalid: %w", err)
 		}
 
 		ssize, err := api.ActorSectorSize(ctx, maddr)
@@ -281,7 +281,7 @@ var getAskCmd = &cli.Command{
 
 		maddr, err := address.NewFromString(cctx.String("miner"))
 		if err != nil {
-			return nil
+			return fmt.Errorf("para `miner` is invalid: %w", err)
 		}
 
 		sask, err := smapi.MarketGetAsk(ctx, maddr)
@@ -389,10 +389,9 @@ var dealsListCmd = &cli.Command{
 		defer closer()
 		var maddr = address.Undef
 		if cctx.IsSet("miner") {
-			var err error
 			maddr, err = address.NewFromString(cctx.String("miner"))
 			if err != nil {
-				return nil
+				return fmt.Errorf("para `miner` is invalid: %w", err)
 			}
 		}
 
