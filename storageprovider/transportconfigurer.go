@@ -2,6 +2,7 @@ package storageprovider
 
 import (
 	"context"
+
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"golang.org/x/xerrors"

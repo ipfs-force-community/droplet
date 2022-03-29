@@ -3,12 +3,13 @@ package piecestorage
 import (
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/stretchr/testify/require"
 	"io"
 	"os"
 	path2 "path"
 	"testing"
+
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReWrite(t *testing.T) {
@@ -16,7 +17,7 @@ func TestReWrite(t *testing.T) {
 	path := os.TempDir()
 	name := "market-test-tmp"
 	filepath := path2.Join(path, name)
-	os.Remove(filepath)
+	_ = os.Remove(filepath)
 
 	ctx := context.TODO()
 	ifs, err := newFsPieceStorage(config.FsPieceStorage{Enable: true, Path: path})

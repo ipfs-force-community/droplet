@@ -34,7 +34,7 @@ var (
 	StartDealTracker = builder.NextInvoke()
 )
 
-func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProviderV2, j journal.Journal) {
+func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProvider, j journal.Journal) {
 	ctx := metrics.LifecycleCtx(mctx, lc)
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
@@ -194,7 +194,7 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), // save to metadata /datatransfer/provider/transfers
 		//   save to metadata /deals/provider/piecestorage-ask/latest
 		builder.Override(new(config.StorageDealFilter), BasicDealFilter(nil)),
-		builder.Override(new(StorageProviderV2), NewStorageProviderV2),
+		builder.Override(new(StorageProvider), NewStorageProvider),
 		builder.Override(new(*DealPublisher), NewDealPublisherWrapper(cfg)),
 		builder.Override(HandleDealsKey, HandleDeals),
 		builder.If(cfg.Filter != "",

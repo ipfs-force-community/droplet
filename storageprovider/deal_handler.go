@@ -407,7 +407,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 			// Hand the deal off to the process that adds it to a sector
 			log.Infow("handing off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
-			deal.PayloadSize = abi.UnpaddedPieceSize(file.Size())
+			deal.PayloadSize = uint64(file.Size())
 			err = storageDealPorcess.deals.SaveDeal(ctx, deal)
 			if err != nil {
 				return storageDealPorcess.HandleError(ctx, deal, xerrors.Errorf("fail to save deal to database"))
@@ -430,7 +430,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 					deal.ProposalCid, err))
 			}
 
-			deal.PayloadSize = abi.UnpaddedPieceSize(v2r.Header.DataSize)
+			deal.PayloadSize = v2r.Header.DataSize
 			err = storageDealPorcess.deals.SaveDeal(ctx, deal)
 			if err != nil {
 				return storageDealPorcess.HandleError(ctx, deal, xerrors.Errorf("fail to save deal to database"))

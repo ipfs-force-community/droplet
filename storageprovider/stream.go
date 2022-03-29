@@ -72,7 +72,11 @@ A Provider handling a `AskRequest` does the following:
 The connection is kept open only as long as the request-response exchange.
 */
 func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAskStream) {
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			log.Errorf("unable to close err %v", err)
+		}
+	}()
 	ar, err := s.ReadAskRequest()
 	if err != nil {
 		log.Errorf("failed to read AskRequest from incoming stream: %s", err)

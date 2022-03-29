@@ -14,7 +14,6 @@ import (
 
 	metrics2 "github.com/ipfs/go-metrics-interface"
 
-	"github.com/filecoin-project/venus-market/api"
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/cli"
@@ -31,6 +30,7 @@ import (
 	"github.com/filecoin-project/venus-market/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
+	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
 )
 
@@ -118,8 +118,8 @@ func poolDaemon(cctx *cli.Context) error {
 		return xerrors.Errorf("handle 'resource' failed: %w", err)
 	}
 
-	var fullAPI api.MarketFullStruct
-	permission.PermissionProxy(api.MarketFullNode(resAPI), &fullAPI)
+	var fullAPI marketapi.IMarketStruct
+	permission.PermissionProxy(marketapi.IMarket(resAPI), &fullAPI)
 
 	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, cfg.AuthNode.Url, &fullAPI, finishCh)
 }

@@ -2,6 +2,7 @@ package retrievalprovider
 
 import (
 	"context"
+
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multiaddr"
 
@@ -92,8 +93,8 @@ func (rcn *retrievalClientNode) CheckAvailableFunds(ctx context.Context, payment
 	}, nil
 }
 
-func (rcn *retrievalClientNode) GetKnownAddresses(ctx context.Context, p retrievalmarket.RetrievalPeer, encodedTs shared.TipSetToken) ([]multiaddr.Multiaddr, error) {
-	tsk, err := types.TipSetKeyFromBytes(encodedTs)
+func (rcn *retrievalClientNode) GetKnownAddresses(ctx context.Context, p retrievalmarket.RetrievalPeer, encodedTS shared.TipSetToken) ([]multiaddr.Multiaddr, error) {
+	tsk, err := types.TipSetKeyFromBytes(encodedTS)
 	if err != nil {
 		return nil, err
 	}

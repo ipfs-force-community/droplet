@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/venus-market/models/repo"
 )
 
+//nolint
 type MysqlRepo struct {
 	*gorm.DB
 }

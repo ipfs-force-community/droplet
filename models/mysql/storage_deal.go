@@ -39,7 +39,7 @@ type storageDeal struct {
 	Client      string `gorm:"column:client_peer;type:varchar(128);"`
 	State       uint64 `gorm:"column:state;type:bigint unsigned;index"`
 
-	PayloadSize           int64      `gorm:"column:payload_size;type:bigint;"`
+	PayloadSize           uint64     `gorm:"column:payload_size;type:bigint;"`
 	PiecePath             string     `gorm:"column:piece_path;type:varchar(256);"`
 	MetadataPath          string     `gorm:"column:metadata_path;type:varchar(256);"`
 	SlashEpoch            int64      `gorm:"column:slash_epoch;type:bigint;"`
@@ -112,6 +112,7 @@ type DataRef struct {
 	TransferType string `gorm:"column:transfer_type;type:varchar(128);"`
 	Root         DBCid  `gorm:"column:root;type:varchar(256);"`
 
+	//todo remove filed below
 	PieceCid     DBCid                 `gorm:"column:piece_cid;type:varchar(256);"`
 	PieceSize    abi.UnpaddedPieceSize `gorm:"column:piece_size;type:bigint unsigned;"`
 	RawBlockSize uint64                `gorm:"column:raw_block_size;type:bigint unsigned;"`
@@ -144,7 +145,7 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 		Miner:                 src.Miner.Pretty(),
 		Client:                src.Client.Pretty(),
 		State:                 src.State,
-		PayloadSize:           int64(src.PayloadSize),
+		PayloadSize:           src.PayloadSize,
 		PiecePath:             string(src.PiecePath),
 		MetadataPath:          string(src.MetadataPath),
 		SlashEpoch:            int64(src.SlashEpoch),
@@ -159,7 +160,7 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 
 		Offset:      uint64(src.Offset),
 		Length:      uint64(src.Proposal.PieceSize),
-		PieceStatus: src.PieceStatus,
+		PieceStatus: string(src.PieceStatus),
 	}
 
 	if src.AddFundsCid == nil {
@@ -223,10 +224,10 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		AddFundsCid:   src.AddFundsCid.cidPtr(),
 		PublishCid:    src.PublishCid.cidPtr(),
 		State:         src.State,
-		PayloadSize:   abi.UnpaddedPieceSize(src.PayloadSize),
+		PayloadSize:   src.PayloadSize,
 		PiecePath:     filestore.Path(src.PiecePath),
 		MetadataPath:  filestore.Path(src.MetadataPath),
-		PieceStatus:   src.PieceStatus,
+		PieceStatus:   types.PieceStatus(src.PieceStatus),
 		SlashEpoch:    abi.ChainEpoch(src.SlashEpoch),
 		FastRetrieval: src.FastRetrieval,
 		Message:       src.Message,
@@ -278,7 +279,7 @@ type storageDealRepo struct {
 
 var _ repo.StorageDealRepo = (*storageDealRepo)(nil)
 
-func NewStorageDealRepo(db *gorm.DB) *storageDealRepo {
+func NewStorageDealRepo(db *gorm.DB) repo.StorageDealRepo {
 	return &storageDealRepo{db}
 }
 
@@ -363,7 +364,7 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr add
 	return deals, nil
 }
 
-func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState string) error {
+func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState types.PieceStatus) error {
 	updataColumns := make(map[string]interface{})
 
 	if status != storagemarket.StorageDealUnknown {
@@ -450,7 +451,7 @@ func (sdr *storageDealRepo) GetDealByDealID(ctx context.Context, mAddr address.A
 	return toStorageDeal(dbDeal)
 }
 
-func (sdr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus string) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus) ([]*types.MinerDeal, error) {
 	var dbDeals []*storageDeal
 	if err := sdr.WithContext(ctx).Table(storageDealTableName).Find(&dbDeals, "cdp_provider = ? and piece_status = ?", DBAddress(mAddr).String(), pieceStatus).Error; err != nil {
 		return nil, err
@@ -459,13 +460,13 @@ func (sdr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr add
 	return fromDbDeals(dbDeals)
 }
 
-func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (abi.UnpaddedPieceSize, abi.PaddedPieceSize, error) {
+func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error) {
 	var deal *storageDeal
 	if err := sdr.WithContext(ctx).Table(storageDealTableName).Take(&deal, "cdp_piece_cid = ? ", DBCid(pieceCID).String()).Error; err != nil {
 		return 0, 0, err
 	}
 
-	return abi.UnpaddedPieceSize(deal.PayloadSize), abi.PaddedPieceSize(deal.PieceSize), nil
+	return deal.PayloadSize, abi.PaddedPieceSize(deal.PieceSize), nil
 }
 
 func fromDbDeals(dbDeals []*storageDeal) ([]*types.MinerDeal, error) {

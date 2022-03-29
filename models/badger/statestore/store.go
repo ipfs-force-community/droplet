@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/filecoin-project/go-cbor-util"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"go.uber.org/multierr"
@@ -54,17 +54,18 @@ func (st *StateStore) Has(ctx context.Context, i interface{}) (bool, error) {
 }
 
 // out: *[]T
-func (st *StateStore) List(ctx context.Context, out interface{}) error {
-	res, err := st.ds.Query(ctx, query.Query{})
+func (st *StateStore) List(ctx context.Context, out interface{}) (err error) {
+	var res query.Results
+	res, err = st.ds.Query(ctx, query.Query{})
 	if err != nil {
-		return err
+		return
 	}
-	defer res.Close()
+	defer func() {
+		err = res.Close()
+	}()
 
 	outT := reflect.TypeOf(out).Elem().Elem()
 	rout := reflect.ValueOf(out)
-
-	var errs error
 
 	for {
 		res, ok := res.NextSync()
@@ -72,18 +73,18 @@ func (st *StateStore) List(ctx context.Context, out interface{}) error {
 			break
 		}
 		if res.Error != nil {
-			return res.Error
+			err = res.Error
+			return
 		}
 
 		elem := reflect.New(outT)
-		err := cborutil.ReadCborRPC(bytes.NewReader(res.Value), elem.Interface())
+		err = cborutil.ReadCborRPC(bytes.NewReader(res.Value), elem.Interface())
 		if err != nil {
-			errs = multierr.Append(errs, xerrors.Errorf("decoding state for key '%s': %w", res.Key, err))
+			err = multierr.Append(err, xerrors.Errorf("decoding state for key '%s': %w", res.Key, err))
 			continue
 		}
 
 		rout.Elem().Set(reflect.Append(rout.Elem(), elem.Elem()))
 	}
-
-	return errs
+	return
 }

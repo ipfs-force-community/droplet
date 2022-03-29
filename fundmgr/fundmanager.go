@@ -54,7 +54,7 @@ type FundManager struct {
 	fundedAddrs map[address.Address]*fundedAddress
 }
 
-// func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, ds models.FundMgrDS, repo repo.Repo) *FundManager {
+// func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, fundRepo models.FundMgrDS, repo repo.Repo) *FundManager {
 func NewFundManager(lc fx.Lifecycle, api FundManagerAPI, repo repo.Repo) *FundManager {
 	fm := newFundManager(&api, repo.FundRepo())
 	lc.Append(fx.Hook{

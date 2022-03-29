@@ -22,6 +22,7 @@ import (
 	"github.com/chzyer/readline"
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
+	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/urfave/cli/v2"
@@ -40,7 +41,6 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
-	api2 "github.com/filecoin-project/venus-market/api"
 	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/cli/tablewriter"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
@@ -59,6 +59,7 @@ var storageCmd = &cli.Command{
 // TODO ???
 // Actor consts
 // TODO: pieceSize unused from actors
+//nolint
 var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
 
 const BlockDelaySecs = uint64(builtin7.EpochDurationSeconds)
@@ -68,7 +69,7 @@ type QueriedAsk struct {
 	Ping time.Duration
 }
 
-func GetAsks(ctx context.Context, api v1api.FullNode, capi api2.MarketClientNode) ([]QueriedAsk, error) {
+func GetAsks(ctx context.Context, api v1api.FullNode, capi clientapi.IMarketClient) ([]QueriedAsk, error) {
 	isTTY := true
 	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) == 0 {
 		isTTY = false
@@ -1464,7 +1465,7 @@ func renderDeal(di *client.DealInfo) {
 	}
 }
 
-func inspectDealCmd(ctx context.Context, api api2.MarketClientNode, proposalCid string, dealId int) error {
+func inspectDealCmd(ctx context.Context, api clientapi.IMarketClient, proposalCid string, dealId int) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

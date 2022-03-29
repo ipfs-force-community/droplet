@@ -2,8 +2,9 @@ package badger
 
 import (
 	"context"
+
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/venus-market/models/badger/datastore"
+	"github.com/filecoin-project/venus-market/models/badger/statestore"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/ipfs/go-cid"
 )

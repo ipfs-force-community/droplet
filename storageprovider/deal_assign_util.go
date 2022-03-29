@@ -2,8 +2,9 @@ package storageprovider
 
 import (
 	"fmt"
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"math/bits"
+
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"

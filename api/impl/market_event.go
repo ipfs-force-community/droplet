@@ -17,7 +17,6 @@ type MarketEventAPI struct {
 
 var errNotSupportGateWayMode = xerrors.Errorf("MarketEvent api supported only when it runs in 'solo' mode")
 
-
 func (marketEvent *MarketEventAPI) ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error {
 	if marketEvent.Event == nil {
 		return errNotSupportGateWayMode

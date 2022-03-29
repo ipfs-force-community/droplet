@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-cid"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
 )
 
 // API contains configs for API endpoint
@@ -306,11 +306,11 @@ func (addr *Address) UnmarshalText(text []byte) error {
 	return err
 }
 
-func (dur Address) MarshalText() ([]byte, error) {
-	if address.Address(dur) == address.Undef {
+func (addr Address) MarshalText() ([]byte, error) {
+	if address.Address(addr) == address.Undef {
 		return []byte{}, nil
 	}
-	return []byte(address.Address(dur).String()), nil
+	return []byte(address.Address(addr).String()), nil
 }
 
 func ConvertConfigAddress(addrs []Address) []address.Address {

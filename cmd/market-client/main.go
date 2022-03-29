@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 
+	clients2 "github.com/filecoin-project/venus-market/api/clients"
+	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 
@@ -14,8 +16,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/venus-market/api"
-	clients2 "github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/client"
@@ -258,8 +258,8 @@ func marketClient(cctx *cli.Context) error {
 	}
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
-	var marketCli api.MarketClientStruct
-	permission.PermissionProxy((api.MarketClientNode)(resAPI), &marketCli)
+	var marketCli clientapi.IMarketClientStruct
+	permission.PermissionProxy((clientapi.IMarketClient)(resAPI), &marketCli)
 
 	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux.NewRouter(), 1000, cli2.API_NAMESPACE_MARKET_CLIENT, "", &marketCli, finishCh)
 }

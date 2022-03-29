@@ -3,9 +3,10 @@ package storageprovider
 import (
 	"context"
 	"fmt"
+
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 )
 
@@ -14,7 +15,7 @@ type IDatatransferHandler interface {
 	//have many receiver function
 	HandleCompleteFor(ctx context.Context, proposalid cid.Cid) error
 	HandleCancelForDeal(ctx context.Context, proposalid cid.Cid) error
-	HandleRestartForDeal(ctx context.Context, proposalid cid.Cid, channelId datatransfer.ChannelID) error
+	HandleRestartForDeal(ctx context.Context, proposalid cid.Cid, channelID datatransfer.ChannelID) error
 	HandleStalledForDeal(ctx context.Context, proposalid cid.Cid) error
 	HandleInitForDeal(ctx context.Context, proposalid cid.Cid, channel datatransfer.ChannelID) error
 	HandleFailedForDeal(ctx context.Context, proposalid cid.Cid, reason error) error

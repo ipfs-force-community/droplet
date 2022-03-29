@@ -1,6 +1,9 @@
 package network
 
 import (
+	"os"
+	"strconv"
+
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/badger"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
@@ -9,8 +12,6 @@ import (
 	"github.com/ipfs/go-graphsync/storeutil"
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
-	"os"
-	"strconv"
 )
 
 // MaxTraversalLinks configures the maximum number of links to traverse in a DAG while calculating

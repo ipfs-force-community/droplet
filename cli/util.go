@@ -39,8 +39,8 @@ var CidBaseFlag = cli.StringFlag{
 }
 
 const (
-	API_NAMESPACE_VENUS_MARKET  = "VENUS_MARKET"
-	API_NAMESPACE_MARKET_CLIENT = "VENUS_MARKET_CLIENT"
+	API_NAMESPACE_VENUS_MARKET  = "VENUS_MARKET"        //nolint
+	API_NAMESPACE_MARKET_CLIENT = "VENUS_MARKET_CLIENT" //nolint
 )
 
 // GetCidEncoder returns an encoder using the `cid-base` flag if provided, or

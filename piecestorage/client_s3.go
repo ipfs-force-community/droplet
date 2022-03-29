@@ -3,9 +3,10 @@ package piecestorage
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/utils"
 	"io"
 	"net/http"
+
+	"github.com/filecoin-project/venus-market/utils"
 )
 
 var _ IPieceStorage = (*PresignS3Storage)(nil)

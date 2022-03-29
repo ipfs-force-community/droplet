@@ -163,10 +163,12 @@ func NewClientTransferDS(ds MetadataDS) ClientTransferDS {
 	return namespace.Wrap(ds, datastore.NewKey(clientTransfer))
 }
 
+//nolint
 type BadgerRepo struct {
 	dsParams *BadgerDSParams
 }
 
+//nolint
 type BadgerDSParams struct {
 	fx.In
 	FundDS           FundMgrDS        `optional:"true"`
@@ -193,7 +195,7 @@ func (r *BadgerRepo) StorageDealRepo() repo.StorageDealRepo {
 }
 
 func (r *BadgerRepo) PaychMsgInfoRepo() repo.PaychMsgInfoRepo {
-	return NewPaychRepo(r.dsParams.PaychDS)
+	return NewPayMsgRepo(r.dsParams.PaychDS)
 }
 
 func (r *BadgerRepo) PaychChannelInfoRepo() repo.PaychChannelInfoRepo {

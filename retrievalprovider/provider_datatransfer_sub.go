@@ -3,6 +3,7 @@ package retrievalprovider
 import (
 	"context"
 	"fmt"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"

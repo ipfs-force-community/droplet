@@ -2,10 +2,11 @@ package dagstore
 
 import (
 	"context"
+	"io"
+
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/piecestorage"
-	"io"
 
 	"github.com/filecoin-project/dagstore/throttle"
 	"github.com/ipfs/go-cid"
@@ -58,7 +59,7 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (i
 		if err != nil {
 			return nil, err
 		}
-		padR, err := padreader.NewInflator(r, uint64(payloadSize), pieceSize.Unpadded())
+		padR, err := padreader.NewInflator(r, payloadSize, pieceSize.Unpadded())
 		if err != nil {
 			return nil, err
 		}

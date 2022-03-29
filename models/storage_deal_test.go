@@ -36,7 +36,7 @@ func TestStorageDeal(t *testing.T) {
 
 	t.Run("badger", func(t *testing.T) {
 		db := BadgerDB(t)
-		testStorageDeal(t, repo.StorageDealRepo(badger.NewStorageDealRepo(db)))
+		testStorageDeal(t, badger.NewStorageDealRepo(db))
 	})
 }
 

@@ -24,8 +24,9 @@ func TestPaych(t *testing.T) {
 	t.Run("badger", func(t *testing.T) {
 		db := BadgerDB(t)
 		ps := badger.NewPaychRepo(db)
-		testChannelInfo(t, repo.PaychChannelInfoRepo(ps), repo.PaychMsgInfoRepo(ps))
-		testMsgInfo(t, repo.PaychMsgInfoRepo(ps))
+		msgPaych := badger.NewPayMsgRepo(db)
+		testChannelInfo(t, ps, msgPaych)
+		testMsgInfo(t, msgPaych)
 	})
 }
 
@@ -105,10 +106,10 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 	res2, err := channelRepo.GetChannelByChannelID(ctx, ci2.ChannelID)
 	assert.Nil(t, err)
 	assert.Equal(t, res2, ci2)
-	res_3, err := channelRepo.GetChannelByChannelID(ctx, ci3.ChannelID)
+	resC3, err := channelRepo.GetChannelByChannelID(ctx, ci3.ChannelID)
 	assert.Nil(t, err)
 	ci3.Channel = nil
-	assert.Equal(t, res_3, ci3)
+	assert.Equal(t, resC3, ci3)
 
 	res3, err := channelRepo.GetChannelByAddress(ctx, *ci.Channel)
 	assert.Nil(t, err)

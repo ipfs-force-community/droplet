@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
@@ -95,7 +96,7 @@ type channelInfoRepo struct {
 	*gorm.DB
 }
 
-func NewChannelInfoRepo(db *gorm.DB) *channelInfoRepo {
+func NewChannelInfoRepo(db *gorm.DB) repo.PaychChannelInfoRepo {
 	return &channelInfoRepo{db}
 }
 
@@ -253,7 +254,7 @@ type msgInfoRepo struct {
 	*gorm.DB
 }
 
-func NewMsgInfoRepo(db *gorm.DB) *msgInfoRepo {
+func NewMsgInfoRepo(db *gorm.DB) repo.PaychMsgInfoRepo {
 	return &msgInfoRepo{db}
 }
 

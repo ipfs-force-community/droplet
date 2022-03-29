@@ -13,7 +13,7 @@ import (
 type Protocol string
 
 type ProtocolParser func(cfg string) (interface{}, error)
-type PieceStorageCtor func(cfg interface{}) (IPieceStorage, error)
+type PieceStorageCtor func(cfg interface{}) (IPieceStorage, error) //nolint
 
 type ProtocolResolver struct {
 	Parser      ProtocolParser
@@ -21,6 +21,7 @@ type ProtocolResolver struct {
 }
 
 const (
+	MemStore  Protocol = "mem" //for test
 	FS        Protocol = "fs"
 	S3        Protocol = "s3"
 	PreSignS3 Protocol = "presigns3"

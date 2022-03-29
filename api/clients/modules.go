@@ -87,9 +87,8 @@ var ClientsOpts = func(server bool, mode string, mCfg *config.Messager, signerCf
 				builder.Override(new(MarketRequestEvent), NewIMarketEvent),
 			),
 		)
-	} else {
-		return builder.Options(opts,
-			builder.Override(new(v1api.FullNode), NodeClient),
-		)
 	}
+	return builder.Options(opts,
+		builder.Override(new(v1api.FullNode), NodeClient),
+	)
 }

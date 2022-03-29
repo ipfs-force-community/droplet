@@ -2,11 +2,12 @@ package dagstore
 
 import (
 	"context"
-	mock_dagstore2 "github.com/filecoin-project/venus-market/dagstore/mocks"
 	"io/ioutil"
 	"net/url"
 	"strings"
 	"testing"
+
+	mock_dagstore2 "github.com/filecoin-project/venus-market/dagstore/mocks"
 
 	"github.com/golang/mock/gomock"
 	blocksutil "github.com/ipfs/go-ipfs-blocksutil"

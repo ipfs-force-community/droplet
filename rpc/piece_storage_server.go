@@ -2,10 +2,11 @@ package rpc
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus-market/piecestorage"
 	"io"
 	"net/http"
 	"strconv"
+
+	"github.com/filecoin-project/venus-market/piecestorage"
 )
 
 var _ http.Handler = (*PieceStorageServer)(nil)
@@ -19,36 +20,40 @@ func NewPieceStorageServer(pieceStorage piecestorage.IPieceStorage) *PieceStorag
 }
 
 func (p *PieceStorageServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	resourceId := req.URL.Query().Get("resource-id")
-	if len(resourceId) == 0 {
+	resourceID := req.URL.Query().Get("resource-id")
+	if len(resourceID) == 0 {
 		http.Error(res, "resource is empty", http.StatusBadRequest)
 		return
 	}
 
-	has, err := p.pieceStorage.Has(req.Context(), resourceId)
+	has, err := p.pieceStorage.Has(req.Context(), resourceID)
 	if err != nil {
-		http.Error(res, fmt.Sprintf("call piecestore.Has for %s: %s", resourceId, err), http.StatusInternalServerError)
+		http.Error(res, fmt.Sprintf("call piecestore.Has for %s: %s", resourceID, err), http.StatusInternalServerError)
 		return
 	}
 
 	if !has {
-		http.Error(res, fmt.Sprintf("resource %s not found", resourceId), http.StatusNotFound)
+		http.Error(res, fmt.Sprintf("resource %s not found", resourceID), http.StatusNotFound)
 		return
 	}
 
-	flen, err := p.pieceStorage.Len(req.Context(), resourceId)
+	flen, err := p.pieceStorage.Len(req.Context(), resourceID)
 	if err != nil {
-		http.Error(res, fmt.Sprintf("call piecestore.Len for %s: %s", resourceId, err), http.StatusInternalServerError)
+		http.Error(res, fmt.Sprintf("call piecestore.Len for %s: %s", resourceID, err), http.StatusInternalServerError)
 		return
 	}
 
-	r, err := p.pieceStorage.Read(req.Context(), resourceId)
+	r, err := p.pieceStorage.Read(req.Context(), resourceID)
 	if err != nil {
-		http.Error(res, fmt.Sprintf("failed to open reader for %s: %s", resourceId, err), http.StatusInternalServerError)
+		http.Error(res, fmt.Sprintf("failed to open reader for %s: %s", resourceID, err), http.StatusInternalServerError)
 		return
 	}
 
-	defer r.Close()
+	defer func() {
+		if err = r.Close(); err != nil {
+			log.Errorf("unable to close http %v", err)
+		}
+	}()
 
 	res.Header().Set("Content-Length", strconv.FormatInt(flen, 10))
 	// TODO:

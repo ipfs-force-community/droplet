@@ -2,11 +2,12 @@ package config
 
 import (
 	"bytes"
-	"github.com/BurntSushi/toml"
-	"github.com/mitchellh/go-homedir"
 	"io/ioutil"
 	"os"
 	"path"
+
+	"github.com/BurntSushi/toml"
+	"github.com/mitchellh/go-homedir"
 )
 
 func SaveConfig(cfg IHome) error {

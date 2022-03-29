@@ -3,6 +3,7 @@ package retrievalprovider
 import (
 	"context"
 	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
@@ -47,7 +48,11 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	ctx, cancel := context.WithTimeout(context.TODO(), queryTimeout)
 	defer cancel()
 
-	defer stream.Close()
+	defer func() {
+		if err := stream.Close(); err != nil {
+			log.Errorf("unable to close stream %v", err)
+		}
+	}()
 	query, err := stream.ReadQuery()
 	if err != nil {
 		return

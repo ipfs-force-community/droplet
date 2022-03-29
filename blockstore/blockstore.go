@@ -2,6 +2,7 @@ package blockstore
 
 import (
 	"context"
+
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -31,6 +32,7 @@ type BatchDeleter interface {
 	DeleteMany(ctx context.Context, cids []cid.Cid) error
 }
 
+//nolint
 // BlockstoreIterator is a trait for efficient iteration
 type BlockstoreIterator interface {
 	ForEachKey(func(cid.Cid) error) error
