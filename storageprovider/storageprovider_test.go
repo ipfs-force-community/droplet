@@ -51,7 +51,7 @@ func TestStorageProviderImpl_ImportPublishedDeal(t *testing.T) {
 	}
 	for _, c := range testGround.Cases {
 		err = provider.ImportPublishedDeal(ctx, *c.Proposal)
-		assert.Equal(t, c.Result, err == nil, "%v", err)
+		assert.Equal(t, c.Result, err == nil, "ProposalCid: %v, err: %v", c.Proposal.ProposalCid, err)
 	}
 }
 

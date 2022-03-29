@@ -326,7 +326,7 @@
         "MetadataPath": "",
         "SlashEpoch": 0,
         "FastRetrieval": true,
-        "Message": "",
+        "Message": "ProposalCid not match  the calculated result",
         "FundsReserved": "0",
         "Ref": {
           "TransferType": "",
@@ -346,7 +346,7 @@
         "PieceStatus": "",
         "InboundCAR": ""
       },
-      "Result": true
+      "Result": false
     },
     {
       "Proposal": {
@@ -445,7 +445,7 @@
         "Message": "",
         "FundsReserved": "0",
         "Ref": {
-          "TransferType": "",
+          "TransferType": "ProposalCid not match the calculated result",
           "Root": {
             "/": "bafk2bzacebxv46pivemqa6pzpuqy6l7bt3ngvwfywtvs64m6wdnmhqaw6afuu"
           },
@@ -462,7 +462,7 @@
         "PieceStatus": "",
         "InboundCAR": ""
       },
-      "Result": true
+      "Result": false
     },
     {
       "Proposal": {
@@ -600,7 +600,7 @@
           "Data": "RfXhxzigbEBth7zphyxS9zz8mtgDzh8Gi+hrjVWTHVVzO8bduzJgrGfJ3hoWksWHdLnbGbqmBlFmywbsbqVglgE="
         },
         "ProposalCid": {
-          "/": "bafyreif72iiuzzn3ktycmikwph6o3zzswwdgh27qkzvtmndnnly52n6de4"
+          "/": "bafy2bzaceaqshyk4davgz3bwqcgpe4n7yeepfeyof7zg4hlvojr67fahwewds"
         },
         "AddFundsCid": null,
         "PublishCid": {
@@ -716,7 +716,7 @@
           "Data": "649YuoiHKzbYBBl1KWQS17fbCPpYNHNHH6A0RkeI2tQllTLuJ4rSulQcgd1ebJ78SmUtHnr3H5DP6jeGtNnpiwE="
         },
         "ProposalCid": {
-          "/": "bafyreifpxwzmlyym2kanzfpd72xhr4aeb5u766kirluasghjc7f4f65jpa"
+          "/": "bafy2bzacedsqg4x2dcl65xxthgwfxjrrcuke5jq2kokerzf4hfzt2i53qqleo"
         },
         "AddFundsCid": null,
         "PublishCid": {
@@ -887,7 +887,7 @@
           "Data": "e2AgUg/ZdtRbBkkloFUOiOxCL/cGShFQwtDTr00juj1UnDyL+CXt6OBTpzTJ+vYOHIXXDstMuTfsHSI95+5C3gA="
         },
         "ProposalCid": {
-          "/": "bafyreigqd5mpklvmjncom6m2hmejsi5ckbe2ziaemxubsvdwrngolz6zcq"
+          "/": "bafy2bzaceacwprasdjntthip6omsnleagdflps5o6gml4yohuv376urag75ks"
         },
         "AddFundsCid": null,
         "PublishCid": {

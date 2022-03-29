@@ -6,15 +6,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-	"github.com/filecoin-project/venus-market/api/clients"
-	"github.com/filecoin-project/venus-market/utils"
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/mitchellh/go-homedir"
-
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/mitchellh/go-homedir"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -22,21 +17,28 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
+
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/go-padreader"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/exitcode"
 
+	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/minermgr"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
 	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/utils"
+
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -345,18 +347,40 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 	if !p.minerMgr.Has(ctx, deal.Proposal.Provider) {
 		return fmt.Errorf("miner %s not support", deal.Proposal.Provider)
 	}
-	//check is deal online
+
+	// confirm deal proposal in params is correct
+	dealPCid, err := deal.ClientDealProposal.Proposal.Cid()
+	if err != nil {
+		return fmt.Errorf("unable to get proposal cid from deal online %w", err)
+	}
+	if dealPCid != deal.ProposalCid {
+		return fmt.Errorf("deal proposal(%s) not match the calculated result(%s)", deal.ProposalCid, dealPCid)
+	}
+
+	// check is deal online
 	onlineDeal, err := p.spn.StateMarketStorageDeal(ctx, deal.DealID, types2.EmptyTSK)
 	if err != nil {
 		return fmt.Errorf("cannt find deal(%d) ", deal.DealID)
 	}
-	//confirm deal proposal in params is correct
-	//todo change DealProposal the same as type in spec-actors
+	// get client addr
+	clientAccount := onlineDeal.Proposal.Client
+	if deal.Proposal.Client != clientAccount {
+		switch deal.Proposal.Client.Protocol() {
+		case address.BLS, address.SECP256K1:
+			clientAccount, err = p.spn.StateAccountKey(ctx, onlineDeal.Proposal.Client, types2.EmptyTSK)
+		case address.Actor:
+			clientAccount, err = p.spn.StateLookupID(ctx, onlineDeal.Proposal.Client, types2.EmptyTSK)
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("get account for %s err: %w", onlineDeal.Proposal.Client, err)
+	}
+	// change DealProposal the same as type in spec-actors
 	onlineProposal := market.DealProposal{
 		PieceCID:             onlineDeal.Proposal.PieceCID,
 		PieceSize:            onlineDeal.Proposal.PieceSize,
 		VerifiedDeal:         onlineDeal.Proposal.VerifiedDeal,
-		Client:               onlineDeal.Proposal.Client,
+		Client:               clientAccount,
 		Provider:             onlineDeal.Proposal.Provider,
 		Label:                onlineDeal.Proposal.Label,
 		StartEpoch:           onlineDeal.Proposal.StartEpoch,
@@ -367,20 +391,16 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 	}
 	pCid, err := onlineProposal.Cid()
 	if err != nil {
-		return fmt.Errorf("fail build ci %w", err)
+		return fmt.Errorf("fail build cid %w", err)
 	}
-
-	onlinePCid, err := deal.ClientDealProposal.Proposal.Cid()
-	if err != nil {
-		return fmt.Errorf("unable to get proposal cid from deal online %w", err)
-	}
-	if pCid != onlinePCid || onlinePCid == deal.ProposalCid {
-		return fmt.Errorf("deal proposal(%s) not match with proposal(%s) online", pCid, onlinePCid)
+	if pCid != dealPCid {
+		log.Errorf("online: %v, rpc receive: %v", onlineDeal.Proposal, deal.ClientDealProposal.Proposal)
+		return fmt.Errorf("deal online proposal(%s) not match with proposal(%s)", pCid, dealPCid)
 	}
 
 	//check if local exit
 	if _, err := p.dealStore.GetDeal(ctx, deal.ProposalCid); err == nil {
-		return fmt.Errorf("deal exit proposal cid %s id %d", deal.ProposalCid, deal.DealID)
+		return fmt.Errorf("deal exist proposal cid %s id %d", deal.ProposalCid, deal.DealID)
 	}
 
 	improtDeal := &types.MinerDeal{
