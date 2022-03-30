@@ -45,6 +45,7 @@ var soloRunCmd = &cli.Command{
 		WalletUrlFlag,
 		WalletTokenFlag,
 		PieceStorageFlag,
+		ExternalFsPieceStorageFlag,
 		MysqlDsnFlag,
 		MinerListFlag,
 		PaymentAddressFlag,

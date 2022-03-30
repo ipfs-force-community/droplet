@@ -13,8 +13,8 @@ import (
 
 func ImportDealsToMysql(srcConn, conn string) error {
 	var (
-		maxOpenConn int = 10
-		maxIdleConn int = 10
+		maxOpenConn = 10
+		maxIdleConn = 10
 	)
 
 	db, err := gorm.Open(mysql.Open(srcConn))

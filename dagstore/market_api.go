@@ -77,20 +77,23 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (i
 			return nil, err
 		}
 		return iocloser{r, padR}, nil
-	} else {
-		if has, _ = m.exFsPieceStorage.Has(ctx, pieceCid.String()); has {
-			r, err := m.exFsPieceStorage.Read(ctx, pieceCid.String())
-			if err != nil {
-				return nil, err
-			}
+	}
 
-			padR, err := padreader.NewInflator(r, uint64(payloadSize), pieceSize.Unpadded())
-			if err != nil {
-				return nil, err
-			}
-
-			return iocloser{r, padR}, nil
+	has, err = m.exFsPieceStorage.Has(ctx, pieceCid.String())
+	if err != nil {
+		return nil, err
+	}
+	if has {
+		r, err := m.exFsPieceStorage.Read(ctx, pieceCid.String())
+		if err != nil {
+			return nil, err
 		}
+
+		padR, err := padreader.NewInflator(r, payloadSize, pieceSize.Unpadded())
+		if err != nil {
+			return nil, err
+		}
+		return iocloser{r, padR}, nil
 	}
 
 	// todo unseal: ask miner who have this data, send unseal cmd, and read and pay after receive data

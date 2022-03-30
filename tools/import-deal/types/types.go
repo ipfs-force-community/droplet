@@ -16,7 +16,7 @@ const (
 	TTFromForce = "import"
 )
 
- const DefaultPeerID = "12D3KooWQztpkQoRR1k3xmRowa3pwA8qDg9yKyiqQLGr6Y4tWkq5"
+const DefaultPeerID = "12D3KooWQztpkQoRR1k3xmRowa3pwA8qDg9yKyiqQLGr6Y4tWkq5"
 
 type ForceDeal struct {
 	ID               uint64    `gorm:"primary_key;column:id;type:bigint(20) unsigned AUTO_INCREMENT;not null" json:"id"`
@@ -74,11 +74,11 @@ func (fd *ForceDeal) ToDeal() *Deal {
 
 			PieceCid: mysql.UndefDBCid,
 		},
-		DealID:       uint64(fd.Dealid),
+		DealID:       fd.Dealid,
 		CreationTime: fd.Createtime.UnixNano(),
-		SectorNumber: uint64(fd.Sectorid),
+		SectorNumber: fd.Sectorid,
 
-		Offset: fd.Offset,
+		Offset:      fd.Offset,
 		PieceStatus: "Proving",
 	}
 

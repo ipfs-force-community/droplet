@@ -110,7 +110,7 @@ var (
 		Usage:   "auth token for connect wallet service",
 	}
 
-	ExternalFsPieceStorageFlag = &cli.StringFlag{
+	ExternalFsPieceStorageFlag = &cli.StringSliceFlag{
 		Name:  "ex-fs-ps",
 		Usage: "config external file system storage for piece  (eg  /mnt/store/f01000}",
 	}
@@ -260,9 +260,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	if cctx.IsSet(ExternalFsPieceStorageFlag.Name) {
 		cfg.ExternalFsPieceStore.Paths = make([]string, 0)
 		paths := cctx.StringSlice(ExternalFsPieceStorageFlag.Name)
-		for _, path := range paths {
-			cfg.ExternalFsPieceStore.Paths = append(cfg.ExternalFsPieceStore.Paths, path)
-		}
+		cfg.ExternalFsPieceStore.Paths = append(cfg.ExternalFsPieceStore.Paths, paths...)
 	}
 
 	if cctx.IsSet(MysqlDsnFlag.Name) {

@@ -93,7 +93,7 @@ func (ef externalFsPieceStorage) ReadOffset(ctx context.Context, pCidStr string,
 			return nil, fmt.Errorf("failed to seek position to %d in file %s %s", offset, dstPath, err)
 		}
 
-		return utils.NewLimitedBufferReader(fs, int(size)), nil
+		return utils.NewLimitedBufferReader(fs, size), nil
 	}
 
 	return nil, fmt.Errorf("file does not exist")
