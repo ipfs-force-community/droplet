@@ -6,12 +6,13 @@ import (
 	"math"
 	"sort"
 
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
@@ -222,6 +223,9 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.A
 	// TODO: is this concurrent safe?
 	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
 		for _, piece := range pieces {
+			if piece.DealID <= 0 || piece.PublishCid == cid.Undef {
+				continue
+			}
 			md, err := txRepo.StorageDealRepo().GetDealByDealID(ctx, miner, piece.DealID)
 			if err != nil {
 				return err
