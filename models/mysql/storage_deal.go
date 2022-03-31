@@ -365,21 +365,24 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr add
 }
 
 func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState types.PieceStatus) error {
-	updataColumns := make(map[string]interface{})
+	updateColumns := make(map[string]interface{})
 
 	if status != storagemarket.StorageDealUnknown {
-		updataColumns["state"] = status
+		updateColumns["state"] = status
 	}
 
 	if len(pieceState) != 0 {
-		updataColumns["piece_status"] = pieceState
+		updateColumns["piece_status"] = pieceState
 	}
 
-	if len(updataColumns) == 0 {
+	if len(updateColumns) == 0 {
 		return nil
 	}
+
+	updateColumns["updated_at"] = time.Now().Unix()
+
 	return sdr.WithContext(ctx).Model(storageDeal{}).Where("proposal_cid = ?", DBCid(proposalCid).String()).
-		UpdateColumns(map[string]interface{}{"state": status, "updated_at": time.Now().Unix()}).Error
+		UpdateColumns(updateColumns).Error
 }
 
 func (sdr *storageDealRepo) ListDealByAddr(ctx context.Context, miner address.Address) ([]*types.MinerDeal, error) {
