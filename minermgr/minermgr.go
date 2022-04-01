@@ -3,24 +3,21 @@ package minermgr
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus-auth/auth"
+	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
+	"github.com/filecoin-project/venus-auth/core"
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/go-resty/resty/v2"
-	logging "github.com/ipfs/go-log/v2"
-
-	"github.com/filecoin-project/venus-market/config"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 )
 
 const CoMinersLimit = 200
@@ -37,8 +34,10 @@ type IAddrMgr interface {
 }
 
 type UserMgrImpl struct {
-	authCfg  config.AuthNode
 	fullNode v1api.FullNode
+
+	authClient *jwtclient.AuthClient
+	authNode   config.AuthNode
 
 	miners []types.User
 	lk     sync.Mutex
@@ -46,8 +45,8 @@ type UserMgrImpl struct {
 
 var _ IAddrMgr = (*UserMgrImpl)(nil)
 
-func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode v1api.FullNode, cfg *config.MarketConfig) (IAddrMgr, error) {
-	m := &UserMgrImpl{authCfg: cfg.AuthNode, fullNode: fullNode}
+func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode v1api.FullNode, authClient *jwtclient.AuthClient, cfg *config.MarketConfig) (IAddrMgr, error) {
+	m := &UserMgrImpl{fullNode: fullNode, authClient: authClient, authNode: cfg.AuthNode}
 
 	err := m.distAddress(ctx, convertConfigAddress(cfg.StorageMiners)...)
 	if err != nil {
@@ -66,13 +65,14 @@ func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode v1api.FullNode, cfg *config.
 	if err != nil {
 		return nil, err
 	}
-	miners, err := m.getMinerFromVenusAuth(context.TODO(), 0, 0)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { go m.refreshUsers(ctx) }()
-	return m, m.distAddress(ctx, miners...)
 
+	if m.authClient != nil {
+		if err := m.refreshOnce(ctx); err != nil {
+			return nil, xerrors.Errorf("first refresh users from venus-auth(%s) failed:%w", m.authNode.Url, err)
+		}
+		go m.refreshUsers(ctx)
+	}
+	return m, nil
 }
 
 func (m *UserMgrImpl) ActorAddress(ctx context.Context) ([]address.Address, error) {
@@ -136,52 +136,38 @@ func (m *UserMgrImpl) GetAccount(ctx context.Context, addr address.Address) (str
 }
 
 func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int64) ([]types.User, error) {
-	log.Infof("request miners from auth: %v ...", m.authCfg)
-	if len(m.authCfg.Url) == 0 {
+	if m.authClient == nil {
 		return nil, nil
 	}
 	if limit == 0 {
 		limit = CoMinersLimit
 	}
-	cli := resty.New().SetHostURL(m.authCfg.Url).SetHeader("Accept", "application/json")
-	response, err := cli.R().SetQueryParams(map[string]string{
-		"token": m.authCfg.Token,
-		"skip":  fmt.Sprintf("%d", skip),
-		"limit": fmt.Sprintf("%d", limit),
-	}).Get("/user/list")
+
+	usersWithMiners, err := m.authClient.ListUsersWithMiners(&auth.ListUsersRequest{
+		Page: &core.Page{Skip: skip, Limit: limit},
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	switch response.StatusCode() {
-	case http.StatusOK:
-		var res []AuthUser
-		err = json.Unmarshal(response.Body(), &res)
-		if err != nil {
-			return nil, err
+	var users []types.User
+	for _, u := range usersWithMiners {
+		if u.State != core.UserStateEnabled {
+			log.Warnf("user:%s state is: %s, won't list its mienrs", u.Name, u.State.String())
+			continue
 		}
-
-		m.lk.Lock()
-		var miners []types.User
-		for _, val := range res {
-			if len(val.Miner) > 0 && val.State == 1 {
-				addr, err := address.NewFromString(val.Miner)
-				if err == nil && addr != address.Undef {
-					miners = append(miners, types.User{
-						Addr:    addr,
-						Account: val.Name,
-					})
-				} else {
-					log.Warnf("miner [%s] is error", val.Miner)
-				}
+		for _, m := range u.Miners {
+			addr, err := address.NewFromString(m.Miner)
+			if err != nil {
+				log.Warnf("invalid miner:%s in user:%s", m.Miner, u.Name)
+				continue
 			}
+			users = append(users, types.User{Addr: addr, Account: u.Name})
 		}
-		m.lk.Unlock()
-		return miners, err
-	default:
-		response.Result()
-		return nil, fmt.Errorf("response code is : %d, msg:%s", response.StatusCode(), response.Body())
 	}
+
+	return users, nil
 }
 
 func (m *UserMgrImpl) AddAddress(ctx context.Context, user types.User) error {
@@ -259,21 +245,37 @@ func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...types.User) erro
 	return nil
 }
 
+// todo: looks like refreshUsers only add miners,
+//   considering venus-auth may delete/disable user(very few, but occurs),
+//   the correct way is syncing 'miners' with venus-auth.
+func (m *UserMgrImpl) refreshOnce(ctx context.Context) error {
+	if m.authClient == nil {
+		return xerrors.Errorf("authClient is nil")
+	}
+
+	log.Infof("refresh miners from venus-auth, url: %s\n", m.authNode.Url)
+	miners, err := m.getMinerFromVenusAuth(ctx, 0, 0)
+	if err != nil {
+		return err
+	}
+	return m.distAddress(ctx, miners...)
+}
+
 func (m *UserMgrImpl) refreshUsers(ctx context.Context) {
+	if m.authClient == nil {
+		log.Warnf("auth client is nil, won't refresh users from venus-auth")
+		return
+	}
 	tm := time.NewTicker(time.Minute)
 	defer tm.Stop()
-	for range tm.C {
-		miners, err := m.getMinerFromVenusAuth(context.TODO(), 0, 0)
-		if err != nil {
-			log.Errorf("unable to get venus miner from venus auth %s", err)
-		}
 
-		err = m.distAddress(ctx, miners...)
-		if err != nil {
-			log.Errorf("unable to append new user to address manager %s", err)
+	for range tm.C {
+		if err := m.refreshOnce(ctx); err != nil {
+			log.Errorf("refresh user from auth(%s) failed:%s", m.authNode.Url, err.Error())
 		}
 	}
 }
+
 func convertConfigAddress(addrs []config.User) []types.User {
 	addrs2 := make([]types.User, len(addrs))
 	for index, miner := range addrs {

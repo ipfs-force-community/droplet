@@ -9,20 +9,22 @@ import (
 	"path"
 
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/multiformats/go-multiaddr"
+
 	auth2 "github.com/filecoin-project/venus-auth/auth"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("modules")
 
-func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.Router, maxRequestSize int64, namespace string, authURL string, api interface{}, shutdownCh <-chan struct{}) error {
+func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.Router, maxRequestSize int64,
+	namespace string, authClient *jwtclient.AuthClient, api interface{}, shutdownCh <-chan struct{}) error {
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
@@ -50,9 +52,8 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 	}
 
 	var handler http.Handler
-	if len(authURL) > 0 {
-		cli := jwtclient.NewJWTClient(authURL)
-		handler = jwtclient.NewAuthMux(localJwtClient, jwtclient.WarpIJwtAuthClient(cli), mux, logging.Logger("auth"))
+	if authClient != nil {
+		handler = jwtclient.NewAuthMux(localJwtClient, jwtclient.WarpIJwtAuthClient(authClient), mux, logging.Logger("auth"))
 	} else {
 		handler = jwtclient.NewAuthMux(localJwtClient, nil, mux, logging.Logger("auth"))
 	}

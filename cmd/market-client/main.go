@@ -261,5 +261,5 @@ func marketClient(cctx *cli.Context) error {
 	var marketCli clientapi.IMarketClientStruct
 	permission.PermissionProxy((clientapi.IMarketClient)(resAPI), &marketCli)
 
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux.NewRouter(), 1000, cli2.API_NAMESPACE_MARKET_CLIENT, "", &marketCli, finishCh)
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux.NewRouter(), 1000, cli2.API_NAMESPACE_MARKET_CLIENT, nil, &marketCli, finishCh)
 }

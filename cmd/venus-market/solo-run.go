@@ -3,17 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/gorilla/mux"
-	"github.com/urfave/cli/v2"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
-
-	"github.com/ipfs-force-community/venus-common-utils/builder"
-	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
-
-	metrics2 "github.com/ipfs/go-metrics-interface"
-
+	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/cli"
@@ -32,6 +22,14 @@ import (
 	"github.com/filecoin-project/venus-market/utils"
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
+	"github.com/gorilla/mux"
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	metrics2 "github.com/ipfs/go-metrics-interface"
+	"github.com/urfave/cli/v2"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 )
 
 var soloRunCmd = &cli.Command{
@@ -71,6 +69,9 @@ func soloDaemon(cctx *cli.Context) error {
 	shutdownChan := make(chan struct{})
 	_, err = builder.New(ctx,
 		//defaults
+		// 'solo' mode doesn't needs a 'AuthClient' of venus-auth,
+		// provide a nil 'AuthClient', just for making 'NeAddrMgrImpl' happy
+		builder.Override(new(*jwtclient.AuthClient), func() *jwtclient.AuthClient { return nil }),
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
 			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)
@@ -117,5 +118,5 @@ func soloDaemon(cctx *cli.Context) error {
 	var fullAPI marketapi.IMarketStruct
 	permission.PermissionProxy(marketapi.IMarket(resAPI), &fullAPI)
 
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, "", &fullAPI, finishCh)
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, nil, &fullAPI, finishCh)
 }

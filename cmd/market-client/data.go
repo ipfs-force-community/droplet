@@ -252,12 +252,7 @@ var dataGenerateCarCmd = &cli.Command{
 			Path:  cctx.Args().First(),
 			IsCAR: false,
 		}
-
 		op := cctx.Args().Get(1)
-
-		if err = api.ClientGenCar(ctx, ref, op); err != nil {
-			return err
-		}
-		return nil
+		return api.ClientGenCar(ctx, ref, op)
 	},
 }

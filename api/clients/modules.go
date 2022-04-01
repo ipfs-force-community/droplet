@@ -4,22 +4,16 @@ import (
 	"context"
 	"time"
 
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
-
-	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/venus-market/config"
-
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
-
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
 	types3 "github.com/ipfs-force-community/venus-gateway/types"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("clients")
@@ -40,9 +34,7 @@ func ConvertWalletToISinge(fullNode v1api.FullNode, signer ISinger) error {
 }
 
 func NewMarketEvent(mctx metrics.MetricsCtx) (*marketevent.MarketEventStream, error) {
-	stream := marketevent.NewMarketEventStream(mctx, func(miner address.Address) (bool, error) {
-		return true, nil
-	}, &types3.Config{
+	stream := marketevent.NewMarketEventStream(mctx, &localMinerValidator{}, &types3.Config{
 		RequestQueueSize: 30,
 		RequestTimeout:   time.Second * 30,
 	})
