@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	mtypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -50,6 +51,7 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spe
 	di := 0
 	checked := 0
 
+	var offset abi.UnpaddedPieceSize
 	for di < dealCount {
 		deal := deals[di]
 		if di != checked {
@@ -91,11 +93,15 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spe
 			})
 
 			space -= nextPiece
+			offset += nextPiece.Unpadded()
 			continue
 		}
 
+		deal.Offset = offset.Padded()
 		res = append(res, deal)
+
 		space -= deal.PieceSize
+		offset += deal.PieceSize.Unpadded()
 		di++
 	}
 

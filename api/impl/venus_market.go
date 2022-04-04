@@ -9,13 +9,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/venus-market/models/repo"
-
-	"github.com/filecoin-project/venus-market/minermgr"
-	"github.com/filecoin-project/venus-market/retrievalprovider"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
-
-	"github.com/filecoin-project/venus-market/config"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -33,17 +26,21 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	clients2 "github.com/filecoin-project/venus-market/api/clients"
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/minermgr"
+	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/piecestorage"
-	"github.com/filecoin-project/venus-market/storageprovider"
-	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
-
 	"github.com/filecoin-project/venus-market/paychmgr"
+	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/retrievalprovider"
+	"github.com/filecoin-project/venus-market/storageprovider"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var _ marketapi.IMarket = (*MarketNodeImpl)(nil)
@@ -688,8 +685,8 @@ func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Addr
 	return m.DealAssigner.GetUnPackedDeals(ctx, miner, spec)
 }
 
-func (m MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
-	return m.DealAssigner.AssignUnPackedDeals(ctx, miner, ssize, spec)
+func (m MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
+	return m.DealAssigner.AssignUnPackedDeals(ctx, sid, ssize, spec)
 }
 
 func (m MarketNodeImpl) MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error {
