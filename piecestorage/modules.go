@@ -4,17 +4,23 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"golang.org/x/xerrors"
+
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+
+	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/piecestorage/external"
 )
 
 var PieceStorageOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
-		//piece
+		// piece
 		builder.Override(new(IPieceStorage), func(cfg *config.PieceStorage) (IPieceStorage, error) {
 			return NewPieceStorage(cfg)
-		}), //save read piece data
+		}), // save read piece data
+		builder.Override(new(external.IExternalPieceStorage), func(cfg *config.ExternalFsPieceStore) (external.IExternalPieceStorage, error) {
+			return external.NewExternalFsPieceStorage(cfg)
+		}),
 	)
 }
 

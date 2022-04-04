@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/venus-market/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
+
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
 )
@@ -49,6 +50,7 @@ var poolRunCmd = &cli.Command{
 		GatewayUrlFlag,
 		GatewayTokenFlag,
 		PieceStorageFlag,
+		ExternalFsPieceStorageFlag,
 		MysqlDsnFlag,
 		MinerListFlag,
 		PaymentAddressFlag,

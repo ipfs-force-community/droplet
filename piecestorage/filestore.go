@@ -8,9 +8,10 @@ import (
 	"os"
 	"path"
 
+	xerrors "github.com/pkg/errors"
+
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
-	xerrors "github.com/pkg/errors"
 )
 
 type IPreSignOp interface {
@@ -74,7 +75,7 @@ func (f fsPieceStorage) ReadOffset(ctx context.Context, s string, offset int, si
 	}
 	_, err = fs.Seek(int64(offset), 0)
 	if err != nil {
-		return nil, fmt.Errorf("unable to seek position to %din file %s %w", offset, dstPath, err)
+		return nil, fmt.Errorf("unable to seek position to %d in file %s %w", offset, dstPath, err)
 	}
 	return utils.NewLimitedBufferReader(fs, size), nil
 }

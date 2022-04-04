@@ -173,6 +173,11 @@ type S3PieceStorage struct {
 	Token     string
 }
 
+// todo 用作检索，不需要显式标注 ReadOnly
+type ExternalFsPieceStore struct {
+	Paths []string
+}
+
 type User struct {
 	Addr    Address
 	Account string
@@ -191,10 +196,12 @@ type MarketConfig struct {
 
 	Mysql Mysql
 
-	PieceStorage  PieceStorage
-	Journal       Journal
-	AddressConfig AddressConfig
-	DAGStore      DAGStoreConfig
+	PieceStorage PieceStorage
+	// `Pieces` stored when offline deals or not connected to the chain service
+	ExternalFsPieceStore ExternalFsPieceStore
+	Journal              Journal
+	AddressConfig        AddressConfig
+	DAGStore             DAGStoreConfig
 
 	StorageMiners           []User
 	RetrievalPaymentAddress User

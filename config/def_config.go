@@ -59,10 +59,15 @@ var DefaultMarketConfig = &MarketConfig{
 		GCInterval:                 Duration(1 * time.Minute),
 	},
 	Journal: Journal{Path: "journal"},
-	PieceStorage: PieceStorage{Fs: FsPieceStorage{
-		Enable: true,
-		Path:   "/mnt/piece",
-	}},
+	PieceStorage: PieceStorage{
+		Fs: FsPieceStorage{
+			Enable: true,
+			Path:   "/mnt/piece",
+		},
+	},
+	ExternalFsPieceStore: ExternalFsPieceStore{
+		Paths: []string{},
+	},
 	ConsiderOnlineStorageDeals:     true,
 	ConsiderOfflineStorageDeals:    true,
 	ConsiderOnlineRetrievalDeals:   true,

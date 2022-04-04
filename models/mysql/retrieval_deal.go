@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -120,7 +121,7 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 	if len(deal.Receiver) > 0 {
 		newdeal.Receiver, err = decodePeerId(deal.Receiver)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decode receiver: %s", err)
 		}
 	}
 
@@ -129,11 +130,11 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 		newdeal.ChannelID.ID = datatransfer.TransferID(deal.ChannelID.ID)
 		newdeal.ChannelID.Initiator, err = decodePeerId(deal.ChannelID.Initiator)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decode ci_initiator: %s", err)
 		}
 		newdeal.ChannelID.Responder, err = decodePeerId(deal.ChannelID.Responder)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decode ci_responder: %s", err)
 		}
 	}
 	return newdeal, nil

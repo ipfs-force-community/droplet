@@ -40,7 +40,7 @@ func TestParserProtocol(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:     "s3 success",
+			name:     "s3 fail",
 			protocol: "s3:ak:sk:t1@http://region1.s3.com",
 			wantErr:  true,
 		},
