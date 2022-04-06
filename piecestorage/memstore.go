@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	"sync"
+
+	"github.com/filecoin-project/dagstore/mount"
 )
 
 var _ IPieceStorage = (*MemPieceStore)(nil)
@@ -43,7 +45,8 @@ func (m *MemPieceStore) Read(ctx context.Context, s string) (io.ReadCloser, erro
 	m.dataLk.RLock()
 	defer m.dataLk.RUnlock()
 	if data, ok := m.data[s]; ok {
-		return wraperCloser{bytes.NewReader(data)}, nil
+		r := bytes.NewReader(data)
+		return wraperCloser{r, r}, nil
 	}
 	return nil, fmt.Errorf("unable to find resource %s", s)
 }
@@ -58,11 +61,16 @@ func (m *MemPieceStore) Len(ctx context.Context, s string) (int64, error) {
 
 }
 
-func (m *MemPieceStore) ReadOffset(ctx context.Context, s string, i int, i2 int) (io.ReadCloser, error) {
+func (m *MemPieceStore) GetFastReader(ctx context.Context, s string) (io.ReadCloser, error) {
+	return m.GetMountReader(ctx, s)
+}
+
+func (m *MemPieceStore) GetMountReader(ctx context.Context, s string) (mount.Reader, error) {
 	m.dataLk.RLock()
 	defer m.dataLk.RUnlock()
 	if data, ok := m.data[s]; ok {
-		return wraperCloser{bytes.NewReader(data[i:i2])}, nil
+		r := bytes.NewReader(data)
+		return wraperCloser{r, r}, nil
 	}
 	return nil, fmt.Errorf("unable to find resource %s", s)
 
@@ -91,7 +99,8 @@ func (m *MemPieceStore) ReadOnly() bool {
 }
 
 type wraperCloser struct {
-	io.Reader
+	io.ReadSeeker
+	io.ReaderAt
 }
 
 func (wraperCloser) Close() error {

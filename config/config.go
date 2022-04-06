@@ -147,6 +147,22 @@ type DAGStoreConfig struct {
 	// representation, e.g. 1m, 5m, 1h.
 	// Default value: 1 minute.
 	GCInterval Duration
+
+	//MongoTipIndex used to config whether to save top index data to mongo
+	MongoTipIndex *MongoTopIndex
+
+	//Transient path used to store temp file for retrieval
+	Transient string
+
+	//Index path to store index of piece
+	Index string
+
+	//ReadDiretly enable to read piece storage directly skip transient file
+	UseTransient bool
+}
+
+type MongoTopIndex struct {
+	Url string
 }
 
 type PieceStorage struct {

@@ -56,6 +56,7 @@ type providerDealEnvironment struct {
 // to add all blocks to a blockstore that is used to serve retrieval
 func (pde *providerDealEnvironment) PrepareBlockstore(ctx context.Context, dealID retrievalmarket.DealID, pieceCid cid.Cid) error {
 	// Load the blockstore that has the deal data
+	//触发unseal过程
 	bs, err := pde.p.dagStore.LoadShard(ctx, pieceCid)
 	if err != nil {
 		return xerrors.Errorf("failed to load blockstore for piece %s: %w", pieceCid, err)

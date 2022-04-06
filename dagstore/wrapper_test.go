@@ -3,14 +3,15 @@ package dagstore
 import (
 	"bytes"
 	"context"
-	"io"
 	"os"
 	"testing"
 	"time"
 
+	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus-market/config"
+	carindex "github.com/ipld/go-car/v2/index"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/mount"
@@ -28,7 +29,7 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a DAG store wrapper
-	dagst, w, err := NewDAGStore(&config.DAGStoreConfig{
+	dagst, w, err := NewDAGStore(ctx, &config.DAGStoreConfig{
 		RootDir:    t.TempDir(),
 		GCInterval: config.Duration(1 * time.Millisecond),
 	}, mockLotusMount{})
@@ -79,7 +80,7 @@ func TestWrapperBackground(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a DAG store wrapper
-	dagst, w, err := NewDAGStore(&config.DAGStoreConfig{
+	dagst, w, err := NewDAGStore(ctx, &config.DAGStoreConfig{
 		RootDir:    t.TempDir(),
 		GCInterval: config.Duration(1 * time.Millisecond),
 	}, mockLotusMount{})
@@ -130,6 +131,14 @@ type mockDagStore struct {
 	gc      chan struct{}
 	recover chan shard.Key
 	close   chan struct{}
+}
+
+func (m *mockDagStore) GetIterableIndex(key shard.Key) (carindex.IterableIndex, error) {
+	return nil, nil
+}
+
+func (m *mockDagStore) ShardsContainingMultihash(ctx context.Context, h mh.Multihash) ([]shard.Key, error) {
+	return nil, nil
 }
 
 func (m *mockDagStore) DestroyShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.DestroyOpts) error {
@@ -191,7 +200,7 @@ func (m mockLotusMount) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m mockLotusMount) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
+func (m mockLotusMount) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
 	panic("implement me")
 }
 

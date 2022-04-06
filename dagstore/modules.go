@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
 )
 
 var (
@@ -28,9 +29,9 @@ const (
 	DefaultDAGStoreDir         = "dagstore"
 )
 
-// NewMinerAPI creates a new MarketAPI adaptor for the dagstore mounts.
-func NewMarketAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage *piecestorage.PieceStorageManager) (MarketAPI, error) {
-	mountApi := NewMinerAPI(repo, pieceStorage, r.MaxConcurrencyStorageCalls)
+// NewMarketAPI creates a new MarketAPI adaptor for the dagstore mounts.
+func CreateAndStartMarketAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage *piecestorage.PieceStorageManager) (MarketAPI, error) {
+	mountApi := NewMarketAPI(repo, pieceStorage, r.UseTransient)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return mountApi.Start(ctx)
@@ -45,7 +46,7 @@ func NewMarketAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pie
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func NewWrapperDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI MarketAPI) (*dagstore.DAGStore, stores.DAGStoreWrapper, error) {
+func NewWrapperDAGStore(lc fx.Lifecycle, ctx metrics.MetricsCtx, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI MarketAPI) (*dagstore.DAGStore, stores.DAGStoreWrapper, error) {
 	// fall back to default root directory if not explicitly set in the config.
 	if cfg.RootDir == "" {
 		cfg.RootDir = filepath.Join(string(*homeDir), DefaultDAGStoreDir)
@@ -59,7 +60,7 @@ func NewWrapperDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DA
 		}
 	}
 
-	dagst, w, err := NewDAGStore(cfg, minerAPI)
+	dagst, w, err := NewDAGStore(ctx, cfg, minerAPI)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
 	}
@@ -77,6 +78,6 @@ func NewWrapperDAGStore(lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DA
 }
 
 var DagstoreOpts = builder.Options(
-	builder.Override(new(MarketAPI), NewMarketAPI),
+	builder.Override(new(MarketAPI), CreateAndStartMarketAPI),
 	builder.Override(DAGStoreKey, NewWrapperDAGStore),
 )

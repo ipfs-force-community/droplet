@@ -21,7 +21,7 @@ import (
 )
 
 func MockHost(ctx context.Context) (host.Host, error) {
-	mockNet := mocknet.New(ctx)
+	mockNet := mocknet.New()
 	ps, err := pstoremem.NewPeerstore()
 	if err != nil {
 		return nil, err
@@ -46,13 +46,13 @@ func MockDataTransfer(ctx context.Context, h host.Host) (datatransfer.Manager, e
 		graphsyncimpl.MaxLinksPerOutgoingRequests(MaxTraversalLinks),
 	)
 
-	transport := dtgstransport.NewTransport(h.ID(), gs, net)
+	transport := dtgstransport.NewTransport(h.ID(), gs)
 	err := os.MkdirAll(filepath.Join("./", "data-transfer"), 0755) // nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
 
-	dt, err := dtimpl.NewDataTransfer(ds.NewMapDatastore(), filepath.Join("./", "data-transfer"), net, transport)
+	dt, err := dtimpl.NewDataTransfer(ds.NewMapDatastore(), net, transport)
 	if err != nil {
 		return nil, err
 	}

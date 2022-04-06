@@ -3,6 +3,8 @@ package piecestorage
 import (
 	"context"
 	"io"
+
+	"github.com/filecoin-project/dagstore/mount"
 )
 
 type Protocol string
@@ -25,7 +27,8 @@ type IPieceStorage interface {
 	SaveTo(context.Context, string, io.Reader) (int64, error)
 	Read(context.Context, string) (io.ReadCloser, error)
 	Len(ctx context.Context, string2 string) (int64, error)
-	ReadOffset(context.Context, string, int, int) (io.ReadCloser, error)
+	GetFastReader(ctx context.Context, s string) (io.ReadCloser, error)
+	GetMountReader(ctx context.Context, s string) (mount.Reader, error)
 	Has(context.Context, string) (bool, error)
 	Validate(s string) error
 	CanAllocate(size int64) bool

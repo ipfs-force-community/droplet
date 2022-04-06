@@ -10,6 +10,7 @@ import (
 
 	xerrors "github.com/pkg/errors"
 
+	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
 	"github.com/filecoin-project/venus/pkg/util/fsutil"
@@ -56,17 +57,22 @@ func (f *fsPieceStorage) Read(ctx context.Context, s string) (io.ReadCloser, err
 	return os.Open(path.Join(f.baseUrl, s))
 }
 
-func (f *fsPieceStorage) ReadOffset(ctx context.Context, s string, offset int, size int) (io.ReadCloser, error) {
+func (f fsPieceStorage) GetFastReader(ctx context.Context, s string) (io.ReadCloser, error) {
 	dstPath := path.Join(f.baseUrl, s)
 	fs, err := os.Open(dstPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open file %s %w", dstPath, err)
 	}
-	_, err = fs.Seek(int64(offset), 0)
+	return fs, nil
+}
+
+func (f fsPieceStorage) GetMountReader(ctx context.Context, s string) (mount.Reader, error) {
+	dstPath := path.Join(f.baseUrl, s)
+	fs, err := os.Open(dstPath)
 	if err != nil {
-		return nil, fmt.Errorf("unable to seek position to %d in file %s %w", offset, dstPath, err)
+		return nil, fmt.Errorf("unable to open file %s %w", dstPath, err)
 	}
-	return utils.NewLimitedBufferReader(fs, size), nil
+	return fs, nil
 }
 
 func (f *fsPieceStorage) Has(ctx context.Context, s string) (bool, error) {
@@ -112,7 +118,7 @@ func (f *fsPieceStorage) ReadOnly() bool {
 	return f.fsCfg.ReadOnly
 }
 
-func newFsPieceStorage(fsCfg *config.FsPieceStorage) (IPieceStorage, error) {
+func NewFsPieceStorage(fsCfg *config.FsPieceStorage) (IPieceStorage, error) {
 	fs := &fsPieceStorage{baseUrl: fsCfg.Path, fsCfg: fsCfg}
 	if err := fs.Validate(fsCfg.Path); err != nil {
 		return nil, err
