@@ -685,8 +685,8 @@ func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Addr
 	return m.DealAssigner.GetUnPackedDeals(ctx, miner, spec)
 }
 
-func (m MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
-	return m.DealAssigner.AssignUnPackedDeals(ctx, miner, ssize, spec)
+func (m MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
+	return m.DealAssigner.AssignUnPackedDeals(ctx, sid, ssize, spec)
 }
 
 func (m MarketNodeImpl) MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error {

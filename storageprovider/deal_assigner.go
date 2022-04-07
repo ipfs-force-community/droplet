@@ -24,7 +24,7 @@ type DealAssiger interface {
 	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus types.PieceStatus) error
 	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error)
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
-	AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
+	AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
 }
 
 var _ DealAssiger = (*dealAssigner)(nil)
@@ -183,8 +183,13 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 	return result, nil
 }
 
-func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.Address, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
-	deals, err := ps.GetUnPackedDeals(ctx, miner, &types.GetDealSpec{MaxPiece: math.MaxInt32}) //TODO get all pending deals ???
+func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
+	maddr, err := address.NewIDAddress(uint64(sid.Miner))
+	if err != nil {
+		return nil, err
+	}
+
+	deals, err := ps.GetUnPackedDeals(ctx, maddr, &types.GetDealSpec{MaxPiece: math.MaxInt32}) //TODO get all pending deals ???
 	if err != nil {
 		return nil, err
 	}
@@ -222,12 +227,14 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, miner address.A
 			if piece.DealID <= 0 || piece.PublishCid == cid.Undef {
 				continue
 			}
-			md, err := txRepo.StorageDealRepo().GetDealByDealID(ctx, miner, piece.DealID)
+			md, err := txRepo.StorageDealRepo().GetDealByDealID(ctx, maddr, piece.DealID)
 			if err != nil {
 				return err
 			}
 
 			md.PieceStatus = types.Assigned
+			md.Offset = piece.Offset
+			md.SectorNumber = sid.Number
 			if err := txRepo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
 				return err
 			}

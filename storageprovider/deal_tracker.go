@@ -15,6 +15,7 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 )
@@ -84,7 +85,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 			continue
 		}
 		if dealProposal.State.SectorStartEpoch > -1 { //include in sector
-			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealActive, "")
+			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealActive, market.Proving)
 			if err != nil {
 				log.Errorf("update deal status to active for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			}
@@ -92,12 +93,25 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 		}
 
 		if deal.State == storagemarket.StorageDealAwaitingPreCommit {
-			_, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
+			preInfo, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
 			if err != nil {
-				log.Debugf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+				log.Warnf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 				continue
 			}
-			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealSealing, "")
+
+			dealExist := false
+			for _, dealID := range preInfo.Info.DealIDs {
+				if dealID == deal.DealID {
+					dealExist = true
+					break
+				}
+			}
+			if !dealExist {
+				log.Warnf("deal %d does not exist in sector %d of miner %s", deal.DealID, deal.SectorNumber, addr)
+				continue
+			}
+
+			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealSealing, market.Packing)
 			if err != nil {
 				log.Errorf("update deal status to sealing for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			}
