@@ -3,17 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/gorilla/mux"
-	"github.com/urfave/cli/v2"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
-
-	"github.com/ipfs-force-community/venus-common-utils/builder"
-	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
-
-	metrics2 "github.com/ipfs/go-metrics-interface"
-
+	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-market/api/clients"
 	"github.com/filecoin-project/venus-market/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/cli"
@@ -30,9 +20,16 @@ import (
 	"github.com/filecoin-project/venus-market/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus-market/utils"
-
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
+	"github.com/gorilla/mux"
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	metrics2 "github.com/ipfs/go-metrics-interface"
+	"github.com/urfave/cli/v2"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 )
 
 var poolRunCmd = &cli.Command{
@@ -71,10 +68,19 @@ func poolDaemon(cctx *cli.Context) error {
 		return err
 	}
 
+	// venus-auth is must in 'pool' mode
+	if len(cfg.AuthNode.Url) == 0 {
+		return xerrors.Errorf("auth-url is required in 'pool' mode")
+	}
+
+	// 'NewAuthClient' never returns an error, no needs to check
+	authClient, _ := jwtclient.NewAuthClient(cfg.AuthNode.Url)
+
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
 	_, err = builder.New(ctx,
 		//defaults
+		builder.Override(new(*jwtclient.AuthClient), authClient),
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
 			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)
@@ -123,5 +129,5 @@ func poolDaemon(cctx *cli.Context) error {
 	var fullAPI marketapi.IMarketStruct
 	permission.PermissionProxy(marketapi.IMarket(resAPI), &fullAPI)
 
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, cfg.AuthNode.Url, &fullAPI, finishCh)
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, authClient, &fullAPI, finishCh)
 }
