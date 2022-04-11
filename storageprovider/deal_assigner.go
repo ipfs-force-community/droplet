@@ -189,40 +189,77 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 		return nil, err
 	}
 
-	deals, err := ps.GetUnPackedDeals(ctx, maddr, &types.GetDealSpec{MaxPiece: math.MaxInt32}) //TODO get all pending deals ???
-	if err != nil {
-		return nil, err
+	if spec == nil {
+		spec = defaultGetDealSpec
 	}
+	spec.MaxPiece = math.MaxInt32
 
-	if len(deals) == 0 {
-		return nil, nil
-	}
-
-	// 按照尺寸, 时间, 价格排序
-	sort.Slice(deals, func(i, j int) bool {
-		left, right := deals[i], deals[j]
-		if left.PieceSize != right.PieceSize {
-			return left.PieceSize < right.PieceSize
-		}
-
-		if left.StartEpoch != right.StartEpoch {
-			return left.StartEpoch < right.StartEpoch
-		}
-
-		return left.StoragePricePerEpoch.GreaterThan(right.StoragePricePerEpoch)
-	})
-
-	pieces, err := pickAndAlign(deals, ssize, spec)
-	if err != nil {
-		return nil, fmt.Errorf("unable to pick and align pieces from deals: %w", err)
-	}
-
-	if len(pieces) == 0 {
-		return nil, nil
-	}
+	var (
+		pieces []*types.DealInfoIncludePath
+	)
 
 	// TODO: is this concurrent safe?
 	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
+		mds, err := txRepo.StorageDealRepo().GetDealsByPieceStatus(ctx, maddr, types.Undefine)
+		if err != nil {
+			return err
+		}
+
+		var (
+			deals        []*types.DealInfoIncludePath
+			numberPiece  int
+			curPieceSize uint64
+		)
+
+		for _, md := range mds {
+			// TODO: 要排除不可密封状态的订单?
+			if md.DealID == 0 || isTerminateState(md) {
+				continue
+			}
+			if ((spec.MaxPieceSize > 0 && uint64(md.Proposal.PieceSize)+curPieceSize < spec.MaxPieceSize) || spec.MaxPieceSize == 0) && numberPiece+1 < spec.MaxPiece {
+				deals = append(deals, &types.DealInfoIncludePath{
+					DealProposal:    md.Proposal,
+					Offset:          md.Offset,
+					Length:          md.Proposal.PieceSize,
+					PayloadSize:     md.PayloadSize,
+					DealID:          md.DealID,
+					TotalStorageFee: md.Proposal.TotalStorageFee(),
+					FastRetrieval:   md.FastRetrieval,
+					PublishCid:      *md.PublishCid,
+				})
+
+				curPieceSize += uint64(md.Proposal.PieceSize)
+				numberPiece++
+			}
+		}
+
+		if len(deals) == 0 {
+			return nil
+		}
+
+		// 按照尺寸, 时间, 价格排序
+		sort.Slice(deals, func(i, j int) bool {
+			left, right := deals[i], deals[j]
+			if left.PieceSize != right.PieceSize {
+				return left.PieceSize < right.PieceSize
+			}
+
+			if left.StartEpoch != right.StartEpoch {
+				return left.StartEpoch < right.StartEpoch
+			}
+
+			return left.StoragePricePerEpoch.GreaterThan(right.StoragePricePerEpoch)
+		})
+
+		pieces, err = pickAndAlign(deals, ssize, spec)
+		if err != nil {
+			return fmt.Errorf("unable to pick and align pieces from deals: %w", err)
+		}
+
+		if len(pieces) == 0 {
+			return nil
+		}
+
 		for _, piece := range pieces {
 			if piece.DealID <= 0 || piece.PublishCid == cid.Undef {
 				continue
