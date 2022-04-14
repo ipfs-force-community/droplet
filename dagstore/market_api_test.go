@@ -34,7 +34,7 @@ func TestMarket(t *testing.T) {
 				Provider:  address.TestAddress,
 				Client:    address.TestAddress,
 				PieceCID:  testResourceId,
-				PieceSize: abi.PaddedPieceSize(flen),
+				PieceSize: flen,
 			},
 			ClientSignature: acrypto.Signature{
 				Type: acrypto.SigTypeBLS,

@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/venus-market/dagstore"
 	carindex "github.com/ipld/go-car/v2/index"
 	"github.com/multiformats/go-multihash"
-	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/strikesecurity/strikememongo"
 )
@@ -20,9 +19,7 @@ var res embed.FS
 
 func TestAddMultihashesForShard(t *testing.T) {
 	mongoServer, err := strikememongo.StartWithOptions(&strikememongo.Options{MongoVersion: "4.2.1"})
-	if err != nil {
-		t.Errorf("unable to start test mongo %w", err)
-	}
+	assert.Nil(t, err)
 	defer mongoServer.Stop()
 	assert.NotNil(t, mongoServer)
 
@@ -41,7 +38,8 @@ func TestAddMultihashesForShard(t *testing.T) {
 			assert.Nil(t, err)
 			iterableIdx, _ := index.(carindex.IterableIndex)
 			mhIter := &mhIdx{iterableIdx: iterableIdx}
-			indexSaver.AddMultihashesForShard(ctx, mhIter, key)
+			err = indexSaver.AddMultihashesForShard(ctx, mhIter, key)
+			assert.Nil(t, err)
 		}
 
 		{
@@ -50,12 +48,13 @@ func TestAddMultihashesForShard(t *testing.T) {
 			index, err := carindex.ReadFrom(f)
 			assert.Nil(t, err)
 			iterableIdx, _ := index.(carindex.IterableIndex)
-			iterableIdx.ForEach(func(val mh.Multihash, _ uint64) error {
+			err = iterableIdx.ForEach(func(val multihash.Multihash, _ uint64) error {
 				keys, err := indexSaver.GetShardsForMultihash(ctx, val)
 				assert.Nil(t, err)
 				assert.Contains(t, keys, key)
 				return nil
 			})
+			assert.Nil(t, err)
 		}
 	}
 }

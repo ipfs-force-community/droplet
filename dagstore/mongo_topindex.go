@@ -26,7 +26,8 @@ type MongoTopIndex struct {
 }
 
 func NewMongoTopIndex(ctx context.Context, url string) (index.Inverted, error) {
-	ctx, _ = context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(url))
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to mongog databse (%s) %w", url, err)

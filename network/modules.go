@@ -36,7 +36,7 @@ var NetworkOpts = func(server bool, simultaneousTransfersForRetrieval, simultane
 		builder.Override(StartListeningKey, StartListening),
 		builder.Override(AddrsFactoryKey, AddrsFactory),
 		builder.Override(DefaultTransportsKey, DefaultTransports),
-		builder.Override(SmuxTransportKey, SmuxTransport(true)),
+		builder.Override(SmuxTransportKey, SmuxTransport()),
 		builder.Override(RelayKey, NoRelay()),
 		builder.Override(SecurityKey, Security(true, false)),
 	)

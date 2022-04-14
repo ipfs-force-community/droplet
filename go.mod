@@ -68,7 +68,6 @@ require (
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-libp2p v0.18.0-rc3
 	github.com/libp2p/go-libp2p-core v0.14.0
-	github.com/libp2p/go-libp2p-mplex v0.5.0
 	github.com/libp2p/go-libp2p-noise v0.3.0
 	github.com/libp2p/go-libp2p-peerstore v0.6.0
 	github.com/libp2p/go-libp2p-quic-transport v0.16.0

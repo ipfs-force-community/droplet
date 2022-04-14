@@ -114,10 +114,10 @@ func (r *mountWrapper) ReadAt(p []byte, off int64) (n int, err error) {
 func (r *mountWrapper) Seek(offset int64, whence int) (int64, error) {
 	return 0, xerrors.Errorf("Seek called but not implemented")
 }
-func (i *mountWrapper) Read(p []byte) (n int, err error) {
-	return i.readR.Read(p)
+func (r *mountWrapper) Read(p []byte) (n int, err error) {
+	return r.readR.Read(p)
 }
 
-func (i *mountWrapper) Close() error {
-	return i.closeR.Close()
+func (r *mountWrapper) Close() error {
+	return r.closeR.Close()
 }
