@@ -504,9 +504,12 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 
 	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
 
-	_, err := storageDealPorcess.pieceStorageMgr.SelectStorageForRead(ctx, pieceCid.String())
+	_, err := storageDealPorcess.pieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 	if err != nil {
-		ps, err := storageDealPorcess.pieceStorageMgr.SelectStorageForWrite(int64(payloadSize))
+		ps, err := storageDealPorcess.pieceStorageMgr.FindStorageForWrite(int64(payloadSize))
+		if err != nil {
+			return err
+		}
 		_, err = ps.SaveTo(ctx, pieceCid.String(), reader)
 		if err != nil {
 			return err

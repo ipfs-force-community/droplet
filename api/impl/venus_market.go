@@ -536,7 +536,7 @@ func (m MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.
 				continue
 			}
 
-			_, err = m.PieceStorageMgr.SelectStorageForRead(ctx, pieceCid.String())
+			_, err = m.PieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 			if err != nil {
 				//todounseal
 				log.Warnw("DagstoreInitializeAll: failed to get unsealed status; skipping deal", "piece cid", pieceCid, "error", err)

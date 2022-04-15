@@ -26,7 +26,7 @@ func (p *PieceStorageServer) ServeHTTP(res http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	pieceStorage, err := p.pieceStorageMgr.SelectStorageForRead(req.Context(), resourceID)
+	pieceStorage, err := p.pieceStorageMgr.FindStorageForRead(req.Context(), resourceID)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("resource %s not found", resourceID), http.StatusNotFound)
 		return

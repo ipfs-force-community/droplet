@@ -43,7 +43,7 @@ func (m *marketAPI) Start(_ context.Context) error {
 }
 
 func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
-	_, err := m.pieceStorageMgr.SelectStorageForRead(ctx, pieceCid.String())
+	_, err := m.pieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 	if err != nil {
 		return false, fmt.Errorf("unable to find storage for piece %s %w", pieceCid, err)
 	}
@@ -57,7 +57,7 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (i
 		return nil, err
 	}
 
-	pieceStorage, err := m.pieceStorageMgr.SelectStorageForRead(ctx, pieceCid.String())
+	pieceStorage, err := m.pieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 	if err != nil {
 		// todo unseal: ask miner who have this data, send unseal cmd, and read and pay after receive data
 		// 1. select miner
