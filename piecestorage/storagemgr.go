@@ -45,6 +45,7 @@ func (p *PieceStorageManager) SelectStorageForRead(ctx context.Context, s string
 func (p *PieceStorageManager) SelectStorageForWrite(size int64) (IPieceStorage, error) {
 	var storages []IPieceStorage
 	for _, st := range p.storages {
+		//todo readuce too much check on storage
 		if !st.ReadOnly() && st.CanAllocate(size) {
 			storages = append(storages, st)
 		}
