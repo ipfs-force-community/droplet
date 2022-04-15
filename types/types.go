@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/venus/pkg/clock"
 )
 
@@ -14,3 +15,10 @@ var Clock = clock.NewSystemClock()
 // ShutdownChan is a channel to which you send a value if you intend to shut
 // down the daemon (or miner), including the node and RPC server.
 type ShutdownChan chan struct{}
+
+const (
+	TTGraphsync = storagemarket.TTGraphsync
+	TTManual    = storagemarket.TTManual
+	TTHttp      = "http"
+	TTImport    = "import"
+)

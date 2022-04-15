@@ -33,6 +33,7 @@ type StorageDealRepo interface {
 	GetDealByDealID(ctx context.Context, mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error)
 	ListDealByAddr(ctx context.Context, mAddr address.Address) ([]*types.MinerDeal, error)
 	ListDeal(ctx context.Context) ([]*types.MinerDeal, error)
+	ListTransportUnCompleteDeal(ctx context.Context) ([]*types.MinerDeal, error)
 	GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error)
 	GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error)
 	ListPieceInfoKeys(ctx context.Context) ([]cid.Cid, error)

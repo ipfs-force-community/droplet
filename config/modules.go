@@ -137,6 +137,7 @@ var ConfigServerOpts = func(cfg *MarketConfig) builder.Option {
 		builder.Override(new(*Libp2p), &cfg.Libp2p),
 		builder.Override(new(*PieceStorage), &cfg.PieceStorage),
 		builder.Override(new(*DAGStoreConfig), &cfg.DAGStore),
+		builder.Override(new(*TransportConfig), &cfg.TransportConfig),
 
 		// Config (todo: get a real property system)
 		builder.Override(new(ConsiderOnlineStorageDealsConfigFunc), NewConsiderOnlineStorageDealsConfigFunc),
@@ -169,5 +170,6 @@ var ConfigClientOpts = func(cfg *MarketClientConfig) builder.Option {
 		builder.Override(new(*Libp2p), &cfg.Libp2p),
 		builder.Override(new(*Signer), &cfg.Signer),
 		builder.Override(new(*Messager), &cfg.Messager),
+		builder.Override(new(*Market), &cfg.Market),
 	)
 }

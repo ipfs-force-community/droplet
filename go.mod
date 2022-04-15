@@ -29,11 +29,12 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.0
 	github.com/filecoin-project/specs-storage v0.2.2
-	github.com/filecoin-project/venus v1.2.4-0.20220420072943-4d565663fa60
+	github.com/filecoin-project/venus v1.2.4-0.20220421070700-eb9612038109
 	github.com/filecoin-project/venus-auth v1.3.3-0.20220406063133-896f44f6e816
 	github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420091920-4820c01ca309
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/golang/mock v1.6.0
+	github.com/google/martian v2.1.0+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
@@ -65,9 +66,12 @@ require (
 	github.com/ipld/go-codec-dagpb v1.3.1
 	github.com/ipld/go-ipld-prime v0.16.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
+	github.com/jbenet/go-random v0.0.0-20190219211222-123a90aedc0c
+	github.com/jpillora/backoff v1.0.0
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-libp2p v0.18.0-rc3
 	github.com/libp2p/go-libp2p-core v0.14.0
+	github.com/libp2p/go-libp2p-http v0.2.1
 	github.com/libp2p/go-libp2p-noise v0.3.0
 	github.com/libp2p/go-libp2p-peerstore v0.6.0
 	github.com/libp2p/go-libp2p-quic-transport v0.16.0

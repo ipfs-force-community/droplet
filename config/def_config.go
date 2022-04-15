@@ -93,6 +93,19 @@ var DefaultMarketConfig = &MarketConfig{
 
 	MaxPublishDealsFee:     types.FIL(types.NewInt(0)),
 	MaxMarketBalanceAddFee: types.FIL(types.NewInt(0)),
+
+	TransportConfig: &TransportConfig{
+		MaxBackoffWait:       Duration(1 * time.Hour),
+		MinBackOffWait:       Duration(1 * time.Minute),
+		BackOffFactor:        2,
+		MaxReconnectAttempts: 8,
+		// 1 Mbi
+		ReadBufferSize: 1048576,
+		MaxConcurrent:  5,
+
+		Enable:   true,
+		TestMode: false,
+	},
 }
 
 var DefaultMarketClientConfig = &MarketClientConfig{

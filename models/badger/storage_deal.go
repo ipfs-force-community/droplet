@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
+	types2 "github.com/filecoin-project/venus-market/v2/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -20,7 +21,7 @@ type storageDealRepo struct {
 	ds datastore.Batching
 }
 
-var _ (repo.StorageDealRepo) = (*storageDealRepo)(nil)
+var _ repo.StorageDealRepo = (*storageDealRepo)(nil)
 
 func NewStorageDealRepo(ds StorageDealsDS) repo.StorageDealRepo {
 	return &storageDealRepo{ds}
@@ -171,6 +172,19 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context) ([]*types.MinerDeal, e
 	storageDeals := make([]*types.MinerDeal, 0)
 	if err := travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (bool, error) {
 		storageDeals = append(storageDeals, deal)
+		return false, nil
+	}); err != nil {
+		return nil, err
+	}
+	return storageDeals, nil
+}
+
+func (sdr *storageDealRepo) ListTransportUnCompleteDeal(ctx context.Context) ([]*types.MinerDeal, error) {
+	storageDeals := make([]*types.MinerDeal, 0)
+	if err := travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (bool, error) {
+		if deal.Ref != nil && deal.Ref.TransferType == types2.TTHttp && deal.Ref.State != int64(types2.TransportCompleted) {
+			storageDeals = append(storageDeals, deal)
+		}
 		return false, nil
 	}); err != nil {
 		return nil, err

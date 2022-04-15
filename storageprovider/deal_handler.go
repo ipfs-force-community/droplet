@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -64,18 +65,18 @@ type StorageDealProcessImpl struct {
 // NewStorageDealProcessImpl returns a new deal process instance
 func NewStorageDealProcessImpl(
 	conns *connmanager.ConnManager,
-	peerTagger network.PeerTagger,
+	net smnet.StorageMarketNetwork,
 	spn StorageProviderNode,
-	deals repo.StorageDealRepo,
+	repo repo.Repo,
 	ask IStorageAsk,
 	fs filestore.FileStore,
 	minerMgr minermgr2.IAddrMgr,
-	repo repo.Repo,
 	pieceStorageMgr *piecestorage.PieceStorageManager,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
 ) (StorageDealHandler, error) {
 	stores := stores.NewReadWriteBlockstores()
+	deals := repo.StorageDealRepo()
 
 	err := dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{deals}, nil))
 	if err != nil {
@@ -89,7 +90,7 @@ func NewStorageDealProcessImpl(
 
 	return &StorageDealProcessImpl{
 		conns:      conns,
-		peerTagger: peerTagger,
+		peerTagger: newPeerTagger(net),
 		spn:        spn,
 		deals:      deals,
 		ask:        ask,

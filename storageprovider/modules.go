@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/host"
-	"go.uber.org/fx"
-
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
+	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/mitchellh/go-homedir"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/dealfilter"
@@ -181,6 +184,28 @@ func NewAddressSelector(cfg *config.MarketConfig) (*AddressSelector, error) {
 	}, nil
 }
 
+func NewFileStore(cfg *config.MarketConfig, homeDir *config.HomeDir) (filestore.FileStore, error) {
+	var err error
+	transferPath := cfg.TransfePath
+	if len(transferPath) == 0 {
+		transferPath = string(*homeDir)
+	}
+	transferPath, err = homedir.Expand(transferPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return filestore.NewLocalFileStore(filestore.OsPath(transferPath))
+}
+
+func NewConnManager() *connmanager.ConnManager {
+	return connmanager.NewConnManager()
+}
+
+func NewStorageMarketNetwork(h host.Host) smnet.StorageMarketNetwork {
+	return smnet.NewFromLibp2pHost(h)
+}
+
 var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
 		builder.Override(new(*AddressSelector), NewAddressSelector),
@@ -188,6 +213,10 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), // save to metadata /datatransfer/provider/transfers
 		//   save to metadata /deals/provider/piecestorage-ask/latest
 		builder.Override(new(config.StorageDealFilter), BasicDealFilter(nil)),
+		builder.Override(new(filestore.FileStore), NewFileStore),
+		builder.Override(new(*connmanager.ConnManager), NewConnManager),
+		builder.Override(new(smnet.StorageMarketNetwork), NewStorageMarketNetwork),
+		builder.Override(new(StorageDealHandler), NewStorageDealProcessImpl),
 		builder.Override(new(StorageProvider), NewStorageProvider),
 		builder.Override(new(*DealPublisher), NewDealPublisherWrapper(cfg)),
 		builder.Override(HandleDealsKey, HandleDeals),
@@ -197,6 +226,7 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(StorageProviderNode), NewProviderNodeAdapter(cfg)),
 		builder.Override(new(DealAssiger), NewDealAssigner),
 		builder.Override(StartDealTracker, NewDealTracker),
+		builder.Override(new(*DealTransport), NewDealTransport),
 	)
 }
 

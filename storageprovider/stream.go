@@ -155,7 +155,7 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		ClientDealProposal: *proposal.DealProposal,
 		ProposalCid:        proposalNd.Cid(),
 		State:              storagemarket.StorageDealUnknown,
-		Ref:                proposal.Piece,
+		Ref:                types.FillDataRef(proposal.Piece),
 		FastRetrieval:      proposal.FastRetrieval,
 		CreationTime:       curTime(),
 		InboundCAR:         path,

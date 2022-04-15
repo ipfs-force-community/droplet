@@ -12,6 +12,7 @@ type IHome interface {
 	HomePath() (HomeDir, error)
 	MustHomePath() string
 	ConfigPath() (string, error)
+	VersionPath() (string, error)
 	HomeJoin(sep ...string) (string, error)
 }
 type Home struct {
@@ -33,6 +34,10 @@ func (m *Home) MustHomePath() string {
 
 func (m *Home) ConfigPath() (string, error) {
 	return m.HomeJoin("config.toml")
+}
+
+func (m *Home) VersionPath() (string, error) {
+	return m.HomeJoin("version")
 }
 
 func (m *Home) HomeJoin(sep ...string) (string, error) {

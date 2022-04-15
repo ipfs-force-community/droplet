@@ -71,21 +71,10 @@ var requiredMinerFlag = &cli.StringFlag{
 }
 
 func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, error) {
-	homePath, err := homedir.Expand(cctx.String("repo"))
+	apiInfo, err := getAPIInfo(cctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	fmt.Println(homePath)
-	apiUrl, err := ioutil.ReadFile(path.Join(homePath, "api"))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	token, err := ioutil.ReadFile(path.Join(homePath, "token"))
-	if err != nil {
-		return nil, nil, err
-	}
-	apiInfo := apiinfo.NewAPIInfo(string(apiUrl), string(token))
 	addr, err := apiInfo.DialArgs("v0")
 	if err != nil {
 		return nil, nil, err
@@ -95,26 +84,34 @@ func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, 
 }
 
 func NewMarketClientNode(cctx *cli.Context) (clientapi.IMarketClient, jsonrpc.ClientCloser, error) {
-	homePath, err := homedir.Expand(cctx.String("repo"))
+	apiInfo, err := getAPIInfo(cctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	apiUrl, err := ioutil.ReadFile(path.Join(homePath, "api"))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	token, err := ioutil.ReadFile(path.Join(homePath, "token"))
-	if err != nil {
-		return nil, nil, err
-	}
-	apiInfo := apiinfo.NewAPIInfo(string(apiUrl), string(token))
 	addr, err := apiInfo.DialArgs("v0")
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return clientapi.NewIMarketClientRPC(cctx.Context, addr, apiInfo.AuthHeader())
+}
+
+func getAPIInfo(cctx *cli.Context) (apiinfo.APIInfo, error) {
+	homePath, err := homedir.Expand(cctx.String("repo"))
+	if err != nil {
+		return apiinfo.APIInfo{}, err
+	}
+	apiUrl, err := ioutil.ReadFile(path.Join(homePath, "api"))
+	if err != nil {
+		return apiinfo.APIInfo{}, err
+	}
+
+	token, err := ioutil.ReadFile(path.Join(homePath, "token"))
+	if err != nil {
+		return apiinfo.APIInfo{}, err
+	}
+
+	return apiinfo.NewAPIInfo(string(apiUrl), string(token)), nil
 }
 
 func NewFullNode(cctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {

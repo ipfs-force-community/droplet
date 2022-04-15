@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
@@ -24,7 +25,12 @@ import (
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	"github.com/ipfs/go-cid"
 	typegen "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 	"gorm.io/gorm"
+
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+	types2 "github.com/filecoin-project/venus-market/v2/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 const storageDealTableName = "storage_deals"
@@ -112,6 +118,10 @@ type DataRef struct {
 	TransferType string `gorm:"column:transfer_type;type:varchar(128);"`
 	Root         DBCid  `gorm:"column:root;type:varchar(256);"`
 
+	Params     []byte                `gorm:"column:params;type:blob;"`
+	State      types2.TransportState `gorm:"column:state;type:int;"`
+	OutputFile string                `gorm:"column:output_file;type:varchar(256);"`
+
 	//todo remove filed below
 	PieceCid     DBCid                 `gorm:"column:piece_cid;type:varchar(256);"`
 	PieceSize    abi.UnpaddedPieceSize `gorm:"column:piece_size;type:bigint unsigned;"`
@@ -178,6 +188,9 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 		md.Ref = DataRef{
 			TransferType: src.Ref.TransferType,
 			Root:         DBCid(src.Ref.Root),
+			Params:       src.Ref.Params,
+			State:        types2.TransportState(src.Ref.State),
+			OutputFile:   src.Ref.OutputFile,
 			PieceSize:    src.Ref.PieceSize,
 			RawBlockSize: src.Ref.RawBlockSize,
 		}
@@ -232,9 +245,12 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		FastRetrieval: src.FastRetrieval,
 		Message:       src.Message,
 		FundsReserved: abi.TokenAmount{Int: src.FundsReserved.Int},
-		Ref: &storagemarket.DataRef{
+		Ref: &types.DataRef{
 			TransferType: src.Ref.TransferType,
 			Root:         src.Ref.Root.cid(),
+			Params:       src.Ref.Params,
+			State:        int64(src.Ref.State),
+			OutputFile:   src.Ref.OutputFile,
 			PieceCid:     src.Ref.PieceCid.cidPtr(),
 			PieceSize:    src.Ref.PieceSize,
 			RawBlockSize: src.Ref.RawBlockSize,
@@ -403,6 +419,15 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context) ([]*types.MinerDeal, e
 	return fromDbDeals(storageDeals)
 }
 
+func (sdr *storageDealRepo) ListTransportUnCompleteDeal(ctx context.Context) ([]*types.MinerDeal, error) {
+	var storageDeals []*storageDeal
+	if err := sdr.Table(storageDealTableName).
+		Find(&storageDeals, "ref_transfer_type = ? && ref_state != ?", types2.TTHttp, types2.TransportCompleted).Error; err != nil {
+		return nil, err
+	}
+	return fromDbDeals(storageDeals)
+}
+
 func (sdr *storageDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
 	var storageDeals []*storageDeal
 	if err := sdr.Table(storageDealTableName).Find(&storageDeals, "cdp_piece_cid = ?", DBCid(pieceCID).String()).Error; err != nil {
@@ -431,18 +456,22 @@ func (sdr *storageDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) 
 
 func (sdr *storageDealRepo) ListPieceInfoKeys(ctx context.Context) ([]cid.Cid, error) {
 	var cidsStr []string
-	var err error
 
 	if err := sdr.DB.Table((&storageDeal{}).TableName()).Select("cdp_piece_cid").Scan(&cidsStr).Error; err != nil {
 		return nil, err
 	}
 
-	cids := make([]cid.Cid, len(cidsStr))
-	for idx, s := range cidsStr {
-		cids[idx], err = cid.Decode(s)
+	cids := make([]cid.Cid, 0, len(cidsStr))
+	cidMap := make(map[cid.Cid]struct{}, len(cidsStr))
+	for _, s := range cidsStr {
+		c, err := cid.Decode(s)
 		if err != nil {
 			return nil, err
 		}
+		if _, ok := cidMap[c]; !ok {
+			cids = append(cids, c)
+		}
+		cidMap[c] = struct{}{}
 	}
 
 	return cids, nil

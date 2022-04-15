@@ -15,6 +15,7 @@ import (
 
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
 	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/migration"
 	_ "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/version"
 
@@ -177,6 +178,10 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 		err = config.LoadConfig(cfgPath, cfg)
 		if err != nil {
 			return nil, err
+		}
+
+		if err := migration.TryToMigrateMarketConfig(cfg); err != nil {
+			return nil, xerrors.Errorf("try to migrate config failed %v", err)
 		}
 
 		err = flagData(cctx, cfg)

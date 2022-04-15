@@ -85,9 +85,20 @@ func setup(t *testing.T) StorageProvider {
 	assert.Nil(t, err)
 	psManager.AddMemPieceStorage(piecestorage.NewMemPieceStore("", nil))
 	addrMgr := mockAddrMgr{}
+	fs, err := NewFileStore(config.DefaultMarketConfig, &homeDir)
+	if err != nil {
+		t.Error(err)
+	}
+	connManager := NewConnManager()
+	net := NewStorageMarketNetwork(h)
+	dealProcess, err := NewStorageDealProcessImpl(connManager, net, spn, r, ask, fs, addrMgr,
+		psManager, dt, nil)
+	if err != nil {
+		t.Error(err)
+	}
 
 	//todo how to mock dagstore
-	provider, err := NewStorageProvider(ask, h, config.DefaultMarketConfig, &homeDir, psManager, dt, spn, nil, r, addrMgr, nil)
+	provider, err := NewStorageProvider(ask, config.DefaultMarketConfig, dt, spn, r, addrMgr, nil, fs, connManager, net, dealProcess)
 	if err != nil {
 		t.Error(err)
 	}

@@ -6,11 +6,6 @@ import (
 	"testing"
 	"time"
 
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/stretchr/testify/require"
-
-	"github.com/libp2p/go-libp2p-core/peer"
-
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,7 +13,11 @@ import (
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
+	types2 "github.com/filecoin-project/venus-market/v2/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
@@ -78,9 +77,11 @@ func getTestMinerDeal(t *testing.T) *types.MinerDeal {
 		FastRetrieval: false,
 		Message:       "message",
 		FundsReserved: abi.NewTokenAmount(100),
-		Ref: &storagemarket.DataRef{
+		Ref: &types.DataRef{
 			TransferType: storagemarket.TTGraphsync,
 			Root:         c,
+			Params:       []byte("params"),
+			State:        int64(types2.Transporting),
 			PieceCid:     &c,
 			PieceSize:    1024,
 			RawBlockSize: 1024,
@@ -113,8 +114,11 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	}
 
 	deal := getTestMinerDeal(t)
+	deal3 := getTestMinerDeal(t)
+	deal3.Ref.TransferType = types2.TTHttp
 	// test save and get
 	assert.Nil(t, dealRepo.SaveDeal(ctx, deal))
+	assert.Nil(t, dealRepo.SaveDeal(ctx, deal3))
 	deal2, err := dealRepo.GetDeal(ctx, deal.ProposalCid)
 	require.NoError(t, err)
 	compareDeal(t, deal, deal2)
@@ -148,14 +152,18 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	// test list
 	list, err := dealRepo.ListDeal(ctx)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(list))
+	assert.Equal(t, 3, len(list))
 
 	_, err = dealRepo.GetDeal(ctx, randCid(t))
 	require.Error(t, err, "recode shouldn't be found")
 
 	pieceCids, err := dealRepo.ListPieceInfoKeys(ctx)
 	assert.Nil(t, err)
-	assert.Len(t, pieceCids, 1)
+	assert.Len(t, pieceCids, 2)
+
+	res3, err := dealRepo.ListTransportUnCompleteDeal(ctx)
+	assert.Nil(t, err)
+	assert.Len(t, res3, 1)
 }
 
 func compareDeal(t *testing.T, actual, excepted *types.MinerDeal) {

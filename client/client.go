@@ -4,14 +4,21 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/venus-auth/log"
+	"github.com/filecoin-project/venus-market/rpc"
+	"github.com/google/uuid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car/util"
 	"github.com/ipld/go-ipld-prime"
@@ -19,6 +26,8 @@ import (
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/traversal"
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -46,7 +55,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-commp-utils/writer"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/discovery"
@@ -65,10 +73,12 @@ import (
 	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	marketNetwork "github.com/filecoin-project/venus-market/v2/network"
+	markettypes "github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus-market/v2/utils"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 )
@@ -96,6 +106,9 @@ type API struct {
 	DataTransfer marketNetwork.ClientDataTransfer
 	Host         host.Host
 	Cfg          *config.MarketClientConfig
+
+	// check nil before use
+	MarketAPI marketapi.IMarket `optional:"true"`
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -301,7 +314,77 @@ func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, is
 		return nil, xerrors.Errorf("provider returned unexpected state %d for proposal %s, with message: %s", resp.Response.State, resp.Response.Proposal, resp.Response.Message)
 	}
 
+	go func() {
+		if err := a.sendDealParams(ctx, params.Data.Root, dealProposalSigned, dealProposalIpld.Cid()); err != nil {
+			log.Errorf("send deal params failed: %v", err)
+		}
+	}()
+
 	return &resp.Response.Proposal, nil
+}
+
+func (a *API) sendDealParams(ctx context.Context, dealDataRoot cid.Cid, prop *market.ClientDealProposal, dealProposalCID cid.Cid) error {
+	if a.MarketAPI == nil {
+		return xerrors.New("not connect to market server, manual import deal data")
+	}
+
+	tokenPath, err := a.Cfg.HomeJoin("token")
+	if err != nil {
+		return err
+	}
+
+	tokenByte, err := ioutil.ReadFile(tokenPath)
+	if err != nil {
+		return err
+	}
+	localIP, err := getLocalIP()
+	if err != nil {
+		return err
+	}
+	port, err := getPortFromAddr(a.Cfg.API.ListenAddress)
+	if err != nil {
+		return err
+	}
+
+	req := markettypes.HttpRequest{
+		URL:     fmt.Sprintf("http://%s:%s/%s/%s", localIP, port, rpc.DealsPrefix, prop.Proposal.PieceCID),
+		Headers: map[string]string{"Authorization": "Bearer " + string(tokenByte)},
+	}
+
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return xerrors.Errorf("marshalling request parameters: %w", err)
+	}
+
+	ds, err := a.ClientDealPieceCID(ctx, dealDataRoot)
+	if err != nil {
+		return err
+	}
+
+	dealParams := types2.DealParams{
+		DealUUID:           uuid.New(),
+		ClientDealProposal: *prop,
+		DealDataRoot:       dealDataRoot,
+		Transfer: types2.Transfer{
+			Type:   markettypes.TTHttp,
+			Size:   uint64(ds.PayloadSize),
+			Params: reqBytes,
+		},
+	}
+
+	log.Infof("deal params, proposal cid %v, deal data root %v, piece cid %v, piece size %v, payload size %v, url %v", dealProposalCID,
+		dealParams.DealDataRoot, prop.Proposal.PieceCID, prop.Proposal.PieceSize, ds.PayloadSize, req.URL)
+
+	ret, err := a.MarketAPI.SendMarketDealParams(context.Background(), dealParams)
+	if err != nil {
+		return err
+	}
+	if !ret.Accepted {
+		return xerrors.Errorf("rejected reason %v", ret.Reason)
+	}
+	log.Infof("deal(%v) accepted, data root %v", dealParams.DealUUID, dealDataRoot)
+
+	return nil
 }
 
 func (a *API) ClientListDeals(ctx context.Context) ([]types.DealInfo, error) {
@@ -1481,4 +1564,45 @@ func (a *API) dealBlockstore(root cid.Cid) (bstore.Blockstore, func(), error) {
 
 func (a *API) DefaultAddress(ctx context.Context) (address.Address, error) {
 	return address.Address(a.Cfg.DefaultMarketAddress), nil
+}
+
+func getPortFromAddr(addr string) (string, error) {
+	ma, err := multiaddr.NewMultiaddr(addr)
+	if err == nil {
+		_, addr, err := manet.DialArgs(ma)
+		if err != nil {
+			return "", err
+		}
+		ipPort := strings.Split(addr, ":")
+		return ipPort[1], nil
+	}
+
+	u, err := url.Parse(addr)
+	if err != nil {
+		return "", err
+	}
+	return u.Port(), nil
+}
+
+func getLocalIP() (string, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", xerrors.Errorf("got ip interfaces failed: %v", err)
+	}
+	for _, i := range ifaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			switch v := addr.(type) {
+			case *net.IPNet:
+				if v.IP.IsGlobalUnicast() {
+					return v.IP.String(), nil
+				}
+			}
+		}
+	}
+	return "", xerrors.Errorf("got ip failed")
 }

@@ -265,6 +265,20 @@ type MarketConfig struct {
 
 	MaxPublishDealsFee     types.FIL
 	MaxMarketBalanceAddFee types.FIL
+
+	TransportConfig *TransportConfig
+}
+
+type TransportConfig struct {
+	MinBackOffWait       Duration
+	MaxBackoffWait       Duration
+	BackOffFactor        float64
+	MaxReconnectAttempts float64
+	ReadBufferSize       uint64
+	MaxConcurrent        int
+
+	Enable   bool
+	TestMode bool
 }
 
 type MarketClientConfig struct {
@@ -274,11 +288,14 @@ type MarketClientConfig struct {
 	Node     Node
 	Messager Messager
 	Signer   Signer
+	Market   Market
 
 	// The maximum number of parallel online data transfers (piecestorage+retrieval)
 	SimultaneousTransfersForRetrieval uint64
 	SimultaneousTransfersForStorage   uint64
 	DefaultMarketAddress              Address
+
+	DealDir string
 }
 
 var _ encoding.TextMarshaler = (*Duration)(nil)

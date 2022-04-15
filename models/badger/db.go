@@ -74,6 +74,9 @@ type StorageAskDS datastore.Batching //key = latest
 // /metadata/paych/
 type PayChanDS datastore.Batching
 
+// /metadata/transport-info/
+type TransportInfoDS datastore.Batching
+
 //*********************************client
 // /metadata/deals/client
 type ClientDatastore datastore.Batching
@@ -178,6 +181,7 @@ type BadgerDSParams struct {
 	RetrAskDs        RetrievalAskDS   `optional:"true"`
 	CidInfoDs        CIDInfoDS        `optional:"true"`
 	RetrievalDealsDs RetrievalDealsDS `optional:"true"`
+	TransportInfoDS  TransportInfoDS  `optional:"true"`
 }
 
 func NewBadgerRepo(params BadgerDSParams) repo.Repo {

@@ -8,8 +8,6 @@ import (
 
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/mitchellh/go-homedir"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -26,18 +24,17 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-fil-markets/stores"
 
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/minermgr"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-market/v2/network"
-	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"github.com/filecoin-project/venus-market/v2/utils"
 
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
+	mtypes "github.com/filecoin-project/venus-market/v2/types"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
@@ -71,6 +68,8 @@ type StorageProvider interface {
 }
 
 type StorageProviderImpl struct {
+	cfg *config.MarketConfig
+
 	net smnet.StorageMarketNetwork
 
 	spn       StorageProviderNode
@@ -110,39 +109,26 @@ func providerDispatcher(evt pubsub.Event, fn pubsub.SubscriberFn) error {
 // NewStorageProvider returns a new storage provider
 func NewStorageProvider(
 	storedAsk IStorageAsk,
-	h host.Host,
 	cfg *config.MarketConfig,
-	homeDir *config.HomeDir,
-	pieceStorageMgr *piecestorage.PieceStorageManager,
 	dataTransfer network.ProviderDataTransfer,
 	spn StorageProviderNode,
-	dagStore stores.DAGStoreWrapper,
 	repo repo.Repo,
 	minerMgr minermgr.IAddrMgr,
 	mixMsgClient clients.IMixMessage,
+	fs filestore.FileStore,
+	connManager *connmanager.ConnManager,
+	net smnet.StorageMarketNetwork,
+	dealProcess StorageDealHandler,
 ) (StorageProvider, error) {
-	net := smnet.NewFromLibp2pHost(h)
-
-	var err error
-	transferPath := cfg.TransfePath
-	if len(transferPath) == 0 {
-		transferPath = string(*homeDir)
-	}
-	transferPath, err = homedir.Expand(transferPath)
-	if err != nil {
-		return nil, err
-	}
-	store, err := filestore.NewLocalFileStore(filestore.OsPath(transferPath))
-	if err != nil {
-		return nil, err
-	}
 
 	spV2 := &StorageProviderImpl{
+		cfg: cfg,
+
 		net: net,
 
 		spn:       spn,
-		fs:        store,
-		conns:     connmanager.NewConnManager(),
+		fs:        fs,
+		conns:     connManager,
 		storedAsk: storedAsk,
 
 		pubSub: pubsub.New(providerDispatcher),
@@ -150,13 +136,9 @@ func NewStorageProvider(
 		dealStore: repo.StorageDealRepo(),
 
 		minerMgr: minerMgr,
-	}
 
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, repo, pieceStorageMgr, dataTransfer, dagStore)
-	if err != nil {
-		return nil, err
+		dealProcess: dealProcess,
 	}
-	spV2.dealProcess = dealProcess
 
 	spV2.transferProcess = NewDataTransferProcess(dealProcess, spV2.dealStore)
 	// register a data transfer event handler -- this will send events to the state machines based on DT events
@@ -210,6 +192,17 @@ func isTerminateState(deal *types.MinerDeal) bool {
 	}
 
 	return false
+}
+
+func CheckDealStatus(deal *types.MinerDeal) error {
+	if isTerminateState(deal) {
+		return xerrors.Errorf("deal %s is terminate state", deal.ProposalCid)
+	}
+	if deal.State > storagemarket.StorageDealWaitingForData {
+		return xerrors.Errorf("deal %s does not support offline data", deal.ProposalCid)
+	}
+
+	return nil
 }
 
 func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.MinerDeal) error {
@@ -278,45 +271,15 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 
 	_ = n // TODO: verify n?
 
-	carSize := uint64(tempfi.Size())
-
 	_, err = tempfi.Seek(0, io.SeekStart)
 	if err != nil {
 		cleanup()
 		return xerrors.Errorf("failed to seek through temp imported file: %w", err)
 	}
 
-	proofType, err := p.spn.GetProofType(ctx, d.Proposal.Provider, nil) // TODO: 判断是不是属于此矿池?
-	if err != nil {
+	if err := verifyPieceCid(ctx, p.spn, d, tempfi); err != nil {
 		cleanup()
-		return xerrors.Errorf("failed to determine proof type: %w", err)
-	}
-	log.Debugw("fetched proof type", "propCid", propCid)
-
-	pieceCid, err := utils.GeneratePieceCommitment(proofType, tempfi, carSize)
-	if err != nil {
-		cleanup()
-		return xerrors.Errorf("failed to generate commP: %w", err)
-	}
-	if carSizePadded := padreader.PaddedSize(carSize).Padded(); carSizePadded < d.Proposal.PieceSize {
-		// need to pad up!
-		rawPaddedCommp, err := commp.PadCommP(
-			// we know how long a pieceCid "hash" is, just blindly extract the trailing 32 bytes
-			pieceCid.Hash()[len(pieceCid.Hash())-32:],
-			uint64(carSizePadded),
-			uint64(d.Proposal.PieceSize),
-		)
-		if err != nil {
-			cleanup()
-			return err
-		}
-		pieceCid, _ = commcid.DataCommitmentV1ToCID(rawPaddedCommp)
-	}
-
-	// Verify CommP matches
-	if !pieceCid.Equals(d.Proposal.PieceCID) {
-		cleanup()
-		return xerrors.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, d.Proposal.PieceCID)
+		return err
 	}
 
 	log.Debugw("will fire ReserveProviderFunds for imported file", "propCid", propCid)
@@ -337,6 +300,41 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 			log.Errorf("deal %s handle off err: %s", propCid, err)
 		}
 	}()
+	return nil
+}
+
+func verifyPieceCid(ctx context.Context, spn StorageProviderNode, d *types.MinerDeal, tempfi filestore.File) error {
+	carSize := uint64(tempfi.Size())
+	propCid := d.ProposalCid
+	proofType, err := spn.GetProofType(ctx, d.Proposal.Provider, nil) // TODO: 判断是不是属于此矿池?
+	if err != nil {
+		return xerrors.Errorf("failed to determine proof type: %w", err)
+	}
+	log.Debugw("fetched proof type", "propCid", propCid)
+
+	pieceCid, err := utils.GeneratePieceCommitment(proofType, tempfi, carSize)
+	if err != nil {
+		return xerrors.Errorf("failed to generate commP: %w", err)
+	}
+	if carSizePadded := padreader.PaddedSize(carSize).Padded(); carSizePadded < d.Proposal.PieceSize {
+		// need to pad up!
+		rawPaddedCommp, err := commp.PadCommP(
+			// we know how long a pieceCid "hash" is, just blindly extract the trailing 32 bytes
+			pieceCid.Hash()[len(pieceCid.Hash())-32:],
+			uint64(carSizePadded),
+			uint64(d.Proposal.PieceSize),
+		)
+		if err != nil {
+			return err
+		}
+		pieceCid, _ = commcid.DataCommitmentV1ToCID(rawPaddedCommp)
+	}
+
+	// Verify CommP matches
+	if !pieceCid.Equals(d.Proposal.PieceCID) {
+		return xerrors.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, d.Proposal.PieceCID)
+	}
+
 	return nil
 }
 
@@ -409,8 +407,8 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 		PublishCid:         deal.PublishCid,         //unable to check, msg maybe unable found
 		Client:             deal.Client,             //not necessary
 		PayloadSize:        deal.PayloadSize,        //unable to check
-		Ref: &storagemarket.DataRef{
-			TransferType: "import",
+		Ref: &types.DataRef{
+			TransferType: mtypes.TTImport,
 			Root:         deal.Ref.Root, //unable to check
 			PieceCid:     &deal.Proposal.PieceCID,
 			PieceSize:    deal.Proposal.PieceSize.Unpadded(),
