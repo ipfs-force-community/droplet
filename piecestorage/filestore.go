@@ -12,30 +12,15 @@ import (
 
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus/pkg/util/fsutil"
 )
-
-type IPreSignOp interface {
-	GetReadUrl(context.Context, string) (string, error)
-	GetWriteUrl(ctx context.Context, s2 string) (string, error)
-}
-
-type IPieceStorage interface {
-	Type() Protocol
-	SaveTo(context.Context, string, io.Reader) (int64, error)
-	Read(context.Context, string) (io.ReadCloser, error)
-	Len(ctx context.Context, string2 string) (int64, error)
-	ReadOffset(context.Context, string, int, int) (io.ReadCloser, error)
-	Has(context.Context, string) (bool, error)
-	Validate(s string) error
-
-	IPreSignOp
-}
 
 type fsPieceStorage struct {
 	baseUrl string
+	fsCfg   *config.FsPieceStorage
 }
 
-func (f fsPieceStorage) Len(ctx context.Context, s string) (int64, error) {
+func (f *fsPieceStorage) Len(ctx context.Context, s string) (int64, error) {
 	st, err := os.Stat(path.Join(f.baseUrl, s))
 	if err != nil {
 		return 0, err
@@ -47,7 +32,7 @@ func (f fsPieceStorage) Len(ctx context.Context, s string) (int64, error) {
 	return st.Size(), err
 }
 
-func (f fsPieceStorage) SaveTo(ctx context.Context, s string, r io.Reader) (int64, error) {
+func (f *fsPieceStorage) SaveTo(ctx context.Context, s string, r io.Reader) (int64, error) {
 	dstPath := path.Join(f.baseUrl, s)
 	tempFile, err := ioutil.TempFile("", "piece-*")
 	if err != nil {
@@ -63,11 +48,11 @@ func (f fsPieceStorage) SaveTo(ctx context.Context, s string, r io.Reader) (int6
 	return wlen, err
 }
 
-func (f fsPieceStorage) Read(ctx context.Context, s string) (io.ReadCloser, error) {
+func (f *fsPieceStorage) Read(ctx context.Context, s string) (io.ReadCloser, error) {
 	return os.Open(path.Join(f.baseUrl, s))
 }
 
-func (f fsPieceStorage) ReadOffset(ctx context.Context, s string, offset int, size int) (io.ReadCloser, error) {
+func (f *fsPieceStorage) ReadOffset(ctx context.Context, s string, offset int, size int) (io.ReadCloser, error) {
 	dstPath := path.Join(f.baseUrl, s)
 	fs, err := os.Open(dstPath)
 	if err != nil {
@@ -80,7 +65,7 @@ func (f fsPieceStorage) ReadOffset(ctx context.Context, s string, offset int, si
 	return utils.NewLimitedBufferReader(fs, size), nil
 }
 
-func (f fsPieceStorage) Has(ctx context.Context, s string) (bool, error) {
+func (f *fsPieceStorage) Has(ctx context.Context, s string) (bool, error) {
 	_, err := os.Stat(path.Join(f.baseUrl, s))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -91,7 +76,7 @@ func (f fsPieceStorage) Has(ctx context.Context, s string) (bool, error) {
 	return true, nil
 }
 
-func (f fsPieceStorage) Validate(s string) error {
+func (f *fsPieceStorage) Validate(s string) error {
 	st, err := os.Stat(f.baseUrl)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -106,20 +91,25 @@ func (f fsPieceStorage) Validate(s string) error {
 	return nil
 }
 
-func (f fsPieceStorage) Type() Protocol {
+func (f *fsPieceStorage) CanAllocate(size int64) bool {
+	st, err := fsutil.Statfs(f.baseUrl)
+	if err != nil {
+		log.Warn("unable to get status of %s", f.baseUrl)
+		return false
+	}
+	return st.Available > size
+}
+
+func (f *fsPieceStorage) Type() Protocol {
 	return FS
 }
 
-func (f fsPieceStorage) GetReadUrl(ctx context.Context, s2 string) (string, error) {
-	return path.Join(f.baseUrl, s2), nil
+func (f *fsPieceStorage) ReadOnly() bool {
+	return f.fsCfg.ReadOnly
 }
 
-func (f fsPieceStorage) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
-	return path.Join(f.baseUrl, s2), nil
-}
-
-func newFsPieceStorage(fsCfg config.FsPieceStorage) (IPieceStorage, error) {
-	fs := &fsPieceStorage{baseUrl: fsCfg.Path}
+func newFsPieceStorage(fsCfg *config.FsPieceStorage) (IPieceStorage, error) {
+	fs := &fsPieceStorage{baseUrl: fsCfg.Path, fsCfg: fsCfg}
 	if err := fs.Validate(fsCfg.Path); err != nil {
 		return nil, err
 	}

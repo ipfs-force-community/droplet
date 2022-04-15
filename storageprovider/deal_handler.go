@@ -61,8 +61,8 @@ type StorageDealProcessImpl struct {
 
 	dagStore stores.DAGStoreWrapper // TODO:检查是否遗漏
 
-	minerMgr     minermgr2.IAddrMgr
-	pieceStorage piecestorage.IPieceStorage
+	minerMgr        minermgr2.IAddrMgr
+	pieceStorageMgr *piecestorage.PieceStorageManager
 }
 
 // NewStorageDealProcessImpl returns a new deal process instance
@@ -75,7 +75,7 @@ func NewStorageDealProcessImpl(
 	fs filestore.FileStore,
 	minerMgr minermgr2.IAddrMgr,
 	repo repo.Repo,
-	pieceStorage piecestorage.IPieceStorage,
+	pieceStorageMgr *piecestorage.PieceStorageManager,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
 ) (StorageDealHandler, error) {
@@ -102,7 +102,7 @@ func NewStorageDealProcessImpl(
 
 		minerMgr: minerMgr,
 
-		pieceStorage: pieceStorage,
+		pieceStorageMgr: pieceStorageMgr,
 
 		cidInfoRepo: repo.CidInfoRepo(),
 		dagStore:    dagStore,
@@ -503,13 +503,11 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 	// piece which is just too much work for a seldom used feature)
 
 	pieceCid := deal.ClientDealProposal.Proposal.PieceCID
-	has, err := storageDealPorcess.pieceStorage.Has(ctx, pieceCid.String())
-	if err != nil {
-		return xerrors.Errorf("failed to get piece cid data %w", err)
-	}
 
-	if !has {
-		_, err = storageDealPorcess.pieceStorage.SaveTo(ctx, pieceCid.String(), reader)
+	_, err := storageDealPorcess.pieceStorageMgr.SelectStorageForRead(ctx, pieceCid.String())
+	if err != nil {
+		ps, err := storageDealPorcess.pieceStorageMgr.SelectStorageForWrite(int64(payloadSize))
+		_, err = ps.SaveTo(ctx, pieceCid.String(), reader)
 		if err != nil {
 			return err
 		}

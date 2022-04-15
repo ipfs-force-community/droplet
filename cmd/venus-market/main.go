@@ -16,7 +16,6 @@ import (
 	cli2 "github.com/filecoin-project/venus-market/cli"
 	"github.com/filecoin-project/venus-market/config"
 	_ "github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/piecestorage"
 	"github.com/filecoin-project/venus-market/version"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
@@ -108,16 +107,6 @@ var (
 		Name:    "wallet-token",
 		Aliases: []string{"signer-token"},
 		Usage:   "auth token for connect wallet service",
-	}
-
-	ExternalFsPieceStorageFlag = &cli.StringSliceFlag{
-		Name:  "ex-fs-ps",
-		Usage: "config external file system storage for piece  (eg  /mnt/store/f01000}",
-	}
-
-	PieceStorageFlag = &cli.StringFlag{
-		Name:  "piecestorage",
-		Usage: "config storage for piece  (eg  fs:/mnt/piece   s3:{access key}:{secret key}:{option token}@{region}host/{bucket})",
 	}
 
 	MysqlDsnFlag = &cli.StringFlag{
@@ -245,22 +234,6 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	}
 	if cctx.IsSet(SignerTokenFlag.Name) {
 		cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
-	}
-
-	if cctx.IsSet(PieceStorageFlag.Name) {
-		pieceStorage := config.PieceStorage{}
-		err := piecestorage.ParserProtocol(cctx.String("piecestorage"), &pieceStorage)
-		if err != nil {
-			return err
-		}
-
-		cfg.PieceStorage = pieceStorage
-	}
-
-	if cctx.IsSet(ExternalFsPieceStorageFlag.Name) {
-		cfg.ExternalFsPieceStore.Paths = make([]string, 0)
-		paths := cctx.StringSlice(ExternalFsPieceStorageFlag.Name)
-		cfg.ExternalFsPieceStore.Paths = append(cfg.ExternalFsPieceStore.Paths, paths...)
 	}
 
 	if cctx.IsSet(MysqlDsnFlag.Name) {

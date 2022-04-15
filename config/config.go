@@ -150,32 +150,22 @@ type DAGStoreConfig struct {
 }
 
 type PieceStorage struct {
-	Fs        FsPieceStorage
-	S3        S3PieceStorage
-	PreSignS3 PreSignS3PieceStorage
-}
-
-type PreSignS3PieceStorage struct {
-	Enable bool
+	Fs []*FsPieceStorage
+	S3 []*S3PieceStorage
 }
 
 type FsPieceStorage struct {
-	Enable bool
-	Path   string
+	ReadOnly bool
+	Path     string
 }
 
 type S3PieceStorage struct {
-	Enable   bool
+	ReadOnly bool
 	EndPoint string
 
 	AccessKey string
 	SecretKey string
 	Token     string
-}
-
-// todo 用作检索，不需要显式标注 ReadOnly
-type ExternalFsPieceStore struct {
-	Paths []string
 }
 
 type User struct {
@@ -196,12 +186,10 @@ type MarketConfig struct {
 
 	Mysql Mysql
 
-	PieceStorage PieceStorage
-	// `Pieces` stored when offline deals or not connected to the chain service
-	ExternalFsPieceStore ExternalFsPieceStore
-	Journal              Journal
-	AddressConfig        AddressConfig
-	DAGStore             DAGStoreConfig
+	PieceStorage  PieceStorage
+	Journal       Journal
+	AddressConfig AddressConfig
+	DAGStore      DAGStoreConfig
 
 	StorageMiners           []User
 	RetrievalPaymentAddress User
