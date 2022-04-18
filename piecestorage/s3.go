@@ -112,7 +112,7 @@ func (s *s3PieceStorage) Len(ctx context.Context, piececid string) (int64, error
 	return *result.ContentLength, nil
 }
 
-func (s s3PieceStorage) GetFastReader(ctx context.Context, s2 string) (io.ReadCloser, error) {
+func (s s3PieceStorage) GetReaderCloser(ctx context.Context, s2 string) (io.ReadCloser, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(s2),
@@ -198,7 +198,6 @@ func (sw *seekWraper) Read(p []byte) (n int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	fmt.Println("invoke read")
 	n, err = result.Body.Read(p)
 	if err != nil {
 		return 0, err

@@ -61,7 +61,7 @@ func (m *MemPieceStore) Len(ctx context.Context, s string) (int64, error) {
 
 }
 
-func (m *MemPieceStore) GetFastReader(ctx context.Context, s string) (io.ReadCloser, error) {
+func (m *MemPieceStore) GetReaderCloser(ctx context.Context, s string) (io.ReadCloser, error) {
 	return m.GetMountReader(ctx, s)
 }
 

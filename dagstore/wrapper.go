@@ -212,7 +212,6 @@ func (w *Wrapper) gcLoop() {
 func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (stores.ClosableBlockstore, error) {
 	log.Debugf("acquiring shard for piece CID %s", pieceCid)
 
-	fmt.Println("Load shard ....")
 	key := shard.KeyFromCID(pieceCid)
 	resch := make(chan dagstore.ShardResult, 1)
 	err := w.dagst.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{})

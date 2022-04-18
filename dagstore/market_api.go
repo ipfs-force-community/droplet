@@ -64,7 +64,7 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (m
 	}
 	if m.useTransient {
 		//only need reader stream
-		r, err := pieceStorage.GetFastReader(ctx, pieceCid.String())
+		r, err := pieceStorage.GetReaderCloser(ctx, pieceCid.String())
 		if err != nil {
 			return nil, err
 		}

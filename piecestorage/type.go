@@ -27,7 +27,7 @@ type IPieceStorage interface {
 	SaveTo(context.Context, string, io.Reader) (int64, error)
 	Read(context.Context, string) (io.ReadCloser, error)
 	Len(ctx context.Context, string2 string) (int64, error)
-	GetFastReader(ctx context.Context, s string) (io.ReadCloser, error)
+	GetReaderCloser(ctx context.Context, s string) (io.ReadCloser, error)
 	GetMountReader(ctx context.Context, s string) (mount.Reader, error)
 	Has(context.Context, string) (bool, error)
 	Validate(s string) error

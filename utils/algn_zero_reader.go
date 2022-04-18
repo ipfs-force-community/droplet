@@ -94,9 +94,6 @@ func (i *AlgnZeroMountReader) Close() error {
 
 func (i *AlgnZeroMountReader) Seek(offset int64, whence int) (int64, error) {
 	if whence == io.SeekCurrent {
-		if offset != 0 {
-			fmt.Println("")
-		}
 		i.seekPos = i.seekPos + int(offset)
 		return int64(i.seekPos), nil
 	} else if whence == io.SeekStart {

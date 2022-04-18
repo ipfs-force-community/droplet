@@ -57,7 +57,7 @@ func (f *fsPieceStorage) Read(ctx context.Context, s string) (io.ReadCloser, err
 	return os.Open(path.Join(f.baseUrl, s))
 }
 
-func (f fsPieceStorage) GetFastReader(ctx context.Context, s string) (io.ReadCloser, error) {
+func (f fsPieceStorage) GetReaderCloser(ctx context.Context, s string) (io.ReadCloser, error) {
 	dstPath := path.Join(f.baseUrl, s)
 	fs, err := os.Open(dstPath)
 	if err != nil {
