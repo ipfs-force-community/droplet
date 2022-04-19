@@ -74,14 +74,13 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (m
 			return nil, err
 		}
 		return &mountWrapper{r, padR}, nil
-	} else {
-		//must support seek/readeat
-		r, err := pieceStorage.GetMountReader(ctx, pieceCid.String())
-		if err != nil {
-			return nil, err
-		}
-		return utils.NewAlgnZeroMountReader(r, int(payloadSize), int(pieceSize)), nil
 	}
+	//must support seek/readeat
+	r, err := pieceStorage.GetMountReader(ctx, pieceCid.String())
+	if err != nil {
+		return nil, err
+	}
+	return utils.NewAlgnZeroMountReader(r, int(payloadSize), int(pieceSize)), nil
 }
 
 func (m *marketAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {

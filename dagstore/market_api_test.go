@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models"
 	"github.com/filecoin-project/venus-market/piecestorage"
 	builtinMarket "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
@@ -26,9 +27,13 @@ func TestMarket(t *testing.T) {
 	testResourceId, _ := cid.Decode("baga6ea4seaqd6cvb2padh74lthhiay4jtlwqhj2qetbj5cipna6jlkmcrdljulq")
 
 	testCId, _ := cid.Decode("bafy2bzacecqwr2ggwu62ao246wzilhba5dvbocjwxxwyb2zn3wl7rgk2wsx3k")
-	memPieceStorage := piecestorage.NewMemPieceStore()
+	memPieceStorage := piecestorage.NewMemPieceStore(nil)
+	pmgr, err := piecestorage.NewPieceStorageManager(&config.PieceStorage{})
+	assert.Nil(t, err)
+	pmgr.AddMemPieceStorage(memPieceStorage)
+
 	r := models.NewInMemoryRepo()
-	err := r.StorageDealRepo().SaveDeal(ctx, &market.MinerDeal{
+	err = r.StorageDealRepo().SaveDeal(ctx, &market.MinerDeal{
 		ClientDealProposal: builtinMarket.ClientDealProposal{
 			Proposal: market0.DealProposal{
 				Provider:  address.TestAddress,
@@ -49,7 +54,7 @@ func TestMarket(t *testing.T) {
 	_, err = memPieceStorage.SaveTo(ctx, testResourceId.String(), payloadWriter)
 	assert.Nil(t, err)
 
-	marketAPI := NewMarketAPI(r, memPieceStorage, false)
+	marketAPI := NewMarketAPI(r, pmgr, false)
 
 	size, err := marketAPI.GetUnpaddedCARSize(ctx, testResourceId)
 	assert.Nil(t, err)

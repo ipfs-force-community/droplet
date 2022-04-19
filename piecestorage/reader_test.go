@@ -20,7 +20,7 @@ func TestReWrite(t *testing.T) {
 	_ = os.Remove(filepath)
 
 	ctx := context.TODO()
-	ifs, err := NewFsPieceStorage(config.FsPieceStorage{ReadOnly: false, Path: path})
+	ifs, err := NewFsPieceStorage(&config.FsPieceStorage{ReadOnly: false, Path: path})
 	require.NoErrorf(t, err, "open file storage")
 	wlen, err := ifs.SaveTo(ctx, name, r)
 
