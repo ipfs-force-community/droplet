@@ -12,11 +12,11 @@ import (
 var _ http.Handler = (*PieceStorageServer)(nil)
 
 type PieceStorageServer struct {
-	pieceStorage piecestorage.IPieceStorage
+	pieceStorageMgr *piecestorage.PieceStorageManager
 }
 
-func NewPieceStorageServer(pieceStorage piecestorage.IPieceStorage) *PieceStorageServer {
-	return &PieceStorageServer{pieceStorage: pieceStorage}
+func NewPieceStorageServer(pieceStorageMgr *piecestorage.PieceStorageManager) *PieceStorageServer {
+	return &PieceStorageServer{pieceStorageMgr: pieceStorageMgr}
 }
 
 func (p *PieceStorageServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
@@ -26,24 +26,19 @@ func (p *PieceStorageServer) ServeHTTP(res http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	has, err := p.pieceStorage.Has(req.Context(), resourceID)
+	pieceStorage, err := p.pieceStorageMgr.FindStorageForRead(req.Context(), resourceID)
 	if err != nil {
-		http.Error(res, fmt.Sprintf("call piecestore.Has for %s: %s", resourceID, err), http.StatusInternalServerError)
-		return
-	}
-
-	if !has {
 		http.Error(res, fmt.Sprintf("resource %s not found", resourceID), http.StatusNotFound)
 		return
 	}
 
-	flen, err := p.pieceStorage.Len(req.Context(), resourceID)
+	flen, err := pieceStorage.Len(req.Context(), resourceID)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("call piecestore.Len for %s: %s", resourceID, err), http.StatusInternalServerError)
 		return
 	}
 
-	r, err := p.pieceStorage.Read(req.Context(), resourceID)
+	r, err := pieceStorage.Read(req.Context(), resourceID)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("failed to open reader for %s: %s", resourceID, err), http.StatusInternalServerError)
 		return

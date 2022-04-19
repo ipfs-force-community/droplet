@@ -14,19 +14,21 @@ var _ IPieceStorage = (*MemPieceStore)(nil)
 type MemPieceStore struct {
 	data   map[string][]byte
 	dataLk *sync.RWMutex
+	status *StorageStatus //status for testing
 }
 
-func NewMemPieceStore() *MemPieceStore {
+func NewMemPieceStore(status *StorageStatus) *MemPieceStore {
 	return &MemPieceStore{
 		data:   make(map[string][]byte),
 		dataLk: &sync.RWMutex{},
+		status: status,
 	}
 }
-func (m MemPieceStore) Type() Protocol {
+func (m *MemPieceStore) Type() Protocol {
 	return MemStore
 }
 
-func (m MemPieceStore) SaveTo(ctx context.Context, s string, reader io.Reader) (int64, error) {
+func (m *MemPieceStore) SaveTo(ctx context.Context, s string, reader io.Reader) (int64, error) {
 	m.dataLk.Lock()
 	defer m.dataLk.Unlock()
 	bytes, err := ioutil.ReadAll(reader)
@@ -37,7 +39,7 @@ func (m MemPieceStore) SaveTo(ctx context.Context, s string, reader io.Reader) (
 	return int64(len(bytes)), nil
 }
 
-func (m MemPieceStore) Read(ctx context.Context, s string) (io.ReadCloser, error) {
+func (m *MemPieceStore) Read(ctx context.Context, s string) (io.ReadCloser, error) {
 	m.dataLk.RLock()
 	defer m.dataLk.RUnlock()
 	if data, ok := m.data[s]; ok {
@@ -46,7 +48,7 @@ func (m MemPieceStore) Read(ctx context.Context, s string) (io.ReadCloser, error
 	return nil, fmt.Errorf("unable to find resource %s", s)
 }
 
-func (m MemPieceStore) Len(ctx context.Context, s string) (int64, error) {
+func (m *MemPieceStore) Len(ctx context.Context, s string) (int64, error) {
 	m.dataLk.RLock()
 	defer m.dataLk.RUnlock()
 	if data, ok := m.data[s]; ok {
@@ -56,7 +58,7 @@ func (m MemPieceStore) Len(ctx context.Context, s string) (int64, error) {
 
 }
 
-func (m MemPieceStore) ReadOffset(ctx context.Context, s string, i int, i2 int) (io.ReadCloser, error) {
+func (m *MemPieceStore) ReadOffset(ctx context.Context, s string, i int, i2 int) (io.ReadCloser, error) {
 	m.dataLk.RLock()
 	defer m.dataLk.RUnlock()
 	if data, ok := m.data[s]; ok {
@@ -66,23 +68,26 @@ func (m MemPieceStore) ReadOffset(ctx context.Context, s string, i int, i2 int) 
 
 }
 
-func (m MemPieceStore) Has(ctx context.Context, s string) (bool, error) {
+func (m *MemPieceStore) Has(ctx context.Context, s string) (bool, error) {
 	m.dataLk.RLock()
 	defer m.dataLk.RUnlock()
 	_, ok := m.data[s]
 	return ok, nil
 }
 
-func (m MemPieceStore) Validate(s string) error {
+func (m *MemPieceStore) CanAllocate(size int64) bool {
+	if m.status != nil {
+		return m.status.Available > size
+	}
+	return true
+}
+
+func (m *MemPieceStore) Validate(s string) error {
 	return nil
 }
 
-func (m MemPieceStore) GetReadUrl(ctx context.Context, s string) (string, error) {
-	return s, nil
-}
-
-func (m MemPieceStore) GetWriteUrl(ctx context.Context, s string) (string, error) {
-	return s, nil
+func (m *MemPieceStore) ReadOnly() bool {
+	return false
 }
 
 type wraperCloser struct {

@@ -42,8 +42,6 @@ var soloRunCmd = &cli.Command{
 		HidenSignerTypeFlag,
 		WalletUrlFlag,
 		WalletTokenFlag,
-		PieceStorageFlag,
-		ExternalFsPieceStorageFlag,
 		MysqlDsnFlag,
 		MinerListFlag,
 		PaymentAddressFlag,
@@ -113,7 +111,7 @@ func soloDaemon(cctx *cli.Context) error {
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
 	mux := mux.NewRouter()
-	mux.Handle("resource", rpc.NewPieceStorageServer(resAPI.PieceStorage))
+	mux.Handle("resource", rpc.NewPieceStorageServer(resAPI.PieceStorageMgr))
 
 	var fullAPI marketapi.IMarketStruct
 	permission.PermissionProxy(marketapi.IMarket(resAPI), &fullAPI)

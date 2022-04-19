@@ -62,7 +62,7 @@ type MarketNodeImpl struct {
 	Messager                                    clients2.IMixMessage
 	StorageAsk                                  storageprovider.IStorageAsk
 	DAGStore                                    *dagstore.DAGStore
-	PieceStorage                                piecestorage.IPieceStorage
+	PieceStorageMgr                             *piecestorage.PieceStorageManager
 	MinerMgr                                    minermgr.IAddrMgr
 	PaychAPI                                    *paychmgr.PaychAPI
 	Repo                                        repo.Repo
@@ -536,14 +536,10 @@ func (m MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.
 				continue
 			}
 
-			isUnsealed, err := m.PieceStorage.Has(ctx, pieceCid.String())
+			_, err = m.PieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 			if err != nil {
+				//todounseal
 				log.Warnw("DagstoreInitializeAll: failed to get unsealed status; skipping deal", "piece cid", pieceCid, "error", err)
-				continue
-			}
-
-			if !isUnsealed {
-				log.Infow("DagstoreInitializeAll: skipping piece because it's sealed", "piece_cid", pieceCid, "error", err)
 				continue
 			}
 		}
@@ -822,16 +818,10 @@ func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 	return nil
 }
 
-func (m MarketNodeImpl) GetReadUrl(ctx context.Context, s2 string) (string, error) {
-	if m.PieceStorage.Type() != piecestorage.S3 {
-		return "", xerrors.New("presign read only support s3")
-	}
-	return m.PieceStorage.GetReadUrl(ctx, s2)
+func (m MarketNodeImpl) GetReadUrl(ctx context.Context, s string) (string, error) {
+	panic("not support")
 }
 
 func (m MarketNodeImpl) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
-	if m.PieceStorage.Type() != piecestorage.S3 {
-		return "", xerrors.New("presign read only support s3")
-	}
-	return m.PieceStorage.GetWriteUrl(ctx, s2)
+	panic("not support")
 }

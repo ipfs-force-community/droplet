@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/piecestorage"
-	"github.com/filecoin-project/venus-market/piecestorage/external"
 )
 
 var (
@@ -30,8 +29,8 @@ const (
 )
 
 // NewMinerAPI creates a new MarketAPI adaptor for the dagstore mounts.
-func NewMarketAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage piecestorage.IPieceStorage, exFsPieceStorage external.IExternalPieceStorage) (MarketAPI, error) {
-	mountApi := NewMinerAPI(repo, pieceStorage, exFsPieceStorage, r.MaxConcurrencyStorageCalls)
+func NewMarketAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage *piecestorage.PieceStorageManager) (MarketAPI, error) {
+	mountApi := NewMinerAPI(repo, pieceStorage, r.MaxConcurrencyStorageCalls)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return mountApi.Start(ctx)

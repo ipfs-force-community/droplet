@@ -46,8 +46,6 @@ var poolRunCmd = &cli.Command{
 		HidenSignerTypeFlag,
 		GatewayUrlFlag,
 		GatewayTokenFlag,
-		PieceStorageFlag,
-		ExternalFsPieceStorageFlag,
 		MysqlDsnFlag,
 		MinerListFlag,
 		PaymentAddressFlag,
@@ -122,7 +120,7 @@ func poolDaemon(cctx *cli.Context) error {
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
 	mux := mux.NewRouter()
-	if err = mux.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorage)).GetError(); err != nil {
+	if err = mux.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorageMgr)).GetError(); err != nil {
 		return xerrors.Errorf("handle 'resource' failed: %w", err)
 	}
 

@@ -2,6 +2,7 @@ package dagstore
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/ipfs/go-cid"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/piecestorage"
-	"github.com/filecoin-project/venus-market/piecestorage/external"
 )
 
 type MarketAPI interface {
@@ -23,20 +23,18 @@ type MarketAPI interface {
 }
 
 type marketAPI struct {
-	pieceStorage     piecestorage.IPieceStorage
-	exFsPieceStorage external.IExternalPieceStorage
-	pieceRepo        repo.StorageDealRepo
-	throttle         throttle.Throttler
+	pieceStorageMgr *piecestorage.PieceStorageManager
+	pieceRepo       repo.StorageDealRepo
+	throttle        throttle.Throttler
 }
 
 var _ MarketAPI = (*marketAPI)(nil)
 
-func NewMinerAPI(repo repo.Repo, pieceStorage piecestorage.IPieceStorage, exFsPieceStorage external.IExternalPieceStorage, concurrency int) MarketAPI {
+func NewMinerAPI(repo repo.Repo, pieceStorageMgr *piecestorage.PieceStorageManager, concurrency int) MarketAPI {
 	return &marketAPI{
-		pieceRepo:        repo.StorageDealRepo(),
-		pieceStorage:     pieceStorage,
-		exFsPieceStorage: exFsPieceStorage,
-		throttle:         throttle.Fixed(concurrency),
+		pieceRepo:       repo.StorageDealRepo(),
+		pieceStorageMgr: pieceStorageMgr,
+		throttle:        throttle.Fixed(concurrency),
 	}
 }
 
@@ -45,16 +43,12 @@ func (m *marketAPI) Start(_ context.Context) error {
 }
 
 func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
-	bUnsealed, err := m.pieceStorage.Has(ctx, pieceCid.String())
+	_, err := m.pieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 	if err != nil {
-		return bUnsealed, err
+		return false, fmt.Errorf("unable to find storage for piece %s %w", pieceCid, err)
 	}
-
-	if bUnsealed {
-		return bUnsealed, nil
-	}
-
-	return m.exFsPieceStorage.Has(ctx, pieceCid.String())
+	return true, nil
+	//todo check isunseal from miner
 }
 
 func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
@@ -63,44 +57,23 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (i
 		return nil, err
 	}
 
-	has, err := m.pieceStorage.Has(ctx, pieceCid.String())
+	pieceStorage, err := m.pieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
+	if err != nil {
+		// todo unseal: ask miner who have this data, send unseal cmd, and read and pay after receive data
+		// 1. select miner
+		// 2. send unseal request
+		// 3. receive data and return
+		return nil, xerrors.Errorf("ask for child miner for piece data not impl")
+	}
+	r, err := pieceStorage.Read(ctx, pieceCid.String())
 	if err != nil {
 		return nil, err
 	}
-	if has {
-		r, err := m.pieceStorage.Read(ctx, pieceCid.String())
-		if err != nil {
-			return nil, err
-		}
-		padR, err := padreader.NewInflator(r, payloadSize, pieceSize.Unpadded())
-		if err != nil {
-			return nil, err
-		}
-		return iocloser{r, padR}, nil
-	}
-
-	has, err = m.exFsPieceStorage.Has(ctx, pieceCid.String())
+	padR, err := padreader.NewInflator(r, payloadSize, pieceSize.Unpadded())
 	if err != nil {
 		return nil, err
 	}
-	if has {
-		r, err := m.exFsPieceStorage.Read(ctx, pieceCid.String())
-		if err != nil {
-			return nil, err
-		}
-
-		padR, err := padreader.NewInflator(r, payloadSize, pieceSize.Unpadded())
-		if err != nil {
-			return nil, err
-		}
-		return iocloser{r, padR}, nil
-	}
-
-	// todo unseal: ask miner who have this data, send unseal cmd, and read and pay after receive data
-	// 1. select miner
-	// 2. send unseal request
-	// 3. receive data and return
-	return nil, xerrors.Errorf("ask for child miner for piece data not impl")
+	return iocloser{r, padR}, nil
 }
 
 func (m *marketAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {

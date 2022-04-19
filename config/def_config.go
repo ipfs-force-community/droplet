@@ -60,13 +60,7 @@ var DefaultMarketConfig = &MarketConfig{
 	},
 	Journal: Journal{Path: "journal"},
 	PieceStorage: PieceStorage{
-		Fs: FsPieceStorage{
-			Enable: true,
-			Path:   "/mnt/piece",
-		},
-	},
-	ExternalFsPieceStore: ExternalFsPieceStore{
-		Paths: []string{},
+		Fs: []*FsPieceStorage{},
 	},
 	ConsiderOnlineStorageDeals:     true,
 	ConsiderOfflineStorageDeals:    true,
