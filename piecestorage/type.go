@@ -25,7 +25,6 @@ type IPieceStorage interface {
 	Type() Protocol
 	ReadOnly() bool
 	SaveTo(context.Context, string, io.Reader) (int64, error)
-	Read(context.Context, string) (io.ReadCloser, error)
 	Len(ctx context.Context, string2 string) (int64, error)
 	GetReaderCloser(ctx context.Context, s string) (io.ReadCloser, error)
 	GetMountReader(ctx context.Context, s string) (mount.Reader, error)

@@ -53,11 +53,7 @@ func (f *fsPieceStorage) SaveTo(ctx context.Context, s string, r io.Reader) (int
 	return wlen, err
 }
 
-func (f *fsPieceStorage) Read(ctx context.Context, s string) (io.ReadCloser, error) {
-	return os.Open(path.Join(f.baseUrl, s))
-}
-
-func (f fsPieceStorage) GetReaderCloser(ctx context.Context, s string) (io.ReadCloser, error) {
+func (f *fsPieceStorage) GetReaderCloser(ctx context.Context, s string) (io.ReadCloser, error) {
 	dstPath := path.Join(f.baseUrl, s)
 	fs, err := os.Open(dstPath)
 	if err != nil {
@@ -66,7 +62,7 @@ func (f fsPieceStorage) GetReaderCloser(ctx context.Context, s string) (io.ReadC
 	return fs, nil
 }
 
-func (f fsPieceStorage) GetMountReader(ctx context.Context, s string) (mount.Reader, error) {
+func (f *fsPieceStorage) GetMountReader(ctx context.Context, s string) (mount.Reader, error) {
 	dstPath := path.Join(f.baseUrl, s)
 	fs, err := os.Open(dstPath)
 	if err != nil {

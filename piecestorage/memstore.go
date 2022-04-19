@@ -41,16 +41,6 @@ func (m *MemPieceStore) SaveTo(ctx context.Context, s string, reader io.Reader) 
 	return int64(len(bytes)), nil
 }
 
-func (m *MemPieceStore) Read(ctx context.Context, s string) (io.ReadCloser, error) {
-	m.dataLk.RLock()
-	defer m.dataLk.RUnlock()
-	if data, ok := m.data[s]; ok {
-		r := bytes.NewReader(data)
-		return wraperCloser{r, r}, nil
-	}
-	return nil, fmt.Errorf("unable to find resource %s", s)
-}
-
 func (m *MemPieceStore) Len(ctx context.Context, s string) (int64, error) {
 	m.dataLk.RLock()
 	defer m.dataLk.RUnlock()

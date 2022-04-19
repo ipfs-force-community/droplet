@@ -86,19 +86,6 @@ func (s *s3PieceStorage) SaveTo(ctx context.Context, s2 string, r io.Reader) (in
 	return int64(countReader.Count()), nil
 }
 
-func (s *s3PieceStorage) Read(ctx context.Context, s2 string) (io.ReadCloser, error) {
-	params := &s3.GetObjectInput{
-		Bucket: aws.String(s.bucket),
-		Key:    aws.String(s2),
-	}
-
-	result, err := s.s3Client.GetObject(params)
-	if err != nil {
-		return nil, err
-	}
-	return result.Body, nil
-}
-
 func (s *s3PieceStorage) Len(ctx context.Context, piececid string) (int64, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),

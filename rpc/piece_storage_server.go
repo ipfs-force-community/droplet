@@ -38,7 +38,7 @@ func (p *PieceStorageServer) ServeHTTP(res http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	r, err := pieceStorage.Read(req.Context(), resourceID)
+	r, err := pieceStorage.GetReaderCloser(req.Context(), resourceID)
 	if err != nil {
 		http.Error(res, fmt.Sprintf("failed to open reader for %s: %s", resourceID, err), http.StatusInternalServerError)
 		return
