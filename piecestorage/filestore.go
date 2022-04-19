@@ -33,6 +33,10 @@ func (f *fsPieceStorage) Len(ctx context.Context, s string) (int64, error) {
 }
 
 func (f *fsPieceStorage) SaveTo(ctx context.Context, s string, r io.Reader) (int64, error) {
+	if f.fsCfg.ReadOnly {
+		return 0, fmt.Errorf("do not write to a 'readonly' piece store")
+	}
+
 	dstPath := path.Join(f.baseUrl, s)
 	tempFile, err := ioutil.TempFile("", "piece-*")
 	if err != nil {

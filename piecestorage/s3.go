@@ -67,6 +67,10 @@ func newS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
 }
 
 func (s *s3PieceStorage) SaveTo(ctx context.Context, s2 string, r io.Reader) (int64, error) {
+	if s.s3Cfg.ReadOnly {
+		return 0, fmt.Errorf("do not write to a 'readonly' piece store")
+	}
+
 	countReader := utils.NewCounterBufferReader(r)
 	resp, err := s.uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(s.bucket),
