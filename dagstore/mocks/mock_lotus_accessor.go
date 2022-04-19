@@ -5,12 +5,12 @@
 package mock_dagstore
 
 import (
-	context "context"
-	io "io"
-	reflect "reflect"
+	"context"
+	"reflect"
 
-	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
+	"github.com/filecoin-project/dagstore/mount"
+	"github.com/golang/mock/gomock"
+	"github.com/ipfs/go-cid"
 )
 
 // MockLotusAccessor is a mock of LotusAccessor interface.
@@ -37,10 +37,10 @@ func (m *MockLotusAccessor) EXPECT() *MockLotusAccessorMockRecorder {
 }
 
 // FetchUnsealedPiece mocks base method.
-func (m *MockLotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
+func (m *MockLotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchUnsealedPiece", ctx, pieceCid)
-	ret0, _ := ret[0].(io.ReadCloser)
+	ret0, _ := ret[0].(mount.Reader)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

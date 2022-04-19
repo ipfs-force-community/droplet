@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
+	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/venus-market/config"
 	"github.com/filecoin-project/venus-market/utils"
 )
@@ -59,6 +60,7 @@ func newS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
 		Endpoint:         aws.String(endpoint),
 		S3ForcePathStyle: aws.Bool(false),
 		Region:           aws.String(region),
+		//LogLevel:         aws.LogLevel(aws.LogDebug),
 	}))
 	uploader := s3manager.NewUploader(sess, func(uploader *s3manager.Uploader) {
 		uploader.Concurrency = 8
@@ -84,19 +86,6 @@ func (s *s3PieceStorage) SaveTo(ctx context.Context, s2 string, r io.Reader) (in
 	return int64(countReader.Count()), nil
 }
 
-func (s *s3PieceStorage) Read(ctx context.Context, s2 string) (io.ReadCloser, error) {
-	params := &s3.GetObjectInput{
-		Bucket: aws.String(s.bucket),
-		Key:    aws.String(s2),
-	}
-
-	result, err := s.s3Client.GetObject(params)
-	if err != nil {
-		return nil, err
-	}
-	return result.Body, nil
-}
-
 func (s *s3PieceStorage) Len(ctx context.Context, piececid string) (int64, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
@@ -110,18 +99,25 @@ func (s *s3PieceStorage) Len(ctx context.Context, piececid string) (int64, error
 	return *result.ContentLength, nil
 }
 
-func (s *s3PieceStorage) ReadOffset(ctx context.Context, s2 string, offset int, size int) (io.ReadCloser, error) {
+func (s s3PieceStorage) GetReaderCloser(ctx context.Context, s2 string) (io.ReadCloser, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(s2),
-		Range:  aws.String(fmt.Sprintf("bytes=%d-%d", offset, offset+size)),
 	}
 
 	result, err := s.s3Client.GetObject(params)
 	if err != nil {
 		return nil, err
 	}
-	return utils.NewLimitedBufferReader(result.Body, size), nil
+	return result.Body, nil
+}
+
+func (s s3PieceStorage) GetMountReader(ctx context.Context, s2 string) (mount.Reader, error) {
+	len, err := s.Len(ctx, s2)
+	if err != nil {
+		return nil, err
+	}
+	return newSeekWraper(s.s3Client, s.bucket, s2, len-1), nil
 }
 
 func (s *s3PieceStorage) CanAllocate(size int64) bool {
@@ -162,4 +158,68 @@ func (s *s3PieceStorage) Type() Protocol {
 
 func (s *s3PieceStorage) ReadOnly() bool {
 	return s.s3Cfg.ReadOnly
+}
+
+var _ mount.Reader = (*seekWraper)(nil)
+
+type seekWraper struct {
+	s3Client   *s3.S3
+	bucket     string
+	resourceId string
+	len        int64
+	offset     int64
+}
+
+func newSeekWraper(s3Client *s3.S3, bucket, resourceId string, len int64) *seekWraper {
+	return &seekWraper{s3Client, bucket, resourceId, len, 0}
+}
+
+func (sw *seekWraper) Read(p []byte) (n int, err error) {
+	params := &s3.GetObjectInput{
+		Bucket: aws.String(sw.bucket),
+		Key:    aws.String(sw.resourceId),
+		Range:  aws.String(fmt.Sprintf("bytes=%d-%d", sw.offset, sw.offset+int64(len(p)))),
+	}
+
+	result, err := sw.s3Client.GetObject(params)
+	if err != nil {
+		return 0, err
+	}
+	n, err = result.Body.Read(p)
+	if err != nil {
+		return 0, err
+	}
+	sw.offset = sw.offset + int64(n)
+	return
+}
+
+func (sw *seekWraper) Seek(offset int64, whence int) (int64, error) {
+	if whence != io.SeekStart {
+		return 0, fmt.Errorf("only support seek from start for oss")
+	}
+	sw.offset = offset
+	return sw.offset, nil
+}
+
+func (sw *seekWraper) ReadAt(p []byte, off int64) (n int, err error) {
+	maxLen := off + int64(len(p))
+	if maxLen > sw.len {
+		maxLen = sw.len
+	}
+	params := &s3.GetObjectInput{
+		Bucket: aws.String(sw.bucket),
+		Key:    aws.String(sw.resourceId),
+		Range:  aws.String(fmt.Sprintf("bytes=%d-%d", off, maxLen)),
+	}
+
+	req, result := sw.s3Client.GetObjectRequest(params)
+	err = req.Send()
+	if err != nil {
+		return 0, err
+	}
+	return io.ReadFull(result.Body, p)
+}
+
+func (sw *seekWraper) Close() error {
+	return nil
 }

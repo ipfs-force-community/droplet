@@ -50,9 +50,10 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 		legacyProtocol = true
 	}
 	ctx := context.TODO()
-	log.Infof("receive payment %s", payment.ID)
+	log.Infof("receive payment %s", payment.ID.String())
 	deal, err := pr.deals.GetDeal(ctx, channelID.Initiator, payment.ID)
 	if err != nil {
+		log.Errorf("unable to find retrieval deal receive %s dealid reason %v %w", channelID.Initiator, payment.ID, err)
 		if err == repo.ErrNotFound {
 			return nil, nil
 		}
@@ -69,6 +70,7 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 	// Save voucher
 	received, err := pr.payAPI.PaychVoucherAdd(context.TODO(), payment.PaymentChannel, payment.PaymentVoucher, nil, big.Zero())
 	if err != nil {
+		log.Errorf("unable to add paych voucher %v", err)
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
 		return errorDealResponse(deal.Identifier(), err), err
 	}
@@ -88,6 +90,7 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 		if err != nil {
 			//todo  receive voucher save success, but track deal status failed
 			//give error here may client send more funds than fact
+			log.Infof("unable to save paychanel funds %v", err)
 			_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
 			return errorDealResponse(deal.Identifier(), err), err
 		}
@@ -132,6 +135,7 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 	dErr := pr.deals.SaveDeal(ctx, deal)
 	if dErr != nil {
 		// todo can recover from storage error?
+		log.Infof("unable to save retrieval deal status %v", err)
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
 		return errorDealResponse(deal.Identifier(), dErr), err
 	}

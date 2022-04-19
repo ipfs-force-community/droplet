@@ -60,10 +60,9 @@ func NewProvider(network rmnet.RetrievalMarketNetwork,
 ) (*RetrievalProvider, error) {
 	storageDealsRepo := repo.StorageDealRepo()
 	retrievalDealRepo := repo.RetrievalDealRepo()
-	cidInfoRepo := repo.CidInfoRepo()
 	retrievalAskRepo := repo.RetrievalAskRepo()
 
-	pieceInfo := &PieceInfo{cidInfoRepo: cidInfoRepo, dealRepo: storageDealsRepo}
+	pieceInfo := &PieceInfo{dagStore, storageDealsRepo}
 	p := &RetrievalProvider{
 		dataTransfer:           dataTransfer,
 		network:                network,

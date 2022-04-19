@@ -3,8 +3,6 @@ package storageprovider
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/host"
@@ -50,13 +48,9 @@ func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProvider, j 
 // uses the provider's Staging DAG service for transfers
 func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, dagDs badger.DagTransferDS, h host.Host, homeDir *config.HomeDir, gs network.StagingGraphsync) (network.ProviderDataTransfer, error) {
 	net := dtnet.NewFromLibp2pHost(h)
-	transport := dtgstransport.NewTransport(h.ID(), gs, net)
-	err := os.MkdirAll(filepath.Join(string(*homeDir), "data-transfer"), 0755) // nolint: gosec
-	if err != nil && !os.IsExist(err) {
-		return nil, err
-	}
+	transport := dtgstransport.NewTransport(h.ID(), gs)
 
-	dt, err := dtimpl.NewDataTransfer(dagDs, filepath.Join(string(*homeDir), "data-transfer"), net, transport)
+	dt, err := dtimpl.NewDataTransfer(dagDs, net, transport)
 	if err != nil {
 		return nil, err
 	}

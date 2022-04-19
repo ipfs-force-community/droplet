@@ -3,6 +3,7 @@ package retrievalprovider
 import (
 	"context"
 
+	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/storageprovider"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -11,16 +12,11 @@ import (
 )
 
 type PieceInfo struct {
-	cidInfoRepo repo.ICidInfoRepo
-	dealRepo    repo.StorageDealRepo
+	dagstore stores.DAGStoreWrapper
+	dealRepo repo.StorageDealRepo
 }
 
 func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.Cid, piececid *cid.Cid) ([]*types.MinerDeal, error) {
-	cidInfo, err := pinfo.cidInfoRepo.GetCIDInfo(ctx, payloadCID)
-	if err != nil {
-		return nil, xerrors.Errorf("get cid info: %w", err)
-	}
-
 	if piececid != nil && (*piececid).Defined() {
 		minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus(ctx, (*piececid), storageprovider.ReadyRetrievalDealStatus...)
 		if err != nil {
@@ -29,9 +25,15 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 		return minerDeals, nil
 	}
 
+	// Get all pieces that contain the target block
+	piecesWithTargetBlock, err := pinfo.dagstore.GetPiecesContainingBlock(payloadCID)
+	if err != nil {
+		return nil, xerrors.Errorf("getting pieces for cid %s: %w", payloadCID, err)
+	}
+
 	var allMinerDeals []*types.MinerDeal
-	for _, pieceBlockLocation := range cidInfo.PieceBlockLocations {
-		minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus(ctx, pieceBlockLocation.PieceCID, storageprovider.ReadyRetrievalDealStatus...)
+	for _, pieceWithTargetBlock := range piecesWithTargetBlock {
+		minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus(ctx, pieceWithTargetBlock, storageprovider.ReadyRetrievalDealStatus...)
 		if err != nil {
 			return nil, err
 		}

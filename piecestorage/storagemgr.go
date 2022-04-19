@@ -16,7 +16,7 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 	var storages []IPieceStorage
 
 	for _, fsCfg := range cfg.Fs {
-		st, err := newFsPieceStorage(fsCfg)
+		st, err := NewFsPieceStorage(fsCfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create fs piece storage %w", err)
 		}

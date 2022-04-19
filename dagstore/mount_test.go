@@ -1,13 +1,14 @@
 package dagstore
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
 	"net/url"
-	"strings"
 	"testing"
 
 	mock_dagstore2 "github.com/filecoin-project/venus-market/dagstore/mocks"
+	"github.com/filecoin-project/venus-market/utils"
 
 	"github.com/golang/mock/gomock"
 	blocksutil "github.com/ipfs/go-ipfs-blocksutil"
@@ -30,11 +31,11 @@ func TestLotusMount(t *testing.T) {
 
 	mockLotusMountAPI.EXPECT().IsUnsealed(gomock.Any(), cid).Return(true, nil).Times(1)
 
-	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(&readCloser{ioutil.NopCloser(strings.NewReader("testing"))}, nil).Times(1)
-	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(&readCloser{ioutil.NopCloser(strings.NewReader("testing"))}, nil).Times(1)
+	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(testReader(), nil).Times(1)
+	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(testReader(), nil).Times(1)
 	mockLotusMountAPI.EXPECT().GetUnpaddedCARSize(ctx, cid).Return(uint64(100), nil).Times(1)
 
-	mnt, err := NewLotusMount(cid, mockLotusMountAPI)
+	mnt, err := NewPieceMount(cid, false, mockLotusMountAPI)
 	require.NoError(t, err)
 	info := mnt.Info()
 	require.Equal(t, info.Kind, mount.KindRemote)
@@ -55,7 +56,7 @@ func TestLotusMount(t *testing.T) {
 	// serialize url then deserialize from mount template -> should get back
 	// the same mount
 	url := mnt.Serialize()
-	mnt2 := mountTemplate(mockLotusMountAPI)
+	mnt2 := mountTemplate(mockLotusMountAPI, false)
 	err = mnt2.Deserialize(url)
 	require.NoError(t, err)
 
@@ -79,7 +80,7 @@ func TestLotusMountDeserialize(t *testing.T) {
 	u, err := url.Parse(us)
 	require.NoError(t, err)
 
-	mnt := mountTemplate(api)
+	mnt := mountTemplate(api, false)
 	err = mnt.Deserialize(u)
 	require.NoError(t, err)
 
@@ -111,7 +112,7 @@ func TestLotusMountRegistration(t *testing.T) {
 
 	mockLotusMountAPI := mock_dagstore2.NewMockLotusAccessor(mockCtrl)
 	registry := mount.NewRegistry()
-	err = registry.Register(marketScheme, mountTemplate(mockLotusMountAPI))
+	err = registry.Register(marketScheme, mountTemplate(mockLotusMountAPI, false))
 	require.NoError(t, err)
 
 	mnt, err := registry.Instantiate(u)
@@ -123,4 +124,12 @@ func TestLotusMountRegistration(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 100, stat.Size)
 	require.True(t, stat.Ready)
+}
+
+func testReader() mount.Reader {
+	r := bytes.NewReader([]byte("testing"))
+	return utils.WrapCloser{
+		ReadSeeker: r,
+		ReaderAt:   r,
+	}
 }

@@ -3,6 +3,7 @@ package dagstore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -17,9 +18,9 @@ import (
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus-market/config"
-
 	"github.com/filecoin-project/go-statemachine/fsm"
+	"github.com/filecoin-project/venus-market/config"
+	carindex "github.com/ipld/go-car/v2/index"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/index"
@@ -53,10 +54,10 @@ type Wrapper struct {
 
 var _ stores.DAGStoreWrapper = (*Wrapper)(nil)
 
-func NewDAGStore(cfg *config.DAGStoreConfig, marketApi MarketAPI) (*dagstore.DAGStore, *Wrapper, error) {
+func NewDAGStore(ctx context.Context, cfg *config.DAGStoreConfig, marketApi MarketAPI) (*dagstore.DAGStore, *Wrapper, error) {
 	// construct the DAG Store.
 	registry := mount.NewRegistry()
-	if err := registry.Register(marketScheme, mountTemplate(marketApi)); err != nil {
+	if err := registry.Register(marketScheme, mountTemplate(marketApi, cfg.UseTransient)); err != nil {
 		return nil, nil, xerrors.Errorf("failed to create registry: %w", err)
 	}
 
@@ -71,6 +72,14 @@ func NewDAGStore(cfg *config.DAGStoreConfig, marketApi MarketAPI) (*dagstore.DAG
 		datastoreDir  = filepath.Join(cfg.RootDir, "datastore")
 		indexDir      = filepath.Join(cfg.RootDir, "index")
 	)
+
+	if len(cfg.Transient) != 0 {
+		transientsDir = cfg.Transient
+	}
+
+	if len(cfg.Index) != 0 {
+		indexDir = cfg.Index
+	}
 
 	dstore, err := newDatastore(datastoreDir)
 	if err != nil {
@@ -93,7 +102,14 @@ func NewDAGStore(cfg *config.DAGStoreConfig, marketApi MarketAPI) (*dagstore.DAG
 		// conditional throttling.
 		MaxConcurrentIndex:        cfg.MaxConcurrentIndex,
 		MaxConcurrentReadyFetches: cfg.MaxConcurrentReadyFetches,
-		RecoverOnStart:            dagstore.RecoverOnAcquire,
+		RecoverOnStart:            dagstore.RecoverNow,
+	}
+
+	if cfg.MongoTipIndex != nil {
+		dcfg.TopLevelIndex, err = NewMongoTopIndex(ctx, cfg.MongoTipIndex.Url)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	dagst, err := dagstore.NewDAGStore(dcfg)
@@ -250,7 +266,7 @@ func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (stores.Closa
 func (w *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath string, eagerInit bool, resch chan dagstore.ShardResult) error {
 	// Create a lotus mount with the piece CID
 	key := shard.KeyFromCID(pieceCid)
-	mt, err := NewLotusMount(pieceCid, w.minerAPI)
+	mt, err := NewPieceMount(pieceCid, w.cfg.UseTransient, w.minerAPI)
 	if err != nil {
 		return xerrors.Errorf("failed to create lotus mount for piece CID %s: %w", pieceCid, err)
 	}
@@ -396,6 +412,33 @@ func (w *Wrapper) markRegistrationComplete() error {
 		return err
 	}
 	return file.Close()
+}
+
+// Get all the pieces that contain a block
+func (w *Wrapper) GetPiecesContainingBlock(blockCID cid.Cid) ([]cid.Cid, error) {
+	// Pieces are stored as "shards" in the DAG store
+	shardKeys, err := w.dagst.ShardsContainingMultihash(w.ctx, blockCID.Hash())
+	if err != nil {
+		return nil, xerrors.Errorf("getting pieces containing block %s: %w", blockCID, err)
+	}
+
+	// Convert from shard key to cid
+	pieceCids := make([]cid.Cid, 0, len(shardKeys))
+	for _, k := range shardKeys {
+		c, err := cid.Parse(k.String())
+		if err != nil {
+			prefix := fmt.Sprintf("getting pieces containing block %s:", blockCID)
+			return nil, xerrors.Errorf("%s converting shard key %s to piece cid: %w", prefix, k, err)
+		}
+
+		pieceCids = append(pieceCids, c)
+	}
+
+	return pieceCids, nil
+}
+
+func (w *Wrapper) GetIterableIndexForPiece(pieceCid cid.Cid) (carindex.IterableIndex, error) {
+	return w.dagst.GetIterableIndex(shard.KeyFromCID(pieceCid))
 }
 
 func (w *Wrapper) Close() error {

@@ -77,16 +77,9 @@ type IRetrievalAskRepo interface {
 }
 
 type ICidInfoRepo interface {
-	// use StorageDealRepo.SaveDeal with fields:
-	// 	Offset abi.PaddedPieceSize
-	//	Length abi.PaddedPieceSize
-	// TODO: add a 'AddDealForPiece' interface in StorageDealRepo ?
-	// AddDealForPiece(pieceCID cid.Cid, dealInfo piecestore.DealInfo) error
 	AddPieceBlockLocations(ctx context.Context, pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error
 	GetCIDInfo(ctx context.Context, payloadCID cid.Cid) (piecestore.CIDInfo, error)
 	ListCidInfoKeys(ctx context.Context) ([]cid.Cid, error)
-	// ListPieceInfoKeys() ([]cid.Cid, error)
-	// GetPieceInfoFromCid(ctx context.Context, payloadCID, pieceCID cid.Cid) (piecestore.PieceInfo, bool, error)
 }
 
 type Repo interface {

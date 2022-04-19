@@ -2,6 +2,7 @@ package storageprovider
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -81,6 +82,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 	for _, deal := range deals {
 		dealProposal, err := dealTracker.fullNode.StateMarketStorageDeal(ctx, deal.DealID, tsk)
 		if err != nil {
+			//todo if deal not found maybe need to market storage deal as error
 			log.Errorf("get market deal for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			continue
 		}
@@ -95,7 +97,10 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 		if deal.State == storagemarket.StorageDealAwaitingPreCommit {
 			preInfo, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
 			if err != nil {
-				log.Warnf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+				if strings.Contains(err.Error(), "not found") {
+					continue
+				}
+				log.Debugf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 				continue
 			}
 

@@ -80,12 +80,7 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Gra
 	dtRetryParams := dtnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
 	net := dtnet.NewFromLibp2pHost(h, dtRetryParams)
 
-	transport := dtgstransport.NewTransport(h.ID(), gs, net)
-	err := os.MkdirAll(filepath.Join(string(*homeDir), "data-transfer"), 0755) //nolint: gosec
-	if err != nil && !os.IsExist(err) {
-		return nil, err
-	}
-
+	transport := dtgstransport.NewTransport(h.ID(), gs)
 	// data-transfer push / pull channel restart configuration:
 	dtRestartConfig := dtimpl.ChannelRestartConfig(channelmonitor.Config{
 		// Disable Accept and Complete timeouts until this issue is resolved:
@@ -105,7 +100,7 @@ func NewClientGraphsyncDataTransfer(lc fx.Lifecycle, h host.Host, gs network.Gra
 		MaxConsecutiveRestarts: 3,
 	})
 
-	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(string(*homeDir), "data-transfer"), net, transport, dtRestartConfig)
+	dt, err := dtimpl.NewDataTransfer(dtDs, net, transport, dtRestartConfig)
 	if err != nil {
 		return nil, err
 	}

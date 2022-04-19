@@ -14,7 +14,6 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/dtutils"
@@ -56,10 +55,7 @@ type StorageDealProcessImpl struct {
 	ask        IStorageAsk
 	fs         filestore.FileStore
 	stores     *stores.ReadWriteBlockstores
-
-	cidInfoRepo repo.ICidInfoRepo // TODO:检查是否遗漏
-
-	dagStore stores.DAGStoreWrapper // TODO:检查是否遗漏
+	dagStore   stores.DAGStoreWrapper // TODO:检查是否遗漏
 
 	minerMgr        minermgr2.IAddrMgr
 	pieceStorageMgr *piecestorage.PieceStorageManager
@@ -103,9 +99,7 @@ func NewStorageDealProcessImpl(
 		minerMgr: minerMgr,
 
 		pieceStorageMgr: pieceStorageMgr,
-
-		cidInfoRepo: repo.CidInfoRepo(),
-		dagStore:    dagStore,
+		dagStore:        dagStore,
 	}, nil
 }
 
@@ -450,12 +444,6 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			}
 		}
 
-		if err := storageDealPorcess.recordPiece(ctx, deal); err != nil {
-			err = xerrors.Errorf("failed to register deal data for piece %s for retrieval: %w", deal.Ref.PieceCid, err)
-			log.Error(err.Error())
-			return storageDealPorcess.HandleError(ctx, deal, err)
-		}
-
 		// Register the deal data as a "shard" with the DAG store. Later it can be
 		// fetched from the DAG store during retrieval.
 		if err := stores.RegisterShardSync(ctx, storageDealPorcess.dagStore, deal.Proposal.PieceCID, carFilePath, true); err != nil {
@@ -470,29 +458,6 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			return storageDealPorcess.HandleError(ctx, deal, xerrors.Errorf("fail to save deal to database"))
 		}
 	}
-	return nil
-}
-
-func (storageDealPorcess *StorageDealProcessImpl) recordPiece(ctx context.Context, deal *types.MinerDeal) error {
-	var blockLocations map[cid.Cid]piecestore.BlockLocation
-	if deal.MetadataPath != filestore.Path("") {
-		var err error
-		blockLocations, err = providerutils.LoadBlockLocations(storageDealPorcess.fs, deal.MetadataPath)
-		if err != nil {
-			return xerrors.Errorf("failed to load block locations: %w", err)
-		}
-	} else {
-		blockLocations = map[cid.Cid]piecestore.BlockLocation{
-			deal.Ref.Root: {},
-		}
-	}
-
-	if err := storageDealPorcess.cidInfoRepo.AddPieceBlockLocations(ctx, deal.Proposal.PieceCID, blockLocations); err != nil {
-		return xerrors.Errorf("failed to add piece block locations: %s", err)
-	}
-
-	// TODO AddDealForPiece -> StorageDealRepo::SaveDeal
-
 	return nil
 }
 

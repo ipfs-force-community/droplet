@@ -8,15 +8,16 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/dagstore/throttle"
+	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-padreader"
 
 	"github.com/filecoin-project/venus-market/models/repo"
 	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/utils"
 )
 
 type MarketAPI interface {
-	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
+	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error)
 	GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error)
 	IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error)
 	Start(ctx context.Context) error
@@ -25,16 +26,16 @@ type MarketAPI interface {
 type marketAPI struct {
 	pieceStorageMgr *piecestorage.PieceStorageManager
 	pieceRepo       repo.StorageDealRepo
-	throttle        throttle.Throttler
+	useTransient    bool
 }
 
 var _ MarketAPI = (*marketAPI)(nil)
 
-func NewMinerAPI(repo repo.Repo, pieceStorageMgr *piecestorage.PieceStorageManager, concurrency int) MarketAPI {
+func NewMarketAPI(repo repo.Repo, pieceStorageMgr *piecestorage.PieceStorageManager, useTransient bool) MarketAPI {
 	return &marketAPI{
 		pieceRepo:       repo.StorageDealRepo(),
 		pieceStorageMgr: pieceStorageMgr,
-		throttle:        throttle.Fixed(concurrency),
+		useTransient:    useTransient,
 	}
 }
 
@@ -51,7 +52,7 @@ func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, err
 	//todo check isunseal from miner
 }
 
-func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
+func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
 	payloadSize, pieceSize, err := m.pieceRepo.GetPieceSize(ctx, pieceCid)
 	if err != nil {
 		return nil, err
@@ -59,21 +60,27 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (i
 
 	pieceStorage, err := m.pieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 	if err != nil {
-		// todo unseal: ask miner who have this data, send unseal cmd, and read and pay after receive data
-		// 1. select miner
-		// 2. send unseal request
-		// 3. receive data and return
-		return nil, xerrors.Errorf("ask for child miner for piece data not impl")
+		return nil, err
 	}
-	r, err := pieceStorage.Read(ctx, pieceCid.String())
+	if m.useTransient {
+		//only need reader stream
+		r, err := pieceStorage.GetReaderCloser(ctx, pieceCid.String())
+		if err != nil {
+			return nil, err
+		}
+
+		padR, err := padreader.NewInflator(r, payloadSize, pieceSize.Unpadded())
+		if err != nil {
+			return nil, err
+		}
+		return &mountWrapper{r, padR}, nil
+	}
+	//must support seek/readeat
+	r, err := pieceStorage.GetMountReader(ctx, pieceCid.String())
 	if err != nil {
 		return nil, err
 	}
-	padR, err := padreader.NewInflator(r, payloadSize, pieceSize.Unpadded())
-	if err != nil {
-		return nil, err
-	}
-	return iocloser{r, padR}, nil
+	return utils.NewAlgnZeroMountReader(r, int(payloadSize), int(pieceSize)), nil
 }
 
 func (m *marketAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
@@ -88,62 +95,28 @@ func (m *marketAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (u
 
 	len := pieceInfo.Deals[0].Length
 
+	// todois this size need to convert to unpad size
 	return uint64(len), nil
 }
 
-/*
-
-func (p *pieceProvider) unsealPiece(ctx context.Context, dealInfo *piece.DealInfo, sector storage.SectorRef, offset types2.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (io.ReadCloser, error) {
-	pieceCid := dealInfo.Proposal.PieceCID
-	pieceOffset := abi.UnpaddedPieceSize(offset) - dealInfo.Offset.Unpadded()
-	if err := p.miner.SectorsUnsealPiece(ctx, address.Address(p.maddr), pieceCid, sector, offset.Padded(), size.Padded(), path.Join(string(*p.pieceStrorageCfg), pieceCid.String())); err != nil {
-		log.Errorf("failed to SectorsUnsealPiece: %s", err)
-		return nil, xerrors.Errorf("unsealing piece: %w", err)
-	}
-
-	//todo config
-	ctx, _ = context.WithTimeout(ctx, time.Hour*6)
-	tm := time.NewTimer(time.Second * 30)
-
-	for {
-		select {
-		case <-tm.C:
-			has, err := p.pieceStorage.Has(pieceCid.String())
-			if err != nil {
-				return nil, xerrors.Errorf("unable to check piece in piece stroage %w", err)
-			}
-			if has {
-				goto LOOP
-			}
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
-LOOP:
-	//todo how to store data piece not completed piece
-	log.Debugf("unsealed a sector file to read the piece, sector=%+v, offset=%d, size=%d", sector, offset, size)
-	// move piece to storage
-	r, err := p.pieceStorage.ReadOffset(ctx, pieceCid.String(), pieceOffset, size)
-	if err != nil {
-		log.Errorf("unable to read piece in piece storage;sector=%+v, piececid=%s err:%s", sector.ID, pieceCid, err)
-		return nil, err
-	}
-	return r, err
-}
-
-*/
-
-var _ io.ReadCloser = (*iocloser)(nil)
-
-type iocloser struct {
+type mountWrapper struct {
 	closeR io.ReadCloser
 	readR  io.Reader
 }
 
-func (i iocloser) Read(p []byte) (n int, err error) {
-	return i.readR.Read(p)
+var _ mount.Reader = (*mountWrapper)(nil)
+
+func (r *mountWrapper) ReadAt(p []byte, off int64) (n int, err error) {
+	return 0, xerrors.Errorf("ReadAt called but not implemented")
 }
 
-func (i iocloser) Close() error {
-	return i.closeR.Close()
+func (r *mountWrapper) Seek(offset int64, whence int) (int64, error) {
+	return 0, xerrors.Errorf("Seek called but not implemented")
+}
+func (r *mountWrapper) Read(p []byte) (n int, err error) {
+	return r.readR.Read(p)
+}
+
+func (r *mountWrapper) Close() error {
+	return r.closeR.Close()
 }
