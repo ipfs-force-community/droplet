@@ -53,7 +53,7 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 	log.Infof("receive payment %s", payment.ID.String())
 	deal, err := pr.deals.GetDeal(ctx, channelID.Initiator, payment.ID)
 	if err != nil {
-		log.Errorf("unable to find retrieval deal receive %s dealid reason %v", channelID.Initiator, payment.ID, err)
+		log.Errorf("unable to find retrieval deal receive %s dealid reason %v %w", channelID.Initiator, payment.ID, err)
 		if err == repo.ErrNotFound {
 			return nil, nil
 		}
