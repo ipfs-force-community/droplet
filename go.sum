@@ -668,6 +668,8 @@ github.com/filecoin-project/venus-auth v1.3.3-0.20220406063133-896f44f6e816 h1:S
 github.com/filecoin-project/venus-auth v1.3.3-0.20220406063133-896f44f6e816/go.mod h1:SSoeDlHPdYRHEqLdwvCykInHQLaKyXbRKR8P70R5j8w=
 github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420090255-769daa509126 h1:G/BLsJeu6nqFxQ+5wLRtuU73+TqHSMDxLSBgxtqaU8I=
 github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420090255-769daa509126/go.mod h1:W3qfwdErJ3MBgJgtPEkzUQ3oWmhWv+PlHWbjMiL2Rdw=
+github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420091920-4820c01ca309 h1:aHKIS5k/vDyFJLRPiAtrbmRtZsFjyAbTAyHQ5I9cvgU=
+github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420091920-4820c01ca309/go.mod h1:W3qfwdErJ3MBgJgtPEkzUQ3oWmhWv+PlHWbjMiL2Rdw=
 github.com/filecoin-project/venus-messager v1.4.0-rc2.0.20220218091700-29caa578c124 h1:f5DV+ReEPI7ij9iPywZ8DklOymIWzi4hEG3ZGc/Lgqw=
 github.com/filecoin-project/venus-messager v1.4.0-rc2.0.20220218091700-29caa578c124/go.mod h1:liXjPyLayBO6ubX7561rqTw1wSkZnzmDDJItFX8BaAE=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
