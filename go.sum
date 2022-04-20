@@ -666,6 +666,8 @@ github.com/filecoin-project/venus v1.2.4-0.20220420072943-4d565663fa60/go.mod h1
 github.com/filecoin-project/venus-auth v1.3.2/go.mod h1:m5Jog2GYxztwP7w3m/iJdv/V1/bTcAVU9rm/CbhxRQU=
 github.com/filecoin-project/venus-auth v1.3.3-0.20220406063133-896f44f6e816 h1:SKHcLVX4A0QGY0G+vHbv7KalZ3xgiXSxf4i26Zh+c3Q=
 github.com/filecoin-project/venus-auth v1.3.3-0.20220406063133-896f44f6e816/go.mod h1:SSoeDlHPdYRHEqLdwvCykInHQLaKyXbRKR8P70R5j8w=
+github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420090255-769daa509126 h1:G/BLsJeu6nqFxQ+5wLRtuU73+TqHSMDxLSBgxtqaU8I=
+github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420090255-769daa509126/go.mod h1:W3qfwdErJ3MBgJgtPEkzUQ3oWmhWv+PlHWbjMiL2Rdw=
 github.com/filecoin-project/venus-messager v1.4.0-rc2.0.20220218091700-29caa578c124 h1:f5DV+ReEPI7ij9iPywZ8DklOymIWzi4hEG3ZGc/Lgqw=
 github.com/filecoin-project/venus-messager v1.4.0-rc2.0.20220218091700-29caa578c124/go.mod h1:liXjPyLayBO6ubX7561rqTw1wSkZnzmDDJItFX8BaAE=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
@@ -1073,6 +1075,7 @@ github.com/hashicorp/serf v0.9.5/go.mod h1:UWDWwZeL5cuWDJdl0C6wrvrUwEqtQ4ZKBKKEN
 github.com/hodgesds/perf-utils v0.0.8/go.mod h1:F6TfvsbtrF88i++hou29dTXlI2sfsJv+gRZDtmTJkAs=
 github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c/go.mod h1:lADxMC39cJJqL93Duh1xhAs4I2Zs8mKS89XWXFGp9cs=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
+github.com/hraban/lrucache v0.0.0-20201130153820-17052bf09781 h1:0TTllhXcBhaw2F9kyl6nKCIkBZ4vSGWi8iM9O8figbU=
 github.com/hraban/lrucache v0.0.0-20201130153820-17052bf09781/go.mod h1:6+6ijrXQvcxqFFXw4DspNojPKHbqvGKLaQWJWZgUN6U=
 github.com/huandu/xstrings v1.0.0/go.mod h1:4qWG/gcEcfX4z/mBDHJ++3ReCw9ibxbsNJbcucJdbSo=
 github.com/huandu/xstrings v1.2.0/go.mod h1:DvyZB1rfVYsBIigL8HwpZgxHwXozlTgGqn63UyNX5k4=
@@ -1082,6 +1085,7 @@ github.com/huin/goupnp v1.0.0/go.mod h1:n9v9KO1tAxYH82qOn+UTIFQDmx5n1Zxd/ClZDMX7
 github.com/huin/goupnp v1.0.2 h1:RfGLP+h3mvisuWEyybxNq5Eft3NWhHLPeUN72kpKZoI=
 github.com/huin/goupnp v1.0.2/go.mod h1:0dxJBVBHqTMjIUMkESDTNgOOx/Mw5wYIfyFmdzSamkM=
 github.com/huin/goutil v0.0.0-20170803182201-1ca381bf3150/go.mod h1:PpLOETDnJ0o3iZrZfqZzyLl6l7F3c6L1oWn7OICBi6o=
+github.com/hunjixin/automapper v0.0.0-20191127090318-9b979ce72ce2 h1:7uL6BFXGy9LWZOsKROSMTT9/4kgOg2oX7yKlSZKXPjY=
 github.com/hunjixin/automapper v0.0.0-20191127090318-9b979ce72ce2/go.mod h1:s3YT/1QbcxpvwoXTY/cGq67RCZR8IIFgEQYxP/b36vo=
 github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
@@ -1111,6 +1115,8 @@ github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab7
 github.com/ipfs-force-community/venus-gateway v1.2.0-rc2.0.20220218084757-124205943dba/go.mod h1:yrGD88mNg+lxm23OlUWsey/2bvR88v3dizLARbygl/A=
 github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220420080556-2e5b8b2058d5 h1:doadWVKt11SuJ3mMYSfdEVwhpcrW/4ecLr2qJ+QWS5s=
 github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220420080556-2e5b8b2058d5/go.mod h1:Uv1GR9/3NdHkFKSSRacoQUwh1TUj1Ll5IAOoeSwZdC0=
+github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220420085343-2e500a7724e0 h1:BpG7v3mkpolrAC7FaeluZYYliZQhe2+NvWPLOLhsVus=
+github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220420085343-2e500a7724e0/go.mod h1:Uv1GR9/3NdHkFKSSRacoQUwh1TUj1Ll5IAOoeSwZdC0=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=
 github.com/ipfs/bbloom v0.0.4 h1:Gi+8EGJ2y5qiD5FbsbpX/TMNcJw8gSqr7eyjHa4Fhvs=
 github.com/ipfs/bbloom v0.0.4/go.mod h1:cS9YprKXpoZ9lT0n/Mw/a6/aFV6DTjTLYHeA+gyqMG0=
@@ -1935,6 +1941,7 @@ github.com/mattn/go-shellwords v1.0.3/go.mod h1:3xCvwCdWdlDJUrvuMn7Wuy9eWs4pE8vq
 github.com/mattn/go-shellwords v1.0.6/go.mod h1:3xCvwCdWdlDJUrvuMn7Wuy9eWs4pE8vqg+NOMyg4B2o=
 github.com/mattn/go-shellwords v1.0.12/go.mod h1:EZzvwXDESEeg03EKmM+RmDnNOPKG4lLtQsUlTZDWQ8Y=
 github.com/mattn/go-sqlite3 v1.9.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsOqkbpncsNc=
+github.com/mattn/go-sqlite3 v1.14.5 h1:1IdxlwTNazvbKJQSxoJ5/9ECbEeaTTyeU7sEAZ5KKTQ=
 github.com/mattn/go-sqlite3 v1.14.5/go.mod h1:WVKg1VTActs4Qso6iwGbiFih2UIHo0ENGwNd0Lj+XmI=
 github.com/mattn/go-xmlrpc v0.0.3/go.mod h1:mqc2dz7tP5x5BKlCahN/n+hs7OSZKJkS9JsHNBRlrxA=
 github.com/mattn/goveralls v0.0.2/go.mod h1:8d1ZMHsd7fW6IRPKQh46F2WRpyib5/X4FOpevwGNQEw=
@@ -3529,6 +3536,7 @@ gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b h1:h8qDotaEPuJATrMmW04NCwg7v
 gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gorm.io/driver/mysql v1.1.1 h1:yr1bpyqiwuSPJ4aGGUX9nu46RHXlF8RASQVb1QQNcvo=
 gorm.io/driver/mysql v1.1.1/go.mod h1:KdrTanmfLPPyAOeYGyG+UpDys7/7eeWT1zCq+oekYnU=
+gorm.io/driver/sqlite v1.1.4 h1:PDzwYE+sI6De2+mxAneV9Xs11+ZyKV6oxD3wDGkaNvM=
 gorm.io/driver/sqlite v1.1.4/go.mod h1:mJCeTFr7+crvS+TRnWc5Z3UvwxUN1BGBLMrf5LA9DYw=
 gorm.io/gorm v1.20.7/go.mod h1:0HFTzE/SqkGTzK6TlDPPQbAYCluiVvhzoA1+aVyzenw=
 gorm.io/gorm v1.21.9/go.mod h1:F+OptMscr0P2F2qU97WT1WimdH9GaQPoDW7AYd5i2Y0=

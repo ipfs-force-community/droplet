@@ -8,7 +8,10 @@ require (
 	github.com/aws/aws-sdk-go v1.43.10
 	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
+	github.com/containerd/containerd v1.6.0 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.3
+	github.com/docker/distribution v2.8.0+incompatible // indirect
+	github.com/docker/docker v20.10.12+incompatible // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/dagstore v0.5.2
@@ -31,14 +34,15 @@ require (
 	github.com/filecoin-project/specs-storage v0.2.2
 	github.com/filecoin-project/venus v1.2.4-0.20220420072943-4d565663fa60
 	github.com/filecoin-project/venus-auth v1.3.3-0.20220406063133-896f44f6e816
-	github.com/filecoin-project/venus-messager v1.4.0-rc2.0.20220218091700-29caa578c124
+	github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420090255-769daa509126
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/golang/mock v1.6.0
+	github.com/golangci/golangci-lint v1.39.0 // indirect
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab79c62a
-	github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220420080556-2e5b8b2058d5
+	github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220420085343-2e500a7724e0
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.2.1
 	github.com/ipfs/go-cid v0.1.0
@@ -60,6 +64,7 @@ require (
 	github.com/ipfs/go-merkledag v0.5.1
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-unixfs v0.3.1
+	github.com/ipfs/iptb v1.4.0 // indirect
 	github.com/ipld/go-car v0.3.3
 	github.com/ipld/go-car/v2 v2.1.1
 	github.com/ipld/go-codec-dagpb v1.3.1
@@ -75,6 +80,7 @@ require (
 	github.com/libp2p/go-libp2p-yamux v0.8.1
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.5.0
 	github.com/multiformats/go-multibase v0.0.3
@@ -98,6 +104,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12
+	gotest.tools/v3 v3.1.0 // indirect
 )
 
 replace (
