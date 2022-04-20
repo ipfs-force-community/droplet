@@ -16,20 +16,20 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
-	github.com/filecoin-project/go-data-transfer v1.14.0
+	github.com/filecoin-project/go-data-transfer v1.15.1
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.20.1
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-state-types v0.1.3
-	github.com/filecoin-project/go-statemachine v1.0.1
+	github.com/filecoin-project/go-statemachine v1.0.2-0.20220322104818-27f8fbb86dfd
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.0
 	github.com/filecoin-project/specs-storage v0.2.2
-	github.com/filecoin-project/venus v1.2.4-0.20220414053548-4ba1c03f5575
+	github.com/filecoin-project/venus v1.2.4-0.20220420072943-4d565663fa60
 	github.com/filecoin-project/venus-auth v1.3.3-0.20220406063133-896f44f6e816
 	github.com/filecoin-project/venus-messager v1.4.0-rc2.0.20220218091700-29caa578c124
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
@@ -38,7 +38,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab79c62a
-	github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220407081426-dd6d2798a30c
+	github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220420080556-2e5b8b2058d5
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.2.1
 	github.com/ipfs/go-cid v0.1.0
@@ -47,7 +47,7 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.2
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.2.0
-	github.com/ipfs/go-graphsync v0.12.0
+	github.com/ipfs/go-graphsync v0.13.1
 	github.com/ipfs/go-ipfs-blockstore v1.1.2
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
@@ -62,8 +62,8 @@ require (
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.3.3
 	github.com/ipld/go-car/v2 v2.1.1
-	github.com/ipld/go-codec-dagpb v1.3.0
-	github.com/ipld/go-ipld-prime v0.14.4
+	github.com/ipld/go-codec-dagpb v1.3.1
+	github.com/ipld/go-ipld-prime v0.16.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-libp2p v0.18.0-rc3
