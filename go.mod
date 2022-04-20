@@ -8,7 +8,10 @@ require (
 	github.com/aws/aws-sdk-go v1.43.10
 	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
+	github.com/containerd/containerd v1.6.0 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.3
+	github.com/docker/distribution v2.8.0+incompatible // indirect
+	github.com/docker/docker v20.10.12+incompatible // indirect
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/dagstore v0.5.2
@@ -16,29 +19,30 @@ require (
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
-	github.com/filecoin-project/go-data-transfer v1.14.0
+	github.com/filecoin-project/go-data-transfer v1.15.1
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.20.1
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-state-types v0.1.3
-	github.com/filecoin-project/go-statemachine v1.0.1
+	github.com/filecoin-project/go-statemachine v1.0.2-0.20220322104818-27f8fbb86dfd
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
-	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
-	github.com/filecoin-project/specs-storage v0.2.0
-	github.com/filecoin-project/venus v1.2.4-0.20220414053548-4ba1c03f5575
+	github.com/filecoin-project/specs-actors/v7 v7.0.0
+	github.com/filecoin-project/specs-storage v0.2.2
+	github.com/filecoin-project/venus v1.2.4-0.20220420072943-4d565663fa60
 	github.com/filecoin-project/venus-auth v1.3.3-0.20220406063133-896f44f6e816
-	github.com/filecoin-project/venus-messager v1.4.0-rc2.0.20220218091700-29caa578c124
+	github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420091920-4820c01ca309
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/golang/mock v1.6.0
+	github.com/golangci/golangci-lint v1.39.0 // indirect
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab79c62a
-	github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220407081426-dd6d2798a30c
+	github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220420085343-2e500a7724e0
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.2.1
 	github.com/ipfs/go-cid v0.1.0
@@ -47,7 +51,7 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.2
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.2.0
-	github.com/ipfs/go-graphsync v0.12.0
+	github.com/ipfs/go-graphsync v0.13.1
 	github.com/ipfs/go-ipfs-blockstore v1.1.2
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
@@ -60,10 +64,11 @@ require (
 	github.com/ipfs/go-merkledag v0.5.1
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-unixfs v0.3.1
+	github.com/ipfs/iptb v1.4.0 // indirect
 	github.com/ipld/go-car v0.3.3
 	github.com/ipld/go-car/v2 v2.1.1
-	github.com/ipld/go-codec-dagpb v1.3.0
-	github.com/ipld/go-ipld-prime v0.14.4
+	github.com/ipld/go-codec-dagpb v1.3.1
+	github.com/ipld/go-ipld-prime v0.16.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-libp2p v0.18.0-rc3
@@ -75,6 +80,7 @@ require (
 	github.com/libp2p/go-libp2p-yamux v0.8.1
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.5.0
 	github.com/multiformats/go-multibase v0.0.3
@@ -98,6 +104,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12
+	gotest.tools/v3 v3.1.0 // indirect
 )
 
 replace (
