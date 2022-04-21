@@ -83,7 +83,7 @@ func setup(t *testing.T) StorageProvider {
 	homeDir := config.HomeDir("")
 	psManager, err := piecestorage.NewPieceStorageManager(&config.PieceStorage{})
 	assert.Nil(t, err)
-	psManager.AddMemPieceStorage(piecestorage.NewMemPieceStore(nil))
+	psManager.AddMemPieceStorage(piecestorage.NewMemPieceStore("", nil))
 	addrMgr := mockAddrMgr{}
 
 	//todo how to mock dagstore

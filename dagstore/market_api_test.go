@@ -27,7 +27,7 @@ func TestMarket(t *testing.T) {
 	testResourceId, _ := cid.Decode("baga6ea4seaqd6cvb2padh74lthhiay4jtlwqhj2qetbj5cipna6jlkmcrdljulq")
 
 	testCId, _ := cid.Decode("bafy2bzacecqwr2ggwu62ao246wzilhba5dvbocjwxxwyb2zn3wl7rgk2wsx3k")
-	memPieceStorage := piecestorage.NewMemPieceStore(nil)
+	memPieceStorage := piecestorage.NewMemPieceStore("", nil)
 	pmgr, err := piecestorage.NewPieceStorageManager(&config.PieceStorage{})
 	assert.Nil(t, err)
 	pmgr.AddMemPieceStorage(memPieceStorage)
