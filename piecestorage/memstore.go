@@ -14,16 +14,18 @@ import (
 var _ IPieceStorage = (*MemPieceStore)(nil)
 
 type MemPieceStore struct {
+	Name   string
 	data   map[string][]byte
 	dataLk *sync.RWMutex
 	status *StorageStatus //status for testing
 }
 
-func NewMemPieceStore(status *StorageStatus) *MemPieceStore {
+func NewMemPieceStore(name string, status *StorageStatus) *MemPieceStore {
 	return &MemPieceStore{
 		data:   make(map[string][]byte),
 		dataLk: &sync.RWMutex{},
 		status: status,
+		Name:   name,
 	}
 }
 func (m *MemPieceStore) Type() Protocol {
