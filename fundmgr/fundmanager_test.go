@@ -9,13 +9,14 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus/pkg/config"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/wallet"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -646,7 +647,7 @@ func setup(t *testing.T) *scaffold {
 
 func checkAddMessageFields(t *testing.T, msg *types.Message, from address.Address, to address.Address, amt abi.TokenAmount) {
 	require.Equal(t, from, msg.From)
-	require.Equal(t, market.Address, msg.To)
+	require.Equal(t, builtin.StorageMarketActorAddr, msg.To)
 	require.Equal(t, amt, msg.Value)
 
 	var paramsTo address.Address
@@ -657,7 +658,7 @@ func checkAddMessageFields(t *testing.T, msg *types.Message, from address.Addres
 
 func checkWithdrawMessageFields(t *testing.T, msg *types.Message, from address.Address, addr address.Address, amt abi.TokenAmount) {
 	require.Equal(t, from, msg.From)
-	require.Equal(t, market.Address, msg.To)
+	require.Equal(t, builtin.StorageMarketActorAddr, msg.To)
 	require.Equal(t, abi.NewTokenAmount(0), msg.Value)
 
 	var params market.WithdrawBalanceParams
@@ -727,7 +728,7 @@ func (mapi *mockFundManagerAPI) completeMsg(msgCid cid.Cid) {
 
 	pmsg, ok := mapi.sentMsgs[msgCid]
 	if ok {
-		if pmsg.msg.Message.Method == market.Methods.AddBalance {
+		if pmsg.msg.Message.Method == builtin.MethodsMarket.AddBalance {
 			var escrowAcct address.Address
 			err := escrowAcct.UnmarshalCBOR(bytes.NewReader(pmsg.msg.Message.Params))
 			if err != nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 
 	"github.com/filecoin-project/go-state-types/big"
-	paychTypes "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	paychTypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

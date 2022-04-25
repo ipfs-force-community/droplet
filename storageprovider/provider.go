@@ -6,7 +6,8 @@ import (
 	"context"
 	"fmt"
 
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 
 	"github.com/ipfs/go-cid"
@@ -25,7 +26,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/events/state"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	marketactor "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -204,10 +205,10 @@ func (n *ProviderNodeAdapter) ReleaseFunds(ctx context.Context, addr address.Add
 func (n *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
 	msgId, err := n.msgClient.PushMessage(ctx, &types.Message{
-		To:     market.Address,
+		To:     marketactor.Address,
 		From:   addr,
 		Value:  amount,
-		Method: market.Methods.AddBalance,
+		Method: builtin.MethodsMarket.AddBalance,
 	}, n.addBalanceSpec)
 	if err != nil {
 		return cid.Undef, err
@@ -261,7 +262,7 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
-func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market7.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
+func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
 	// Wait for deal to be published (plus additional time for confidence)
 	receipt, err := n.msgClient.WaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
@@ -341,7 +342,7 @@ type StorageProviderNode interface {
 	PublishDeals(ctx context.Context, deal types2.MinerDeal) (cid.Cid, error)
 
 	// WaitForPublishDeals waits for a deal publish message to land on chain.
-	WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market7.DealProposal) (*storagemarket.PublishDealsWaitResult, error)
+	WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market.DealProposal) (*storagemarket.PublishDealsWaitResult, error)
 
 	// GetMinerWorkerAddress returns the worker address associated with a miner
 	GetMinerWorkerAddress(ctx context.Context, addr address.Address, tok shared.TipSetToken) (address.Address, error)

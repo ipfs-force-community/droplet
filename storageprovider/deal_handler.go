@@ -123,8 +123,8 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("incorrect provider for deal"))
 	}
 
-	if len(proposal.Label) > DealMaxLabelSize {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("deal label can be at most %d bytes, is %d", DealMaxLabelSize, len(proposal.Label)))
+	if proposal.Label.Length() > DealMaxLabelSize {
+		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("deal label can be at most %d bytes, is %d", DealMaxLabelSize, proposal.Label.Length()))
 	}
 
 	if err := proposal.PieceSize.Validate(); err != nil {

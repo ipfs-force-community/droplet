@@ -11,10 +11,12 @@ import (
 	auth2 "github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -22,8 +24,30 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
+var _ v1.FullNode = (*MockFullnode)(nil)
+
 type MockFullnode struct {
 	*testing.T
+}
+
+func (m MockFullnode) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) StateLookupRobustAddress(context.Context, address.Address, types.TipSetKey) (address.Address, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetworkPing(context.Context, peer.ID) (time.Duration, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, opts types.PaychGetOpts) (*types.ChannelInfo, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) PaychFund(ctx context.Context, from, to address.Address, amt types.BigInt) (*types.ChannelInfo, error) {
+	panic("implement me")
 }
 
 func (m MockFullnode) ChainReadObj(ctx context.Context, cid cid.Cid) ([]byte, error) {
@@ -70,7 +94,7 @@ func (m MockFullnode) StateSectorGetInfo(ctx context.Context, maddr address.Addr
 	panic("implement me")
 }
 
-func (m MockFullnode) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorLocation, error) {
+func (m MockFullnode) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorLocation, error) {
 	panic("implement me")
 }
 
@@ -78,8 +102,8 @@ func (m MockFullnode) StateMinerSectorSize(ctx context.Context, maddr address.Ad
 	panic("implement me")
 }
 
-func (m MockFullnode) StateMinerInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
-	return miner.MinerInfo{}, nil
+func (m MockFullnode) StateMinerInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (types.MinerInfo, error) {
+	return types.MinerInfo{}, nil
 }
 
 func (m MockFullnode) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error) {
@@ -130,10 +154,6 @@ func (m MockFullnode) StateCirculatingSupply(ctx context.Context, tsk types.TipS
 	panic("implement me")
 }
 
-func (m MockFullnode) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketDeal, error) {
-	panic("implement me")
-}
-
 func (m MockFullnode) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
 	panic("implement me")
 }
@@ -158,7 +178,7 @@ func (m MockFullnode) StateMinerAvailableBalance(ctx context.Context, maddr addr
 	panic("implement me")
 }
 
-func (m MockFullnode) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorExpiration, error) {
+func (m MockFullnode) StateSectorExpiration(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*lminer.SectorExpiration, error) {
 	panic("implement me")
 }
 
@@ -175,6 +195,10 @@ func (m MockFullnode) StateDealProviderCollateralBounds(ctx context.Context, siz
 }
 
 func (m MockFullnode) StateVerifiedClientStatus(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*abi.StoragePower, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
 	panic("implement me")
 }
 
@@ -547,10 +571,6 @@ func (m MockFullnode) Version(ctx context.Context) (types.Version, error) {
 }
 
 func (m MockFullnode) NetAddrsListen(ctx context.Context) (peer.AddrInfo, error) {
-	panic("implement me")
-}
-
-func (m MockFullnode) PaychGet(ctx context.Context, from, to address.Address, amt big.Int) (*types.ChannelInfo, error) {
 	panic("implement me")
 }
 

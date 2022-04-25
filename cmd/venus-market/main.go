@@ -4,7 +4,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/filecoin-project/venus-market/v2/blockstore"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -145,6 +152,9 @@ func main() {
 			cli2.DagstoreCmd,
 			cli2.MigrateCmd,
 		},
+		Before: func(cctx *cli.Context) error {
+			return loadActorsWithCmdBefore(cctx)
+		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -275,4 +285,76 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		}
 	}
 	return nil
+}
+
+var loadActorsWithCmdBefore = func(cctx *cli.Context) error {
+	nodeUrl := cctx.String(NodeUrlFlag.Name)
+	nodeToken := cctx.String(NodeTokenFlag.Name)
+	if len(nodeToken) == 0 {
+		nodeToken = cctx.String(AuthTokeFlag.Name)
+	}
+	if len(nodeUrl) == 0 {
+		cfgPath := filepath.Join(cctx.String("repo"), "config.toml")
+		marketCfg := config.DefaultMarketConfig
+		err := config.LoadConfig(cfgPath, marketCfg)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+		nodeUrl = marketCfg.Node.Url
+	}
+
+	apiInfo := apiinfo.NewAPIInfo(nodeUrl, nodeToken)
+	addr, err := apiInfo.DialArgs("v1")
+	if err != nil {
+		return err
+	}
+	fullNodeAPI, closer, err := v1.NewFullNodeRPC(cctx.Context, addr, apiInfo.AuthHeader())
+	if err != nil {
+		return err
+	}
+	defer closer()
+
+	networkName, err := fullNodeAPI.StateNetworkName(cctx.Context)
+	if err != nil {
+		return err
+	}
+
+	nt, err := networkNameToNetworkType(networkName)
+	if err != nil {
+		return err
+	}
+	builtinactors.SetNetworkBundle(nt)
+	if err := os.Setenv(builtinactors.RepoPath, cctx.String("repo")); err != nil {
+		return fmt.Errorf("set env %s failed %v", builtinactors.RepoPath, err)
+	}
+
+	// preload manifest so that we have the correct code CID inventory for cli since that doesn't
+	// go through CI
+	bs := blockstore.NewMemory()
+	if err := builtinactors.FetchAndLoadBundles(cctx.Context, bs, builtinactors.BuiltinActorReleases); err != nil {
+		return fmt.Errorf("failed to loading actor manifest: %v", err)
+	}
+
+	return nil
+}
+
+func networkNameToNetworkType(networkName types.NetworkName) (types.NetworkType, error) {
+	switch networkName {
+	case "":
+		return types.NetworkDefault, fmt.Errorf("network name is empty")
+	case "mainnet":
+		return types.NetworkMainnet, nil
+	case "calibrationnet", "calibnet":
+		return types.NetworkCalibnet, nil
+	case "butterflynet", "butterfly":
+		return types.NetworkButterfly, nil
+	case "interopnet", "interop":
+		return types.NetworkInterop, nil
+	default:
+		// include 2k force
+		return types.Network2k, nil
+	}
 }

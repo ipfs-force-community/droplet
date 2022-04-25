@@ -52,9 +52,9 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 
 	var handler http.Handler
 	if authClient != nil {
-		handler = jwtclient.NewAuthMux(localJwtClient, jwtclient.WarpIJwtAuthClient(authClient), mux)
+		handler = jwtclient.NewAuthMux(localJwtClient, jwtclient.WarpIJwtAuthClient(authClient), mux, logging.Logger("auth"))
 	} else {
-		handler = jwtclient.NewAuthMux(localJwtClient, nil, mux)
+		handler = jwtclient.NewAuthMux(localJwtClient, nil, mux, logging.Logger("auth"))
 	}
 	srv := &http.Server{Handler: handler}
 

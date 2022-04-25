@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -27,7 +26,7 @@ type AddressSelector struct {
 	marketTypes.User
 }
 
-func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectAPI, mi miner.MinerInfo, use marketTypes.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, big.Int, error) {
+func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectAPI, mi types.MinerInfo, use marketTypes.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, big.Int, error) {
 	if as == nil {
 		// should only happen in some tests
 		log.Warnw("smart address selection disabled, using worker address")
@@ -73,7 +72,7 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectAPI, mi m
 	return pickAddress(ctx, a, mi, goodFunds, minFunds, addrs)
 }
 
-func pickAddress(ctx context.Context, a addrSelectAPI, mi miner.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
+func pickAddress(ctx context.Context, a addrSelectAPI, mi types.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
 	leastBad := mi.Worker
 	bestAvail := minFunds
 

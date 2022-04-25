@@ -19,26 +19,26 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.15.1
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.20.1
-	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
+	github.com/filecoin-project/go-fil-markets v1.20.1-v16-1
+	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-padreader v0.0.1
-	github.com/filecoin-project/go-state-types v0.1.3
-	github.com/filecoin-project/go-statemachine v1.0.2-0.20220322104818-27f8fbb86dfd
+	github.com/filecoin-project/go-state-types v0.1.7
+	github.com/filecoin-project/go-statemachine v1.0.2
 	github.com/filecoin-project/go-statestore v0.2.0
-	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
-	github.com/filecoin-project/specs-actors/v7 v7.0.0
-	github.com/filecoin-project/specs-storage v0.2.2
-	github.com/filecoin-project/venus v1.2.4-0.20220513124310-19620ae8f081
-	github.com/filecoin-project/venus-auth v1.4.1-0.20220511080155-bc171c3a3ec5
-	github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420091920-4820c01ca309
+	github.com/filecoin-project/specs-actors/v7 v7.0.1-0.20220511223846-637436c27154
+	github.com/filecoin-project/specs-actors/v8 v8.0.0-20220422153930-0afe155bfffa
+	github.com/filecoin-project/specs-storage v0.4.0
+	github.com/filecoin-project/venus v1.3.0-rc2.0.20220530152607-c0a964715602
+	github.com/filecoin-project/venus-auth v1.4.0
+	github.com/filecoin-project/venus-messager v1.4.2-0.20220531015334-7a9441e3c25a
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab79c62a
-	github.com/ipfs-force-community/venus-gateway v1.2.1-0.20220420085343-2e500a7724e0
+	github.com/ipfs-force-community/venus-gateway v1.4.1-0.20220531014242-13e9dcacfc80
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.2.1
 	github.com/ipfs/go-cid v0.1.0
@@ -62,18 +62,18 @@ require (
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.3.3
 	github.com/ipld/go-car/v2 v2.1.1
-	github.com/ipld/go-codec-dagpb v1.3.1
+	github.com/ipld/go-codec-dagpb v1.3.2
 	github.com/ipld/go-ipld-prime v0.16.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-buffer-pool v0.0.2
-	github.com/libp2p/go-libp2p v0.19.1
-	github.com/libp2p/go-libp2p-core v0.15.1
-	github.com/libp2p/go-libp2p-noise v0.4.0
+	github.com/libp2p/go-libp2p v0.18.0
+	github.com/libp2p/go-libp2p-core v0.14.0
+	github.com/libp2p/go-libp2p-noise v0.3.0
 	github.com/libp2p/go-libp2p-peerstore v0.6.0
-	github.com/libp2p/go-libp2p-quic-transport v0.17.0
-	github.com/libp2p/go-libp2p-resource-manager v0.2.1
-	github.com/libp2p/go-libp2p-tls v0.4.1
-	github.com/libp2p/go-libp2p-yamux v0.9.1
+	github.com/libp2p/go-libp2p-quic-transport v0.16.1
+	github.com/libp2p/go-libp2p-resource-manager v0.1.5
+	github.com/libp2p/go-libp2p-tls v0.3.1
+	github.com/libp2p/go-libp2p-yamux v0.8.2
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.4
@@ -82,13 +82,13 @@ require (
 	github.com/multiformats/go-multihash v0.1.0
 	github.com/multiformats/go-varint v0.0.6
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/strikesecurity/strikememongo v0.2.4
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/whyrusleeping/cbor-gen v0.0.0-20220302191723-37c43cae8e14
+	github.com/whyrusleeping/cbor-gen v0.0.0-20220323183124-98fa8256a799
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
-	github.com/xlab/c-for-go v0.0.0-20201223145653-3ba5db515dcb // indirect
+	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542 // indirect
 	go.mongodb.org/mongo-driver v1.8.4
 	go.opencensus.io v0.23.0
 	go.uber.org/fx v1.15.0
@@ -101,7 +101,6 @@ require (
 
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-	github.com/filecoin-project/go-commp-utils => github.com/ipfs-force-community/go-commp-utils v0.1.4-0.20220429021603-dcbcb96e4fc7
-	github.com/filecoin-project/go-fil-markets => github.com/hunjixin/go-fil-markets v1.13.3-0.20220511024045-d61f9911bade
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21
+
 )

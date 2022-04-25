@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+	"unicode/utf8"
 
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 
@@ -17,8 +18,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	"github.com/ipfs/go-cid"
 	typegen "github.com/whyrusleeping/cbor-gen"
@@ -121,6 +122,14 @@ func (m *storageDeal) TableName() string {
 }
 
 func fromStorageDeal(src *types.MinerDeal) *storageDeal {
+	label := src.ClientDealProposal.Proposal.Label
+	labelStr := ""
+	if label.IsString() {
+		labelStr, _ = label.ToString()
+	} else {
+		labelBytes, _ := label.ToBytes()
+		labelStr = string(labelBytes)
+	}
 	md := &storageDeal{
 		ClientDealProposal: ClientDealProposal{
 			PieceCID:             DBCid(src.ClientDealProposal.Proposal.PieceCID),
@@ -128,7 +137,7 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 			VerifiedDeal:         src.ClientDealProposal.Proposal.VerifiedDeal,
 			Client:               DBAddress(src.ClientDealProposal.Proposal.Client),
 			Provider:             DBAddress(src.ClientDealProposal.Proposal.Provider),
-			Label:                src.ClientDealProposal.Proposal.Label,
+			Label:                labelStr,
 			StartEpoch:           int64(src.ClientDealProposal.Proposal.StartEpoch),
 			EndEpoch:             int64(src.ClientDealProposal.Proposal.EndEpoch),
 			StoragePricePerEpoch: convertBigInt(src.ClientDealProposal.Proposal.StoragePricePerEpoch),
@@ -198,6 +207,16 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 }
 
 func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
+	var label market.DealLabel
+	var err error
+	if utf8.ValidString(src.Label) {
+		label, err = market.NewLabelFromString(src.Label)
+	} else {
+		label, err = market.NewLabelFromBytes([]byte(src.Label))
+	}
+	if err != nil {
+		return nil, err
+	}
 	md := &types.MinerDeal{
 		ClientDealProposal: market.ClientDealProposal{
 			Proposal: market.DealProposal{
@@ -206,7 +225,7 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 				VerifiedDeal:         src.VerifiedDeal,
 				Client:               src.ClientDealProposal.Client.addr(),
 				Provider:             src.ClientDealProposal.Provider.addr(),
-				Label:                src.Label,
+				Label:                label,
 				StartEpoch:           abi.ChainEpoch(src.StartEpoch),
 				EndEpoch:             abi.ChainEpoch(src.EndEpoch),
 				StoragePricePerEpoch: abi.TokenAmount{Int: src.StoragePricePerEpoch.Int},
@@ -244,7 +263,6 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		InboundCAR:            src.InboundCAR,
 		Offset:                abi.PaddedPieceSize(src.Offset),
 	}
-	var err error
 
 	if len(src.TransferChannelId.Initiator) > 0 {
 		md.TransferChannelID = &datatransfer.ChannelID{}

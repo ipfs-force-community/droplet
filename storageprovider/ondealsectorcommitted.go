@@ -13,10 +13,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
+	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -29,7 +31,7 @@ type dealInfoAPI interface {
 }
 
 type diffPreCommitsAPI interface {
-	diffPreCommits(ctx context.Context, actor address.Address, pre, cur types.TipSetKey) (*miner.PreCommitChanges, error)
+	diffPreCommits(ctx context.Context, actor address.Address, pre, cur types.TipSetKey) (*lminer.PreCommitChanges, error)
 }
 
 type SectorCommittedManager struct {
@@ -105,7 +107,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 
 	// Watch for a pre-commit message to the provider.
 	matchEvent := func(msg *types.Message) (bool, error) {
-		matched := msg.To == provider && (msg.Method == miner.Methods.PreCommitSector || msg.Method == miner.Methods.PreCommitSectorBatch)
+		matched := msg.To == provider && (msg.Method == builtin.MethodsMiner.PreCommitSector || msg.Method == builtin.MethodsMiner.PreCommitSectorBatch)
 		return matched, nil
 	}
 
@@ -262,7 +264,7 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 // dealSectorInPreCommitMsg tries to find a sector containing the specified deal
 func dealSectorInPreCommitMsg(msg *types.Message, res CurrentDealInfo) (*abi.SectorNumber, error) {
 	switch msg.Method {
-	case miner.Methods.PreCommitSector:
+	case builtin.MethodsMiner.PreCommitSector:
 		var params miner.SectorPreCommitInfo
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 			return nil, fmt.Errorf("unmarshal pre commit: %w", err)
@@ -275,7 +277,7 @@ func dealSectorInPreCommitMsg(msg *types.Message, res CurrentDealInfo) (*abi.Sec
 				return &params.SectorNumber, nil
 			}
 		}
-	case miner.Methods.PreCommitSectorBatch:
+	case builtin.MethodsMiner.PreCommitSectorBatch:
 		var params miner7.PreCommitSectorBatchParams
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 			return nil, fmt.Errorf("unmarshal pre commit: %w", err)
@@ -300,7 +302,7 @@ func dealSectorInPreCommitMsg(msg *types.Message, res CurrentDealInfo) (*abi.Sec
 // sectorInCommitMsg checks if the provided message commits specified sector
 func sectorInCommitMsg(msg *types.Message, sectorNumber abi.SectorNumber) (bool, error) {
 	switch msg.Method {
-	case miner.Methods.ProveCommitSector:
+	case builtin.MethodsMiner.ProveCommitSector:
 		var params miner.ProveCommitSectorParams
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 			return false, fmt.Errorf("failed to unmarshal prove commit sector params: %w", err)
@@ -308,7 +310,7 @@ func sectorInCommitMsg(msg *types.Message, sectorNumber abi.SectorNumber) (bool,
 
 		return params.SectorNumber == sectorNumber, nil
 
-	case miner.Methods.ProveCommitAggregate:
+	case builtin.MethodsMiner.ProveCommitAggregate:
 		var params miner7.ProveCommitAggregateParams
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 			return false, fmt.Errorf("failed to unmarshal prove commit sector params: %w", err)

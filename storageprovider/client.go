@@ -10,9 +10,6 @@ import (
 
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 
-	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 
@@ -30,6 +27,8 @@ import (
 	"github.com/filecoin-project/venus-market/v2/utils"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/venus/pkg/constants"
 	vcrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/events"
@@ -122,7 +121,7 @@ func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, 
 		To:     marketactor.Address,
 		From:   addr,
 		Value:  amount,
-		Method: builtin7.MethodsMarket.AddBalance,
+		Method: builtin.MethodsMarket.AddBalance,
 	}, nil)
 	if err != nil {
 		return cid.Undef, err
@@ -190,11 +189,11 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, fmt.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
 	}
 
-	if pubmsg.Method != builtin7.MethodsMarket.PublishStorageDeals {
+	if pubmsg.Method != builtin.MethodsMarket.PublishStorageDeals {
 		return 0, fmt.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
 	}
 
-	var params marketactor.PublishStorageDealsParams
+	var params market.PublishStorageDealsParams
 	if err := params.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
 		return 0, err
 	}
@@ -279,13 +278,13 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market7.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
-	return c.scMgr.OnDealSectorPreCommitted(ctx, provider, marketactor.DealProposal(proposal), *publishCid, cb)
+func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
+	return c.scMgr.OnDealSectorPreCommitted(ctx, provider, market.DealProposal(proposal), *publishCid, cb)
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market7.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
-	return c.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, marketactor.DealProposal(proposal), *publishCid, cb)
+func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+	return c.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, market.DealProposal(proposal), *publishCid, cb)
 }
 
 // TODO: Replace dealID parameter with DealProposal
@@ -378,7 +377,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	return nil
 }
 
-func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal market7.DealProposal) (*marketactor.ClientDealProposal, error) {
+func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal market.DealProposal) (*market.ClientDealProposal, error) {
 	// TODO: output spec signed proposal
 	buf, err := cborutil.Dump(&proposal)
 	if err != nil {
@@ -397,7 +396,7 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	return &marketactor.ClientDealProposal{
+	return &market.ClientDealProposal{
 		Proposal:        proposal,
 		ClientSignature: *sig,
 	}, nil

@@ -18,9 +18,10 @@ import (
 	paych7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/paych"
 	tutils "github.com/filecoin-project/specs-actors/v7/support/testing"
 
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
+	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -51,7 +52,7 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount big.Int
 		voucherLane   uint64
 		voucherNonce  uint64
-		laneStates    map[uint64]paych.LaneState
+		laneStates    map[uint64]lpaych.LaneState
 	}{{
 		name:          "passes when voucher amount < balance",
 		key:           fromKeyPrivate,
@@ -83,7 +84,7 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(5),
 		voucherLane:   1,
 		voucherNonce:  2,
-		laneStates: map[uint64]paych.LaneState{
+		laneStates: map[uint64]lpaych.LaneState{
 			1: paychmock.NewMockLaneState(big.NewInt(2), 3),
 		},
 	}, {
@@ -93,7 +94,7 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(5),
 		voucherLane:   1,
 		voucherNonce:  3,
-		laneStates: map[uint64]paych.LaneState{
+		laneStates: map[uint64]lpaych.LaneState{
 			1: paychmock.NewMockLaneState(big.NewInt(2), 2),
 		},
 	}, {
@@ -103,7 +104,7 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(5),
 		voucherLane:   2,
 		voucherNonce:  2,
-		laneStates: map[uint64]paych.LaneState{
+		laneStates: map[uint64]lpaych.LaneState{
 			1: paychmock.NewMockLaneState(big.NewInt(2), 3),
 		},
 	}, {
@@ -114,7 +115,7 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(5),
 		voucherLane:   1,
 		voucherNonce:  3,
-		laneStates: map[uint64]paych.LaneState{
+		laneStates: map[uint64]lpaych.LaneState{
 			1: paychmock.NewMockLaneState(big.NewInt(6), 2),
 		},
 	}, {
@@ -130,7 +131,7 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(6),
 		voucherLane:   1,
 		voucherNonce:  2,
-		laneStates: map[uint64]paych.LaneState{
+		laneStates: map[uint64]lpaych.LaneState{
 			// Lane 1 (same as voucher lane 1)
 			1: paychmock.NewMockLaneState(big.NewInt(4), 1),
 		},
@@ -146,7 +147,7 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(6),
 		voucherLane:   1,
 		voucherNonce:  1,
-		laneStates: map[uint64]paych.LaneState{
+		laneStates: map[uint64]lpaych.LaneState{
 			// Lane 2 (different from voucher lane 1)
 			2: paychmock.NewMockLaneState(big.NewInt(5), 1),
 		},
@@ -165,7 +166,7 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(6),
 		voucherLane:   1,
 		voucherNonce:  2,
-		laneStates: map[uint64]paych.LaneState{
+		laneStates: map[uint64]lpaych.LaneState{
 			// Lane 1 (superseded by new voucher in voucher lane 1)
 			1: paychmock.NewMockLaneState(big.NewInt(5), 1),
 			// Lane 2 (different from voucher lane 1)
@@ -186,7 +187,7 @@ func TestCheckVoucherValid(t *testing.T) {
 		voucherAmount: big.NewInt(5),
 		voucherLane:   1,
 		voucherNonce:  2,
-		laneStates: map[uint64]paych.LaneState{
+		laneStates: map[uint64]lpaych.LaneState{
 			// Lane 1 (superseded by new voucher in voucher lane 1)
 			1: paychmock.NewMockLaneState(big.NewInt(4), 1),
 			// Lane 2 (different from voucher lane 1)
@@ -428,7 +429,7 @@ func TestAllocateLaneWithExistingLaneState(t *testing.T) {
 		Balance: actorBalance,
 	}
 
-	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]lpaych.LaneState)))
 
 	mgr, err := newManager(ctx, newRepo(), mock)
 	require.NoError(t, err)
@@ -473,7 +474,7 @@ func TestAddVoucherInboundWalletKey(t *testing.T) {
 	mock.setAccountAddress(fromAcct, from)
 	mock.setAccountAddress(toAcct, to)
 
-	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]lpaych.LaneState)))
 
 	// Create a manager
 
@@ -733,7 +734,7 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 		Nonce:   0,
 		Balance: balance,
 	}
-	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]lpaych.LaneState)))
 
 	mgr, err := newManager(ctx, newRepo(), mock)
 	require.NoError(t, err)

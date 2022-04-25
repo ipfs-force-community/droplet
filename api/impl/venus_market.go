@@ -35,8 +35,8 @@ import (
 	"github.com/filecoin-project/venus-market/v2/retrievalprovider"
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
@@ -121,7 +121,7 @@ func (m MarketNodeImpl) MarketImportPublishedDeal(ctx context.Context, deal type
 	return m.StorageProvider.ImportPublishedDeal(ctx, deal)
 }
 
-func (m MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Address) ([]vTypes.MarketDeal, error) {
+func (m MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Address) ([]*vTypes.MarketDeal, error) {
 	return m.listDeals(ctx, addrs)
 }
 
@@ -403,7 +403,7 @@ func (m MarketNodeImpl) MessagerGetMessage(ctx context.Context, mid cid.Cid) (*v
 	return m.Messager.GetMessage(ctx, mid)
 }
 
-func (m MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) ([]vTypes.MarketDeal, error) {
+func (m MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) ([]*vTypes.MarketDeal, error) {
 	ts, err := m.FullNode.ChainHead(ctx)
 	if err != nil {
 		return nil, err
@@ -414,7 +414,7 @@ func (m MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) 
 		return nil, err
 	}
 
-	var out []vTypes.MarketDeal
+	var out []*vTypes.MarketDeal
 
 	has := func(addr address.Address) bool {
 		for _, a := range addrs {

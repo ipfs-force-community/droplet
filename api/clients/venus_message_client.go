@@ -3,31 +3,30 @@ package clients
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	"github.com/filecoin-project/venus-market/v2/config"
-	client2 "github.com/filecoin-project/venus-messager/api/client"
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
+	"github.com/filecoin-project/venus/venus-shared/api/messager"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"go.uber.org/fx"
 )
 
 var ErrFailMsg = errors.New("message fail")
 
-type IVenusMessager = client2.IMessager
+type IVenusMessager = messager.IMessager
 
-func MessagerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, nodeCfg *config.Messager) (IVenusMessager, error) {
-	info := apiinfo.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
-	dialAddr, err := info.DialArgs("v0")
+func MessagerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, messageCfg *config.Messager) (IVenusMessager, error) {
+	client, closer, err := messager.DialIMessagerRPC(mctx, messageCfg.Url, messageCfg.Token, http.Header{})
 	if err != nil {
 		return nil, err
 	}
 
-	client, closer, err := client2.NewMessageRPC(mctx, dialAddr, info.AuthHeader())
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {
 			closer()
 			return nil
 		},
 	})
-	return client, err
+
+	return client, nil
 }

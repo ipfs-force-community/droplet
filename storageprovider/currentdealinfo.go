@@ -10,10 +10,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	marketactor "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 )
@@ -89,7 +89,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, types.TipSetKey{}, fmt.Errorf("getting network version: %w", err)
 	}
 
-	retval, err := market.DecodePublishStorageDealsReturn(lookup.Receipt.Return, nv)
+	retval, err := marketactor.DecodePublishStorageDealsReturn(lookup.Receipt.Return, nv)
 	if err != nil {
 		return dealID, types.TipSetKey{}, fmt.Errorf("looking for publish deal message %s: decoding message return: %w", publishCid, err)
 	}
@@ -124,7 +124,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, types.TipSetKey{}, fmt.Errorf("getting publish deal message %s: %w", publishCid, err)
 	}
 
-	var pubDealsParams market7.PublishStorageDealsParams
+	var pubDealsParams market.PublishStorageDealsParams
 	if err := pubDealsParams.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
 		return dealID, types.TipSetKey{}, fmt.Errorf("unmarshalling publish deal message params for message %s: %w", publishCid, err)
 	}
@@ -177,7 +177,7 @@ func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok ty
 	return p1.PieceCID.Equals(p2.PieceCID) &&
 		p1.PieceSize == p2.PieceSize &&
 		p1.VerifiedDeal == p2.VerifiedDeal &&
-		p1.Label == p2.Label &&
+		p1.Label.Equals(p2.Label) &&
 		p1.StartEpoch == p2.StartEpoch &&
 		p1.EndEpoch == p2.EndEpoch &&
 		p1.StoragePricePerEpoch.Equals(p2.StoragePricePerEpoch) &&

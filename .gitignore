@@ -11,6 +11,7 @@ venus-market
 sequence_chart.md
 .idea
 coverage.*
+.vscode
 # Test binary, built with `go test -c`
 *.test
 data-transfer
