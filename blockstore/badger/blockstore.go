@@ -21,7 +21,7 @@ import (
 	logger "github.com/ipfs/go-log/v2"
 	pool "github.com/libp2p/go-buffer-pool"
 
-	"github.com/filecoin-project/venus-market/blockstore"
+	"github.com/filecoin-project/venus-market/v2/blockstore"
 )
 
 var (

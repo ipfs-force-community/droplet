@@ -12,7 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 	u "github.com/ipfs/go-ipfs-util"
 
-	"github.com/filecoin-project/venus-market/blockstore"
+	"github.com/filecoin-project/venus-market/v2/blockstore"
 
 	"github.com/stretchr/testify/require"
 )

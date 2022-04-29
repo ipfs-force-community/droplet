@@ -11,8 +11,8 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/dagstore/mount"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/utils"
 	"github.com/filecoin-project/venus/pkg/util/fsutil"
 )
 

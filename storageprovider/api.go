@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/venus-shared/actors/adt"
 
-	"github.com/filecoin-project/venus-market/blockstore"
+	"github.com/filecoin-project/venus-market/v2/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )

@@ -3,7 +3,7 @@ package piecestorage
 import (
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 
-	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/v2/config"
 )
 
 var PieceStorageOpts = func(cfg *config.MarketConfig) builder.Option {

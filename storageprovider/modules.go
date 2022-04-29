@@ -14,11 +14,11 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/dealfilter"
-	"github.com/filecoin-project/venus-market/models/badger"
-	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/dealfilter"
+	"github.com/filecoin-project/venus-market/v2/models/badger"
+	"github.com/filecoin-project/venus-market/v2/network"
+	"github.com/filecoin-project/venus-market/v2/utils"
 
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"

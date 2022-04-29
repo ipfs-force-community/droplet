@@ -8,7 +8,7 @@ import (
 	path2 "path"
 	"testing"
 
-	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/stretchr/testify/require"
 )
 

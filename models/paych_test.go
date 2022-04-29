@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/venus-market/models/badger"
-	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/v2/models/badger"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 
 	"github.com/filecoin-project/go-state-types/big"
 	paychTypes "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"

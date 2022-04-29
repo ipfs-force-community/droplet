@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	cli2 "github.com/filecoin-project/venus-market/cli"
+	cli2 "github.com/filecoin-project/venus-market/v2/cli"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"

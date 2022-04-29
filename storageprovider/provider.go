@@ -6,7 +6,7 @@ import (
 	"context"
 
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-	"github.com/filecoin-project/venus-market/api/clients"
+	"github.com/filecoin-project/venus-market/v2/api/clients"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -30,9 +30,9 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/fundmgr"
-	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/fundmgr"
+	"github.com/filecoin-project/venus-market/v2/utils"
 	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 )

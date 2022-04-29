@@ -3,8 +3,8 @@ package impl
 import (
 	"context"
 
-	"github.com/filecoin-project/venus-market/api/clients"
-	"github.com/filecoin-project/venus-market/fundmgr"
+	"github.com/filecoin-project/venus-market/v2/api/clients"
+	"github.com/filecoin-project/venus-market/v2/fundmgr"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	"github.com/ipfs/go-cid"

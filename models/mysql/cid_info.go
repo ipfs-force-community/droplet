@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"

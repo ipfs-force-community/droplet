@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"

@@ -17,8 +17,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/filecoin-project/dagstore/mount"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/utils"
 )
 
 var log = logging.Logger("piece-storage")

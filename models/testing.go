@@ -7,18 +7,18 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/utils/test_helper"
+	"github.com/filecoin-project/venus-market/v2/utils/test_helper"
 	"github.com/ipfs/go-datastore"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/models/mysql"
+	"github.com/filecoin-project/venus-market/v2/models/mysql"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 )
 
 func MysqlDB(t *testing.T) repo.Repo {

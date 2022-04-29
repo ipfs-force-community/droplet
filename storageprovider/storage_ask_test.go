@@ -8,9 +8,9 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus-market/models"
-	"github.com/filecoin-project/venus-market/models/badger"
-	"github.com/filecoin-project/venus-market/utils/test_helper"
+	"github.com/filecoin-project/venus-market/v2/models"
+	"github.com/filecoin-project/venus-market/v2/models/badger"
+	"github.com/filecoin-project/venus-market/v2/utils/test_helper"
 	"github.com/stretchr/testify/require"
 )
 

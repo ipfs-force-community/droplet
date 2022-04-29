@@ -4,8 +4,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/badger"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
