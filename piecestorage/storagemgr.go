@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/v2/config"
 )
 
 type PieceStorageManager struct {

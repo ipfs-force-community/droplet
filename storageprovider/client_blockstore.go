@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/stores"
 
-	"github.com/filecoin-project/venus-market/imports"
+	"github.com/filecoin-project/venus-market/v2/imports"
 )
 
 // ProxyBlockstoreAccessor is an accessor that returns a fixed blockstore.

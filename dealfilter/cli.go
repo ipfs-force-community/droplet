@@ -7,7 +7,7 @@ import (
 	"os/exec"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/v2/config"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 

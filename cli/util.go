@@ -21,8 +21,8 @@ import (
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/venus-market/cli/tablewriter"
-	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
+	"github.com/filecoin-project/venus-market/v2/config"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"

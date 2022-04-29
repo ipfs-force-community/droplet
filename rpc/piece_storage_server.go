@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/v2/piecestorage"
 )
 
 var _ http.Handler = (*PieceStorageServer)(nil)

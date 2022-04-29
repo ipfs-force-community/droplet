@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 )
 
 type IRetrievalStream interface {

@@ -9,7 +9,7 @@ import (
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
-	"github.com/filecoin-project/venus-market/blockstore"
+	"github.com/filecoin-project/venus-market/v2/blockstore"
 	ds "github.com/ipfs/go-datastore"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"

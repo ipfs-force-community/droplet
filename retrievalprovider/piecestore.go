@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/storageprovider"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"

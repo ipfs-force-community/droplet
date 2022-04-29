@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/venus-market/minermgr"
-	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/v2/minermgr"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"

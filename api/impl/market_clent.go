@@ -3,8 +3,8 @@ package impl
 import (
 	"context"
 
-	clients2 "github.com/filecoin-project/venus-market/api/clients"
-	"github.com/filecoin-project/venus-market/client"
+	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
+	"github.com/filecoin-project/venus-market/v2/client"
 	"github.com/filecoin-project/venus/pkg/constants"
 
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"

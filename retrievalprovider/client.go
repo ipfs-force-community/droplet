@@ -15,7 +15,7 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
-	"github.com/filecoin-project/venus-market/paychmgr"
+	"github.com/filecoin-project/venus-market/v2/paychmgr"
 )
 
 type retrievalClientNode struct {

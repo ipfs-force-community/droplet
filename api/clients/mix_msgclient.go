@@ -7,8 +7,8 @@ import (
 	types2 "github.com/filecoin-project/venus/venus-shared/types/messager"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/minermgr"
-	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus-market/v2/minermgr"
+	"github.com/filecoin-project/venus-market/v2/utils"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"

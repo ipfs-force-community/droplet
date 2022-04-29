@@ -27,10 +27,10 @@ import (
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 
-	minermgr2 "github.com/filecoin-project/venus-market/minermgr"
-	"github.com/filecoin-project/venus-market/models/repo"
-	network2 "github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/piecestorage"
+	minermgr2 "github.com/filecoin-project/venus-market/v2/minermgr"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+	network2 "github.com/filecoin-project/venus-market/v2/network"
+	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )

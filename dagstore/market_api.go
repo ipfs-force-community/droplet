@@ -11,9 +11,9 @@ import (
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-padreader"
 
-	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/piecestorage"
-	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/filecoin-project/venus-market/v2/piecestorage"
+	"github.com/filecoin-project/venus-market/v2/utils"
 )
 
 type MarketAPI interface {

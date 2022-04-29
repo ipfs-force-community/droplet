@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/venus-market/api/clients"
+	"github.com/filecoin-project/venus-market/v2/api/clients"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
@@ -24,9 +24,9 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/fundmgr"
-	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/fundmgr"
+	"github.com/filecoin-project/venus-market/v2/utils"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
 	"github.com/filecoin-project/venus/pkg/constants"

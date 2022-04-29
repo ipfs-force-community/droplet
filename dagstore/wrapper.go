@@ -19,7 +19,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-statemachine/fsm"
-	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/v2/config"
 	carindex "github.com/ipld/go-car/v2/index"
 
 	"github.com/filecoin-project/dagstore"

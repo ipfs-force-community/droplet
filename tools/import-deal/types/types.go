@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 
-	"github.com/filecoin-project/venus-market/models/mysql"
+	"github.com/filecoin-project/venus-market/v2/models/mysql"
 )
 
 const (

@@ -8,7 +8,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
-	"github.com/filecoin-project/venus-market/tools/import-deal/types"
+	"github.com/filecoin-project/venus-market/v2/tools/import-deal/types"
 )
 
 func ImportDealsToMysql(srcConn, conn string) error {

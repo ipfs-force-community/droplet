@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/venus-auth/auth"
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-auth/core"
-	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"

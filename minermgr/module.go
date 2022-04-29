@@ -1,7 +1,7 @@
 package minermgr
 
 import (
-	"github.com/filecoin-project/venus-market/config"
+	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 )
 

@@ -1,7 +1,7 @@
 package badger
 
 import (
-	"github.com/filecoin-project/venus-market/blockstore"
+	"github.com/filecoin-project/venus-market/v2/blockstore"
 	"github.com/ipfs/go-datastore"
 )
 

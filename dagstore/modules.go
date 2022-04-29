@@ -14,9 +14,9 @@ import (
 
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/piecestorage"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 )
 

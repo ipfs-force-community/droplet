@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 
-	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 

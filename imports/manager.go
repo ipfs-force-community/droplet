@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-fil-markets/shared"
-	"github.com/filecoin-project/venus-market/models/badger"
+	"github.com/filecoin-project/venus-market/v2/models/badger"
 	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"

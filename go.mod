@@ -1,4 +1,4 @@
-module github.com/filecoin-project/venus-market
+module github.com/filecoin-project/venus-market/v2
 
 go 1.16
 
@@ -33,7 +33,6 @@ require (
 	github.com/filecoin-project/venus-auth v1.3.3-0.20220406063133-896f44f6e816
 	github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420091920-4820c01ca309
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
-	github.com/godbus/dbus v0.0.0-20190422162347-ade71ed3457e // indirect
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0

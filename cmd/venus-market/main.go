@@ -13,10 +13,10 @@ import (
 
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 
-	cli2 "github.com/filecoin-project/venus-market/cli"
-	"github.com/filecoin-project/venus-market/config"
-	_ "github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/version"
+	cli2 "github.com/filecoin-project/venus-market/v2/cli"
+	"github.com/filecoin-project/venus-market/v2/config"
+	_ "github.com/filecoin-project/venus-market/v2/network"
+	"github.com/filecoin-project/venus-market/v2/version"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/venus-market/version"
+	"github.com/filecoin-project/venus-market/v2/version"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"

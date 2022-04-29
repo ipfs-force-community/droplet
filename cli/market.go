@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/storageprovider"
+	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 
 	tm "github.com/buger/goterm"

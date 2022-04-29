@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-data-transfer/channelmonitor"
-	"github.com/filecoin-project/venus-market/models/badger"
+	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
 	"github.com/libp2p/go-libp2p-core/host"
@@ -26,13 +26,13 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/imports"
-	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/paychmgr"
-	"github.com/filecoin-project/venus-market/retrievalprovider"
-	"github.com/filecoin-project/venus-market/storageprovider"
-	marketevents "github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/imports"
+	"github.com/filecoin-project/venus-market/v2/network"
+	"github.com/filecoin-project/venus-market/v2/paychmgr"
+	"github.com/filecoin-project/venus-market/v2/retrievalprovider"
+	"github.com/filecoin-project/venus-market/v2/storageprovider"
+	marketevents "github.com/filecoin-project/venus-market/v2/utils"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
 

@@ -28,13 +28,13 @@ import (
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 
-	"github.com/filecoin-project/venus-market/api/clients"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/minermgr"
-	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/network"
-	"github.com/filecoin-project/venus-market/piecestorage"
-	"github.com/filecoin-project/venus-market/utils"
+	"github.com/filecoin-project/venus-market/v2/api/clients"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/minermgr"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/filecoin-project/venus-market/v2/network"
+	"github.com/filecoin-project/venus-market/v2/piecestorage"
+	"github.com/filecoin-project/venus-market/v2/utils"
 
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/venus-market/api/clients"
+	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 
-	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"

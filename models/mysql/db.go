@@ -14,8 +14,8 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/repo"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 )
 
 //nolint

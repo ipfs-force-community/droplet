@@ -16,8 +16,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
-	cli2 "github.com/filecoin-project/venus-market/cli"
-	"github.com/filecoin-project/venus-market/cli/tablewriter"
+	cli2 "github.com/filecoin-project/venus-market/v2/cli"
+	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 )
 
