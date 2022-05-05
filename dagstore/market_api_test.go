@@ -32,7 +32,7 @@ func TestMarket(t *testing.T) {
 	assert.Nil(t, err)
 	pmgr.AddMemPieceStorage(memPieceStorage)
 
-	r := models.NewInMemoryRepo()
+	r := models.NewInMemoryRepo(t)
 	err = r.StorageDealRepo().SaveDeal(ctx, &market.MinerDeal{
 		ClientDealProposal: builtinMarket.ClientDealProposal{
 			Proposal: market0.DealProposal{

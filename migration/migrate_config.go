@@ -18,7 +18,7 @@ const (
 	marketClientLatestVersion = 1
 )
 
-var migrateLog = logging.Logger("config_migrate")
+var migrateConfigLog = logging.Logger("config_migrate")
 
 type marketUpgradeFunc func(cfg *config.MarketConfig) error
 
@@ -47,7 +47,7 @@ func TryToMigrateMarketConfig(cfg *config.MarketConfig) error {
 			if err != nil {
 				return err
 			}
-			migrateLog.Infof("success to upgrade version %d to version %d", localVersion, up.version)
+			migrateConfigLog.Infof("success to upgrade version %d to version %d", localVersion, up.version)
 			localVersion = up.version
 		}
 	}
@@ -104,7 +104,7 @@ func TryToMigrateClientConfig(cfg *config.MarketClientConfig) error {
 			if err != nil {
 				return err
 			}
-			migrateLog.Infof("success to upgrade version %d to version %d", localVersion, up.version)
+			migrateConfigLog.Infof("success to upgrade version %d to version %d", localVersion, up.version)
 			localVersion = up.version
 		}
 	}

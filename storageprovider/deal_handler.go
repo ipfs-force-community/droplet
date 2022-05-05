@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -65,7 +64,7 @@ type StorageDealProcessImpl struct {
 // NewStorageDealProcessImpl returns a new deal process instance
 func NewStorageDealProcessImpl(
 	conns *connmanager.ConnManager,
-	net smnet.StorageMarketNetwork,
+	net network.StorageMarketNetwork,
 	spn StorageProviderNode,
 	repo repo.Repo,
 	ask IStorageAsk,

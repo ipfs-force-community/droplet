@@ -4,8 +4,10 @@ import (
 	"context"
 	"path"
 
+	versioningds "github.com/filecoin-project/go-ds-versioning/pkg/datastore"
 	"github.com/filecoin-project/venus-market/v2/blockstore"
 	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/migration"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"github.com/ipfs/go-datastore"
@@ -73,9 +75,6 @@ type StorageAskDS datastore.Batching //key = latest
 
 // /metadata/paych/
 type PayChanDS datastore.Batching
-
-// /metadata/transport-info/
-type TransportInfoDS datastore.Batching
 
 //*********************************client
 // /metadata/deals/client
@@ -181,13 +180,28 @@ type BadgerDSParams struct {
 	RetrAskDs        RetrievalAskDS   `optional:"true"`
 	CidInfoDs        CIDInfoDS        `optional:"true"`
 	RetrievalDealsDs RetrievalDealsDS `optional:"true"`
-	TransportInfoDS  TransportInfoDS  `optional:"true"`
 }
 
-func NewBadgerRepo(params BadgerDSParams) repo.Repo {
+func NewBadgerRepo(params BadgerDSParams) (repo.Repo, error) {
+	newParams, err := migrations(params)
 	return &BadgerRepo{
-		dsParams: &params,
+		dsParams: newParams,
+	}, err
+}
+
+func migrations(params BadgerDSParams) (*BadgerDSParams, error) {
+	if params.StorageDealsDS == nil {
+		return &params, nil
 	}
+	storageMigrations, err := migration.StorageDealMigrations.Build()
+	if err != nil {
+		return nil, err
+	}
+	storageDealsDS, storageDealMigrateFunc := versioningds.NewVersionedDatastore(params.StorageDealsDS, storageMigrations, "1")
+	params.StorageDealsDS = storageDealsDS
+	err = storageDealMigrateFunc(context.Background())
+
+	return &params, err
 }
 
 func (r *BadgerRepo) FundRepo() repo.FundRepo {
