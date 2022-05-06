@@ -148,8 +148,8 @@ type DAGStoreConfig struct {
 	// Default value: 1 minute.
 	GCInterval Duration
 
-	//MongoTipIndex used to config whether to save top index data to mongo
-	MongoTipIndex *MongoTopIndex
+	//MongoTopIndex used to config whether to save top index data to mongo
+	MongoTopIndex *MongoTopIndex
 
 	//Transient path used to store temp file for retrieval
 	Transient string
