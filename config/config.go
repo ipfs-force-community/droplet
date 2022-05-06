@@ -207,6 +207,8 @@ type MarketConfig struct {
 	AddressConfig AddressConfig
 	DAGStore      DAGStoreConfig
 
+	IndexProvider IndexProviderConfig
+
 	StorageMiners           []User
 	RetrievalPaymentAddress User
 

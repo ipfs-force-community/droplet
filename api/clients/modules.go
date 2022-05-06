@@ -70,6 +70,10 @@ var ClientsOpts = func(server bool, mode string, mCfg *config.Messager, signerCf
 		return builder.Options(opts,
 			builder.Override(new(v1api.FullNode), NodeClient),
 
+			// todo: provide network-params here:https://github.com/filecoin-project/lotus/pull/8546/files
+			builder.Override(new(types2.NetworkName), func(api v1api.FullNode) (types2.NetworkName, error) {
+				return "mainnet", nil
+			}),
 			builder.ApplyIf(
 				func(s *builder.Settings) bool {
 					return mode == "solo"

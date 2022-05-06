@@ -3,6 +3,8 @@ package storageprovider
 import (
 	"context"
 	"fmt"
+	provider "github.com/filecoin-project/index-provider"
+	idxprov "github.com/filecoin-project/venus-market/v2/indexprovider"
 	"time"
 
 	"github.com/libp2p/go-libp2p-core/host"
@@ -197,6 +199,7 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(StorageProviderNode), NewProviderNodeAdapter(cfg)),
 		builder.Override(new(DealAssiger), NewDealAssigner),
 		builder.Override(StartDealTracker, NewDealTracker),
+		builder.Override(new(provider.Interface), idxprov.IndexProvider),
 	)
 }
 

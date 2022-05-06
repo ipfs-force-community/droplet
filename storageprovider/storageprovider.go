@@ -3,6 +3,7 @@ package storageprovider
 import (
 	"context"
 	"fmt"
+	provider "github.com/filecoin-project/index-provider"
 	"io"
 	"time"
 
@@ -120,6 +121,7 @@ func NewStorageProvider(
 	repo repo.Repo,
 	minerMgr minermgr.IAddrMgr,
 	mixMsgClient clients.IMixMessage,
+	indexProvider provider.Interface,
 ) (StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -152,7 +154,7 @@ func NewStorageProvider(
 		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, repo, pieceStorageMgr, dataTransfer, dagStore)
+	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, repo, pieceStorageMgr, dataTransfer, dagStore, h, indexProvider)
 	if err != nil {
 		return nil, err
 	}

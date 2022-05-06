@@ -53,11 +53,23 @@ var DefaultMarketConfig = &MarketConfig{
 		Url:   "", // "http://<ip>:8989",
 		Token: "",
 	},
+
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
 		MaxConcurrencyStorageCalls: 100,
 		GCInterval:                 Duration(1 * time.Minute),
 	},
+
+	IndexProvider: IndexProviderConfig{
+		Enable:               true,
+		EntriesCacheCapacity: 1024,
+		EntriesChunkSize:     16384,
+		// The default empty TopicName means it is inferred from network name, in the following
+		// format: "/indexer/ingest/<network-name>"
+		TopicName:         "",
+		PurgeCacheOnStart: false,
+	},
+
 	Journal: Journal{Path: "journal"},
 	PieceStorage: PieceStorage{
 		Fs: []*FsPieceStorage{},
