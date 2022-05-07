@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	ma "github.com/multiformats/go-multiaddr"
 	"io/ioutil"
 	"os"
 	"sort"
@@ -440,6 +441,24 @@ func (m MarketNodeImpl) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 		ID:    m.Host.ID(),
 		Addrs: m.Host.Addrs(),
 	}, nil
+}
+
+func (m MarketNodeImpl) NetConnect(ctx context.Context, addr string) error {
+	maddr, err := ma.NewMultiaddr(addr)
+	if err != nil {
+		return xerrors.Errorf("failed to parse multiaddr: %w", err)
+	}
+
+	addrInfo, err := peer.AddrInfoFromP2pAddr(maddr)
+	if err != nil {
+		return xerrors.Errorf("failed to create addrInfo from multiaddr: %w", err)
+	}
+
+	// Attempt connect.
+	if err = m.Host.Connect(ctx, *addrInfo); err != nil {
+		return xerrors.Errorf("failed to connect to peer: %w", err)
+	}
+	return nil
 }
 
 func (m MarketNodeImpl) ID(context.Context) (peer.ID, error) {

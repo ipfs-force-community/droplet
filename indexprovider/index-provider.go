@@ -2,7 +2,7 @@ package idxprov
 
 import (
 	"context"
-	"github.com/filecoin-project/index-provider"
+	provider "github.com/filecoin-project/index-provider"
 	"github.com/filecoin-project/index-provider/engine"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models/badger"
@@ -20,15 +20,14 @@ import (
 
 type IdxProv struct {
 	fx.In
-
 	fx.Lifecycle
 	Datastore badger.MetadataDS
 }
 
 var log = logging.Logger("index-provider")
 
-func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host, dt network.ProviderDataTransfer, ps *pubsub.PubSub, nn types.NetworkName) (provider.Interface, error) {
-	return func(args IdxProv, marketHost host.Host, dt network.ProviderDataTransfer, ps *pubsub.PubSub, nn types.NetworkName) (provider.Interface, error) {
+func IndexProviderEngine(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host, dt network.ProviderDataTransfer, ps *pubsub.PubSub, nn types.NetworkName) (*engine.Engine, error) {
+	return func(args IdxProv, marketHost host.Host, dt network.ProviderDataTransfer, ps *pubsub.PubSub, nn types.NetworkName) (*engine.Engine, error) {
 		topicName := cfg.TopicName
 		// If indexer topic name is left empty, infer it from the network name.
 		if topicName == "" {
@@ -37,7 +36,7 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 			// filter.
 			//
 			// See: lp2p.GossipSub.
-			topicName = indexerIngestTopic(nn)
+			topicName = network.IndexerIngestTopic(nn)
 			log.Debugw("Inferred indexer topic from network name", "topic", topicName)
 		}
 
@@ -112,13 +111,6 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 	}
 }
 
-func indexerIngestTopic(netName types.NetworkName) string {
-	nn := string(netName)
-	// The network name testnetnet is here for historical reasons.
-	// Going forward we aim to use the name `mainnet` where possible.
-	if nn == "testnetnet" {
-		nn = "mainnet"
-	}
-
-	return "/indexer/ingest/" + nn
+func IndexProvider(e *engine.Engine) provider.Interface {
+	return e
 }

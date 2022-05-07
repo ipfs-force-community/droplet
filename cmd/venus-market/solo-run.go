@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/api/impl"

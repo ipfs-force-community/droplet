@@ -59,11 +59,11 @@ func (dealTracker *DealTracker) Start(ctx metrics.MetricsCtx) {
 func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
 	addrs, err := dealTracker.minerMgr.ActorAddress(ctx)
 	if err != nil {
-		log.Errorf("get miners list %w", err)
+		log.Errorf("get miners list %s", err.Error())
 	}
 	head, err := dealTracker.fullNode.ChainHead(ctx)
 	if err != nil {
-		log.Errorf("get chain head %w", err)
+		log.Errorf("get chain head %s", err.Error())
 	}
 
 	for _, addr := range addrs {

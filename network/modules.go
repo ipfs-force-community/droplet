@@ -6,6 +6,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 //nolint:golint
@@ -43,6 +44,7 @@ var NetworkOpts = func(server bool, simultaneousTransfersForRetrieval, simultane
 	if server {
 		return builder.Options(opts,
 			builder.Override(new(StagingGraphsync), NewStagingGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfersForStoragePerClient, simultaneousTransfersForStorage)),
+			builder.Override(new(*pubsub.PubSub), GossipSub),
 		)
 	}
 

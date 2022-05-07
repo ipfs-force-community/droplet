@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	provider "github.com/filecoin-project/index-provider"
+	"github.com/filecoin-project/index-provider/engine"
 	idxprov "github.com/filecoin-project/venus-market/v2/indexprovider"
 	"time"
 
@@ -199,7 +200,19 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(StorageProviderNode), NewProviderNodeAdapter(cfg)),
 		builder.Override(new(DealAssiger), NewDealAssigner),
 		builder.Override(StartDealTracker, NewDealTracker),
-		builder.Override(new(provider.Interface), idxprov.IndexProvider(cfg.IndexProvider)),
+
+		//builder.Override(new([]car.ReadOption), []car.ReadOption{car.ZeroLengthSectionAsEOF(false)}),
+		//builder.Override(new([]adminserver.Option), []adminserver.Option{
+		//	adminserver.WithListenAddr("0.0.0.0:3102"),
+		//	adminserver.WithReadTimeout(time.Second * 5),
+		//	adminserver.WithWriteTimeout(time.Second * 5),
+		//}),
+		//builder.Override(new(*supplier.CarSupplier), supplier.NewCarSupplier),
+		//builder.Override(new(*adminserver.Server), adminserver.New),
+		//builder.Override(builder.NextInvoke(), idxprov.AdminService),
+
+		builder.Override(new(*engine.Engine), idxprov.IndexProviderEngine(cfg.IndexProvider)),
+		builder.Override(new(provider.Interface), idxprov.IndexProvider),
 	)
 }
 

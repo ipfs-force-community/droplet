@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -12,6 +11,7 @@ var NetCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		NetListen,
 		NetId,
+		NetConnect,
 	},
 }
 
@@ -56,6 +56,30 @@ var NetId = &cli.Command{
 		}
 
 		fmt.Println(pid)
+		return nil
+	},
+}
+
+var NetConnect = &cli.Command{
+	Name:  "connect",
+	Usage: "connect to a indexer node",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return fmt.Errorf("must and only input <peer-address> to connect")
+		}
+		api, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if err := api.NetConnect(ctx, cctx.Args().First()); err != nil {
+			return err
+		}
+
+		fmt.Println("connect to peer successfully")
 		return nil
 	},
 }
