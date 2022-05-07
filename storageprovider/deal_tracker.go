@@ -100,7 +100,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 				if strings.Contains(err.Error(), "not found") {
 					continue
 				}
-				log.Debugf("get precommit info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+				log.Debugf("get precommit info for sector %d of miner %s %s", deal.SectorNumber, addr, err.Error())
 				continue
 			}
 

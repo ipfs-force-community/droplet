@@ -88,6 +88,9 @@ type StorageProviderImpl struct {
 	transferProcess IDatatransferHandler
 	storageReceiver smnet.StorageReceiver
 	minerMgr        minermgr.IAddrMgr
+
+	indexProvider provider.Interface
+	dagStore      stores.DAGStoreWrapper
 }
 
 type internalProviderEvent struct {
@@ -152,6 +155,9 @@ func NewStorageProvider(
 		dealStore: repo.StorageDealRepo(),
 
 		minerMgr: minerMgr,
+
+		indexProvider: indexProvider,
+		dagStore:      dagStore,
 	}
 
 	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, repo, pieceStorageMgr, dataTransfer, dagStore, h, indexProvider)
@@ -202,6 +208,29 @@ func (p *StorageProviderImpl) start(ctx context.Context) error {
 	if err := p.restartDeals(ctx, deals); err != nil {
 		return fmt.Errorf("failed to restart deals: %w", err)
 	}
+
+	p.indexProvider.RegisterMultihashLister(func(ctx context.Context, contextID []byte) (provider.MultihashIterator, error) {
+		proposalCid, err := cid.Cast(contextID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to cast context ID to a cid")
+		}
+
+		deal, err := p.dealStore.GetDeal(ctx, proposalCid)
+		if err != nil {
+			return nil, xerrors.Errorf("failed getting deal %s: %w", proposalCid, err)
+		}
+
+		ii, err := p.dagStore.GetIterableIndexForPiece(deal.Proposal.PieceCID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get iterable index: %w", err)
+		}
+
+		mhi, err := provider.CarMultihashIterator(ii)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get mhiterator: %w", err)
+		}
+		return mhi, nil
+	})
 	return nil
 }
 
