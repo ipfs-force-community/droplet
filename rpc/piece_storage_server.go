@@ -2,8 +2,10 @@ package rpc
 
 import (
 	"fmt"
-	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"io"
+
+	"github.com/filecoin-project/venus-market/v2/piecestorage"
+
 	"net/http"
 	"strconv"
 )

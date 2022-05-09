@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/filecoin-project/venus-market/v2/config"
-	"github.com/filecoin-project/venus-market/v2/piecestorage"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/piecestorage"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupTestServer(t *testing.T) (*piecestorage.MemPieceStore, http.Handler) {

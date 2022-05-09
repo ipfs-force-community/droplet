@@ -51,7 +51,7 @@ func (m *MemPieceStore) Len(ctx context.Context, resourceId string) (int64, erro
 	if data, ok := m.data[resourceId]; ok {
 		return int64(len(data)), nil
 	}
-	return 0, fmt.Errorf("unable to find resource %resourceId", resourceId)
+	return 0, fmt.Errorf("unable to find resource %s", resourceId)
 
 }
 
@@ -66,7 +66,7 @@ func (m *MemPieceStore) GetMountReader(ctx context.Context, resourceId string) (
 		r := bytes.NewReader(data)
 		return wraperCloser{r, r}, nil
 	}
-	return nil, fmt.Errorf("unable to find resource %resourceId", resourceId)
+	return nil, fmt.Errorf("unable to find resource %s", resourceId)
 
 }
 

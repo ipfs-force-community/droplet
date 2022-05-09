@@ -47,7 +47,7 @@ func (f *fsPieceStorage) SaveTo(ctx context.Context, resourceId string, r io.Rea
 	defer func() { _ = tempFile.Close() }()
 	wlen, err := io.Copy(tempFile, r)
 	if err != nil {
-		return -1, fmt.Errorf("unable to write file to %resourceId %w", dstPath, err)
+		return -1, fmt.Errorf("unable to write file to %s  %w", dstPath, err)
 	}
 	err = utils.Move(tempFile.Name(), dstPath)
 	return wlen, err
