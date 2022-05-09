@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -52,6 +54,12 @@ var DefaultMarketConfig = &MarketConfig{
 	AuthNode: AuthNode{
 		Url:   "", // "http://<ip>:8989",
 		Token: "",
+	},
+	IndexProvider: IndexProvider{
+		ConnectConfig: ConnectConfig{
+			Url: "", // "http://127.0.0.1:3102"
+		},
+		LatestAdvSuffix: fmt.Sprintf("venus-market-%d", rand.Uint64()),
 	},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,

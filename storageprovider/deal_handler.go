@@ -1,9 +1,19 @@
 package storageprovider
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	provider "github.com/filecoin-project/index-provider"
+	"github.com/filecoin-project/index-provider/metadata"
+	adminserver "github.com/filecoin-project/index-provider/server/admin/http"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/multiformats/go-multihash"
 	"io"
+	"net/http"
 	"os"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	carv2 "github.com/ipld/go-car/v2"
@@ -59,6 +69,9 @@ type StorageDealProcessImpl struct {
 
 	minerMgr        minermgr2.IAddrMgr
 	pieceStorageMgr *piecestorage.PieceStorageManager
+
+	host          host.Host
+	indexProvider config.IndexProvider
 }
 
 // NewStorageDealProcessImpl returns a new deal process instance
@@ -70,10 +83,11 @@ func NewStorageDealProcessImpl(
 	ask IStorageAsk,
 	fs filestore.FileStore,
 	minerMgr minermgr2.IAddrMgr,
-	repo repo.Repo,
 	pieceStorageMgr *piecestorage.PieceStorageManager,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
+	h host.Host,
+	indexProvider config.IndexProvider,
 ) (StorageDealHandler, error) {
 	stores := stores.NewReadWriteBlockstores()
 
@@ -87,7 +101,7 @@ func NewStorageDealProcessImpl(
 		return nil, err
 	}
 
-	return &StorageDealProcessImpl{
+	impl := &StorageDealProcessImpl{
 		conns:      conns,
 		peerTagger: peerTagger,
 		spn:        spn,
@@ -100,7 +114,13 @@ func NewStorageDealProcessImpl(
 
 		pieceStorageMgr: pieceStorageMgr,
 		dagStore:        dagStore,
-	}, nil
+		host:            h,
+		indexProvider:   indexProvider,
+	}
+
+	impl.start(context.TODO())
+
+	return impl, nil
 }
 
 // StorageDealUnknown->StorageDealValidating(ValidateDealProposal)->StorageDealAcceptWait(DecideOnProposal)->StorageDealWaitingForData
@@ -451,6 +471,12 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			log.Error(err)
 		}
 
+		if advCid, err := storageDealPorcess.pushDealIndicesAdv(ctx, deal, false); err != nil {
+			log.Errorf("publish deal:%s to index-provider failed:%s", deal.ProposalCid.String(), err.Error())
+		} else {
+			log.Infof("publish deal:%s to index-provider success, advertisement id: %s", deal.ProposalCid.String(), advCid.String())
+		}
+
 		log.Infow("successfully handed off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
 		deal.AvailableForRetrieval = true
 		deal.State = storagemarket.StorageDealAwaitingPreCommit
@@ -677,4 +703,77 @@ func (storageDealPorcess *StorageDealProcessImpl) GeneratePieceCommitment(propos
 	}
 
 	return cidAndSize.PieceCID, filestore.Path(""), err
+}
+
+func (storageDealPorcess *StorageDealProcessImpl) pushDealIndicesAdv(ctx context.Context, deal *types.MinerDeal, isDel bool) (cid.Cid, error) {
+	if len(storageDealPorcess.indexProvider.Url) == 0 {
+		return cid.Undef, fmt.Errorf("index Proivder is not set")
+	}
+
+	var req = adminserver.AnnounceAdvReq{
+		ContextID:  deal.ProposalCid.Bytes(),
+		ProviderID: storageDealPorcess.host.ID(),
+		Md: metadata.New(&metadata.GraphsyncFilecoinV1{
+			PieceCID:      deal.Proposal.PieceCID,
+			VerifiedDeal:  deal.Proposal.VerifiedDeal,
+			FastRetrieval: deal.FastRetrieval,
+		}),
+		LatestAdvSuffix: storageDealPorcess.indexProvider.LatestAdvSuffix,
+		IsDel:           isDel,
+	}
+
+	if !isDel {
+		indices, err := storageDealPorcess.dagStore.GetIterableIndexForPiece(deal.Proposal.PieceCID)
+		if err != nil {
+			return cid.Undef, err
+		}
+		var idxSteps []provider.IteratorStep
+		if err := indices.ForEach(func(mh multihash.Multihash, offset uint64) error {
+			idxSteps = append(idxSteps, struct {
+				Mh     multihash.Multihash
+				Offset uint64
+			}{Mh: mh, Offset: offset})
+			return nil
+		}); err != nil {
+			return cid.Undef, err
+		}
+		req.Indices = idxSteps
+	}
+
+	addrs := storageDealPorcess.host.Addrs()
+
+	for _, a := range addrs {
+		s := a.String()
+		if !strings.Contains(s, "127.0.0.1") && !strings.Contains(s, "::1") {
+			req.RetrievalAddrs = append(req.RetrievalAddrs, a.String())
+		}
+	}
+
+	body := bytes.NewBuffer(nil)
+	if _, err := req.WriteTo(body); err != nil {
+		return cid.Undef, err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		storageDealPorcess.indexProvider.Url+"/admin/publish_adv", body)
+	if err != nil {
+		return cid.Undef, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	resp, err := (&http.Client{}).Do(httpReq)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return cid.Undef, fmt.Errorf("http code(%d) is not ok", resp.StatusCode)
+	}
+
+	var advRes = &adminserver.AnnounceAdvRes{}
+	if _, err := advRes.ReadFrom(resp.Body); err != nil {
+		return cid.Undef, err
+	}
+
+	return advRes.AdvId, nil
+
 }

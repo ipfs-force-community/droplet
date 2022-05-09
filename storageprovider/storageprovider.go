@@ -152,7 +152,8 @@ func NewStorageProvider(
 		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, repo, pieceStorageMgr, dataTransfer, dagStore)
+	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore,
+		spV2.storedAsk, spV2.fs, minerMgr, pieceStorageMgr, dataTransfer, dagStore, h, cfg.IndexProvider)
 	if err != nil {
 		return nil, err
 	}

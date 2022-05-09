@@ -40,10 +40,16 @@ type ConnectConfig struct {
 	Token string
 }
 
-type Node ConnectConfig
-type Messager ConnectConfig
-type Market ConnectConfig
-type AuthNode ConnectConfig
+type (
+	Node          ConnectConfig
+	Messager      ConnectConfig
+	Market        ConnectConfig
+	AuthNode      ConnectConfig
+	IndexProvider struct {
+		ConnectConfig
+		LatestAdvSuffix string
+	}
+)
 
 type Common struct {
 	API    API
@@ -199,6 +205,8 @@ type MarketConfig struct {
 	Messager Messager
 	Signer   Signer
 	AuthNode AuthNode
+
+	IndexProvider IndexProvider
 
 	Mysql Mysql
 
