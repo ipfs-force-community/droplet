@@ -144,6 +144,7 @@ func main() {
 			cli2.DataTransfersCmd,
 			cli2.DagstoreCmd,
 			cli2.MigrateCmd,
+			cli2.IndexCmds,
 		},
 	}
 

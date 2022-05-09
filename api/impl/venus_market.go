@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	idxprov "github.com/filecoin-project/venus-market/v2/idxprovider"
+	"github.com/filecoin-project/venus-market/v2/utils"
 	ma "github.com/multiformats/go-multiaddr"
 	"io/ioutil"
 	"os"
@@ -60,13 +62,16 @@ type MarketNodeImpl struct {
 	DealPublisher     *storageprovider.DealPublisher
 	DealAssigner      storageprovider.DealAssiger
 
-	Messager                                    clients2.IMixMessage
-	StorageAsk                                  storageprovider.IStorageAsk
-	DAGStore                                    *dagstore.DAGStore
-	PieceStorageMgr                             *piecestorage.PieceStorageManager
-	MinerMgr                                    minermgr.IAddrMgr
-	PaychAPI                                    *paychmgr.PaychAPI
-	Repo                                        repo.Repo
+	Messager        clients2.IMixMessage
+	StorageAsk      storageprovider.IStorageAsk
+	DAGStore        *dagstore.DAGStore
+	PieceStorageMgr *piecestorage.PieceStorageManager
+	MinerMgr        minermgr.IAddrMgr
+	PaychAPI        *paychmgr.PaychAPI
+	Repo            repo.Repo
+
+	IndexProvider *idxprov.IndexProvider
+
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc
 	ConsiderOnlineRetrievalDealsConfigFunc      config.ConsiderOnlineRetrievalDealsConfigFunc
@@ -461,11 +466,15 @@ func (m MarketNodeImpl) NetConnect(ctx context.Context, addr string) error {
 	return nil
 }
 
+func (m MarketNodeImpl) NetPeers(context.Context) ([]peer.AddrInfo, error) {
+	return utils.HostConnectedPeers(m.Host), nil
+}
+
 func (m MarketNodeImpl) ID(context.Context) (peer.ID, error) {
 	return m.Host.ID(), nil
 }
 
-func (m MarketNodeImpl) DagstoreListShards(ctx context.Context) ([]types.DagstoreShardInfo, error) {
+func (m MarketNodeImpl) DagstoreListShards(context.Context) ([]types.DagstoreShardInfo, error) {
 	info := m.DAGStore.AllShardsInfo()
 	ret := make([]types.DagstoreShardInfo, 0, len(info))
 	for k, i := range info {
@@ -843,4 +852,12 @@ func (m MarketNodeImpl) GetReadUrl(ctx context.Context, s string) (string, error
 
 func (m MarketNodeImpl) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
 	panic("not support")
+}
+
+func (m *MarketNodeImpl) Announce(ctx context.Context) (cid.Cid, error) {
+	return m.IndexProvider.AnnounceLatestAdv(ctx)
+}
+
+func (m *MarketNodeImpl) LatestAdv(ctx context.Context) (cid.Cid, error) {
+	return m.IndexProvider.LatestAdv(ctx)
 }

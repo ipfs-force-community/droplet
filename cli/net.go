@@ -12,6 +12,7 @@ var NetCmd = &cli.Command{
 		NetListen,
 		NetId,
 		NetConnect,
+		NetPeers,
 	},
 }
 
@@ -80,6 +81,31 @@ var NetConnect = &cli.Command{
 		}
 
 		fmt.Println("connect to peer successfully")
+		return nil
+	},
+}
+
+var NetPeers = &cli.Command{
+	Name:  "peers",
+	Usage: "list connected peers",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		addrs, err := api.NetPeers(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, addr := range addrs {
+			fmt.Printf("%s\n", addr.String())
+		}
+
 		return nil
 	},
 }

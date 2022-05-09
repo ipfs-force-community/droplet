@@ -2,11 +2,7 @@ package storageprovider
 
 import (
 	"context"
-	"fmt"
-	provider "github.com/filecoin-project/index-provider"
-	"github.com/filecoin-project/index-provider/metadata"
-	idxprov "github.com/filecoin-project/venus-market/v2/indexprovider"
-	"github.com/libp2p/go-libp2p-core/host"
+	idxprov "github.com/filecoin-project/venus-market/v2/idxprovider"
 	"io"
 	"os"
 
@@ -65,8 +61,7 @@ type StorageDealProcessImpl struct {
 	minerMgr        minermgr2.IAddrMgr
 	pieceStorageMgr *piecestorage.PieceStorageManager
 
-	indexProvider provider.Interface
-	meshCreator   idxprov.MeshCreator
+	idxProvider *idxprov.IndexProvider
 }
 
 // NewStorageDealProcessImpl returns a new deal process instance
@@ -78,12 +73,10 @@ func NewStorageDealProcessImpl(
 	ask IStorageAsk,
 	fs filestore.FileStore,
 	minerMgr minermgr2.IAddrMgr,
-	repo repo.Repo,
 	pieceStorageMgr *piecestorage.PieceStorageManager,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
-	host host.Host,
-	indexProvider provider.Interface,
+	idxProvider *idxprov.IndexProvider,
 ) (StorageDealHandler, error) {
 	stores := stores.NewReadWriteBlockstores()
 
@@ -111,8 +104,7 @@ func NewStorageDealProcessImpl(
 		pieceStorageMgr: pieceStorageMgr,
 		dagStore:        dagStore,
 
-		indexProvider: indexProvider,
-		meshCreator:   idxprov.NewMeshCreator(spn, host),
+		idxProvider: idxProvider,
 	}, nil
 }
 
@@ -461,14 +453,13 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		// fetched from the DAG store during retrieval.
 		if err := stores.RegisterShardSync(ctx, storageDealPorcess.dagStore, deal.Proposal.PieceCID, carFilePath, true); err != nil {
 			log.Errorf("failed to acrtivate shard: %s", err.Error())
+		}
+
+		if annCid, err := storageDealPorcess.idxProvider.AnnounceIndex(ctx, deal); err != nil {
+			log.Errorw("failed to announce index via reference provider", "proposalCid", deal.ProposalCid, "err", err)
 		} else {
-			var annCid cid.Cid
-			if annCid, err = storageDealPorcess.AnnounceIndex(ctx, deal); err != nil {
-				log.Errorw("failed to announce index via reference provider", "proposalCid", deal.ProposalCid, "err", err)
-			} else {
-				log.Infow("deal announcement sent to index provider", "advertisementCid", annCid, "shard-key", deal.Proposal.PieceCID,
-					"proposalCid", deal.ProposalCid)
-			}
+			log.Infow("deal announcement sent to index provider", "advertisementCid", annCid, "shard-key", deal.Proposal.PieceCID,
+				"proposalCid", deal.ProposalCid)
 		}
 
 		log.Infow("successfully handed off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
@@ -698,21 +689,4 @@ func (storageDealPorcess *StorageDealProcessImpl) GeneratePieceCommitment(propos
 	}
 
 	return cidAndSize.PieceCID, filestore.Path(""), err
-}
-
-// AnnounceIndex informs indexer nodes that a new deal was received,
-// so they can download its index
-func (storageDealProcess *StorageDealProcessImpl) AnnounceIndex(ctx context.Context, deal *types.MinerDeal) (advertCid cid.Cid, err error) {
-	mt := metadata.New(&metadata.GraphsyncFilecoinV1{
-		PieceCID:      deal.Proposal.PieceCID,
-		FastRetrieval: deal.FastRetrieval,
-		VerifiedDeal:  deal.Proposal.VerifiedDeal,
-	})
-	// ensure we have a connection with the full node host so that the index provider gossip sub announcements make their
-	// way to the filecoin bootstrapper network
-	if err := storageDealProcess.meshCreator.Connect(ctx); err != nil {
-		return cid.Undef, fmt.Errorf("cannot publish index record as indexer host failed to connect to the full node: %w", err)
-	}
-
-	return storageDealProcess.indexProvider.NotifyPut(ctx, deal.ProposalCid.Bytes(), mt)
 }

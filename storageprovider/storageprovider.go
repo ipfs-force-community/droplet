@@ -3,7 +3,7 @@ package storageprovider
 import (
 	"context"
 	"fmt"
-	provider "github.com/filecoin-project/index-provider"
+	idxprov "github.com/filecoin-project/venus-market/v2/idxprovider"
 	"io"
 	"time"
 
@@ -89,8 +89,7 @@ type StorageProviderImpl struct {
 	storageReceiver smnet.StorageReceiver
 	minerMgr        minermgr.IAddrMgr
 
-	indexProvider provider.Interface
-	dagStore      stores.DAGStoreWrapper
+	dagStore stores.DAGStoreWrapper
 }
 
 type internalProviderEvent struct {
@@ -124,7 +123,7 @@ func NewStorageProvider(
 	repo repo.Repo,
 	minerMgr minermgr.IAddrMgr,
 	mixMsgClient clients.IMixMessage,
-	indexProvider provider.Interface,
+	indexProvider *idxprov.IndexProvider,
 ) (StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -156,11 +155,11 @@ func NewStorageProvider(
 
 		minerMgr: minerMgr,
 
-		indexProvider: indexProvider,
-		dagStore:      dagStore,
+		dagStore: dagStore,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, repo, pieceStorageMgr, dataTransfer, dagStore, h, indexProvider)
+	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore,
+		spV2.storedAsk, spV2.fs, minerMgr, pieceStorageMgr, dataTransfer, dagStore, indexProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -208,29 +207,6 @@ func (p *StorageProviderImpl) start(ctx context.Context) error {
 	if err := p.restartDeals(ctx, deals); err != nil {
 		return fmt.Errorf("failed to restart deals: %w", err)
 	}
-
-	p.indexProvider.RegisterMultihashLister(func(ctx context.Context, contextID []byte) (provider.MultihashIterator, error) {
-		proposalCid, err := cid.Cast(contextID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to cast context ID to a cid")
-		}
-
-		deal, err := p.dealStore.GetDeal(ctx, proposalCid)
-		if err != nil {
-			return nil, xerrors.Errorf("failed getting deal %s: %w", proposalCid, err)
-		}
-
-		ii, err := p.dagStore.GetIterableIndexForPiece(deal.Proposal.PieceCID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get iterable index: %w", err)
-		}
-
-		mhi, err := provider.CarMultihashIterator(ii)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get mhiterator: %w", err)
-		}
-		return mhi, nil
-	})
 	return nil
 }
 
