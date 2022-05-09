@@ -2,9 +2,14 @@ package piecestorage
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/filecoin-project/dagstore/mount"
+)
+
+var (
+	ErrUnsupportRedirect = fmt.Errorf("this storage unsupport redirect url")
 )
 
 type Protocol string
@@ -25,10 +30,14 @@ type IPieceStorage interface {
 	Type() Protocol
 	ReadOnly() bool
 	SaveTo(context.Context, string, io.Reader) (int64, error)
-	Len(ctx context.Context, string2 string) (int64, error)
-	GetReaderCloser(ctx context.Context, s string) (io.ReadCloser, error)
-	GetMountReader(ctx context.Context, s string) (mount.Reader, error)
+	Len(context.Context, string) (int64, error)
+	//GetMountReader use direct read if storage have low performance effecitive ReadAt
+	GetReaderCloser(context.Context, string) (io.ReadCloser, error)
+	//GetMountReader used to support dagstore
+	GetMountReader(context.Context, string) (mount.Reader, error)
+	//GetRedirectUrl get url if storage support redirect
+	GetRedirectUrl(context.Context, string) (string, error)
 	Has(context.Context, string) (bool, error)
-	Validate(s string) error
-	CanAllocate(size int64) bool
+	Validate(string) error
+	CanAllocate(int64) bool
 }
