@@ -56,7 +56,7 @@ require (
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.2.0
-	github.com/ipfs/go-log/v2 v2.5.0
+	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/ipfs/go-merkledag v0.5.1
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-unixfs v0.3.1
@@ -66,16 +66,17 @@ require (
 	github.com/ipld/go-ipld-prime v0.16.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-buffer-pool v0.0.2
-	github.com/libp2p/go-libp2p v0.18.0-rc3
-	github.com/libp2p/go-libp2p-core v0.14.0
-	github.com/libp2p/go-libp2p-noise v0.3.0
+	github.com/libp2p/go-libp2p v0.19.1
+	github.com/libp2p/go-libp2p-core v0.15.1
+	github.com/libp2p/go-libp2p-noise v0.4.0
 	github.com/libp2p/go-libp2p-peerstore v0.6.0
-	github.com/libp2p/go-libp2p-quic-transport v0.16.0
-	github.com/libp2p/go-libp2p-tls v0.3.1
-	github.com/libp2p/go-libp2p-yamux v0.8.1
+	github.com/libp2p/go-libp2p-quic-transport v0.17.0
+	github.com/libp2p/go-libp2p-resource-manager v0.2.1
+	github.com/libp2p/go-libp2p-tls v0.4.1
+	github.com/libp2p/go-libp2p-yamux v0.9.1
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/multiformats/go-base32 v0.0.3
+	github.com/multiformats/go-base32 v0.0.4
 	github.com/multiformats/go-multiaddr v0.5.0
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.1.0
@@ -91,11 +92,10 @@ require (
 	go.mongodb.org/mongo-driver v1.8.4
 	go.opencensus.io v0.23.0
 	go.uber.org/fx v1.15.0
-	go.uber.org/multierr v1.7.0
-	go.uber.org/zap v1.19.1
+	go.uber.org/multierr v1.8.0
+	go.uber.org/zap v1.21.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/tools v0.1.9 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f
 	gorm.io/driver/mysql v1.1.1
 	gorm.io/gorm v1.21.12
 )
@@ -103,5 +103,6 @@ require (
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-commp-utils => github.com/ipfs-force-community/go-commp-utils v0.1.4-0.20220429021603-dcbcb96e4fc7
+	github.com/filecoin-project/go-fil-markets => github.com/hunjixin/go-fil-markets v1.13.3-0.20220511024045-d61f9911bade
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21
 )

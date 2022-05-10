@@ -124,8 +124,6 @@ func main() {
 				Action: marketClient,
 			}),
 	}
-
-	app.Setup()
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
@@ -224,7 +222,7 @@ func marketClient(cctx *cli.Context) error {
 	}
 	resAPI := &impl.MarketClientNodeImpl{}
 	shutdownChan := make(chan struct{})
-	_, err = builder.New(ctx,
+	closeFunc, err := builder.New(ctx,
 		// defaults
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
@@ -256,6 +254,7 @@ func marketClient(cctx *cli.Context) error {
 	if err != nil {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
+	defer closeFunc(ctx)
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
 	var marketCli clientapi.IMarketClientStruct

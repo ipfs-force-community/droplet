@@ -64,11 +64,13 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 		case <-shutdownCh:
 		case <-ctx.Done():
 		}
-		log.Warn("Shutting down...")
-		if err := srv.Shutdown(context.TODO()); err != nil {
+		log.Warn("RPC Shutting down...")
+		if err := srv.Shutdown(context.TODO()); err != nil && err != http.ErrServerClosed {
+			fmt.Println("yyyyyy")
 			log.Errorf("shutting down RPC server failed: %s", err)
 		}
-		log.Warn("Graceful shutdown successful")
+		fmt.Println("xxxxxxxx")
+		log.Warn("RPC Graceful shutdown successful")
 	}()
 
 	addr, err := multiaddr.NewMultiaddr(cfg.ListenAddress)
@@ -81,7 +83,11 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 		return err
 	}
 	log.Infof("start rpc listen %s", addr)
-	return srv.Serve(manet.NetListener(nl))
+
+	if err := srv.Serve(manet.NetListener(nl)); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 func makeSecret(apiCfg *config.API) ([]byte, error) {

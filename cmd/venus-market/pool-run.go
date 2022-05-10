@@ -76,7 +76,7 @@ func poolDaemon(cctx *cli.Context) error {
 
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
-	_, err = builder.New(ctx,
+	closeFunc, err := builder.New(ctx,
 		//defaults
 		builder.Override(new(*jwtclient.AuthClient), authClient),
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
@@ -117,6 +117,7 @@ func poolDaemon(cctx *cli.Context) error {
 	if err != nil {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
+	defer closeFunc(ctx)
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
 	mux := mux.NewRouter()

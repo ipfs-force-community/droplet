@@ -77,7 +77,6 @@ var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
 // 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
 const dealStartBufferHours uint64 = 8 * 24
-const DefaultDAGStoreDir = "dagstore"
 
 type API struct {
 	fx.In

@@ -65,7 +65,7 @@ func soloDaemon(cctx *cli.Context) error {
 
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
-	_, err = builder.New(ctx,
+	closeFunc, err := builder.New(ctx,
 		//defaults
 		// 'solo' mode doesn't needs a 'AuthClient' of venus-auth,
 		// provide a nil 'AuthClient', just for making 'NeAddrMgrImpl' happy
@@ -108,6 +108,8 @@ func soloDaemon(cctx *cli.Context) error {
 	if err != nil {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
+	defer closeFunc(ctx)
+
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
 	mux := mux.NewRouter()
