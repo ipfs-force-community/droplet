@@ -45,10 +45,7 @@ type (
 	Messager      ConnectConfig
 	Market        ConnectConfig
 	AuthNode      ConnectConfig
-	IndexProvider struct {
-		ConnectConfig
-		LatestAdvSuffix string
-	}
+	IndexProvider ConnectConfig
 )
 
 type Common struct {

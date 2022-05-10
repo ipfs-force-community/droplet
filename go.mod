@@ -105,5 +105,5 @@ replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-commp-utils => github.com/ipfs-force-community/go-commp-utils v0.1.4-0.20220429021603-dcbcb96e4fc7
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21
-	github.com/filecoin-project/index-provider => github.com/ipfs-force-community/index-provider v0.7.1-0.20220510041359-6dfcf831e6ae
+	github.com/filecoin-project/index-provider => github.com/ipfs-force-community/index-provider v0.7.1-0.20220510085639-496f68cfd649
 )

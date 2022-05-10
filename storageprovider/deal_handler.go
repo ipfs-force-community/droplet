@@ -717,7 +717,6 @@ func (storageDealPorcess *StorageDealProcessImpl) pushDealIndicesAdv(ctx context
 			VerifiedDeal:  deal.Proposal.VerifiedDeal,
 			FastRetrieval: deal.FastRetrieval,
 		}),
-		LatestAdvSuffix: storageDealPorcess.indexProvider.LatestAdvSuffix,
 		IsDel:           isDel,
 	}
 
@@ -735,8 +734,7 @@ func (storageDealPorcess *StorageDealProcessImpl) pushDealIndicesAdv(ctx context
 	}
 
 	if len(req.RetrievalAddrs) == 0 {
-		return cid.Undef, fmt.Errorf("deal provider(%s) multiaddress is null",
-			deal.Proposal.Provider.String())
+		return cid.Undef, fmt.Errorf("deal provider(%s) multiaddress is null", deal.Proposal.Provider.String())
 	}
 
 	if !isDel {

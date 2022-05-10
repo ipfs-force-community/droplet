@@ -755,8 +755,8 @@ github.com/ipfs-force-community/go-commp-utils v0.1.4-0.20220429021603-dcbcb96e4
 github.com/ipfs-force-community/go-commp-utils v0.1.4-0.20220429021603-dcbcb96e4fc7/go.mod h1:3ENlD1pZySaUout0p9ANQrY3fDFoXdqyX04J+dWpK30=
 github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21 h1:ht754GJKTx1uYy4gYUhJxxefhKqxReo/654URuB+Ksk=
 github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
-github.com/ipfs-force-community/index-provider v0.7.1-0.20220510041359-6dfcf831e6ae h1:9s1aFqwy8a+b1+Il2B4zWZ/9Mbx1LKqda489XjXv8eA=
-github.com/ipfs-force-community/index-provider v0.7.1-0.20220510041359-6dfcf831e6ae/go.mod h1:GAYrk3ZJBGBl0D/t6Q71nB85sh3XT38xdfr2p3kMPDs=
+github.com/ipfs-force-community/index-provider v0.7.1-0.20220510085639-496f68cfd649 h1:bCXSmoAfrOQNTf8/CYPKRo18IMv1S8K1L0pogULYUxY=
+github.com/ipfs-force-community/index-provider v0.7.1-0.20220510085639-496f68cfd649/go.mod h1:GAYrk3ZJBGBl0D/t6Q71nB85sh3XT38xdfr2p3kMPDs=
 github.com/ipfs-force-community/metrics v1.0.0/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs-force-community/metrics v1.0.1-0.20211022060227-11142a08b729/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs-force-community/metrics v1.0.1-0.20211228055608-9462dc86e157 h1:HkFCM7oueZC6Lnj6HyJC6gxC0qbjBlWCYg36x3omKyk=
