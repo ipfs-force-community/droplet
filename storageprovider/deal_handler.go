@@ -118,8 +118,6 @@ func NewStorageDealProcessImpl(
 		indexProvider:   indexProvider,
 	}
 
-	impl.start(context.TODO())
-
 	return impl, nil
 }
 
