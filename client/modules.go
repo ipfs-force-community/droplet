@@ -220,11 +220,16 @@ func RetrievalClientJournaler(j journal.Journal, evtType journal.EventType) func
 	}
 }
 
+func NewDealStream(h host.Host, full v1api.FullNode) *DealStream {
+	return newDealStream(h, full)
+}
+
 var MarketClientOpts = builder.Options(
 	// Markets (common)
 	builder.Override(new(*discoveryimpl.Local), NewLocalDiscovery),
 	builder.Override(new(discovery.PeerResolver), RetrievalResolver),
 	builder.Override(new(network.ClientDataTransfer), NewClientGraphsyncDataTransfer),
+	builder.Override(new(*DealStream), NewDealStream),
 
 	builder.Override(new(ClientImportMgr), NewClientImportMgr),
 	builder.Override(new(storagemarket.BlockstoreAccessor), StorageBlockstoreAccessor),

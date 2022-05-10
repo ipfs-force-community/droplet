@@ -288,7 +288,6 @@ type MarketClientConfig struct {
 	Node     Node
 	Messager Messager
 	Signer   Signer
-	Market   Market
 
 	// The maximum number of parallel online data transfers (piecestorage+retrieval)
 	SimultaneousTransfersForRetrieval uint64

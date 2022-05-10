@@ -3,7 +3,7 @@ package httptransport
 import (
 	"context"
 
-	"github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus-market/v2/types"
 )
 
 type Transport interface {

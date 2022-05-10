@@ -13,11 +13,10 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/venus-auth/log"
-	"github.com/filecoin-project/venus-market/rpc"
+	"github.com/filecoin-project/venus-market/v2/rpc"
 	"github.com/google/uuid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car/util"
@@ -60,7 +59,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
@@ -78,7 +76,6 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 )
@@ -107,8 +104,7 @@ type API struct {
 	Host         host.Host
 	Cfg          *config.MarketClientConfig
 
-	// check nil before use
-	MarketAPI marketapi.IMarket `optional:"true"`
+	DealStream *DealStream
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -274,76 +270,45 @@ func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, is
 		Proposal:        *dealProposal,
 		ClientSignature: *dealProposalSig,
 	}
-	dStream, err := network.NewFromLibp2pHost(a.Host,
-		// params duplicated from .../node/modules/client.go
-		// https://github.com/filecoin-project/lotus/pull/5961#discussion_r629768011
-		network.RetryParameters(time.Second, 5*time.Minute, 15, 5),
-	).NewDealStream(ctx, *mi.PeerId)
-	if err != nil {
-		return nil, xerrors.Errorf("opening dealstream to %s/%s failed: %w", params.Miner, *mi.PeerId, err)
-	}
-
-	if err = dStream.WriteDealProposal(network.Proposal{
-		FastRetrieval: true,
-		DealProposal:  dealProposalSigned,
-		Piece: &storagemarket.DataRef{
-			TransferType: storagemarket.TTManual,
-			Root:         params.Data.Root,
-			PieceCid:     params.Data.PieceCid,
-			PieceSize:    params.Data.PieceSize,
-		},
-	}); err != nil {
-		return nil, xerrors.Errorf("sending deal proposal failed: %w", err)
-	}
-
-	resp, _, err := dStream.ReadDealResponse()
-	if err != nil {
-		return nil, xerrors.Errorf("reading proposal response failed: %w", err)
-	}
 
 	dealProposalIpld, err := cborutil.AsIpld(dealProposalSigned)
 	if err != nil {
 		return nil, xerrors.Errorf("serializing proposal node failed: %w", err)
 	}
+	proposalCID := dealProposalIpld.Cid()
 
-	if !dealProposalIpld.Cid().Equals(resp.Response.Proposal) {
-		return nil, xerrors.Errorf("provider returned proposal cid %s but we expected %s", resp.Response.Proposal, dealProposalIpld.Cid())
+	dealParams, err := a.getDealParams(ctx, params.Data.Root, dealProposalSigned, proposalCID)
+	if err != nil {
+		return nil, err
 	}
 
-	if resp.Response.State != storagemarket.StorageDealWaitingForData {
-		return nil, xerrors.Errorf("provider returned unexpected state %d for proposal %s, with message: %s", resp.Response.State, resp.Response.Proposal, resp.Response.Message)
+	dealResp, err := a.DealStream.SendDealProposal(ctx, *mi.PeerId, dealParams)
+	if err != nil {
+		return nil, err
 	}
-
-	go func() {
-		if err := a.sendDealParams(ctx, params.Data.Root, dealProposalSigned, dealProposalIpld.Cid()); err != nil {
-			log.Errorf("send deal params failed: %v", err)
-		}
-	}()
-
-	return &resp.Response.Proposal, nil
+	if !dealResp.Accepted {
+		return nil, xerrors.New(dealResp.Message)
+	}
+	return &proposalCID, nil
 }
 
-func (a *API) sendDealParams(ctx context.Context, dealDataRoot cid.Cid, prop *market.ClientDealProposal, dealProposalCID cid.Cid) error {
-	if a.MarketAPI == nil {
-		return xerrors.New("not connect to market server, manual import deal data")
-	}
-
+func (a *API) getDealParams(ctx context.Context, dealDataRoot cid.Cid, prop *market.ClientDealProposal, dealProposalCID cid.Cid) (*types2.DealParams, error) {
 	tokenPath, err := a.Cfg.HomeJoin("token")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	tokenByte, err := ioutil.ReadFile(tokenPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	localIP, err := getLocalIP()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	port, err := getPortFromAddr(a.Cfg.API.ListenAddress)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	req := markettypes.HttpRequest{
@@ -353,15 +318,15 @@ func (a *API) sendDealParams(ctx context.Context, dealDataRoot cid.Cid, prop *ma
 
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return xerrors.Errorf("marshalling request parameters: %w", err)
+		return nil, xerrors.Errorf("marshalling request parameters: %w", err)
 	}
 
 	ds, err := a.ClientDealPieceCID(ctx, dealDataRoot)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	dealParams := types2.DealParams{
+	dealParams := &types2.DealParams{
 		DealUUID:           uuid.New(),
 		ClientDealProposal: *prop,
 		DealDataRoot:       dealDataRoot,
@@ -375,16 +340,7 @@ func (a *API) sendDealParams(ctx context.Context, dealDataRoot cid.Cid, prop *ma
 	log.Infof("deal params, proposal cid %v, deal data root %v, piece cid %v, piece size %v, payload size %v, url %v", dealProposalCID,
 		dealParams.DealDataRoot, prop.Proposal.PieceCID, prop.Proposal.PieceSize, ds.PayloadSize, req.URL)
 
-	ret, err := a.MarketAPI.SendMarketDealParams(context.Background(), dealParams)
-	if err != nil {
-		return err
-	}
-	if !ret.Accepted {
-		return xerrors.Errorf("rejected reason %v", ret.Reason)
-	}
-	log.Infof("deal(%v) accepted, data root %v", dealParams.DealUUID, dealDataRoot)
-
-	return nil
+	return dealParams, nil
 }
 
 func (a *API) ClientListDeals(ctx context.Context) ([]types.DealInfo, error) {

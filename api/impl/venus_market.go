@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/go-address"
-	cborutil "github.com/filecoin-project/go-cbor-util"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -36,7 +35,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/retrievalprovider"
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 
-	types2 "github.com/filecoin-project/venus-market/types"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -60,7 +58,6 @@ type MarketNodeImpl struct {
 	DataTransfer      network.ProviderDataTransfer
 	DealPublisher     *storageprovider.DealPublisher
 	DealAssigner      storageprovider.DealAssiger
-	DealTransport     *storageprovider.DealTransport
 
 	Messager                                    clients2.IMixMessage
 	StorageAsk                                  storageprovider.IStorageAsk
@@ -827,46 +824,4 @@ func (m MarketNodeImpl) GetReadUrl(ctx context.Context, s string) (string, error
 
 func (m MarketNodeImpl) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
 	panic("not support")
-}
-
-func (m MarketNodeImpl) SendMarketDealParams(ctx context.Context, dealParam types.DealParams) (*types.ProviderDealRejectionInfo, error) {
-	dealProposalIpld, err := cborutil.AsIpld(&dealParam.ClientDealProposal)
-	if err != nil {
-		return nil, xerrors.Errorf("serializing proposal node failed: %w", err)
-	}
-	proposalCID := dealProposalIpld.Cid()
-	deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, proposalCID)
-	if err != nil {
-		return nil, err
-	}
-	if err := storageprovider.CheckDealStatus(deal); err != nil {
-		return nil, err
-	}
-	if len(deal.Ref.Params) != 0 {
-		return nil, xerrors.Errorf("deal ref params already exist: %v", proposalCID)
-	}
-	deal.PayloadSize = dealParam.Transfer.Size
-	deal.Ref.Root = dealParam.DealDataRoot
-	deal.Ref.Params = dealParam.Transfer.Params
-	deal.Ref.TransferType = dealParam.Transfer.Type
-	deal.Ref.PieceCid = &deal.ClientDealProposal.Proposal.PieceCID
-	deal.Ref.PieceSize = deal.ClientDealProposal.Proposal.PieceSize.Unpadded()
-	if err := m.Repo.StorageDealRepo().SaveDeal(ctx, deal); err != nil {
-		return nil, err
-	}
-
-	ti := &types2.TransportInfo{
-		Transfer:    dealParam.Transfer,
-		ProposalCID: dealProposalIpld.Cid(),
-	}
-	go func() {
-		if err := m.DealTransport.TransportOne(ctx, ti, deal); err != nil {
-			log.Errorf("deal %v transport failed %v", ti.ProposalCID, err)
-		}
-	}()
-
-	return &types.ProviderDealRejectionInfo{
-		Accepted: true,
-		Reason:   "",
-	}, nil
 }

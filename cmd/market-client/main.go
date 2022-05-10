@@ -4,8 +4,6 @@ import (
 	"context"
 	"os"
 
-	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
-	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 
@@ -22,7 +20,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/client"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/fundmgr"
-	"github.com/filecoin-project/venus-market/v2/migration"
 	"github.com/filecoin-project/venus-market/v2/models"
 	"github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/paychmgr"
@@ -30,7 +27,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus-market/v2/utils"
-	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
 
@@ -60,15 +56,6 @@ var (
 	NodeTokenFlag = &cli.StringFlag{
 		Name:  "node-token",
 		Usage: "token for connect full node",
-	}
-
-	MarketUrlFlag = &cli.StringFlag{
-		Name:  "market-url",
-		Usage: "url to connect to venus market",
-	}
-	MarketTokenFlag = &cli.StringFlag{
-		Name:  "market-token",
-		Usage: "token for connect venus market",
 	}
 
 	MessagerUrlFlag = &cli.StringFlag{
@@ -127,8 +114,6 @@ func main() {
 				Flags: []cli.Flag{
 					NodeUrlFlag,
 					NodeTokenFlag,
-					MarketUrlFlag,
-					MarketTokenFlag,
 					MessagerUrlFlag,
 					MessagerTokenFlag,
 					AuthTokenFlag,
@@ -191,13 +176,6 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 		cfg.DefaultMarketAddress = config.Address(addr)
 	}
 
-	if cctx.IsSet(MarketUrlFlag.Name) {
-		cfg.Market.Url = cctx.String(MarketUrlFlag.Name)
-	}
-	if cctx.IsSet(MarketTokenFlag.Name) {
-		cfg.Market.Token = cctx.String(MarketTokenFlag.Name)
-	}
-
 	return nil
 }
 
@@ -226,11 +204,6 @@ func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		if err := migration.TryToMigrateClientConfig(cfg); err != nil {
-			return nil, xerrors.Errorf("try to migrate config failed %v", err)
-		}
-
 		err = flagData(cctx, cfg)
 		if err != nil {
 			return nil, xerrors.Errorf("parser data from flag %w", err)
@@ -264,10 +237,6 @@ func marketClient(cctx *cli.Context) error {
 		builder.Override(new(types2.ShutdownChan), shutdownChan),
 
 		config.ConfigClientOpts(cfg),
-
-		builder.ApplyIf(func(s *builder.Settings) bool {
-			return len(cfg.Market.Url) > 0 && len(cfg.Market.Token) > 0
-		}, builder.Override(new(marketapi.IMarket), clients2.MarketClient)),
 
 		clients2.ClientsOpts(false, "", &cfg.Messager, &cfg.Signer),
 		models.DBOptions(false, nil),

@@ -7,13 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-
-	"github.com/filecoin-project/go-fil-markets/piecestore"
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
-
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/filestore"
@@ -30,6 +23,7 @@ import (
 
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	types2 "github.com/filecoin-project/venus-market/v2/types"
+	vtypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -118,9 +112,9 @@ type DataRef struct {
 	TransferType string `gorm:"column:transfer_type;type:varchar(128);"`
 	Root         DBCid  `gorm:"column:root;type:varchar(256);"`
 
-	Params     []byte                `gorm:"column:params;type:blob;"`
-	State      types2.TransportState `gorm:"column:state;type:int;"`
-	OutputFile string                `gorm:"column:output_file;type:varchar(256);"`
+	Params   []byte                `gorm:"column:params;type:blob;"`
+	State    types2.TransportState `gorm:"column:state;type:int;"`
+	DealUUID vtypes.UUID           `gorm:"column:deal_uuid;type:varchar(256);"`
 
 	//todo remove filed below
 	PieceCid     DBCid                 `gorm:"column:piece_cid;type:varchar(256);"`
@@ -190,7 +184,7 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 			Root:         DBCid(src.Ref.Root),
 			Params:       src.Ref.Params,
 			State:        types2.TransportState(src.Ref.State),
-			OutputFile:   src.Ref.OutputFile,
+			DealUUID:     src.Ref.DealUUID,
 			PieceSize:    src.Ref.PieceSize,
 			RawBlockSize: src.Ref.RawBlockSize,
 		}
@@ -250,7 +244,7 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 			Root:         src.Ref.Root.cid(),
 			Params:       src.Ref.Params,
 			State:        int64(src.Ref.State),
-			OutputFile:   src.Ref.OutputFile,
+			DealUUID:     src.Ref.DealUUID,
 			PieceCid:     src.Ref.PieceCid.cidPtr(),
 			PieceSize:    src.Ref.PieceSize,
 			RawBlockSize: src.Ref.RawBlockSize,
@@ -310,6 +304,16 @@ func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.Min
 func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error) {
 	var md storageDeal
 	err := sdr.WithContext(ctx).Take(&md, "proposal_cid = ?", DBCid(proposalCid).String()).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return toStorageDeal(&md)
+}
+
+func (sdr *storageDealRepo) GetDealByDealUUID(ctx context.Context, dealUUID vtypes.UUID) (*types.MinerDeal, error) {
+	var md storageDeal
+	err := sdr.WithContext(ctx).Take(&md, "ref_deal_uuid = ?", dealUUID).Error
 	if err != nil {
 		return nil, err
 	}

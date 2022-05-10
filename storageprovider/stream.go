@@ -172,7 +172,9 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		return
 	}
 
-	err = storageDealStream.dealProcess.AcceptDeal(ctx, deal)
+	delaVerifyErr := storageDealStream.dealProcess.VerifyDeal(ctx, deal)
+
+	err = storageDealStream.dealProcess.AcceptDeal(ctx, deal, delaVerifyErr)
 	if err != nil {
 		log.Errorf("fail accept deal %s %w", proposalNd.Cid(), err)
 	}

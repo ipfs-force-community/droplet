@@ -86,6 +86,8 @@ type StorageProviderImpl struct {
 	transferProcess IDatatransferHandler
 	storageReceiver smnet.StorageReceiver
 	minerMgr        minermgr.IAddrMgr
+
+	boostStream *BoostStorageDealStream
 }
 
 type internalProviderEvent struct {
@@ -119,6 +121,7 @@ func NewStorageProvider(
 	connManager *connmanager.ConnManager,
 	net smnet.StorageMarketNetwork,
 	dealProcess StorageDealHandler,
+	boostStream *BoostStorageDealStream,
 ) (StorageProvider, error) {
 
 	spV2 := &StorageProviderImpl{
@@ -138,6 +141,8 @@ func NewStorageProvider(
 		minerMgr: minerMgr,
 
 		dealProcess: dealProcess,
+
+		boostStream: boostStream,
 	}
 
 	spV2.transferProcess = NewDataTransferProcess(dealProcess, spV2.dealStore)
@@ -161,6 +166,9 @@ func (p *StorageProviderImpl) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// set boost stream
+	p.boostStream.Start()
 
 	go func() {
 		err := p.start(ctx)
@@ -224,6 +232,8 @@ func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.M
 // Stop terminates processing of deals on a StorageProvider
 func (p *StorageProviderImpl) Stop() error {
 	p.unsubDataTransfer()
+
+	p.boostStream.Stop()
 
 	return p.net.StopHandlingRequests()
 }

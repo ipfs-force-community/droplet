@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-	"github.com/filecoin-project/venus-market/models/badger"
+	"github.com/filecoin-project/venus-market/v2/models/badger"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"

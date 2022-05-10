@@ -17,7 +17,7 @@ import (
 	p2phttp "github.com/libp2p/go-libp2p-http"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus-market/v2/types"
 )
 
 var log = logger.Logger("http-transport")

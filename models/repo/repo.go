@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -27,6 +28,7 @@ type StorageDealRepo interface {
 	GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error)
 	GetDealsByPieceCidAndStatus(ctx context.Context, piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
 	GetDealByAddrAndStatus(ctx context.Context, addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
+	GetDealByDealUUID(ctx context.Context, dealUUID types2.UUID) (*types.MinerDeal, error)
 	UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState types.PieceStatus) error
 	GetDeals(ctx context.Context, mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error)
 	GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus) ([]*types.MinerDeal, error)

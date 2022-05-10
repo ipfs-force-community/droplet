@@ -217,6 +217,7 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(*connmanager.ConnManager), NewConnManager),
 		builder.Override(new(smnet.StorageMarketNetwork), NewStorageMarketNetwork),
 		builder.Override(new(StorageDealHandler), NewStorageDealProcessImpl),
+		builder.Override(new(*BoostStorageDealStream), NewBoostStorageDealStream),
 		builder.Override(new(StorageProvider), NewStorageProvider),
 		builder.Override(new(*DealPublisher), NewDealPublisherWrapper(cfg)),
 		builder.Override(HandleDealsKey, HandleDeals),

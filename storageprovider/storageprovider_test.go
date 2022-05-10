@@ -96,9 +96,11 @@ func setup(t *testing.T) StorageProvider {
 	if err != nil {
 		t.Error(err)
 	}
+	dealTransport := &DealTransport{}
+	boostStream := NewBoostStorageDealStream(h, r, net, dealProcess, dealTransport, nil, &mock.MockFullNode{}, fs)
 
 	//todo how to mock dagstore
-	provider, err := NewStorageProvider(ask, config.DefaultMarketConfig, dt, spn, r, addrMgr, nil, fs, connManager, net, dealProcess)
+	provider, err := NewStorageProvider(ask, config.DefaultMarketConfig, dt, spn, r, addrMgr, nil, fs, connManager, net, dealProcess, boostStream)
 	if err != nil {
 		t.Error(err)
 	}

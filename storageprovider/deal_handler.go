@@ -39,7 +39,8 @@ import (
 const DealMaxLabelSize = 256
 
 type StorageDealHandler interface {
-	AcceptDeal(ctx context.Context, deal *types.MinerDeal) error
+	VerifyDeal(ctx context.Context, deal *types.MinerDeal) error
+	AcceptDeal(ctx context.Context, deal *types.MinerDeal, dealVerifyErr error) error
 	HandleOff(ctx context.Context, deal *types.MinerDeal) error
 	HandleError(ctx context.Context, deal *types.MinerDeal, err error) error
 	HandleReject(ctx context.Context, deal *types.MinerDeal, event storagemarket.StorageDealStatus, err error) error
@@ -104,78 +105,76 @@ func NewStorageDealProcessImpl(
 }
 
 // StorageDealUnknown->StorageDealValidating(ValidateDealProposal)->StorageDealAcceptWait(DecideOnProposal)->StorageDealWaitingForData
-func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
-	storageDealPorcess.peerTagger.TagPeer(minerDeal.Client, minerDeal.ProposalCid.String())
-
+func (storageDealPorcess *StorageDealProcessImpl) VerifyDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
 	tok, curEpoch, err := storageDealPorcess.spn.GetChainHead(ctx)
 	if err != nil {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("node error getting most recent state id: %w", err))
+		return xerrors.Errorf("node error getting most recent state id: %w", err)
 	}
 
 	if err := providerutils.VerifyProposal(ctx, minerDeal.ClientDealProposal, tok, storageDealPorcess.spn.VerifySignature); err != nil {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("verifying StorageDealProposal: %w", err))
+		return xerrors.Errorf("verifying StorageDealProposal: %w", err)
 	}
 
 	proposal := minerDeal.Proposal
 
 	// TODO: 判断 proposal.Provider 在本矿池中
 	if !storageDealPorcess.minerMgr.Has(ctx, proposal.Provider) {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("incorrect provider for deal"))
+		return xerrors.Errorf("incorrect provider for deal")
 	}
 
 	if len(proposal.Label) > DealMaxLabelSize {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("deal label can be at most %d bytes, is %d", DealMaxLabelSize, len(proposal.Label)))
+		return xerrors.Errorf("deal label can be at most %d bytes, is %d", DealMaxLabelSize, len(proposal.Label))
 	}
 
 	if err := proposal.PieceSize.Validate(); err != nil {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("proposal piece size is invalid: %w", err))
+		return xerrors.Errorf("proposal piece size is invalid: %w", err)
 	}
 
 	if !proposal.PieceCID.Defined() {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("proposal PieceCID undefined"))
+		return xerrors.Errorf("proposal PieceCID undefined")
 	}
 
 	if proposal.PieceCID.Prefix() != market.PieceCIDPrefix {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("proposal PieceCID had wrong prefix"))
+		return xerrors.Errorf("proposal PieceCID had wrong prefix")
 	}
 
 	if proposal.EndEpoch <= proposal.StartEpoch {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("proposal end before proposal start"))
+		return xerrors.Errorf("proposal end before proposal start")
 	}
 
 	if curEpoch > proposal.StartEpoch {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("deal start epoch has already elapsed"))
+		return xerrors.Errorf("deal start epoch has already elapsed")
 	}
 
 	// Check that the delta between the start and end epochs (the deal
 	// duration) is within acceptable bounds
 	minDuration, maxDuration := market.DealDurationBounds(proposal.PieceSize)
 	if proposal.Duration() < minDuration || proposal.Duration() > maxDuration {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("deal duration out of bounds (min, max, provided): %d, %d, %d", minDuration, maxDuration, proposal.Duration()))
+		return xerrors.Errorf("deal duration out of bounds (min, max, provided): %d, %d, %d", minDuration, maxDuration, proposal.Duration())
 	}
 
 	// Check that the proposed end epoch isn't too far beyond the current epoch
 	maxEndEpoch := curEpoch + miner.MaxSectorExpirationExtension
 	if proposal.EndEpoch > maxEndEpoch {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("invalid deal end epoch %d: cannot be more than %d past current epoch %d", proposal.EndEpoch, miner.MaxSectorExpirationExtension, curEpoch))
+		return xerrors.Errorf("invalid deal end epoch %d: cannot be more than %d past current epoch %d", proposal.EndEpoch, miner.MaxSectorExpirationExtension, curEpoch)
 	}
 
 	pcMin, pcMax, err := storageDealPorcess.spn.DealProviderCollateralBounds(ctx, proposal.PieceSize, proposal.VerifiedDeal)
 	if err != nil {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("node error getting collateral bounds: %w", err))
+		return xerrors.Errorf("node error getting collateral bounds: %w", err)
 	}
 
 	if proposal.ProviderCollateral.LessThan(pcMin) {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("proposed provider collateral below minimum: %s < %s", proposal.ProviderCollateral, pcMin))
+		return xerrors.Errorf("proposed provider collateral below minimum: %s < %s", proposal.ProviderCollateral, pcMin)
 	}
 
 	if proposal.ProviderCollateral.GreaterThan(pcMax) {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("proposed provider collateral above maximum: %s > %s", proposal.ProviderCollateral, pcMax))
+		return xerrors.Errorf("proposed provider collateral above maximum: %s > %s", proposal.ProviderCollateral, pcMax)
 	}
 
 	ask, err := storageDealPorcess.ask.GetAsk(ctx, proposal.Provider)
 	if err != nil {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("failed to get ask for %s: %w", proposal.Provider, err))
+		return xerrors.Errorf("failed to get ask for %s: %w", proposal.Provider, err)
 	}
 
 	askPrice := ask.Ask.Price
@@ -185,48 +184,56 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 
 	minPrice := big.Div(big.Mul(askPrice, abi.NewTokenAmount(int64(proposal.PieceSize))), abi.NewTokenAmount(1<<30))
 	if proposal.StoragePricePerEpoch.LessThan(minPrice) {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting,
-			xerrors.Errorf("storage price per epoch less than asking price: %s < %s", proposal.StoragePricePerEpoch, minPrice))
+		return xerrors.Errorf("storage price per epoch less than asking price: %s < %s", proposal.StoragePricePerEpoch, minPrice)
 	}
 
 	if proposal.PieceSize < ask.Ask.MinPieceSize {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting,
-			xerrors.Errorf("piece size less than minimum required size: %d < %d", proposal.PieceSize, ask.Ask.MinPieceSize))
+		return xerrors.Errorf("piece size less than minimum required size: %d < %d", proposal.PieceSize, ask.Ask.MinPieceSize)
 	}
 
 	if proposal.PieceSize > ask.Ask.MaxPieceSize {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting,
-			xerrors.Errorf("piece size more than maximum allowed size: %d > %d", proposal.PieceSize, ask.Ask.MaxPieceSize))
+		return xerrors.Errorf("piece size more than maximum allowed size: %d > %d", proposal.PieceSize, ask.Ask.MaxPieceSize)
 	}
 
 	// check market funds
 	clientMarketBalance, err := storageDealPorcess.spn.GetBalance(ctx, proposal.Client, tok)
 	if err != nil {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("node error getting client market balance failed: %w", err))
+		return xerrors.Errorf("node error getting client market balance failed: %w", err)
 	}
 
 	// This doesn't guarantee that the client won't withdraw / lock those funds
 	// but it's a decent first filter
 	if clientMarketBalance.Available.LessThan(proposal.ClientBalanceRequirement()) {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("clientMarketBalance.Available too small: %d < %d", clientMarketBalance.Available, proposal.ClientBalanceRequirement()))
+		return xerrors.Errorf("clientMarketBalance.Available too small: %d < %d", clientMarketBalance.Available, proposal.ClientBalanceRequirement())
 	}
 
 	// Verified deal checks
 	if proposal.VerifiedDeal {
 		dataCap, err := storageDealPorcess.spn.GetDataCap(ctx, proposal.Client, tok)
 		if err != nil {
-			return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("node error fetching verified data cap: %w", err))
+			return xerrors.Errorf("node error fetching verified data cap: %w", err)
 		}
 		if dataCap == nil {
-			return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("node error fetching verified data cap: data cap missing -- client not verified"))
+			return xerrors.Errorf("node error fetching verified data cap: data cap missing -- client not verified")
 		}
 		pieceSize := big.NewIntUnsigned(uint64(proposal.PieceSize))
 		if dataCap.LessThan(pieceSize) {
-			return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, xerrors.Errorf("verified deal DataCap too small for proposed piece size"))
+			return xerrors.Errorf("verified deal DataCap too small for proposed piece size")
 		}
 	}
 
-	err = storageDealPorcess.SendSignedResponse(ctx, proposal.Provider, &network.Response{
+	return nil
+}
+
+// StorageDealUnknown->StorageDealValidating(ValidateDealProposal)->StorageDealAcceptWait(DecideOnProposal)->StorageDealWaitingForData
+func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context, minerDeal *types.MinerDeal, dealVerifyErr error) error {
+	storageDealPorcess.peerTagger.TagPeer(minerDeal.Client, minerDeal.ProposalCid.String())
+
+	if dealVerifyErr != nil {
+		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, dealVerifyErr)
+	}
+
+	err := storageDealPorcess.SendSignedResponse(ctx, minerDeal.Proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealWaitingForData,
 		Proposal: minerDeal.ProposalCid,
 	})

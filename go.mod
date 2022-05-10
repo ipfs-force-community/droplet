@@ -107,4 +107,5 @@ replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-commp-utils => github.com/ipfs-force-community/go-commp-utils v0.1.4-0.20220429021603-dcbcb96e4fc7
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21
+	github.com/filecoin-project/venus => /Users/haoziyan/Desktop/code/github.com/filecoin-project/venus
 )

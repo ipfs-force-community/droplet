@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	types2 "github.com/filecoin-project/venus-market/v2/types"
+	vtypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
@@ -82,6 +83,7 @@ func getTestMinerDeal(t *testing.T) *types.MinerDeal {
 			Root:         c,
 			Params:       []byte("params"),
 			State:        int64(types2.Transporting),
+			DealUUID:     vtypes.NewUUID(),
 			PieceCid:     &c,
 			PieceSize:    1024,
 			RawBlockSize: 1024,

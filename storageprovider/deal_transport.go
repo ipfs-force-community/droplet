@@ -9,10 +9,10 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/venus-market/config"
-	"github.com/filecoin-project/venus-market/models/repo"
-	"github.com/filecoin-project/venus-market/transport/httptransport"
-	types2 "github.com/filecoin-project/venus-market/types"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/filecoin-project/venus-market/v2/transport/httptransport"
+	types2 "github.com/filecoin-project/venus-market/v2/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"github.com/ipfs/go-cid"
@@ -71,7 +71,7 @@ func NewDealTransport(mctx metrics.MetricsCtx,
 	return dt, nil
 }
 
-func (dt *DealTransport) TransportOne(ctx context.Context, ti *types2.TransportInfo, deal *types.MinerDeal) error {
+func (dt *DealTransport) TransportData(ctx context.Context, ti *types2.TransportInfo, deal *types.MinerDeal) error {
 	deal, err := dt.waitDealReady(dt.ctx, deal)
 	if err != nil {
 		return err
@@ -99,7 +99,7 @@ func (dt *DealTransport) TransportOne(ctx context.Context, ti *types2.TransportI
 	log.Infof("deal %v output file %s", ti.ProposalCID, ti.OutputFile)
 
 	deal.Ref.State = int64(types2.Transporting)
-	deal.Ref.OutputFile = ti.OutputFile
+	deal.PiecePath = tmpFile.Path()
 	if err := dt.dealStore.SaveDeal(dt.ctx, deal); err != nil {
 		return xerrors.Errorf("save deal %s failed: %v", ti.ProposalCID, err)
 	}
@@ -155,8 +155,7 @@ func (dt *DealTransport) verifyPieceCid(ctx context.Context, filePath string, d 
 	return nil
 }
 
-func (dt *DealTransport) transportCompleted(ctx context.Context, deal *types.MinerDeal, piecePath filestore.Path) error {
-	deal.PiecePath = piecePath
+func (dt *DealTransport) transportCompleted(ctx context.Context, deal *types.MinerDeal) error {
 	deal.MetadataPath = ""
 	deal.Ref.State = int64(types2.TransportCompleted)
 	log.Infof("deal %s piece path: %s", deal.ProposalCid, deal.PiecePath)
@@ -218,7 +217,7 @@ func (dt *DealTransport) startTransport(ctx context.Context, ti *types2.Transpor
 	}
 	log.Infof("deal %s commP matched successfully: deal-data verified", ti.ProposalCID)
 
-	return dt.transportCompleted(ctx, deal, filestore.Path(filepath.Base(deal.Ref.OutputFile)))
+	return dt.transportCompleted(ctx, deal)
 }
 
 func (dt *DealTransport) waitForTransferFinish(ctx context.Context, handler httptransport.Handler, info *types2.TransportInfo) error {
@@ -276,14 +275,14 @@ func (dt *DealTransport) restartTransport(ctx context.Context) error {
 		if deal.Ref.State == int64(types2.Transporting) {
 			continue
 		}
-		f, err := os.Stat(deal.Ref.OutputFile)
+		f, err := dt.fs.Open(deal.PiecePath)
 		if err != nil {
-			log.Warnf("deal %s stat %s failed %v", deal.ProposalCid, deal.Ref.OutputFile, err)
+			log.Warnf("deal %v open file [PiecePath: %s] failed %v", deal.ProposalCid, deal.PiecePath, err)
 			continue
 		}
 		info := &types2.TransportInfo{
 			ProposalCID: deal.ProposalCid,
-			OutputFile:  deal.Ref.OutputFile,
+			OutputFile:  string(f.OsPath()),
 			Transfer: types.Transfer{
 				Type:   deal.Ref.TransferType,
 				Params: deal.Ref.Params,
@@ -291,6 +290,7 @@ func (dt *DealTransport) restartTransport(ctx context.Context) error {
 			},
 			NBytesReceived: f.Size(),
 		}
+		_ = f.Close()
 
 		go func(info *types2.TransportInfo, deal *types.MinerDeal) {
 			deal, err = dt.waitDealReady(ctx, deal)
@@ -298,6 +298,7 @@ func (dt *DealTransport) restartTransport(ctx context.Context) error {
 				log.Error(err)
 				return
 			}
+			log.Infof("start transport data %v", deal.ProposalCid)
 			if err := dt.startTransport(ctx, info, deal); err != nil {
 				log.Errorf("deal %v transport data failed %v", info, err)
 			}
