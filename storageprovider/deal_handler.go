@@ -4,16 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+
 	provider "github.com/filecoin-project/index-provider"
 	"github.com/filecoin-project/index-provider/metadata"
 	adminserver "github.com/filecoin-project/index-provider/server/admin/http"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/libp2p/go-libp2p-core/host"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
-	"io"
-	"net/http"
-	"os"
-	"strings"
 
 	"github.com/ipfs/go-cid"
 	carv2 "github.com/ipld/go-car/v2"
@@ -720,6 +721,24 @@ func (storageDealPorcess *StorageDealProcessImpl) pushDealIndicesAdv(ctx context
 		IsDel:           isDel,
 	}
 
+	mInfo, err := storageDealPorcess.spn.StateMinerInfo(ctx, deal.Proposal.Provider, vTypes.EmptyTSK)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	for _, addrBytes := range mInfo.Multiaddrs {
+		addr, err := ma.NewMultiaddrBytes(addrBytes)
+		if err != nil {
+			continue
+		}
+		req.RetrievalAddrs = append(req.RetrievalAddrs, addr.String())
+	}
+
+	if len(req.RetrievalAddrs) == 0 {
+		return cid.Undef, fmt.Errorf("deal provider(%s) multiaddress is null",
+			deal.Proposal.Provider.String())
+	}
+
 	if !isDel {
 		indices, err := storageDealPorcess.dagStore.GetIterableIndexForPiece(deal.Proposal.PieceCID)
 		if err != nil {
@@ -736,15 +755,6 @@ func (storageDealPorcess *StorageDealProcessImpl) pushDealIndicesAdv(ctx context
 			return cid.Undef, err
 		}
 		req.Indices = idxSteps
-	}
-
-	addrs := storageDealPorcess.host.Addrs()
-
-	for _, a := range addrs {
-		s := a.String()
-		if !strings.Contains(s, "127.0.0.1") && !strings.Contains(s, "::1") {
-			req.RetrievalAddrs = append(req.RetrievalAddrs, a.String())
-		}
 	}
 
 	body := bytes.NewBuffer(nil)
@@ -773,5 +783,4 @@ func (storageDealPorcess *StorageDealProcessImpl) pushDealIndicesAdv(ctx context
 	}
 
 	return advRes.AdvId, nil
-
 }
