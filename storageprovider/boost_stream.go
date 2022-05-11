@@ -171,13 +171,18 @@ func (stream *BoostStorageDealStream) HandleNewDealStream(s libp2pnetwork.Stream
 		log.Errorf("save deal state %v failed %v", storagemarket.StorageDealWaitingForData, err)
 		return
 	}
-	ti := &types2.TransportInfo{
-		ProposalCID: proposalCID,
-		Transfer:    proposal.Transfer,
-	}
+
 	go func() {
-		if err := stream.dealTransport.TransportData(ctx, ti, deal); err != nil {
-			log.Warnf("failed to transport deal %v", err)
+		if deal.Ref.TransferType == types2.TTHttp || deal.Ref.TransferType == types2.TTLibp2p {
+			ti := &types2.TransportInfo{
+				ProposalCID: proposalCID,
+				Transfer:    proposal.Transfer,
+			}
+			if err := stream.dealTransport.TransportData(ctx, ti, deal); err != nil {
+				log.Warnf("failed to transport deal %v", err)
+			}
+		} else {
+			log.Infof("deal %v need manual import data", proposalCID)
 		}
 	}()
 }

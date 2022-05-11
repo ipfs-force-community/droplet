@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -104,7 +105,8 @@ type API struct {
 	Host         host.Host
 	Cfg          *config.MarketClientConfig
 
-	DealStream *DealStream
+	DealStream  *DealStream
+	AuthTokenDB *AuthTokenDB
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -136,7 +138,7 @@ func (a *API) ClientStatelessDeal(ctx context.Context, params *types.StartDealPa
 
 func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, isStateless bool) (*cid.Cid, error) {
 	if isStateless {
-		if params.Data.TransferType != storagemarket.TTManual {
+		if params.Data.TransferType != storagemarket.TTManual && params.Data.TransferType != markettypes.TTHttp && params.Data.TransferType != markettypes.TTLibp2p {
 			return nil, xerrors.Errorf("invalid transfer type %s for stateless storage deal", params.Data.TransferType)
 		}
 		if !params.EpochPrice.IsZero() {
@@ -277,7 +279,7 @@ func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, is
 	}
 	proposalCID := dealProposalIpld.Cid()
 
-	dealParams, err := a.getDealParams(ctx, params.Data.Root, dealProposalSigned, proposalCID)
+	dealParams, err := a.getDealParams(ctx, params.Data, dealProposalSigned, proposalCID)
 	if err != nil {
 		return nil, err
 	}
@@ -292,28 +294,94 @@ func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, is
 	return &proposalCID, nil
 }
 
-func (a *API) getDealParams(ctx context.Context, dealDataRoot cid.Cid, prop *market.ClientDealProposal, dealProposalCID cid.Cid) (*types2.DealParams, error) {
-	tokenPath, err := a.Cfg.HomeJoin("token")
+func (a *API) getDealParams(ctx context.Context, ref *storagemarket.DataRef, prop *market.ClientDealProposal, dealProposalCID cid.Cid) (*types2.DealParams, error) {
+	carPath, err := a.importManager().CARPathFor(ctx, ref.Root)
 	if err != nil {
 		return nil, err
 	}
+	fileInfo, err := os.Stat(carPath)
+	if err != nil {
+		return nil, err
+	}
+	fileSize := fileInfo.Size()
 
-	tokenByte, err := ioutil.ReadFile(tokenPath)
-	if err != nil {
-		return nil, err
-	}
-	localIP, err := getLocalIP()
-	if err != nil {
-		return nil, err
-	}
-	port, err := getPortFromAddr(a.Cfg.API.ListenAddress)
-	if err != nil {
-		return nil, err
-	}
+	var req markettypes.HttpRequest
+	if ref.TransferType == markettypes.TTLibp2p {
+		authToken, err := GenerateAuthToken()
+		if err != nil {
+			return nil, xerrors.Errorf("failed generate auth token %v", err)
+		}
+		authVal := &markettypes.AuthValue{
+			ID:          uuid.NewString(),
+			ProposalCid: dealProposalCID,
+			PayloadCid:  ref.Root,
+			Size:        uint64(fileSize),
+		}
+		if err := a.AuthTokenDB.Put(ctx, authToken, authVal); err != nil {
+			return nil, xerrors.Errorf("failed to save auth ")
+		}
 
-	req := markettypes.HttpRequest{
-		URL:     fmt.Sprintf("http://%s:%s/%s/%s", localIP, port, rpc.DealsPrefix, prop.Proposal.PieceCID),
-		Headers: map[string]string{"Authorization": "Bearer " + string(tokenByte)},
+		req = markettypes.HttpRequest{
+			URL: "libp2p://" + a.Host.Addrs()[0].String() + "/p2p/" + a.Host.ID().Pretty(),
+			Headers: map[string]string{
+				"Authorization": BasicAuthHeader("", authToken),
+			},
+		}
+	} else if ref.TransferType == markettypes.TTHttp {
+		tokenPath, err := a.Cfg.HomeJoin("token")
+		if err != nil {
+			return nil, err
+		}
+
+		tokenByte, err := ioutil.ReadFile(tokenPath)
+		if err != nil {
+			return nil, err
+		}
+		localIP, err := getLocalIP()
+		if err != nil {
+			return nil, err
+		}
+		port, err := getPortFromAddr(a.Cfg.API.ListenAddress)
+		if err != nil {
+			return nil, err
+		}
+
+		req = markettypes.HttpRequest{
+			URL:     fmt.Sprintf("http://%s:%s/%s/%s", localIP, port, rpc.DealsPrefix, prop.Proposal.PieceCID),
+			Headers: map[string]string{"Authorization": "Bearer " + string(tokenByte)},
+		}
+
+		// cp car file to /tmp/deals
+		f, err := os.Open(carPath)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close() // nolint:errcheck
+
+		var notFound bool
+		dstPath := filepath.Join(rpc.DefDealsDir, ref.PieceCid.String())
+		dstInfo, err := os.Stat(dstPath)
+		if err != nil {
+			if !xerrors.Is(err, os.ErrNotExist) {
+				return nil, err
+			}
+			notFound = true
+		}
+		if notFound || dstInfo.Size() == 0 {
+			fdst, err := os.OpenFile(dstPath, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0644)
+			if err != nil {
+				return nil, xerrors.Errorf("open dst file: %w", err)
+			}
+			_, err = io.Copy(fdst, f)
+			if err != nil {
+				return nil, xerrors.Errorf("copy to dst file: %w", err)
+			}
+
+			err = fdst.Sync()
+			if err != nil {
+				return nil, xerrors.Errorf("dst file sync: %w", err)
+			}
+		}
 	}
 
 	reqBytes, err := json.Marshal(req)
@@ -321,24 +389,19 @@ func (a *API) getDealParams(ctx context.Context, dealDataRoot cid.Cid, prop *mar
 		return nil, xerrors.Errorf("marshalling request parameters: %w", err)
 	}
 
-	ds, err := a.ClientDealPieceCID(ctx, dealDataRoot)
-	if err != nil {
-		return nil, err
-	}
-
 	dealParams := &types2.DealParams{
 		DealUUID:           uuid.New(),
 		ClientDealProposal: *prop,
-		DealDataRoot:       dealDataRoot,
+		DealDataRoot:       ref.Root,
 		Transfer: types2.Transfer{
-			Type:   markettypes.TTHttp,
-			Size:   uint64(ds.PayloadSize),
+			Type:   ref.TransferType,
+			Size:   uint64(fileSize),
 			Params: reqBytes,
 		},
 	}
 
-	log.Infof("deal params, proposal cid %v, deal data root %v, piece cid %v, piece size %v, payload size %v, url %v", dealProposalCID,
-		dealParams.DealDataRoot, prop.Proposal.PieceCID, prop.Proposal.PieceSize, ds.PayloadSize, req.URL)
+	log.Infof("deal params, proposal cid %v, data root %v, piece cid %v, piece size %v, payload size %v, request url %v", dealProposalCID,
+		dealParams.DealDataRoot, prop.Proposal.PieceCID, prop.Proposal.PieceSize, fileSize, req)
 
 	return dealParams, nil
 }

@@ -229,7 +229,6 @@ var MarketClientOpts = builder.Options(
 	builder.Override(new(*discoveryimpl.Local), NewLocalDiscovery),
 	builder.Override(new(discovery.PeerResolver), RetrievalResolver),
 	builder.Override(new(network.ClientDataTransfer), NewClientGraphsyncDataTransfer),
-	builder.Override(new(*DealStream), NewDealStream),
 
 	builder.Override(new(ClientImportMgr), NewClientImportMgr),
 	builder.Override(new(storagemarket.BlockstoreAccessor), StorageBlockstoreAccessor),
@@ -237,4 +236,8 @@ var MarketClientOpts = builder.Options(
 	builder.Override(new(retrievalmarket.BlockstoreAccessor), RetrievalBlockstoreAccessor),
 	builder.Override(new(retrievalmarket.RetrievalClient), RetrievalClient),
 	builder.Override(new(storagemarket.StorageClient), StorageClient),
+
+	builder.Override(new(*DealStream), NewDealStream),
+	builder.Override(new(*AuthTokenDB), NewAuthTokenDB),
+	builder.Override(new(*Libp2pServer), NewLibp2pServer),
 )

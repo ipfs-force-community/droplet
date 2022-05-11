@@ -40,6 +40,7 @@ import (
 )
 
 var ExtractApiKey = builder.NextInvoke()
+var ExtracLibp2p2Key = builder.NextInvoke()
 var log = logging.Logger("main")
 
 var (
@@ -223,6 +224,7 @@ func marketClient(cctx *cli.Context) error {
 		return err
 	}
 	resAPI := &impl.MarketClientNodeImpl{}
+	libp2p2Ser := &client.Libp2pServer{}
 	shutdownChan := make(chan struct{})
 	_, err = builder.New(ctx,
 		// defaults
@@ -250,6 +252,10 @@ func marketClient(cctx *cli.Context) error {
 				Priority: 10,
 				Option:   fx.Populate(resAPI),
 			}
+			s.Invokes[ExtracLibp2p2Key] = builder.InvokeOption{
+				Priority: 9,
+				Option:   fx.Populate(&libp2p2Ser),
+			}
 			return nil
 		},
 	)
@@ -257,6 +263,9 @@ func marketClient(cctx *cli.Context) error {
 		return xerrors.Errorf("initializing node: %w", err)
 	}
 	finishCh := utils.MonitorShutdown(shutdownChan)
+
+	libp2p2Ser.Start()
+	defer libp2p2Ser.Stop()
 
 	mux := mux.NewRouter()
 	if err := rpc.DealServer(mux, cfg.DealDir); err != nil {

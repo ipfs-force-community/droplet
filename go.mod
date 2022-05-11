@@ -30,7 +30,7 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.0
 	github.com/filecoin-project/specs-storage v0.2.2
-	github.com/filecoin-project/venus v1.2.4-0.20220505013454-666b9320de97
+	github.com/filecoin-project/venus v1.2.4-0.20220511060557-b26ef3df7d68
 	github.com/filecoin-project/venus-auth v1.3.3-0.20220406063133-896f44f6e816
 	github.com/filecoin-project/venus-messager v1.2.2-rc1.0.20220420091920-4820c01ca309
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
@@ -70,6 +70,7 @@ require (
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-libp2p v0.18.0-rc3
 	github.com/libp2p/go-libp2p-core v0.14.0
+	github.com/libp2p/go-libp2p-gostream v0.3.1
 	github.com/libp2p/go-libp2p-http v0.2.1
 	github.com/libp2p/go-libp2p-noise v0.3.0
 	github.com/libp2p/go-libp2p-peerstore v0.6.0
@@ -107,5 +108,4 @@ replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-commp-utils => github.com/ipfs-force-community/go-commp-utils v0.1.4-0.20220429021603-dcbcb96e4fc7
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21
-	github.com/filecoin-project/venus => /Users/haoziyan/Desktop/code/github.com/filecoin-project/venus
 )

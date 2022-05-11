@@ -43,6 +43,7 @@ import (
 
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
 	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
+	types2 "github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 )
 
@@ -431,6 +432,12 @@ The minimum value is 518400 (6 months).`,
 			Usage: "specify the requested provider collateral the miner should put up",
 		},
 		&cli2.CidBaseFlag,
+		&cli.StringFlag{
+			Name:    "transfer-type",
+			Usage:   "set transfer type fo stateless deal, eg. manual, http, libp2p",
+			Aliases: []string{"tt"},
+			Value:   types2.TTManual,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
@@ -566,7 +573,8 @@ The minimum value is 518400 (6 months).`,
 
 		var proposal *cid.Cid
 		if cctx.Bool("manual-stateless-deal") {
-			if ref.TransferType != storagemarket.TTManual || price.Int64() != 0 {
+			ref.TransferType = cctx.String("transfer-type")
+			if price.Int64() != 0 {
 				return xerrors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
 			}
 			proposal, err = api.ClientStatelessDeal(ctx, sdParams)

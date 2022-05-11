@@ -35,6 +35,7 @@ const (
 	dealLocal       = "/deals/local"
 	retrievalClient = "/retrievals/client"
 	clientTransfer  = "/datatransfer/client/transfers"
+	clientAuthToken = "/authtoken/client"
 )
 
 // /metadata
@@ -91,6 +92,9 @@ type ImportClientDS datastore.Batching
 
 // /metadata/datatransfer/client/transfers
 type ClientTransferDS datastore.Batching
+
+// /metadata/authtoken/client
+type ClientAuthTokenDS datastore.Batching
 
 func NewMetadataDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (MetadataDS, error) {
 	datastore.ErrNotFound = repo.ErrNotFound
@@ -163,6 +167,10 @@ func NewRetrievalClientDS(ds MetadataDS) RetrievalClientDS {
 
 func NewClientTransferDS(ds MetadataDS) ClientTransferDS {
 	return namespace.Wrap(ds, datastore.NewKey(clientTransfer))
+}
+
+func NewClientAuthTokenDS(ds MetadataDS) ClientAuthTokenDS {
+	return namespace.Wrap(ds, datastore.NewKey(clientAuthToken))
 }
 
 //nolint

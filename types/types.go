@@ -20,5 +20,6 @@ const (
 	TTGraphsync = storagemarket.TTGraphsync
 	TTManual    = storagemarket.TTManual
 	TTHttp      = "http"
+	TTLibp2p    = "libp2p"
 	TTImport    = "import"
 )
