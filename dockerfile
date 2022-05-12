@@ -13,6 +13,7 @@ WORKDIR /app
 # copy the app from build env
 COPY --from=buildenv  /go/venus-market/venus-market /app/venus-market
 COPY ./docker/script  /script
+COPY ./docker /docker
 
 # copy ddl
 COPY --from=buildenv  /usr/lib/x86_64-linux-gnu/libhwloc.so.5  \
