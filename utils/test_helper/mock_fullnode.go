@@ -338,6 +338,10 @@ func (m MockFullnode) ChainGetPath(ctx context.Context, from types.TipSetKey, to
 	panic("implement me")
 }
 
+func (m MockFullnode) StateGetNetworkParams(ctx context.Context) (*types.NetworkParams, error) {
+	panic("implement me")
+}
+
 func (m MockFullnode) StateMarketParticipants(ctx context.Context, tsk types.TipSetKey) (map[string]types.MarketBalance, error) {
 	panic("implement me")
 }
