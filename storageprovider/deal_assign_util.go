@@ -94,7 +94,7 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spe
 		}
 
 		// deal limit
-		if spec != nil && spec.MaxPiece > 0 && di >= spec.MaxPiece {
+		if spec != nil && spec.MaxPiece > 0 && pickedDeals >= spec.MaxPiece {
 			break
 		}
 
