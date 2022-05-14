@@ -19,37 +19,63 @@ var (
 )
 
 func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spec *mtypes.GetDealSpec) ([]*mtypes.DealInfoIncludePath, error) {
-	dealCount := len(deals)
-	if dealCount == 0 {
-		return nil, nil
-	}
-
 	space := abi.PaddedPieceSize(ssize)
 
 	if err := space.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %d", errInvalidSpaceSize, space)
 	}
 
-	if psize := deals[0].PieceSize; psize.Validate() != nil {
-		return nil, fmt.Errorf("%w: first deal size: %d", errInvalidDealPieceSize, psize)
+	if len(deals) > 0 && deals[0].PieceSize.Validate() != nil {
+		return nil, fmt.Errorf("%w: first deal size: %d", errInvalidDealPieceSize, deals[0].PieceSize)
 	}
 
-	var dealLimit *int
-	var dealSizeLimit *abi.PaddedPieceSize
-	if spec != nil {
-		if spec.MaxPiece > 0 {
-			dealLimit = &spec.MaxPiece
+	// 过滤掉太小的 deals
+	if spec != nil && spec.MinPieceSize > 0 {
+		limit := abi.PaddedPieceSize(spec.MinPieceSize)
+		first := len(deals)
+
+		// find the first deal index with piece size >= limit,
+		// or all deals are too small
+		for i := 0; i < len(deals); i++ {
+			if deals[i].PieceSize >= limit {
+				first = i
+				break
+			}
 		}
 
-		if spec.MaxPieceSize > 0 {
-			limit := abi.PaddedPieceSize(spec.MaxPieceSize)
-			dealSizeLimit = &limit
+		deals = deals[first:]
+	}
+
+	// 过滤掉太大的 deals
+	if spec != nil && spec.MaxPieceSize > 0 {
+		limit := abi.PaddedPieceSize(spec.MaxPieceSize)
+
+		last := 0
+
+		// find the last deal index with piece size <= limit,
+		// or all deals are too large
+		for i := len(deals); i > 0; i-- {
+			if deals[i-1].PieceSize <= limit {
+				last = i
+				break
+			}
 		}
+
+		deals = deals[:last]
+	}
+
+	// only the deals left
+	dealCount := len(deals)
+	if dealCount == 0 {
+		return nil, nil
 	}
 
 	res := make([]*mtypes.DealInfoIncludePath, 0)
 	di := 0
 	checked := 0
+
+	pickedDeals := 0
+	pickedSpace := abi.PaddedPieceSize(0)
 
 	var offset abi.UnpaddedPieceSize
 	for di < dealCount {
@@ -68,12 +94,7 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spe
 		}
 
 		// deal limit
-		if dealLimit != nil && di >= *dealLimit {
-			break
-		}
-
-		// deal size limit
-		if dealSizeLimit != nil && deal.PieceSize > *dealSizeLimit {
+		if spec != nil && spec.MaxPiece > 0 && pickedDeals >= spec.MaxPiece {
 			break
 		}
 
@@ -100,6 +121,9 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spe
 		deal.Offset = offset.Padded()
 		res = append(res, deal)
 
+		pickedDeals++
+		pickedSpace += deal.PieceSize
+
 		space -= deal.PieceSize
 		offset += deal.PieceSize.Unpadded()
 		di++
@@ -107,6 +131,16 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spe
 
 	// no deals picked, we just do nothing here
 	if len(res) == 0 {
+		return nil, nil
+	}
+
+	// not enough deals
+	if spec != nil && spec.MinPiece > 0 && pickedDeals < spec.MinPiece {
+		return nil, nil
+	}
+
+	// not enough space for deals
+	if spec != nil && spec.MinUsedSpace > 0 && uint64(pickedSpace) < spec.MinUsedSpace {
 		return nil, nil
 	}
 

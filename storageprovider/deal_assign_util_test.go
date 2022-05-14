@@ -141,7 +141,7 @@ func TestDealAssignPickAndAlign(t *testing.T) {
 		},
 
 		{
-			name:              "deal limit",
+			name:              "deal count max limit",
 			sectorSize:        SectorSize2K,
 			sizes:             []abi.PaddedPieceSize{128, 128, 128, 512},
 			spec:              &mtypes.GetDealSpec{MaxPiece: 2},
@@ -151,12 +151,72 @@ func TestDealAssignPickAndAlign(t *testing.T) {
 		},
 
 		{
-			name:              "deal size limit",
+			name:              "deal size max limit",
 			sectorSize:        SectorSize2K,
 			sizes:             []abi.PaddedPieceSize{128, 128, 128, 512},
 			spec:              &mtypes.GetDealSpec{MaxPieceSize: 256},
 			expectedDealIDs:   []abi.DealID{isDeal, isDeal, isDeal, nonDeal, nonDeal, nonDeal},
 			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 128, 128, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:              "deal size min limit, all good",
+			sectorSize:        SectorSize2K,
+			sizes:             []abi.PaddedPieceSize{128, 128, 128, 512},
+			spec:              &mtypes.GetDealSpec{MinPieceSize: 128},
+			expectedDealIDs:   []abi.DealID{isDeal, isDeal, isDeal, nonDeal, isDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 128, 128, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:              "deal size min limit 256",
+			sectorSize:        SectorSize2K,
+			sizes:             []abi.PaddedPieceSize{128, 128, 128, 512},
+			spec:              &mtypes.GetDealSpec{MinPieceSize: 256},
+			expectedDealIDs:   []abi.DealID{isDeal, nonDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{512, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:              "deal min limit 4",
+			sectorSize:        SectorSize2K,
+			sizes:             []abi.PaddedPieceSize{128, 128, 128, 512},
+			spec:              &mtypes.GetDealSpec{MinPiece: 4},
+			expectedDealIDs:   []abi.DealID{isDeal, isDeal, isDeal, nonDeal, isDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 128, 128, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:              "deal min limit 5, empty",
+			sectorSize:        SectorSize2K,
+			sizes:             []abi.PaddedPieceSize{128, 128, 128, 512},
+			spec:              &mtypes.GetDealSpec{MinPiece: 5},
+			expectedDealIDs:   []abi.DealID{},
+			expectedPieceSize: []abi.PaddedPieceSize{},
+			expectedErr:       nil,
+		},
+
+		{
+			name:              "space min limit 128",
+			sectorSize:        SectorSize2K,
+			sizes:             []abi.PaddedPieceSize{128, 256},
+			spec:              nil,
+			expectedDealIDs:   []abi.DealID{isDeal, nonDeal, isDeal, nonDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 256, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:              "space min limit 512, empty",
+			sectorSize:        SectorSize2K,
+			sizes:             []abi.PaddedPieceSize{128, 256},
+			spec:              &mtypes.GetDealSpec{MinUsedSpace: 512},
+			expectedDealIDs:   []abi.DealID{},
+			expectedPieceSize: []abi.PaddedPieceSize{},
 			expectedErr:       nil,
 		},
 	}

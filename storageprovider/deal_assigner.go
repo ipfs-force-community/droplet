@@ -3,7 +3,6 @@ package storageprovider
 import (
 	"context"
 	"fmt"
-	"math"
 	"sort"
 
 	"go.uber.org/fx"
@@ -192,7 +191,6 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 	if spec == nil {
 		spec = defaultGetDealSpec
 	}
-	spec.MaxPiece = math.MaxInt32
 
 	var (
 		pieces []*types.DealInfoIncludePath
@@ -205,32 +203,25 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 			return err
 		}
 
-		var (
-			deals        []*types.DealInfoIncludePath
-			numberPiece  int
-			curPieceSize uint64
-		)
+		var deals []*types.DealInfoIncludePath
 
 		for _, md := range mds {
 			// TODO: 要排除不可密封状态的订单?
 			if md.DealID == 0 || isTerminateState(md) {
 				continue
 			}
-			if ((spec.MaxPieceSize > 0 && uint64(md.Proposal.PieceSize)+curPieceSize < spec.MaxPieceSize) || spec.MaxPieceSize == 0) && numberPiece+1 < spec.MaxPiece {
-				deals = append(deals, &types.DealInfoIncludePath{
-					DealProposal:    md.Proposal,
-					Offset:          md.Offset,
-					Length:          md.Proposal.PieceSize,
-					PayloadSize:     md.PayloadSize,
-					DealID:          md.DealID,
-					TotalStorageFee: md.Proposal.TotalStorageFee(),
-					FastRetrieval:   md.FastRetrieval,
-					PublishCid:      *md.PublishCid,
-				})
 
-				curPieceSize += uint64(md.Proposal.PieceSize)
-				numberPiece++
-			}
+			// 订单筛选和组合的逻辑完全由 pickAndAlign 完成
+			deals = append(deals, &types.DealInfoIncludePath{
+				DealProposal:    md.Proposal,
+				Offset:          md.Offset,
+				Length:          md.Proposal.PieceSize,
+				PayloadSize:     md.PayloadSize,
+				DealID:          md.DealID,
+				TotalStorageFee: md.Proposal.TotalStorageFee(),
+				FastRetrieval:   md.FastRetrieval,
+				PublishCid:      *md.PublishCid,
+			})
 		}
 
 		if len(deals) == 0 {
