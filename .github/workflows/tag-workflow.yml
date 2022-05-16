@@ -178,7 +178,7 @@ jobs:
           set -e
 
       - name: Publish the Docker image 
-        if: ${{ steps.vars.outputs.pub_method=='pushRelease' }}
+        if: ${{ github.ref_type == 'tag' && github.event_name == 'create' }}
         run: |
           docker build . --file dockerfile --tag filvenus/venus-market:latest
           docker tag filvenus/venus-market:latest filvenus/venus-market:${{steps.vars.outputs.github_tag}}
