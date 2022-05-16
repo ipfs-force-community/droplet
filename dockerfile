@@ -29,8 +29,9 @@ COPY --from=buildenv  /usr/lib/x86_64-linux-gnu/libhwloc.so.5  \
                         /usr/lib/x86_64-linux-gnu/libltdl.so.7  \
                         /lib/
 
-EXPOSE 41235
-ENTRYPOINT ["/app/venus-market"]
+EXPOSE 41235 58418
+ENTRYPOINT ["/script/init.sh"]
+
 
 
 
