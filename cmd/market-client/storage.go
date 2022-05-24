@@ -534,8 +534,6 @@ The minimum value is 518400 (6 months).`,
 			}
 
 			ref.PieceSize = abi.UnpaddedPieceSize(psize)
-
-			ref.TransferType = storagemarket.TTManual
 		}
 
 		// Check if the address is a verified client

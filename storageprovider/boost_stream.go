@@ -258,18 +258,19 @@ func (stream *BoostStorageDealStream) getDealStatus(req types2.DealStatusRequest
 		bts = uint64(f.Size())
 		_ = f.Close()
 	}
+	isOffline := pds.Ref.TransferType == types2.TTHttp || pds.Ref.TransferType == types2.TTLibp2p || pds.Ref.TransferType == types2.TTManual
 
 	return types2.DealStatusResponse{
 		DealUUID: req.DealUUID,
 		DealStatus: &types2.DealStatus{
-			//Error:             pds.Err,
+			Error: pds.Message,
 			//Status:            pds.Checkpoint.String(),
 			Proposal:          pds.ClientDealProposal.Proposal,
 			SignedProposalCid: pds.ProposalCid,
 			PublishCid:        pds.PublishCid,
 			ChainDealID:       pds.DealID,
 		},
-		//IsOffline:      ,
+		IsOffline:      isOffline,
 		TransferSize:   pds.PayloadSize,
 		NBytesReceived: bts,
 	}

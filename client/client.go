@@ -318,7 +318,7 @@ func (a *API) getDealParams(ctx context.Context, ref *storagemarket.DataRef, pro
 			Size:        uint64(fileSize),
 		}
 		if err := a.AuthTokenDB.Put(ctx, authToken, authVal); err != nil {
-			return nil, xerrors.Errorf("failed to save auth ")
+			return nil, xerrors.Errorf("failed to save auth %v", err)
 		}
 
 		req = markettypes.HttpRequest{
