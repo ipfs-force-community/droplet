@@ -3,6 +3,7 @@ package badger
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
@@ -10,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/ipfs/go-datastore"
-	"golang.org/x/xerrors"
 )
 
 type storageAskRepo struct {
@@ -33,14 +33,14 @@ func (ar *storageAskRepo) GetAsk(ctx context.Context, miner address.Address) (*s
 
 	ask := storagemarket.SignedStorageAsk{}
 	if err := ask.UnmarshalCBOR(bytes.NewBuffer(b)); err != nil {
-		return nil, xerrors.Errorf("bader Miner(%s) unmarshal storageask failed:%w", miner.String(), err)
+		return nil, fmt.Errorf("bader Miner(%s) unmarshal storageask failed:%w", miner.String(), err)
 	}
 	return &ask, nil
 }
 
 func (ar *storageAskRepo) SetAsk(ctx context.Context, ask *storagemarket.SignedStorageAsk) error {
 	if ask == nil || ask.Ask == nil {
-		return xerrors.Errorf("param is nil")
+		return fmt.Errorf("param is nil")
 	}
 	key := statestore.ToKey(ask.Ask.Miner)
 	b, err := cborrpc.Dump(ask)

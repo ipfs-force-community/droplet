@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
@@ -12,7 +13,6 @@ import (
 	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 
@@ -136,7 +136,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 
 	if cctx.IsSet(MessagerUrlFlag.Name) {
 		if !cctx.IsSet(AuthTokenFlag.Name) {
-			return xerrors.Errorf("the auth-token must be set when connecting to the venus chain service")
+			return fmt.Errorf("the auth-token must be set when connecting to the venus chain service")
 		}
 
 		cfg.Messager.Url = cctx.String(MessagerUrlFlag.Name)
@@ -157,7 +157,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 
 	if cctx.IsSet(SignerUrlFlag.Name) {
 		if !cctx.IsSet(SignerTokenFlag.Name) {
-			return xerrors.Errorf("signer-url is set, but signer-token is not set")
+			return fmt.Errorf("signer-url is set, but signer-token is not set")
 		}
 
 		cfg.Signer.SignerType = "wallet"
@@ -189,12 +189,12 @@ func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 		// create
 		err = flagData(cctx, cfg)
 		if err != nil {
-			return nil, xerrors.Errorf("parser data from flag %w", err)
+			return nil, fmt.Errorf("parser data from flag %w", err)
 		}
 
 		err = config.SaveConfig(cfg)
 		if err != nil {
-			return nil, xerrors.Errorf("save config to %s %w", cfgPath, err)
+			return nil, fmt.Errorf("save config to %s %w", cfgPath, err)
 		}
 	} else if err == nil {
 		// loadConfig
@@ -204,7 +204,7 @@ func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 		}
 		err = flagData(cctx, cfg)
 		if err != nil {
-			return nil, xerrors.Errorf("parser data from flag %w", err)
+			return nil, fmt.Errorf("parser data from flag %w", err)
 		}
 	} else {
 		return nil, err
@@ -252,9 +252,9 @@ func marketClient(cctx *cli.Context) error {
 		},
 	)
 	if err != nil {
-		return xerrors.Errorf("initializing node: %w", err)
+		return fmt.Errorf("initializing node: %w", err)
 	}
-	defer closeFunc(ctx)
+	defer closeFunc(ctx) //nolint
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
 	var marketCli clientapi.IMarketClientStruct

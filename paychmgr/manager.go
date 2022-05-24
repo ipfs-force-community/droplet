@@ -17,7 +17,6 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("paych")
@@ -193,7 +192,7 @@ func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address
 
 	if err != nil {
 		if err == types.ErrChannelNotFound {
-			return address.Undef, xerrors.Errorf("Could not find wait msg cid %s", mcid)
+			return address.Undef, fmt.Errorf("could not find wait msg cid %s", mcid)
 		}
 		return address.Undef, err
 	}
@@ -339,7 +338,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	}
 	if !has {
 		msg := "cannot add voucher for channel %s: wallet does not have key for address %s"
-		return nil, xerrors.Errorf(msg, ch, to)
+		return nil, fmt.Errorf(msg, ch, to)
 	}
 
 	// Save channel to store

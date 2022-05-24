@@ -2,13 +2,12 @@ package storageprovider
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/utils"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
-
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -248,7 +247,7 @@ func (storageDealStream *StorageDealStream) resendProposalResponse(s network.Sto
 		Addr: md.Proposal.Provider,
 	})
 	if err != nil {
-		return xerrors.Errorf("failed to sign response message: %w", err)
+		return fmt.Errorf("failed to sign response message: %w", err)
 	}
 
 	return s.WriteDealResponse(network.SignedResponse{Response: *resp, Signature: sig}, storageDealStream.spn.SignWithGivenMiner(md.Proposal.Provider))
@@ -259,33 +258,33 @@ func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context
 	md, err := storageDealStream.deals.GetDeal(ctx, request.Proposal)
 	if err != nil {
 		log.Errorf("proposal doesn't exist in state store: %s", err)
-		return nil, address.Undef, xerrors.Errorf("no such proposal")
+		return nil, address.Undef, fmt.Errorf("no such proposal")
 	}
 
 	// verify query signature
 	buf, err := cborutil.Dump(&request.Proposal)
 	if err != nil {
 		log.Errorf("failed to serialize status request: %s", err)
-		return nil, address.Undef, xerrors.Errorf("internal error")
+		return nil, address.Undef, fmt.Errorf("internal error")
 	}
 
 	tok, _, err := storageDealStream.spn.GetChainHead(ctx)
 	if err != nil {
 		log.Errorf("failed to get chain head: %s", err)
-		return nil, address.Undef, xerrors.Errorf("internal error")
+		return nil, address.Undef, fmt.Errorf("internal error")
 	}
 
 	err = providerutils.VerifySignature(ctx, request.Signature, md.ClientDealProposal.Proposal.Client, buf, tok, storageDealStream.spn.VerifySignature)
 	if err != nil {
 		log.Errorf("invalid deal status request signature: %s", err)
-		return nil, address.Undef, xerrors.Errorf("internal error")
+		return nil, address.Undef, fmt.Errorf("internal error")
 	}
 
 	if md.AddFundsCid != nil && md.AddFundsCid.Prefix() == utils.MidPrefix {
 		md.AddFundsCid, err = storageDealStream.mixMsgClient.GetMessageChainCid(ctx, *md.AddFundsCid)
 		if err != nil {
 			log.Errorf("unbale to get add funds message cid: %s", err)
-			return nil, address.Undef, xerrors.Errorf("internal error")
+			return nil, address.Undef, fmt.Errorf("internal error")
 		}
 	}
 
@@ -293,7 +292,7 @@ func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context
 		md.PublishCid, err = storageDealStream.mixMsgClient.GetMessageChainCid(ctx, *md.PublishCid)
 		if err != nil {
 			log.Errorf("unbale to get publish message cid: %s", err)
-			return nil, address.Undef, xerrors.Errorf("internal error")
+			return nil, address.Undef, fmt.Errorf("internal error")
 		}
 	}
 

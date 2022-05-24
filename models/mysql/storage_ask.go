@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -10,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
-	"golang.org/x/xerrors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -99,7 +99,7 @@ func (sar *storageAskRepo) GetAsk(ctx context.Context, miner address.Address) (*
 
 func (sar *storageAskRepo) SetAsk(ctx context.Context, ask *storagemarket.SignedStorageAsk) error {
 	if ask == nil || ask.Ask == nil {
-		return xerrors.Errorf("param is nil")
+		return fmt.Errorf("param is nil")
 	}
 	dbAsk := fromStorageAsk(ask)
 	dbAsk.UpdatedAt = uint64(time.Now().Unix())

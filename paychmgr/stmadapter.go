@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/v2/blockstore"
@@ -11,7 +12,6 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"golang.org/x/xerrors"
 )
 
 // stateManagerAPI defines the methods needed from StateManager
@@ -36,7 +36,7 @@ func (s StateMgrAdapter) resolveToKeyAddress(ctx context.Context, addr address.A
 	case address.BLS, address.SECP256K1:
 		return addr, nil
 	case address.Actor:
-		return address.Undef, xerrors.New("cannot resolve actor address to key address")
+		return address.Undef, errors.New("cannot resolve actor address to key address")
 	default:
 	}
 	var err error

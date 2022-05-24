@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/venus-market/v2/models/badger"
@@ -12,7 +13,6 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/xerrors"
 )
 
 func TestPaych(t *testing.T) {
@@ -174,7 +174,7 @@ func testMsgInfo(t *testing.T, msgRepo repo.PaychMsgInfoRepo) {
 	assert.Nil(t, err)
 	assert.Equal(t, res2, info2)
 
-	errMsg := xerrors.Errorf("test err")
+	errMsg := fmt.Errorf("test err")
 	assert.Nil(t, msgRepo.SaveMessageResult(ctx, info.MsgCid, errMsg))
 	res3, err := msgRepo.GetMessage(ctx, info.MsgCid)
 	assert.Nil(t, err)

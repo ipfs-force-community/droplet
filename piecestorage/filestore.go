@@ -8,8 +8,6 @@ import (
 	"os"
 	"path"
 
-	xerrors "github.com/pkg/errors"
-
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/utils"
@@ -96,7 +94,7 @@ func (f *fsPieceStorage) Validate(resourceId string) error {
 	}
 
 	if !st.IsDir() {
-		return xerrors.Errorf("expect a directory but got file")
+		return fmt.Errorf("expect a directory but got file")
 	}
 	return nil
 }

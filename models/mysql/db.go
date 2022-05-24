@@ -2,15 +2,16 @@ package mysql
 
 import (
 	"database/sql/driver"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
@@ -125,7 +126,7 @@ func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 	gorm.ErrRecordNotFound = repo.ErrNotFound
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 	if err != nil {
-		return nil, xerrors.Errorf("[db connection failed] Database name: %s %w", cfg.ConnectionString, err)
+		return nil, fmt.Errorf("[db connection failed] Database name: %s %w", cfg.ConnectionString, err)
 	}
 
 	db.Set("gorm:table_options", "CHARSET=utf8mb4")
@@ -158,7 +159,7 @@ var UndefDBCid = DBCid{}
 func (c *DBCid) Scan(value interface{}) error {
 	val, ok := value.([]byte)
 	if !ok {
-		return xerrors.New("cid should be a `[]byte`")
+		return errors.New("cid should be a `[]byte`")
 	}
 	if len(val) == 0 {
 		*c = UndefDBCid
@@ -214,7 +215,7 @@ var UndefDBAddress = DBAddress{}
 func (a *DBAddress) Scan(value interface{}) error {
 	val, ok := value.([]byte)
 	if !ok {
-		return xerrors.New("address should be a `[]byte`")
+		return errors.New("address should be a `[]byte`")
 	}
 	if len(val) == 0 {
 		*a = UndefDBAddress

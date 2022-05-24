@@ -22,7 +22,6 @@ import (
 	marketTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 type dealPublisherAPI interface {
@@ -368,7 +367,7 @@ func (p *singleDealPublisher) validateDeal(deal market7.ClientDealProposal) erro
 		return err
 	}
 	if head.Height() > deal.Proposal.StartEpoch {
-		return xerrors.Errorf(
+		return fmt.Errorf(
 			"cannot publish deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
 			deal.Proposal.PieceCID, head.Height(), deal.Proposal.StartEpoch)
 	}
@@ -390,7 +389,7 @@ func (p *singleDealPublisher) publishDealProposals(deals []market7.ClientDealPro
 				"not all deals are for same provider: " +
 				fmt.Sprintf("deal with piece CID %s is for provider %s ", deals[0].Proposal.PieceCID, deals[0].Proposal.Provider) +
 				fmt.Sprintf("but deal with piece CID %s is for provider %s", dl.Proposal.PieceCID, dl.Proposal.Provider)
-			return cid.Undef, xerrors.Errorf(msg)
+			return cid.Undef, fmt.Errorf(msg)
 		}
 	}
 
@@ -404,12 +403,12 @@ func (p *singleDealPublisher) publishDealProposals(deals []market7.ClientDealPro
 	})
 
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: %w", err)
+		return cid.Undef, fmt.Errorf("serializing PublishStorageDeals params failed: %w", err)
 	}
 
 	addr, _, err := p.as.AddressFor(p.ctx, p.api, mi, marketTypes.DealPublishAddr, big.Zero(), big.Zero())
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("selecting address for publishing deals: %w", err)
+		return cid.Undef, fmt.Errorf("selecting address for publishing deals: %w", err)
 	}
 
 	msgId, err := p.api.PushMessage(p.ctx, &types.Message{

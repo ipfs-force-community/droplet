@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-padreader"
@@ -86,11 +85,11 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (m
 func (m *marketAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
 	pieceInfo, err := m.pieceRepo.GetPieceInfo(ctx, pieceCid)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to fetch pieceInfo for piece %s: %w", pieceCid, err)
+		return 0, fmt.Errorf("failed to fetch pieceInfo for piece %s: %w", pieceCid, err)
 	}
 
 	if len(pieceInfo.Deals) == 0 {
-		return 0, xerrors.Errorf("no storage deals found for piece %s", pieceCid)
+		return 0, fmt.Errorf("no storage deals found for piece %s", pieceCid)
 	}
 
 	len := pieceInfo.Deals[0].Length
@@ -107,11 +106,11 @@ type mountWrapper struct {
 var _ mount.Reader = (*mountWrapper)(nil)
 
 func (r *mountWrapper) ReadAt(p []byte, off int64) (n int, err error) {
-	return 0, xerrors.Errorf("ReadAt called but not implemented")
+	return 0, fmt.Errorf("ReadAt called but not implemented")
 }
 
 func (r *mountWrapper) Seek(offset int64, whence int) (int64, error) {
-	return 0, xerrors.Errorf("Seek called but not implemented")
+	return 0, fmt.Errorf("Seek called but not implemented")
 }
 func (r *mountWrapper) Read(p []byte) (n int, err error) {
 	return r.readR.Read(p)

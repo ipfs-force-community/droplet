@@ -3,12 +3,12 @@ package paychmgr
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
@@ -386,7 +386,7 @@ func (ca *channelAccessor) createPaych(ctx context.Context, amt big.Int) (cid.Ci
 
 	msgId, err := ca.api.PushMessage(ctx, msg, nil)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("initializing paych actor: %w", err)
+		return cid.Undef, fmt.Errorf("initializing paych actor: %w", err)
 	}
 	// Create a new channel in the store
 	ci, err := ca.channelInfoRepo.CreateChannel(ctx, ca.from, ca.to, msgId, amt)
@@ -425,7 +425,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID str
 			log.Errorf("failed to remove channel %s: %s", channelID, dserr)
 		}
 
-		err := xerrors.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
+		err := fmt.Errorf("payment channel creation failed (exit code %d)", mwait.Receipt.ExitCode)
 		log.Error(err)
 		return err
 	}
@@ -502,7 +502,7 @@ func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string
 	}
 
 	if mwait.Receipt.ExitCode != 0 {
-		err := xerrors.Errorf("voucher channel creation failed: adding funds (exit code %d)", mwait.Receipt.ExitCode)
+		err := fmt.Errorf("voucher channel creation failed: adding funds (exit code %d)", mwait.Receipt.ExitCode)
 		log.Error(err)
 
 		ca.lk.Lock()
@@ -569,7 +569,7 @@ func (pm *Manager) restartPending(ctx context.Context) error {
 			group.Go(func() error {
 				ca, err := pm.accessorByFromTo(ci.Control, ci.Target)
 				if err != nil {
-					return xerrors.Errorf("error initializing payment channel manager %s -> %s: %s", ci.Control, ci.Target, err)
+					return fmt.Errorf("error initializing payment channel manager %s -> %s: %s", ci.Control, ci.Target, err)
 				}
 				go ca.waitForPaychCreateMsg(ctx, ci.ChannelID, *ci.CreateMsg)
 				return nil
@@ -578,7 +578,7 @@ func (pm *Manager) restartPending(ctx context.Context) error {
 			group.Go(func() error {
 				ca, err := pm.accessorByAddress(ctx, *ci.Channel)
 				if err != nil {
-					return xerrors.Errorf("error initializing payment channel manager %s: %s", ci.Channel, err)
+					return fmt.Errorf("error initializing payment channel manager %s: %s", ci.Channel, err)
 				}
 				go ca.waitForAddFundsMsg(ctx, ci.ChannelID, *ci.AddFundsMsg)
 				return nil
@@ -605,7 +605,7 @@ func (ca *channelAccessor) getPaychWaitReady(ctx context.Context, mcid cid.Cid) 
 	if len(msgInfo.Err) > 0 {
 		ca.lk.Unlock()
 
-		return address.Undef, xerrors.New(msgInfo.Err)
+		return address.Undef, errors.New(msgInfo.Err)
 	}
 
 	// If the message has completed successfully

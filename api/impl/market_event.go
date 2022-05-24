@@ -2,11 +2,11 @@ package impl
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 type MarketEventAPI struct {
@@ -15,7 +15,7 @@ type MarketEventAPI struct {
 	Event marketevent.IMarketEventAPI `optional:"true"`
 }
 
-var errNotSupportGateWayMode = xerrors.Errorf("MarketEvent api supported only when it runs in 'solo' mode")
+var errNotSupportGateWayMode = fmt.Errorf("MarketEvent api supported only when it runs in 'solo' mode")
 
 func (marketEvent *MarketEventAPI) ResponseMarketEvent(ctx context.Context, resp *gateway.ResponseEvent) error {
 	if marketEvent.Event == nil {

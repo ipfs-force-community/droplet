@@ -3,35 +3,35 @@ package badger
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"reflect"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 )
 
 func checkCallbackAndGetParamType(i interface{}) (reflect.Type, error) {
 	t := reflect.TypeOf(i)
 	if t.Kind() != reflect.Func {
-		return nil, xerrors.Errorf("must be a function")
+		return nil, fmt.Errorf("must be a function")
 	}
 	if t.NumIn() != 1 {
-		return nil, xerrors.Errorf("callback must and only have 1 param")
+		return nil, fmt.Errorf("callback must and only have 1 param")
 	}
 	if t.NumOut() != 2 {
-		return nil, xerrors.Errorf("callback must and only have 2 return value")
+		return nil, fmt.Errorf("callback must and only have 2 return value")
 	}
 	in := t.In(0)
 	if !in.Implements(reflect.TypeOf((*cbg.CBORUnmarshaler)(nil)).Elem()) {
-		return nil, xerrors.Errorf("param must be a CBORUnmarshaler")
+		return nil, fmt.Errorf("param must be a CBORUnmarshaler")
 	}
 	if t.Out(0).Kind() != reflect.Bool {
-		return nil, xerrors.Errorf("1st return value must be an boolean")
+		return nil, fmt.Errorf("1st return value must be an boolean")
 	}
 	if !t.Out(1).Implements(reflect.TypeOf((*error)(nil)).Elem()) {
-		return nil, xerrors.Errorf("return value must be an error interface")
+		return nil, fmt.Errorf("return value must be an error interface")
 	}
 	return in.Elem(), nil
 }

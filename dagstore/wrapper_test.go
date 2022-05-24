@@ -3,12 +3,12 @@ package dagstore
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	mh "github.com/multiformats/go-multihash"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/venus-market/v2/config"
 	carindex "github.com/ipld/go-car/v2/index"
@@ -39,7 +39,7 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 
 	// Return an error from acquire shard the first time
 	acquireShardErr := make(chan error, 1)
-	acquireShardErr <- xerrors.Errorf("unknown shard: %w", dagstore.ErrShardUnknown)
+	acquireShardErr <- fmt.Errorf("unknown shard: %w", dagstore.ErrShardUnknown)
 
 	// Create a mock DAG store in place of the real DAG store
 	mock := &mockDagStore{

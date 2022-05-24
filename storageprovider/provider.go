@@ -4,6 +4,7 @@ package storageprovider
 
 import (
 	"context"
+	"fmt"
 
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
@@ -11,7 +12,6 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -126,20 +126,20 @@ func (n *ProviderNodeAdapter) GetProofType(ctx context.Context, maddr address.Ad
 func (n *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*crypto.Signature, error) {
 	tok, _, err := n.GetChainHead(ctx)
 	if err != nil {
-		return nil, xerrors.Errorf("couldn't get chain head: %w", err)
+		return nil, fmt.Errorf("couldn't get chain head: %w", err)
 	}
 
 	switch data.(type) {
 	case *types2.SignInfo:
 
 	default:
-		return nil, xerrors.Errorf("data type is not SignInfo")
+		return nil, fmt.Errorf("data type is not SignInfo")
 	}
 
 	info := data.(*types2.SignInfo)
 	msgBytes, err := cborutil.Dump(info.Data)
 	if err != nil {
-		return nil, xerrors.Errorf("serializing: %w", err)
+		return nil, fmt.Errorf("serializing: %w", err)
 	}
 
 	worker, err := n.GetMinerWorkerAddress(ctx, info.Addr, tok)
@@ -165,12 +165,12 @@ func (n *ProviderNodeAdapter) SignWithGivenMiner(mAddr address.Address) network.
 	return func(ctx context.Context, data interface{}) (*crypto.Signature, error) {
 		tok, _, err := n.GetChainHead(ctx)
 		if err != nil {
-			return nil, xerrors.Errorf("couldn't get chain head: %w", err)
+			return nil, fmt.Errorf("couldn't get chain head: %w", err)
 		}
 
 		msgBytes, err := cborutil.Dump(data)
 		if err != nil {
-			return nil, xerrors.Errorf("serializing: %w", err)
+			return nil, fmt.Errorf("serializing: %w", err)
 		}
 
 		worker, err := n.GetMinerWorkerAddress(ctx, mAddr, tok)
@@ -265,22 +265,22 @@ func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCi
 	// Wait for deal to be published (plus additional time for confidence)
 	receipt, err := n.msgClient.WaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
-		return nil, xerrors.Errorf("WaitForPublishDeals errored: %w", err)
+		return nil, fmt.Errorf("WaitForPublishDeals errored: %w", err)
 	}
 	if receipt.Receipt.ExitCode != exitcode.Ok {
-		return nil, xerrors.Errorf("WaitForPublishDeals exit code: %s", receipt.Receipt.ExitCode)
+		return nil, fmt.Errorf("WaitForPublishDeals exit code: %s", receipt.Receipt.ExitCode)
 	}
 
 	// The deal ID may have changed since publish if there was a reorg, so
 	// get the current deal ID
 	head, err := n.ChainHead(ctx)
 	if err != nil {
-		return nil, xerrors.Errorf("WaitForPublishDeals failed to get chain head: %w", err)
+		return nil, fmt.Errorf("WaitForPublishDeals failed to get chain head: %w", err)
 	}
 
 	res, err := n.dealInfo.GetCurrentDealInfo(ctx, head.Key(), (*market.DealProposal)(&proposal), publishCid)
 	if err != nil {
-		return nil, xerrors.Errorf("WaitForPublishDeals getting deal info errored: %w", err)
+		return nil, fmt.Errorf("WaitForPublishDeals getting deal info errored: %w", err)
 	}
 
 	return &storagemarket.PublishDealsWaitResult{DealID: res.DealID, FinalCid: receipt.Message}, nil

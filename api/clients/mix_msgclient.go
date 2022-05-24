@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	types2 "github.com/filecoin-project/venus/venus-shared/types/messager"
@@ -12,7 +13,6 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
-	xerrors "github.com/pkg/errors"
 	"go.uber.org/fx"
 )
 
@@ -173,13 +173,13 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 				if msg.Receipt != nil {
 					reason = string(msg.Receipt.Return)
 				}
-				return nil, xerrors.Errorf("msg failed due to %s", reason)
+				return nil, fmt.Errorf("msg failed due to %s", reason)
 			}
 
 		case <-tm.C:
 			doneCh <- struct{}{}
 		case <-ctx.Done():
-			return nil, xerrors.Errorf("get message fail while wait")
+			return nil, fmt.Errorf("get message fail while wait")
 		}
 	}
 }
@@ -223,9 +223,9 @@ func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetK
 		if msg.Receipt != nil {
 			reason = string(msg.Receipt.Return)
 		}
-		return nil, xerrors.Errorf("msg failed due to %s", reason)
+		return nil, fmt.Errorf("msg failed due to %s", reason)
 	default:
-		return nil, xerrors.Errorf("unexpect status for %v", msg.State)
+		return nil, fmt.Errorf("unexpect status for %v", msg.State)
 	}
 }
 
@@ -243,7 +243,7 @@ func (msgClient *MixMsgClient) GetMessage(ctx context.Context, mCid cid.Cid) (*t
 func (msgClient *MixMsgClient) GetMessageChainCid(ctx context.Context, mid cid.Cid) (*cid.Cid, error) {
 	if mid.Prefix() == utils.MidPrefix {
 		if msgClient.messager == nil {
-			return nil, xerrors.Errorf("unable to get message chain cid from messager,no messager configured")
+			return nil, fmt.Errorf("unable to get message chain cid from messager,no messager configured")
 		}
 		msg, err := msgClient.messager.GetMessageByUid(ctx, mid.String())
 		if err != nil {

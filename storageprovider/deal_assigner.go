@@ -7,7 +7,6 @@ import (
 	"sort"
 
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -34,7 +33,7 @@ var _ DealAssiger = (*dealAssigner)(nil)
 func NewDealAssigner(lc fx.Lifecycle, r repo.Repo) (DealAssiger, error) {
 	ps, err := newPieceStoreEx(r)
 	if err != nil {
-		return nil, xerrors.Errorf("construct extend piece store %w", err)
+		return nil, fmt.Errorf("construct extend piece store %w", err)
 	}
 	return ps, nil
 }
@@ -55,12 +54,12 @@ func (ps *dealAssigner) MarkDealsAsPacking(ctx context.Context, miner address.Ad
 		md, err := ps.repo.StorageDealRepo().GetDealByDealID(ctx, miner, dealID)
 		if err != nil {
 			log.Error("get deal [%d] error for %s", dealID, miner)
-			return xerrors.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
+			return fmt.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
 		}
 
 		md.PieceStatus = types.Assigned
 		if err := ps.repo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
-			return xerrors.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
+			return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 		}
 	}
 
@@ -72,14 +71,14 @@ func (ps *dealAssigner) UpdateDealOnPacking(ctx context.Context, miner address.A
 	md, err := ps.repo.StorageDealRepo().GetDealByDealID(ctx, miner, dealID)
 	if err != nil {
 		log.Error("get deal [%d] error for %s", dealID, miner)
-		return xerrors.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
+		return fmt.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
 	}
 
 	md.PieceStatus = types.Assigned
 	md.Offset = offset
 	md.SectorNumber = sectorID
 	if err := ps.repo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
-		return xerrors.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
+		return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 	}
 
 	return nil
@@ -90,12 +89,12 @@ func (ps *dealAssigner) UpdateDealStatus(ctx context.Context, miner address.Addr
 	md, err := ps.repo.StorageDealRepo().GetDealByDealID(ctx, miner, dealID)
 	if err != nil {
 		log.Error("get deal [%d] error for %s", dealID, miner)
-		return xerrors.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
+		return fmt.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
 	}
 
 	md.PieceStatus = pieceStatus
 	if err := ps.repo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
-		return xerrors.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
+		return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 	}
 
 	return nil

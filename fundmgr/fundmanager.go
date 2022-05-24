@@ -21,7 +21,6 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("market_adapter")
@@ -532,7 +531,7 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 			if !withdrawalAmt.IsZero() {
 				msg += fmt.Sprintf(" - queued withdrawals (%s)", types2.FIL(withdrawalAmt))
 			}
-			err := xerrors.Errorf(msg)
+			err := fmt.Errorf(msg)
 			a.debugf("%s", err)
 			req.Complete(cid.Undef, err)
 			continue
@@ -714,7 +713,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 		Amount:                  amt,
 	})
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("serializing params: %w", err)
+		return cid.Undef, fmt.Errorf("serializing params: %w", err)
 	}
 
 	msgId, aerr := env.api.PushMessage(ctx, &types2.Message{

@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -316,7 +314,7 @@ func (sdr *storageDealRepo) GetDeals(ctx context.Context, miner address.Address,
 
 	for idx, deal := range md {
 		if deals[idx], err = toStorageDeal(&deal); err != nil {
-			return nil, xerrors.Errorf("convert StorageDeal(%s) to a types.MinerDeal failed:%w",
+			return nil, fmt.Errorf("convert StorageDeal(%s) to a types.MinerDeal failed:%w",
 				deal.ProposalCid, err)
 		}
 	}
@@ -338,7 +336,7 @@ func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(ctx context.Context, pie
 
 	for idx, deal := range md {
 		if deals[idx], err = toStorageDeal(&deal); err != nil {
-			return nil, xerrors.Errorf("convert StorageDeal(%s) to a types.MinerDeal failed:%w",
+			return nil, fmt.Errorf("convert StorageDeal(%s) to a types.MinerDeal failed:%w",
 				deal.ProposalCid, err)
 		}
 	}
@@ -358,7 +356,7 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr add
 
 	for idx, deal := range md {
 		if deals[idx], err = toStorageDeal(&deal); err != nil {
-			return nil, xerrors.Errorf("convert StorageDeal(%s) to a types.MinerDeal failed:%w",
+			return nil, fmt.Errorf("convert StorageDeal(%s) to a types.MinerDeal failed:%w",
 				deal.ProposalCid, err)
 		}
 	}

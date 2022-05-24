@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -13,7 +14,6 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"golang.org/x/xerrors"
 )
 
 type FundRepo interface {
@@ -100,4 +100,4 @@ type TxRepo interface {
 	StorageDealRepo() StorageDealRepo
 }
 
-var ErrNotFound = xerrors.New("record not found")
+var ErrNotFound = errors.New("record not found")

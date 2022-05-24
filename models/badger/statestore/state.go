@@ -3,12 +3,13 @@ package statestore
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 )
 
 type StoredState struct {
@@ -22,10 +23,10 @@ func (st *StoredState) End(ctx context.Context) error {
 		return err
 	}
 	if !has {
-		return xerrors.Errorf("No state for %s", st.name)
+		return fmt.Errorf("no state for %s", st.name)
 	}
 	if err := st.ds.Delete(ctx, st.name); err != nil {
-		return xerrors.Errorf("removing state from datastore: %w", err)
+		return fmt.Errorf("removing state from datastore: %w", err)
 	}
 	st.name = datastore.Key{}
 	st.ds = nil
@@ -36,8 +37,8 @@ func (st *StoredState) End(ctx context.Context) error {
 func (st *StoredState) Get(ctx context.Context, out cbg.CBORUnmarshaler) error {
 	val, err := st.ds.Get(ctx, st.name)
 	if err != nil {
-		if xerrors.Is(err, datastore.ErrNotFound) {
-			return xerrors.Errorf("No state for %s: %w", st.name, err)
+		if errors.Is(err, datastore.ErrNotFound) {
+			return fmt.Errorf("no state for %s: %w", st.name, err)
 		}
 		return err
 	}
@@ -56,7 +57,7 @@ func (st *StoredState) mutate(ctx context.Context, mutator func([]byte) ([]byte,
 		return err
 	}
 	if !has {
-		return xerrors.Errorf("No state for %s", st.name)
+		return fmt.Errorf("no state for %s", st.name)
 	}
 
 	cur, err := st.ds.Get(ctx, st.name)

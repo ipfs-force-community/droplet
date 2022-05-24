@@ -1,13 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 
@@ -164,12 +164,12 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 		//create
 		err = flagData(cctx, cfg)
 		if err != nil {
-			return nil, xerrors.Errorf("parser data from flag %w", err)
+			return nil, fmt.Errorf("parser data from flag %w", err)
 		}
 
 		err = config.SaveConfig(cfg)
 		if err != nil {
-			return nil, xerrors.Errorf("save config to %s %w", cfgPath, err)
+			return nil, fmt.Errorf("save config to %s %w", cfgPath, err)
 		}
 	} else if err == nil {
 		//loadConfig
@@ -180,7 +180,7 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 
 		err = flagData(cctx, cfg)
 		if err != nil {
-			return nil, xerrors.Errorf("parser data from flag %w", err)
+			return nil, fmt.Errorf("parser data from flag %w", err)
 		}
 	} else {
 		return nil, err
@@ -245,7 +245,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 			addrStr := strings.Split(miners, ":")
 			addr, err := address.NewFromString(addrStr[0])
 			if err != nil {
-				return xerrors.Errorf("flag provide a wrong address %s %w", addrStr, err)
+				return fmt.Errorf("flag provide a wrong address %s %w", addrStr, err)
 			}
 			account := ""
 			if len(addrStr) >= 2 {
@@ -263,7 +263,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		addrStr := strings.Split(cctx.String(PaymentAddressFlag.Name), ":")
 		addr, err := address.NewFromString(addrStr[0])
 		if err != nil {
-			return xerrors.Errorf("flag provide a wrong address %s %w", addrStr, err)
+			return fmt.Errorf("flag provide a wrong address %s %w", addrStr, err)
 		}
 		account := ""
 		if len(addrStr) >= 2 {

@@ -2,10 +2,10 @@ package storageprovider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/stores"
@@ -28,7 +28,7 @@ func newProviderStoreGetter(deals repo.StorageDealRepo, stores *stores.ReadWrite
 func (psg *providerStoreGetter) Get(proposalCid cid.Cid) (bstore.Blockstore, error) {
 	deal, err := psg.deals.GetDeal(context.TODO(), proposalCid)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get deal state: %w", err)
+		return nil, fmt.Errorf("failed to get deal state: %w", err)
 	}
 	return psg.stores.GetOrOpen(proposalCid.String(), deal.InboundCAR, deal.Ref.Root)
 }

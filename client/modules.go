@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
@@ -66,7 +66,7 @@ func NewClientImportMgr(ctx metrics.MetricsCtx, ns badger.ImportClientDS, r *con
 	// store the imports under the repo's `imports` subdirectory.
 	dir := filepath.Join(string(*r), "imports")
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, xerrors.Errorf("failed to create directory %s: %w", dir, err)
+		return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
 	return imports.NewManager(ctx, ns, dir), nil
@@ -129,7 +129,7 @@ func StorageBlockstoreAccessor(importmgr ClientImportMgr) storagemarket.Blocksto
 func RetrievalBlockstoreAccessor(r *config.HomeDir) (retrievalmarket.BlockstoreAccessor, error) {
 	dir := filepath.Join(string(*r), "retrievals")
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, xerrors.Errorf("failed to create directory %s: %w", dir, err)
+		return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 	return retrievalprovider.NewCARBlockstoreAccessor(dir), nil
 }

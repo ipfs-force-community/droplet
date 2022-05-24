@@ -2,11 +2,11 @@ package storageprovider
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/stores"
@@ -69,10 +69,10 @@ func (s *ImportsBlockstoreAccessor) Get(payloadCID storagemarket.PayloadCID) (bl
 
 	path, err := s.m.CARPathFor(context.TODO(), payloadCID)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get client blockstore for root %s: %w", payloadCID, err)
+		return nil, fmt.Errorf("failed to get client blockstore for root %s: %w", payloadCID, err)
 	}
 	if path == "" {
-		return nil, xerrors.Errorf("no client blockstore for root %s", payloadCID)
+		return nil, fmt.Errorf("no client blockstore for root %s", payloadCID)
 	}
 	ret, err := stores.ReadOnlyFilestore(path)
 	if err != nil {

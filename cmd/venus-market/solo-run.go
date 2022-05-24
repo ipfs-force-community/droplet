@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
@@ -29,7 +30,6 @@ import (
 	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 var soloRunCmd = &cli.Command{
@@ -55,7 +55,7 @@ func soloDaemon(cctx *cli.Context) error {
 
 	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
 		if err := cctx.Set(HidenSignerTypeFlag.Name, "wallet"); err != nil {
-			return xerrors.Errorf("set %s with wallet failed %v", HidenSignerTypeFlag.Name, err)
+			return fmt.Errorf("set %s with wallet failed %v", HidenSignerTypeFlag.Name, err)
 		}
 	}
 	cfg, err := prepare(cctx)
@@ -106,9 +106,9 @@ func soloDaemon(cctx *cli.Context) error {
 		},
 	)
 	if err != nil {
-		return xerrors.Errorf("initializing node: %w", err)
+		return fmt.Errorf("initializing node: %w", err)
 	}
-	defer closeFunc(ctx)
+	defer closeFunc(ctx) //nolint
 
 	finishCh := utils.MonitorShutdown(shutdownChan)
 

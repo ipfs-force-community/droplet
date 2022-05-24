@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -12,7 +13,6 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 type MsgMeta struct {
@@ -58,7 +58,7 @@ func NewISignerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, params SignerPar
 	case "gateway":
 		signer, closer, err = newGatewayWalletClient(context.Background(), params.Mgr, params.SignerCfg)
 	default:
-		return nil, xerrors.Errorf("unsupport sign type %s", params.SignerCfg.SignerType)
+		return nil, fmt.Errorf("unsupport sign type %s", params.SignerCfg.SignerType)
 	}
 
 	lc.Append(fx.Hook{

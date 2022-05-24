@@ -2,16 +2,16 @@ package clients
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filecoin-project/venus-market/v2/config"
 	client2 "github.com/filecoin-project/venus-messager/api/client"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
-var ErrFailMsg = xerrors.New("Message Fail")
+var ErrFailMsg = errors.New("message fail")
 
 type IVenusMessager = client2.IMessager
 

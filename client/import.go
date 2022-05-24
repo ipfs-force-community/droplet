@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,7 +20,6 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
-	"golang.org/x/xerrors"
 )
 
 func unixFSCidBuilder() (cid.Builder, error) {
@@ -48,23 +48,23 @@ func (a *API) createUnixFSFilestore(ctx context.Context, srcPath string, dstPath
 
 	src, err := os.Open(srcPath)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to open input file: %w", err)
+		return cid.Undef, fmt.Errorf("failed to open input file: %w", err)
 	}
 	defer src.Close() //nolint:errcheck
 
 	stat, err := src.Stat()
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to stat file :%w", err)
+		return cid.Undef, fmt.Errorf("failed to stat file :%w", err)
 	}
 
 	file, err := files.NewReaderPathFile(srcPath, src, stat)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create reader path file: %w", err)
+		return cid.Undef, fmt.Errorf("failed to create reader path file: %w", err)
 	}
 
 	f, err := ioutil.TempFile("", "")
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create temp file: %w", err)
+		return cid.Undef, fmt.Errorf("failed to create temp file: %w", err)
 	}
 	_ = f.Close() // close; we only want the path.
 
@@ -75,43 +75,43 @@ func (a *API) createUnixFSFilestore(ctx context.Context, srcPath string, dstPath
 	// the root CID of the DAG.
 	fstore, err := stores.ReadWriteFilestore(tmp)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create temporary filestore: %w", err)
+		return cid.Undef, fmt.Errorf("failed to create temporary filestore: %w", err)
 	}
 
 	finalRoot1, err := buildUnixFS(ctx, file, fstore, true)
 	if err != nil {
 		_ = fstore.Close()
-		return cid.Undef, xerrors.Errorf("failed to import file to store to compute root: %w", err)
+		return cid.Undef, fmt.Errorf("failed to import file to store to compute root: %w", err)
 	}
 
 	if err := fstore.Close(); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to finalize car filestore: %w", err)
+		return cid.Undef, fmt.Errorf("failed to finalize car filestore: %w", err)
 	}
 
 	// Step 2. We now have the root of the UnixFS DAG, and we can write the
 	// final CAR for real under `dst`.
 	bs, err := stores.ReadWriteFilestore(dstPath, finalRoot1)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create a carv2 read/write filestore: %w", err)
+		return cid.Undef, fmt.Errorf("failed to create a carv2 read/write filestore: %w", err)
 	}
 
 	// rewind file to the beginning.
 	if _, err := src.Seek(0, 0); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to rewind file: %w", err)
+		return cid.Undef, fmt.Errorf("failed to rewind file: %w", err)
 	}
 
 	finalRoot2, err := buildUnixFS(ctx, file, bs, true)
 	if err != nil {
 		_ = bs.Close()
-		return cid.Undef, xerrors.Errorf("failed to create UnixFS DAG with carv2 blockstore: %w", err)
+		return cid.Undef, fmt.Errorf("failed to create UnixFS DAG with carv2 blockstore: %w", err)
 	}
 
 	if err := bs.Close(); err != nil {
-		return cid.Undef, xerrors.Errorf("failed to finalize car blockstore: %w", err)
+		return cid.Undef, fmt.Errorf("failed to finalize car blockstore: %w", err)
 	}
 
 	if finalRoot1 != finalRoot2 {
-		return cid.Undef, xerrors.New("roots do not match")
+		return cid.Undef, errors.New("roots do not match")
 	}
 
 	return finalRoot1, nil

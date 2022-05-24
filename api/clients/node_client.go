@@ -2,7 +2,6 @@ package clients
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-market/v2/config"
@@ -26,7 +25,6 @@ func NodeClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, nodeCfg *config.Node) 
 
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {
-			fmt.Println("closerrrr")
 			closer()
 			return nil
 		},

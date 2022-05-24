@@ -157,7 +157,7 @@ func TestFundManagerParallel(t *testing.T) {
 	// Release 2
 	go func() {
 		amt := abi.NewTokenAmount(2)
-		err = s.fm.Release(s.acctAddr, amt)
+		err := s.fm.Release(s.acctAddr, amt)
 		require.NoError(t, err)
 	}()
 

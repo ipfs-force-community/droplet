@@ -2,6 +2,7 @@ package storageprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/mitchellh/go-homedir"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -97,11 +97,11 @@ type internalProviderEvent struct {
 func providerDispatcher(evt pubsub.Event, fn pubsub.SubscriberFn) error {
 	ie, ok := evt.(internalProviderEvent)
 	if !ok {
-		return xerrors.New("wrong type of event")
+		return errors.New("wrong type of event")
 	}
 	cb, ok := fn.(storagemarket.ProviderSubscriber)
 	if !ok {
-		return xerrors.New("wrong type of callback")
+		return errors.New("wrong type of callback")
 	}
 	cb(ie.evt, ie.deal)
 	return nil
@@ -242,21 +242,21 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 	// TODO: be able to check if we have enough disk space
 	d, err := p.dealStore.GetDeal(ctx, propCid)
 	if err != nil {
-		return xerrors.Errorf("failed getting deal %s: %w", propCid, err)
+		return fmt.Errorf("failed getting deal %s: %w", propCid, err)
 	}
 
 	// TODO: Check the deal status
 	if isTerminateState(d) {
-		return xerrors.Errorf("deal %s is terminate state", propCid)
+		return fmt.Errorf("deal %s is terminate state", propCid)
 	}
 
 	if d.State > storagemarket.StorageDealWaitingForData {
-		return xerrors.Errorf("deal %s does not support offline data", propCid)
+		return fmt.Errorf("deal %s does not support offline data", propCid)
 	}
 
 	tempfi, err := p.fs.CreateTemp()
 	if err != nil {
-		return xerrors.Errorf("failed to create temp file for data import: %w", err)
+		return fmt.Errorf("failed to create temp file for data import: %w", err)
 	}
 	defer func() {
 		if err := tempfi.Close(); err != nil {
@@ -272,7 +272,7 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 	n, err := io.Copy(tempfi, data)
 	if err != nil {
 		cleanup()
-		return xerrors.Errorf("importing deal data failed: %w", err)
+		return fmt.Errorf("importing deal data failed: %w", err)
 	}
 	log.Debugw("finished copying imported file to local file", "propCid", propCid)
 
@@ -283,20 +283,20 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 	_, err = tempfi.Seek(0, io.SeekStart)
 	if err != nil {
 		cleanup()
-		return xerrors.Errorf("failed to seek through temp imported file: %w", err)
+		return fmt.Errorf("failed to seek through temp imported file: %w", err)
 	}
 
 	proofType, err := p.spn.GetProofType(ctx, d.Proposal.Provider, nil) // TODO: 判断是不是属于此矿池?
 	if err != nil {
 		cleanup()
-		return xerrors.Errorf("failed to determine proof type: %w", err)
+		return fmt.Errorf("failed to determine proof type: %w", err)
 	}
 	log.Debugw("fetched proof type", "propCid", propCid)
 
 	pieceCid, err := utils.GeneratePieceCommitment(proofType, tempfi, carSize)
 	if err != nil {
 		cleanup()
-		return xerrors.Errorf("failed to generate commP: %w", err)
+		return fmt.Errorf("failed to generate commP: %w", err)
 	}
 	if carSizePadded := padreader.PaddedSize(carSize).Padded(); carSizePadded < d.Proposal.PieceSize {
 		// need to pad up!
@@ -316,7 +316,7 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 	// Verify CommP matches
 	if !pieceCid.Equals(d.Proposal.PieceCID) {
 		cleanup()
-		return xerrors.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, d.Proposal.PieceCID)
+		return fmt.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, d.Proposal.PieceCID)
 	}
 
 	log.Debugw("will fire ReserveProviderFunds for imported file", "propCid", propCid)
@@ -329,7 +329,7 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 	d.State = storagemarket.StorageDealReserveProviderFunds
 	d.PieceStatus = types.Undefine
 	if err := p.dealStore.SaveDeal(ctx, d); err != nil {
-		return xerrors.Errorf("save deal(%d) failed:%w", d.DealID, err)
+		return fmt.Errorf("save deal(%d) failed:%w", d.DealID, err)
 	}
 	go func() {
 		err := p.dealProcess.HandleOff(context.TODO(), d)
@@ -449,9 +449,9 @@ func (p *StorageProviderImpl) AddStorageCollateral(ctx context.Context, mAddr ad
 
 	err = p.spn.WaitForMessage(ctx, mcid, func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error {
 		if err != nil {
-			done <- xerrors.Errorf("AddFunds errored: %w", err)
+			done <- fmt.Errorf("AddFunds errored: %w", err)
 		} else if code != exitcode.Ok {
-			done <- xerrors.Errorf("AddFunds error, exit code: %s", code.String())
+			done <- fmt.Errorf("AddFunds error, exit code: %s", code.String())
 		} else {
 			done <- nil
 		}
