@@ -202,17 +202,6 @@ func isTerminateState(deal *types.MinerDeal) bool {
 	return false
 }
 
-func CheckDealStatus(deal *types.MinerDeal) error {
-	if isTerminateState(deal) {
-		return xerrors.Errorf("deal %s is terminate state", deal.ProposalCid)
-	}
-	if deal.State > storagemarket.StorageDealWaitingForData {
-		return xerrors.Errorf("deal %s does not support offline data", deal.ProposalCid)
-	}
-
-	return nil
-}
-
 func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.MinerDeal) error {
 	for _, deal := range deals {
 		if isTerminateState(deal) {

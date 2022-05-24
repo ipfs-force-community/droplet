@@ -71,9 +71,22 @@ func NewDealTransport(mctx metrics.MetricsCtx,
 	return dt, nil
 }
 
+func isValidDeal(deal *types.MinerDeal) error {
+	if deal.State == storagemarket.StorageDealWaitingForData {
+		return nil
+	}
+	if isTerminateState(deal) {
+		return xerrors.Errorf("deal %s is terminate state", deal.ProposalCid)
+	}
+	if deal.State > storagemarket.StorageDealWaitingForData {
+		return xerrors.Errorf("deal %s does not support offline data", deal.ProposalCid)
+	}
+
+	return xerrors.Errorf("deal %s state %d is invalid", deal.ProposalCid, deal.State)
+}
+
 func (dt *DealTransport) TransportData(ctx context.Context, ti *types2.TransportInfo, deal *types.MinerDeal) error {
-	deal, err := dt.waitDealReady(dt.ctx, deal)
-	if err != nil {
+	if err := isValidDeal(deal); err != nil {
 		return err
 	}
 
@@ -86,7 +99,7 @@ func (dt *DealTransport) TransportData(ctx context.Context, ti *types2.Transport
 	}
 
 	// create a temp file where we will hold the deal data.
-	tmpFile, err = dt.fs.CreateTemp()
+	tmpFile, err := dt.fs.CreateTemp()
 	if err != nil {
 		cleanup()
 		return xerrors.Errorf("failed to create temp file: %w", err)
@@ -105,31 +118,6 @@ func (dt *DealTransport) TransportData(ctx context.Context, ti *types2.Transport
 	}
 
 	return dt.startTransport(dt.ctx, ti, deal)
-}
-
-func (dt *DealTransport) waitDealReady(ctx context.Context, deal *types.MinerDeal) (*types.MinerDeal, error) {
-	ticket := time.NewTicker(1 * time.Minute)
-	defer ticket.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-ticket.C:
-			deal, err := dt.dealStore.GetDeal(ctx, deal.ProposalCid)
-			if err != nil {
-				return nil, err
-			}
-
-			if err := CheckDealStatus(deal); err != nil {
-				return nil, err
-			}
-
-			if deal.State == storagemarket.StorageDealWaitingForData {
-				return deal, nil
-			}
-		}
-	}
 }
 
 func (dt *DealTransport) verifyPieceCid(ctx context.Context, filePath string, d *types.MinerDeal) error {
@@ -293,9 +281,8 @@ func (dt *DealTransport) restartTransport(ctx context.Context) error {
 		_ = f.Close()
 
 		go func(info *types2.TransportInfo, deal *types.MinerDeal) {
-			deal, err = dt.waitDealReady(ctx, deal)
-			if err != nil {
-				log.Error(err)
+			if err := isValidDeal(deal); err != nil {
+				log.Info(err)
 				return
 			}
 			log.Infof("start transport data %v", deal.ProposalCid)
