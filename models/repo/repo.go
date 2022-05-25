@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ipfs/go-datastore"
+	"go.mongodb.org/mongo-driver/mongo"
+	"gorm.io/gorm"
+
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -101,3 +105,13 @@ type TxRepo interface {
 }
 
 var ErrNotFound = errors.New("record not found")
+
+func UniformNotFoundErrors() {
+	mongo.ErrNoDocuments = ErrNotFound
+	datastore.ErrNotFound = ErrNotFound
+	gorm.ErrRecordNotFound = ErrNotFound
+}
+
+func init() {
+	UniformNotFoundErrors()
+}

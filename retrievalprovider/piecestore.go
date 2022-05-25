@@ -16,6 +16,7 @@ type PieceInfo struct {
 	dealRepo repo.StorageDealRepo
 }
 
+// GetPieceInfoFromCid take `pieceCid` priority, then `payloadCid`
 func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.Cid, piececid *cid.Cid) ([]*types.MinerDeal, error) {
 	if piececid != nil && (*piececid).Defined() {
 		minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus(ctx, (*piececid), storageprovider.ReadyRetrievalDealStatus...)

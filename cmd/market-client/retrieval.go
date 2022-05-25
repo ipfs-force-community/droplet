@@ -354,6 +354,11 @@ var clientQueryRetrievalAskCmd = &cli.Command{
 			return err
 		}
 
+		if len(ask.Err) != 0 {
+			afmt.Printf("Unavailable query response, message : %s\n", ask.Err)
+			return nil
+		}
+
 		afmt.Printf("Ask: %s\n", maddr)
 		afmt.Printf("Unseal price: %s\n", types.FIL(ask.UnsealPrice))
 		afmt.Printf("Price per byte: %s\n", types.FIL(ask.PricePerByte))

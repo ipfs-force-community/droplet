@@ -123,7 +123,6 @@ func (r txRepo) StorageDealRepo() repo.StorageDealRepo {
 }
 
 func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
-	gorm.ErrRecordNotFound = repo.ErrNotFound
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 	if err != nil {
 		return nil, fmt.Errorf("[db connection failed] Database name: %s %w", cfg.ConnectionString, err)

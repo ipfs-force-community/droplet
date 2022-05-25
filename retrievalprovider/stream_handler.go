@@ -2,6 +2,7 @@ package retrievalprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
@@ -58,6 +59,14 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		return
 	}
 
+	// since 'paymentAddr' is empty, to `cborMarshal` a struct with empty address would get an error,
+	// it is impossible to `WriteQueryResponse` success.
+	// just return and output a log.
+	if p.paymentAddr == address.Undef {
+		log.Errorf("'RetrievalPaymentAddress' configuration is not set")
+		return
+	}
+
 	sendResp := func(resp retrievalmarket.QueryResponse) {
 		if err := stream.WriteQueryResponse(resp); err != nil {
 			log.Errorf("Retrieval query: writing query response: %s", err)
@@ -69,13 +78,23 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		PieceCIDFound:   retrievalmarket.QueryItemUnavailable,
 		MinPricePerByte: big.Zero(),
 		UnsealPrice:     big.Zero(),
+		PaymentAddress:  p.paymentAddr,
 	}
 
 	minerDeals, err := p.pieceInfo.GetPieceInfoFromCid(ctx, query.PayloadCID, query.PieceCID)
 	if err != nil || len(minerDeals) == 0 {
 		log.Errorf("Retrieval query: query ready data: %s", err)
 		answer.Status = retrievalmarket.QueryResponseError
-		answer.Message = fmt.Sprintf("failed to fetch piece to retrieve from: %s", err)
+		if len(minerDeals) == 0 || errors.Is(err, repo.ErrNotFound) {
+			var usedCid = query.PieceCID
+			if usedCid == nil {
+				usedCid = &query.PayloadCID
+			}
+			answer.Message = fmt.Sprintf("failed to fetch piece to retrieve, index(%s) not exists",
+				usedCid.String())
+		} else {
+			answer.Message = fmt.Sprintf("failed to fetch piece to retrieve from: %s", err)
+		}
 		sendResp(answer)
 		return
 	}
