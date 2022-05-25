@@ -355,7 +355,7 @@ var clientQueryRetrievalAskCmd = &cli.Command{
 		}
 
 		if len(ask.Err) != 0 {
-			afmt.Printf("Unavailable query response, message : %s\n", ask.Err)
+			afmt.Println(ask.Err)
 			return nil
 		}
 

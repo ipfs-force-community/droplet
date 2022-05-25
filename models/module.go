@@ -62,4 +62,3 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 		),
 	)
 }
-
