@@ -3,6 +3,7 @@ package minermgr
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
+	"github.com/pkg/errors"
 )
 
 const CoMinersLimit = 200
@@ -68,7 +69,7 @@ func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode v1api.FullNode, authClient *
 
 	if m.authClient != nil {
 		if err := m.refreshOnce(ctx); err != nil {
-			return nil, xerrors.Errorf("first refresh users from venus-auth(%s) failed:%w", m.authNode.Url, err)
+			return nil, fmt.Errorf("first refresh users from venus-auth(%s) failed: %w", m.authNode.Url, err)
 		}
 		go m.refreshUsers(ctx)
 	}
@@ -129,7 +130,7 @@ func (m *UserMgrImpl) GetAccount(ctx context.Context, addr address.Address) (str
 	}
 
 	if len(account) == 0 {
-		return "", xerrors.Errorf("unable find account of address %s", addr)
+		return "", errors.Errorf("unable find account of address %s", addr)
 	}
 
 	return account, nil
@@ -250,7 +251,7 @@ func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...types.User) erro
 //   the correct way is syncing 'miners' with venus-auth.
 func (m *UserMgrImpl) refreshOnce(ctx context.Context) error {
 	if m.authClient == nil {
-		return xerrors.Errorf("authClient is nil")
+		return errors.Errorf("authClient is nil")
 	}
 
 	log.Infof("refresh miners from venus-auth, url: %s\n", m.authNode.Url)

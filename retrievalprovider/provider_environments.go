@@ -3,6 +3,7 @@ package retrievalprovider
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -10,7 +11,6 @@ import (
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -59,7 +59,7 @@ func (pde *providerDealEnvironment) PrepareBlockstore(ctx context.Context, dealI
 	//触发unseal过程
 	bs, err := pde.p.dagStore.LoadShard(ctx, pieceCid)
 	if err != nil {
-		return xerrors.Errorf("failed to load blockstore for piece %s: %w", pieceCid, err)
+		return fmt.Errorf("failed to load blockstore for piece %s: %w", pieceCid, err)
 	}
 
 	log.Debugf("adding blockstore for deal %d to tracker", dealID)
@@ -90,7 +90,7 @@ func (pde *providerDealEnvironment) CloseDataTransfer(ctx context.Context, chid 
 func (pde *providerDealEnvironment) DeleteStore(dealID retrievalmarket.DealID) error {
 	// close the read-only blockstore and stop tracking it for the deal
 	if err := pde.p.stores.Untrack(dealID.String()); err != nil {
-		return xerrors.Errorf("failed to clean read-only blockstore for deal %d: %w", dealID, err)
+		return fmt.Errorf("failed to clean read-only blockstore for deal %d: %w", dealID, err)
 	}
 
 	return nil
@@ -106,11 +106,11 @@ type providerStoreGetter struct {
 func (psg *providerStoreGetter) Get(otherPeer peer.ID, dealID retrievalmarket.DealID) (bstore.Blockstore, error) {
 	has, err := psg.deals.HasDeal(context.TODO(), otherPeer, dealID)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get deal state: %w", err)
+		return nil, fmt.Errorf("failed to get deal state: %w", err)
 	}
 
 	if !has {
-		return nil, xerrors.Errorf("market has no deal for peer %s, deal %d", otherPeer, dealID)
+		return nil, fmt.Errorf("market has no deal for peer %s, deal %d", otherPeer, dealID)
 	}
 
 	//

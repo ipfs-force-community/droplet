@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -68,7 +69,7 @@ func newS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
 	return &s3PieceStorage{s3Cfg: s3Cfg, bucket: bucket, s3Client: s3.New(sess), uploader: uploader}, nil
 }
 
-func (s *s3PieceStorage) SaveTo(ctx context.Context, s2 string, r io.Reader) (int64, error) {
+func (s *s3PieceStorage) SaveTo(ctx context.Context, resourceId string, r io.Reader) (int64, error) {
 	if s.s3Cfg.ReadOnly {
 		return 0, fmt.Errorf("do not write to a 'readonly' piece store")
 	}
@@ -76,7 +77,7 @@ func (s *s3PieceStorage) SaveTo(ctx context.Context, s2 string, r io.Reader) (in
 	countReader := utils.NewCounterBufferReader(r)
 	resp, err := s.uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(s2),
+		Key:    aws.String(resourceId),
 		Body:   countReader,
 	})
 	if err != nil {
@@ -99,10 +100,10 @@ func (s *s3PieceStorage) Len(ctx context.Context, piececid string) (int64, error
 	return *result.ContentLength, nil
 }
 
-func (s s3PieceStorage) GetReaderCloser(ctx context.Context, s2 string) (io.ReadCloser, error) {
+func (s s3PieceStorage) GetReaderCloser(ctx context.Context, resourceId string) (io.ReadCloser, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(s2),
+		Key:    aws.String(resourceId),
 	}
 
 	result, err := s.s3Client.GetObject(params)
@@ -112,12 +113,28 @@ func (s s3PieceStorage) GetReaderCloser(ctx context.Context, s2 string) (io.Read
 	return result.Body, nil
 }
 
-func (s s3PieceStorage) GetMountReader(ctx context.Context, s2 string) (mount.Reader, error) {
-	len, err := s.Len(ctx, s2)
+func (s s3PieceStorage) GetMountReader(ctx context.Context, resourceId string) (mount.Reader, error) {
+	len, err := s.Len(ctx, resourceId)
 	if err != nil {
 		return nil, err
 	}
-	return newSeekWraper(s.s3Client, s.bucket, s2, len-1), nil
+	return newSeekWraper(s.s3Client, s.bucket, resourceId, len-1), nil
+}
+
+func (s s3PieceStorage) GetRedirectUrl(ctx context.Context, resourceId string) (string, error) {
+	if has, err := s.Has(ctx, resourceId); err != nil {
+		return "", fmt.Errorf("check object: %s exist error:%w", resourceId, err)
+	} else if !has {
+		return "", fmt.Errorf("object: %s not exists", resourceId)
+	}
+
+	params := &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(resourceId),
+	}
+
+	req, _ := s.s3Client.GetObjectRequest(params)
+	return req.Presign(time.Hour * 24)
 }
 
 func (s *s3PieceStorage) CanAllocate(size int64) bool {

@@ -2,9 +2,8 @@ package blockstore
 
 import (
 	"context"
+	"fmt"
 	"io"
-
-	"golang.org/x/xerrors"
 
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -41,7 +40,7 @@ func decodeCid(cid cid.Cid) (inline bool, data []byte, err error) {
 func (b *idstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	inline, _, err := decodeCid(cid)
 	if err != nil {
-		return false, xerrors.Errorf("error decoding Cid: %w", err)
+		return false, fmt.Errorf("error decoding Cid: %w", err)
 	}
 
 	if inline {
@@ -54,7 +53,7 @@ func (b *idstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 func (b *idstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	inline, data, err := decodeCid(cid)
 	if err != nil {
-		return nil, xerrors.Errorf("error decoding Cid: %w", err)
+		return nil, fmt.Errorf("error decoding Cid: %w", err)
 	}
 
 	if inline {
@@ -67,7 +66,7 @@ func (b *idstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 func (b *idstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	inline, data, err := decodeCid(cid)
 	if err != nil {
-		return 0, xerrors.Errorf("error decoding Cid: %w", err)
+		return 0, fmt.Errorf("error decoding Cid: %w", err)
 	}
 
 	if inline {
@@ -80,7 +79,7 @@ func (b *idstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 func (b *idstore) View(ctx context.Context, cid cid.Cid, cb func([]byte) error) error {
 	inline, data, err := decodeCid(cid)
 	if err != nil {
-		return xerrors.Errorf("error decoding Cid: %w", err)
+		return fmt.Errorf("error decoding Cid: %w", err)
 	}
 
 	if inline {
@@ -93,7 +92,7 @@ func (b *idstore) View(ctx context.Context, cid cid.Cid, cb func([]byte) error) 
 func (b *idstore) Put(ctx context.Context, blk blocks.Block) error {
 	inline, _, err := decodeCid(blk.Cid())
 	if err != nil {
-		return xerrors.Errorf("error decoding Cid: %w", err)
+		return fmt.Errorf("error decoding Cid: %w", err)
 	}
 
 	if inline {
@@ -108,7 +107,7 @@ func (b *idstore) PutMany(ctx context.Context, blks []blocks.Block) error {
 	for _, blk := range blks {
 		inline, _, err := decodeCid(blk.Cid())
 		if err != nil {
-			return xerrors.Errorf("error decoding Cid: %w", err)
+			return fmt.Errorf("error decoding Cid: %w", err)
 		}
 
 		if inline {
@@ -127,7 +126,7 @@ func (b *idstore) PutMany(ctx context.Context, blks []blocks.Block) error {
 func (b *idstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	inline, _, err := decodeCid(cid)
 	if err != nil {
-		return xerrors.Errorf("error decoding Cid: %w", err)
+		return fmt.Errorf("error decoding Cid: %w", err)
 	}
 
 	if inline {
@@ -142,7 +141,7 @@ func (b *idstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
 	for _, cid := range cids {
 		inline, _, err := decodeCid(cid)
 		if err != nil {
-			return xerrors.Errorf("error decoding Cid: %w", err)
+			return fmt.Errorf("error decoding Cid: %w", err)
 		}
 
 		if inline {

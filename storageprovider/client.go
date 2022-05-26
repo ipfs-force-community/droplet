@@ -5,6 +5,8 @@ package storageprovider
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 
@@ -13,7 +15,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -160,17 +161,17 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 
 	pubmsg, err := c.msgClient.GetMessage(ctx, *deal.PublishMessage)
 	if err != nil {
-		return 0, xerrors.Errorf("getting deal publish message: %w", err)
+		return 0, fmt.Errorf("getting deal publish message: %w", err)
 	}
 
 	mi, err := c.full.StateMinerInfo(ctx, deal.Proposal.Provider, types.EmptyTSK)
 	if err != nil {
-		return 0, xerrors.Errorf("getting miner worker failed: %w", err)
+		return 0, fmt.Errorf("getting miner worker failed: %w", err)
 	}
 
 	fromid, err := c.full.StateLookupID(ctx, pubmsg.From, types.EmptyTSK)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to resolve from msg ID addr: %w", err)
+		return 0, fmt.Errorf("failed to resolve from msg ID addr: %w", err)
 	}
 
 	var pubOk bool
@@ -182,15 +183,15 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		}
 	}
 	if !pubOk {
-		return 0, xerrors.Errorf("deal wasn't published by piecestorage provider: from=%s, provider=%s,%+v", pubmsg.From, deal.Proposal.Provider, pubAddrs)
+		return 0, fmt.Errorf("deal wasn't published by piecestorage provider: from=%s, provider=%s,%+v", pubmsg.From, deal.Proposal.Provider, pubAddrs)
 	}
 
 	if pubmsg.To != marketactor.Address {
-		return 0, xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
+		return 0, fmt.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
 	}
 
 	if pubmsg.Method != builtin7.MethodsMarket.PublishStorageDeals {
-		return 0, xerrors.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
+		return 0, fmt.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
 	}
 
 	var params marketactor.PublishStorageDealsParams
@@ -213,46 +214,46 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 	}
 
 	if dealIdx == -1 {
-		return 0, xerrors.Errorf("deal publish didn't contain our deal (message cid: %s)", deal.PublishMessage)
+		return 0, fmt.Errorf("deal publish didn't contain our deal (message cid: %s)", deal.PublishMessage)
 	}
 
 	// TODO: timeout
 	ret, err := c.msgClient.WaitMsg(ctx, *deal.PublishMessage, constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
-		return 0, xerrors.Errorf("waiting for deal publish message: %w", err)
+		return 0, fmt.Errorf("waiting for deal publish message: %w", err)
 	}
 	if ret.Receipt.ExitCode != 0 {
-		return 0, xerrors.Errorf("deal publish failed: exit=%d", ret.Receipt.ExitCode)
+		return 0, fmt.Errorf("deal publish failed: exit=%d", ret.Receipt.ExitCode)
 	}
 
 	nv, err := c.full.StateNetworkVersion(ctx, ret.TipSet)
 	if err != nil {
-		return 0, xerrors.Errorf("getting network version: %w", err)
+		return 0, fmt.Errorf("getting network version: %w", err)
 	}
 
 	res, err := marketactor.DecodePublishStorageDealsReturn(ret.Receipt.Return, nv)
 	if err != nil {
-		return 0, xerrors.Errorf("decoding deal publish return: %w", err)
+		return 0, fmt.Errorf("decoding deal publish return: %w", err)
 	}
 
 	dealIDs, err := res.DealIDs()
 	if err != nil {
-		return 0, xerrors.Errorf("getting dealIDs: %w", err)
+		return 0, fmt.Errorf("getting dealIDs: %w", err)
 	}
 
 	if dealIdx >= len(dealIDs) {
-		return 0, xerrors.Errorf(
+		return 0, fmt.Errorf(
 			"deal index %d out of bounds of deals (len %d) in publish deals message %s",
 			dealIdx, len(dealIDs), pubmsg.Cid())
 	}
 
 	valid, err := res.IsDealValid(uint64(dealIdx))
 	if err != nil {
-		return 0, xerrors.Errorf("determining deal validity: %w", err)
+		return 0, fmt.Errorf("determining deal validity: %w", err)
 	}
 
 	if !valid {
-		return 0, xerrors.New("deal was invalid at publication")
+		return 0, errors.New("deal was invalid at publication")
 	}
 
 	return dealIDs[dealIdx], nil
@@ -291,12 +292,12 @@ func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider 
 func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID abi.DealID, onDealExpired storagemarket.DealExpiredCallback, onDealSlashed storagemarket.DealSlashedCallback) error {
 	head, err := c.full.ChainHead(ctx)
 	if err != nil {
-		return xerrors.Errorf("client: failed to get chain head: %w", err)
+		return fmt.Errorf("client: failed to get chain head: %w", err)
 	}
 
 	sd, err := c.full.StateMarketStorageDeal(ctx, dealID, head.Key())
 	if err != nil {
-		return xerrors.Errorf("client: failed to look up deal %d on chain: %w", dealID, err)
+		return fmt.Errorf("client: failed to look up deal %d on chain: %w", dealID, err)
 	}
 
 	// Called immediately to check if the deal has already expired or been slashed
@@ -371,7 +372,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	// Wait until after the end epoch for the deal and then timeout
 	timeout := (sd.Proposal.EndEpoch - head.Height()) + 1
 	if err := c.ev.StateChanged(checkFunc, stateChanged, revert, int(constants.MessageConfidence)+1, timeout, match); err != nil {
-		return xerrors.Errorf("failed to set up state changed handler: %w", err)
+		return fmt.Errorf("failed to set up state changed handler: %w", err)
 	}
 
 	return nil

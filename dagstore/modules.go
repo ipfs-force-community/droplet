@@ -2,12 +2,12 @@ package dagstore
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-fil-markets/stores"
@@ -62,7 +62,7 @@ func NewWrapperDAGStore(lc fx.Lifecycle, ctx metrics.MetricsCtx, homeDir *config
 
 	dagst, w, err := NewDAGStore(ctx, cfg, minerAPI)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
+		return nil, nil, fmt.Errorf("failed to create DAG store: %w", err)
 	}
 
 	lc.Append(fx.Hook{

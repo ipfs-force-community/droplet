@@ -2,10 +2,10 @@ package blockstore
 
 import (
 	"context"
+	"errors"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 type ChainIO interface {
@@ -26,7 +26,7 @@ func NewAPIBlockstore(cio ChainIO) Blockstore {
 }
 
 func (a *apiBlockstore) DeleteBlock(context.Context, cid.Cid) error {
-	return xerrors.New("not supported")
+	return errors.New("not supported")
 }
 
 func (a *apiBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error) {
@@ -50,15 +50,15 @@ func (a *apiBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
 }
 
 func (a *apiBlockstore) Put(context.Context, blocks.Block) error {
-	return xerrors.New("not supported")
+	return errors.New("not supported")
 }
 
 func (a *apiBlockstore) PutMany(context.Context, []blocks.Block) error {
-	return xerrors.New("not supported")
+	return errors.New("not supported")
 }
 
 func (a *apiBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	return nil, xerrors.New("not supported")
+	return nil, errors.New("not supported")
 }
 
 func (a *apiBlockstore) HashOnRead(enabled bool) {

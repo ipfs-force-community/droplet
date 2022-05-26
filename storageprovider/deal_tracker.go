@@ -2,10 +2,9 @@ package storageprovider
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
-
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -75,7 +74,7 @@ func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
 
 func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, addr address.Address, tsk vTypes.TipSetKey) {
 	deals, err := dealTracker.storageRepo.GetDealByAddrAndStatus(ctx, addr, storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing)
-	if err != nil && !xerrors.Is(err, repo.ErrNotFound) {
+	if err != nil && !errors.Is(err, repo.ErrNotFound) {
 		log.Errorf("get miner %s storage deals for check StorageDealAwaitingPreCommit %w", addr, err)
 	}
 
@@ -128,7 +127,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 
 func (dealTracker *DealTracker) checkSlash(ctx metrics.MetricsCtx, addr address.Address, tsk vTypes.TipSetKey) {
 	deals, err := dealTracker.storageRepo.GetDealByAddrAndStatus(ctx, addr, storagemarket.StorageDealActive)
-	if err != nil && !xerrors.Is(err, repo.ErrNotFound) {
+	if err != nil && !errors.Is(err, repo.ErrNotFound) {
 		log.Errorf("get miner %s storage deals for check StorageDealActive %w", addr, err)
 	}
 

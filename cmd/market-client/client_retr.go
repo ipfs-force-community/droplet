@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -15,7 +16,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -118,12 +118,12 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi clientapi.IMarketClie
 		if cctx.String("maxPrice") != "" {
 			maxPrice, err = types2.ParseFIL(cctx.String("maxPrice"))
 			if err != nil {
-				return nil, xerrors.Errorf("parsing maxPrice: %w", err)
+				return nil, fmt.Errorf("parsing maxPrice: %w", err)
 			}
 		}
 
 		if offer.MinPrice.GreaterThan(big.Int(maxPrice)) {
-			return nil, xerrors.Errorf("failed to find offer satisfying maxPrice: %s", maxPrice)
+			return nil, fmt.Errorf("failed to find offer satisfying maxPrice: %s", maxPrice)
 		}
 
 		o := offer.Order(payer)
@@ -131,11 +131,11 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi clientapi.IMarketClie
 
 		subscribeEvents, err := fapi.ClientGetRetrievalUpdates(ctx)
 		if err != nil {
-			return nil, xerrors.Errorf("error setting up retrieval updates: %w", err)
+			return nil, fmt.Errorf("error setting up retrieval updates: %w", err)
 		}
 		retrievalRes, err := fapi.ClientRetrieve(ctx, o)
 		if err != nil {
-			return nil, xerrors.Errorf("error setting up retrieval: %w", err)
+			return nil, fmt.Errorf("error setting up retrieval: %w", err)
 		}
 
 		start := time.Now()
@@ -144,7 +144,7 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi clientapi.IMarketClie
 			var evt client.RetrievalInfo
 			select {
 			case <-ctx.Done():
-				return nil, xerrors.New("Retrieval Timed Out")
+				return nil, errors.New("retrieval timed out")
 			case evt = <-subscribeEvents:
 				if evt.ID != retrievalRes.DealID {
 					// we can't check the deal ID ahead of time because:
@@ -171,11 +171,11 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi clientapi.IMarketClie
 			case retrievalmarket.DealStatusCompleted:
 				break readEvents
 			case retrievalmarket.DealStatusRejected:
-				return nil, xerrors.Errorf("Retrieval Proposal Rejected: %s", evt.Message)
+				return nil, fmt.Errorf("retrieval Proposal Rejected: %s", evt.Message)
 			case
 				retrievalmarket.DealStatusDealNotFound,
 				retrievalmarket.DealStatusErrored:
-				return nil, xerrors.Errorf("Retrieval Error: %s", evt.Message)
+				return nil, fmt.Errorf("retrieval Error: %s", evt.Message)
 			}
 		}
 

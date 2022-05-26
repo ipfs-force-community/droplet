@@ -15,7 +15,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("importmgr")
@@ -106,12 +105,12 @@ func (m *Manager) CreateImport(ctx context.Context) (id types.ImportID, err erro
 
 	metajson, err := json.Marshal(meta)
 	if err != nil {
-		return 0, xerrors.Errorf("marshaling store metadata: %w", err)
+		return 0, fmt.Errorf("marshaling store metadata: %w", err)
 	}
 
 	err = m.ds.Put(ctx, id.DsKey(), metajson)
 	if err != nil {
-		return 0, xerrors.Errorf("failed to insert import metadata: %w", err)
+		return 0, fmt.Errorf("failed to insert import metadata: %w", err)
 	}
 
 	return id, err
@@ -122,28 +121,28 @@ func (m *Manager) CreateImport(ctx context.Context) (id types.ImportID, err erro
 func (m *Manager) AllocateCAR(ctx context.Context, id types.ImportID) (path string, err error) {
 	meta, err := m.ds.Get(ctx, id.DsKey())
 	if err != nil {
-		return "", xerrors.Errorf("getting metadata form datastore: %w", err)
+		return "", fmt.Errorf("getting metadata form datastore: %w", err)
 	}
 
 	var sm Meta
 	if err := json.Unmarshal(meta, &sm); err != nil {
-		return "", xerrors.Errorf("unmarshaling store meta: %w", err)
+		return "", fmt.Errorf("unmarshaling store meta: %w", err)
 	}
 
 	// refuse if a CAR path already exists.
 	if curr := sm.Labels[LCARPath]; curr != "" {
-		return "", xerrors.Errorf("import CAR already exists at %s: %w", curr, err)
+		return "", fmt.Errorf("import CAR already exists at %s: %w", curr, err)
 	}
 
 	path = filepath.Join(m.rootDir, fmt.Sprintf("%d.car", id))
 	file, err := os.Create(path)
 	if err != nil {
-		return "", xerrors.Errorf("failed to create car file for import: %w", err)
+		return "", fmt.Errorf("failed to create car file for import: %w", err)
 	}
 
 	// close the file before returning the path.
 	if err := file.Close(); err != nil {
-		return "", xerrors.Errorf("failed to close temp file: %w", err)
+		return "", fmt.Errorf("failed to close temp file: %w", err)
 	}
 
 	// record the path and ownership.
@@ -151,7 +150,7 @@ func (m *Manager) AllocateCAR(ctx context.Context, id types.ImportID) (path stri
 	sm.Labels[LCAROwner] = CAROwnerImportMgr
 
 	if meta, err = json.Marshal(sm); err != nil {
-		return "", xerrors.Errorf("marshaling store metadata: %w", err)
+		return "", fmt.Errorf("marshaling store metadata: %w", err)
 	}
 
 	err = m.ds.Put(ctx, id.DsKey(), meta)
@@ -163,19 +162,19 @@ func (m *Manager) AllocateCAR(ctx context.Context, id types.ImportID) (path stri
 func (m *Manager) AddLabel(ctx context.Context, id types.ImportID, key LabelKey, value LabelValue) error {
 	meta, err := m.ds.Get(ctx, id.DsKey())
 	if err != nil {
-		return xerrors.Errorf("getting metadata form datastore: %w", err)
+		return fmt.Errorf("getting metadata form datastore: %w", err)
 	}
 
 	var sm Meta
 	if err := json.Unmarshal(meta, &sm); err != nil {
-		return xerrors.Errorf("unmarshaling store meta: %w", err)
+		return fmt.Errorf("unmarshaling store meta: %w", err)
 	}
 
 	sm.Labels[key] = value
 
 	meta, err = json.Marshal(&sm)
 	if err != nil {
-		return xerrors.Errorf("marshaling store meta: %w", err)
+		return fmt.Errorf("marshaling store meta: %w", err)
 	}
 
 	return m.ds.Put(ctx, id.DsKey(), meta)
@@ -187,7 +186,7 @@ func (m *Manager) List(ctx context.Context) ([]types.ImportID, error) {
 
 	qres, err := m.ds.Query(ctx, query.Query{KeysOnly: true})
 	if err != nil {
-		return nil, xerrors.Errorf("query error: %w", err)
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	defer qres.Close() //nolint:errcheck
 
@@ -199,7 +198,7 @@ func (m *Manager) List(ctx context.Context) ([]types.ImportID, error) {
 
 		id, err := strconv.ParseUint(k, 10, 64)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse key %s to uint64, err=%w", r.Key, err)
+			return nil, fmt.Errorf("failed to parse key %s to uint64, err=%w", r.Key, err)
 		}
 		keys = append(keys, types.ImportID(id))
 	}
@@ -211,12 +210,12 @@ func (m *Manager) List(ctx context.Context) ([]types.ImportID, error) {
 func (m *Manager) Info(ctx context.Context, id types.ImportID) (*Meta, error) {
 	meta, err := m.ds.Get(ctx, id.DsKey())
 	if err != nil {
-		return nil, xerrors.Errorf("getting metadata form datastore: %w", err)
+		return nil, fmt.Errorf("getting metadata form datastore: %w", err)
 	}
 
 	var sm Meta
 	if err := json.Unmarshal(meta, &sm); err != nil {
-		return nil, xerrors.Errorf("unmarshaling store meta: %w", err)
+		return nil, fmt.Errorf("unmarshaling store meta: %w", err)
 	}
 
 	return &sm, nil
@@ -225,7 +224,7 @@ func (m *Manager) Info(ctx context.Context, id types.ImportID) (*Meta, error) {
 // Remove drops all data associated with the supplied import ID.
 func (m *Manager) Remove(ctx context.Context, id types.ImportID) error {
 	if err := m.ds.Delete(ctx, id.DsKey()); err != nil {
-		return xerrors.Errorf("removing import metadata: %w", err)
+		return fmt.Errorf("removing import metadata: %w", err)
 	}
 	return nil
 }
@@ -233,7 +232,7 @@ func (m *Manager) Remove(ctx context.Context, id types.ImportID) error {
 func (m *Manager) CARPathFor(ctx context.Context, dagRoot cid.Cid) (string, error) {
 	ids, err := m.List(ctx)
 	if err != nil {
-		return "", xerrors.Errorf("failed to fetch import IDs: %w", err)
+		return "", fmt.Errorf("failed to fetch import IDs: %w", err)
 	}
 
 	for _, id := range ids {

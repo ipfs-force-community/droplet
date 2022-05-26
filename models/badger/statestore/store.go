@@ -10,7 +10,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"go.uber.org/multierr"
-	"golang.org/x/xerrors"
 )
 
 type StateStore struct {
@@ -80,7 +79,7 @@ func (st *StateStore) List(ctx context.Context, out interface{}) (err error) {
 		elem := reflect.New(outT)
 		err = cborutil.ReadCborRPC(bytes.NewReader(res.Value), elem.Interface())
 		if err != nil {
-			err = multierr.Append(err, xerrors.Errorf("decoding state for key '%s': %w", res.Key, err))
+			err = multierr.Append(err, fmt.Errorf("decoding state for key '%s': %w", res.Key, err))
 			continue
 		}
 

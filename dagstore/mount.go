@@ -2,10 +2,10 @@ package dagstore
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore/mount"
 )
@@ -54,7 +54,7 @@ func (l *PieceMount) Serialize() *url.URL {
 func (l *PieceMount) Deserialize(u *url.URL) error {
 	pieceCid, err := cid.Decode(u.Host)
 	if err != nil {
-		return xerrors.Errorf("failed to parse PieceCid from host '%s': %w", u.Host, err)
+		return fmt.Errorf("failed to parse PieceCid from host '%s': %w", u.Host, err)
 	}
 	l.PieceCid = pieceCid
 	//l.UseTransient = l.useTransient
@@ -64,7 +64,7 @@ func (l *PieceMount) Deserialize(u *url.URL) error {
 func (l *PieceMount) Fetch(ctx context.Context) (mount.Reader, error) {
 	r, err := l.API.FetchUnsealedPiece(ctx, l.PieceCid)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to fetch unsealed piece %s: %w", l.PieceCid, err)
+		return nil, fmt.Errorf("failed to fetch unsealed piece %s: %w", l.PieceCid, err)
 	}
 	return r, nil
 }
@@ -94,11 +94,11 @@ func (l *PieceMount) Close() error {
 func (l *PieceMount) Stat(ctx context.Context) (mount.Stat, error) {
 	size, err := l.API.GetUnpaddedCARSize(ctx, l.PieceCid)
 	if err != nil {
-		return mount.Stat{}, xerrors.Errorf("failed to fetch piece size for piece %s: %w", l.PieceCid, err)
+		return mount.Stat{}, fmt.Errorf("failed to fetch piece size for piece %s: %w", l.PieceCid, err)
 	}
 	isUnsealed, err := l.API.IsUnsealed(ctx, l.PieceCid)
 	if err != nil {
-		return mount.Stat{}, xerrors.Errorf("failed to verify if we have the unsealed piece %s: %w", l.PieceCid, err)
+		return mount.Stat{}, fmt.Errorf("failed to verify if we have the unsealed piece %s: %w", l.PieceCid, err)
 	}
 
 	// TODO Mark false when storage deal expires.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -54,7 +54,7 @@ var dataImportCmd = &cli.Command{
 		ctx := cli2.ReqContext(cctx)
 
 		if cctx.NArg() != 1 {
-			return xerrors.New("expected input path as the only arg")
+			return errors.New("expected input path as the only arg")
 		}
 
 		absPath, err := filepath.Abs(cctx.Args().First())
@@ -91,7 +91,7 @@ var dataDropCmd = &cli.Command{
 	ArgsUsage: "[import ID...]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return xerrors.Errorf("no imports specified")
+			return fmt.Errorf("no imports specified")
 		}
 
 		api, closer, err := cli2.NewMarketClientNode(cctx)
@@ -105,7 +105,7 @@ var dataDropCmd = &cli.Command{
 		for i, s := range cctx.Args().Slice() {
 			id, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
-				return xerrors.Errorf("parsing %d-th import ID: %w", i, err)
+				return fmt.Errorf("parsing %d-th import ID: %w", i, err)
 			}
 
 			ids = append(ids, id)
@@ -113,7 +113,7 @@ var dataDropCmd = &cli.Command{
 
 		for _, id := range ids {
 			if err := api.ClientRemoveImport(ctx, client.ImportID(id)); err != nil {
-				return xerrors.Errorf("removing import %d: %w", id, err)
+				return fmt.Errorf("removing import %d: %w", id, err)
 			}
 		}
 

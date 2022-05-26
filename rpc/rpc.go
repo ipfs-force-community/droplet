@@ -18,7 +18,6 @@ import (
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("modules")
@@ -64,11 +63,11 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 		case <-shutdownCh:
 		case <-ctx.Done():
 		}
-		log.Warn("Shutting down...")
-		if err := srv.Shutdown(context.TODO()); err != nil {
+		log.Warn("RPC Shutting down...")
+		if err := srv.Shutdown(context.TODO()); err != nil && err != http.ErrServerClosed {
 			log.Errorf("shutting down RPC server failed: %s", err)
 		}
-		log.Warn("Graceful shutdown successful")
+		log.Warn("RPC Graceful shutdown successful")
 	}()
 
 	addr, err := multiaddr.NewMultiaddr(cfg.ListenAddress)
@@ -81,14 +80,18 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 		return err
 	}
 	log.Infof("start rpc listen %s", addr)
-	return srv.Serve(manet.NetListener(nl))
+
+	if err := srv.Serve(manet.NetListener(nl)); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 func makeSecret(apiCfg *config.API) ([]byte, error) {
 	if len(apiCfg.Secret) != 0 {
 		secret, err := hex.DecodeString(apiCfg.Secret)
 		if err != nil {
-			return nil, xerrors.Errorf("unable to decode api security key")
+			return nil, fmt.Errorf("unable to decode api security key")
 		}
 		return secret, nil
 	}
@@ -106,7 +109,7 @@ func saveAPIInfo(home config.IHome, apiCfg *config.API, secKey, token []byte) er
 	}
 	homePath, err := home.HomePath()
 	if err != nil {
-		return xerrors.Errorf("unable to home path to save api/token")
+		return fmt.Errorf("unable to home path to save api/token")
 	}
 	_ = ioutil.WriteFile(path.Join(string(homePath), "api"), []byte(apiCfg.ListenAddress), 0644)
 	_ = ioutil.WriteFile(path.Join(string(homePath), "token"), token, 0644)

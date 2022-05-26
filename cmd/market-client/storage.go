@@ -26,7 +26,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -79,7 +78,7 @@ func GetAsks(ctx context.Context, api v1api.FullNode, capi clientapi.IMarketClie
 	}
 	miners, err := api.StateListMiners(ctx, types.EmptyTSK)
 	if err != nil {
-		return nil, xerrors.Errorf("getting miner list: %w", err)
+		return nil, fmt.Errorf("getting miner list: %w", err)
 	}
 
 	var lk sync.Mutex
@@ -272,7 +271,7 @@ var storageAsksQueryCmd = &cli.Command{
 		} else {
 			mi, err := fapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 			if err != nil {
-				return xerrors.Errorf("failed to get peerID for miner: %w", err)
+				return fmt.Errorf("failed to get peerID for miner: %w", err)
 			}
 
 			if mi.PeerId == nil || *mi.PeerId == peer.ID("SETME") {
@@ -452,7 +451,7 @@ The minimum value is 518400 (6 months).`,
 		afmt := cli2.NewAppFmt(cctx.App)
 
 		if cctx.NArg() != 4 {
-			return xerrors.New("expected 4 args: dataCid, miner, price, duration")
+			return errors.New("expected 4 args: dataCid, miner, price, duration")
 		}
 
 		// [data, miner, price, dur]
@@ -487,17 +486,17 @@ The minimum value is 518400 (6 months).`,
 		}
 
 		if abi.ChainEpoch(dur) < MinDealDuration {
-			return xerrors.Errorf("minimum deal duration is %d blocks", MinDealDuration)
+			return fmt.Errorf("minimum deal duration is %d blocks", MinDealDuration)
 		}
 		if abi.ChainEpoch(dur) > MaxDealDuration {
-			return xerrors.Errorf("maximum deal duration is %d blocks", MaxDealDuration)
+			return fmt.Errorf("maximum deal duration is %d blocks", MaxDealDuration)
 		}
 
 		var a address.Address
 		if from := cctx.String("from"); from != "" {
 			faddr, err := address.NewFromString(from)
 			if err != nil {
-				return xerrors.Errorf("failed to parse 'from' address: %w", err)
+				return fmt.Errorf("failed to parse 'from' address: %w", err)
 			}
 			a = faddr
 		} else {
@@ -516,14 +515,14 @@ The minimum value is 518400 (6 months).`,
 		if mpc := cctx.String("manual-piece-cid"); mpc != "" {
 			c, err := cid.Parse(mpc)
 			if err != nil {
-				return xerrors.Errorf("failed to parse provided manual piece cid: %w", err)
+				return fmt.Errorf("failed to parse provided manual piece cid: %w", err)
 			}
 
 			ref.PieceCid = &c
 
 			psize := cctx.Int64("manual-piece-size")
 			if psize == 0 {
-				return xerrors.Errorf("must specify piece size when manually setting cid")
+				return fmt.Errorf("must specify piece size when manually setting cid")
 			}
 
 			ref.PieceSize = abi.UnpaddedPieceSize(psize)
@@ -545,7 +544,7 @@ The minimum value is 518400 (6 months).`,
 			// client, return an error
 			verifiedDealParam := cctx.Bool("verified-deal")
 			if verifiedDealParam && !isVerified {
-				return xerrors.Errorf("address %s does not have verified client status", a)
+				return fmt.Errorf("address %s does not have verified client status", a)
 			}
 
 			// Override the default
@@ -567,7 +566,7 @@ The minimum value is 518400 (6 months).`,
 		var proposal *cid.Cid
 		if cctx.Bool("manual-stateless-deal") {
 			if ref.TransferType != storagemarket.TTManual || price.Int64() != 0 {
-				return xerrors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
+				return errors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
 			}
 			proposal, err = api.ClientStatelessDeal(ctx, sdParams)
 		} else {
@@ -629,7 +628,7 @@ func interactiveDeal(cctx *cli.Context) error {
 	if from := cctx.String("from"); from != "" {
 		faddr, err := address.NewFromString(from)
 		if err != nil {
-			return xerrors.Errorf("failed to parse 'from' address: %w", err)
+			return fmt.Errorf("failed to parse 'from' address: %w", err)
 		}
 		a = faddr
 	} else {
@@ -642,7 +641,7 @@ func interactiveDeal(cctx *cli.Context) error {
 
 	fromBal, err := fapi.WalletBalance(ctx, a)
 	if err != nil {
-		return xerrors.Errorf("checking from address balance: %w", err)
+		return fmt.Errorf("checking from address balance: %w", err)
 	}
 
 	printErr := func(err error) {
@@ -671,13 +670,13 @@ uiLoop:
 			_cidStr, _, err := rl.ReadLine()
 			cidStr := string(_cidStr)
 			if err != nil {
-				printErr(xerrors.Errorf("reading cid string: %w", err))
+				printErr(fmt.Errorf("reading cid string: %w", err))
 				continue
 			}
 
 			data, err = cid.Parse(cidStr)
 			if err != nil {
-				printErr(xerrors.Errorf("parsing cid string: %w", err))
+				printErr(fmt.Errorf("parsing cid string: %w", err))
 				continue
 			}
 
@@ -700,12 +699,12 @@ uiLoop:
 
 			_, err = fmt.Sscan(daystr, &days)
 			if err != nil {
-				printErr(xerrors.Errorf("parsing duration: %w", err))
+				printErr(fmt.Errorf("parsing duration: %w", err))
 				continue
 			}
 
 			if days < int(MinDealDuration/builtin.EpochsInDay) {
-				printErr(xerrors.Errorf("minimum duration is %d days", int(MinDealDuration/builtin.EpochsInDay)))
+				printErr(fmt.Errorf("minimum duration is %d days", int(MinDealDuration/builtin.EpochsInDay)))
 				continue
 			}
 
@@ -760,14 +759,14 @@ uiLoop:
 			_maddrsStr, _, err := rl.ReadLine()
 			maddrsStr := string(_maddrsStr)
 			if err != nil {
-				printErr(xerrors.Errorf("reading miner address: %w", err))
+				printErr(fmt.Errorf("reading miner address: %w", err))
 				continue
 			}
 
 			for _, s := range strings.Fields(maddrsStr) {
 				maddr, err := address.NewFromString(strings.TrimSpace(s))
 				if err != nil {
-					printErr(xerrors.Errorf("parsing miner address: %w", err))
+					printErr(fmt.Errorf("parsing miner address: %w", err))
 					continue uiLoop
 				}
 
@@ -785,7 +784,7 @@ uiLoop:
 			}
 
 			if len(asks) == 0 {
-				printErr(xerrors.Errorf("no asks found"))
+				printErr(fmt.Errorf("no asks found"))
 				continue uiLoop
 			}
 
@@ -816,14 +815,14 @@ uiLoop:
 			_latStr, _, err := rl.ReadLine()
 			latStr := string(_latStr)
 			if err != nil {
-				printErr(xerrors.Errorf("reading maximum latency: %w", err))
+				printErr(fmt.Errorf("reading maximum latency: %w", err))
 				continue
 			}
 
 			if latStr != "" {
 				maxMs, err := strconv.ParseInt(latStr, 10, 64)
 				if err != nil {
-					printErr(xerrors.Errorf("parsing FIL: %w", err))
+					printErr(fmt.Errorf("parsing FIL: %w", err))
 					continue uiLoop
 				}
 
@@ -853,13 +852,13 @@ uiLoop:
 			_budgetStr, _, err := rl.ReadLine()
 			budgetStr := string(_budgetStr)
 			if err != nil {
-				printErr(xerrors.Errorf("reading miner address: %w", err))
+				printErr(fmt.Errorf("reading miner address: %w", err))
 				continue
 			}
 
 			budget, err = types.ParseFIL(budgetStr)
 			if err != nil {
-				printErr(xerrors.Errorf("parsing FIL: %w", err))
+				printErr(fmt.Errorf("parsing FIL: %w", err))
 				continue uiLoop
 			}
 
@@ -884,7 +883,7 @@ uiLoop:
 			afmt.Print("Deals to make (1): ")
 			dealcStr, _, err := rl.ReadLine()
 			if err != nil {
-				printErr(xerrors.Errorf("reading deal count: %w", err))
+				printErr(fmt.Errorf("reading deal count: %w", err))
 				continue
 			}
 
@@ -940,18 +939,18 @@ uiLoop:
 			for _, maddr := range maddrs {
 				mi, err := fapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 				if err != nil {
-					printErr(xerrors.Errorf("failed to get peerID for miner: %w", err))
+					printErr(fmt.Errorf("failed to get peerID for miner: %w", err))
 					state = "miner"
 					continue uiLoop
 				}
 				if mi.PeerId == nil {
-					printErr(xerrors.Errorf("not set peer id for miner"))
+					printErr(fmt.Errorf("not set peer id for miner"))
 					state = "miner"
 					continue uiLoop
 				}
 				a, err := api.ClientQueryAsk(ctx, *mi.PeerId, maddr)
 				if err != nil {
-					printErr(xerrors.Errorf("failed to query ask: %w", err))
+					printErr(fmt.Errorf("failed to query ask: %w", err))
 					state = "miner"
 					continue uiLoop
 				}
@@ -983,7 +982,7 @@ uiLoop:
 
 				mpow, err := fapi.StateMinerPower(ctx, a.Miner, types.EmptyTSK)
 				if err != nil {
-					return xerrors.Errorf("getting power (%s): %w", a.Miner, err)
+					return fmt.Errorf("getting power (%s): %w", a.Miner, err)
 				}
 
 				if len(ask) > 1 {
@@ -1053,7 +1052,7 @@ uiLoop:
 
 			return nil
 		default:
-			return xerrors.Errorf("unknown state: %s", state)
+			return fmt.Errorf("unknown state: %s", state)
 		}
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
@@ -29,7 +30,6 @@ import (
 	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 var poolRunCmd = &cli.Command{
@@ -58,7 +58,7 @@ func poolDaemon(cctx *cli.Context) error {
 	ctx := cctx.Context
 	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
 		if err := cctx.Set(HidenSignerTypeFlag.Name, "gateway"); err != nil {
-			return xerrors.Errorf("set %s with gateway failed %v", HidenSignerTypeFlag.Name, err)
+			return fmt.Errorf("set %s with gateway failed %v", HidenSignerTypeFlag.Name, err)
 		}
 	}
 	cfg, err := prepare(cctx)
@@ -68,7 +68,7 @@ func poolDaemon(cctx *cli.Context) error {
 
 	// venus-auth is must in 'pool' mode
 	if len(cfg.AuthNode.Url) == 0 {
-		return xerrors.Errorf("auth-url is required in 'pool' mode")
+		return fmt.Errorf("auth-url is required in 'pool' mode")
 	}
 
 	// 'NewAuthClient' never returns an error, no needs to check
@@ -76,7 +76,7 @@ func poolDaemon(cctx *cli.Context) error {
 
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
-	_, err = builder.New(ctx,
+	closeFunc, err := builder.New(ctx,
 		//defaults
 		builder.Override(new(*jwtclient.AuthClient), authClient),
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
@@ -115,13 +115,14 @@ func poolDaemon(cctx *cli.Context) error {
 		},
 	)
 	if err != nil {
-		return xerrors.Errorf("initializing node: %w", err)
+		return fmt.Errorf("initializing node: %w", err)
 	}
+	defer closeFunc(ctx) //nolint
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
 	mux := mux.NewRouter()
 	if err = mux.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorageMgr)).GetError(); err != nil {
-		return xerrors.Errorf("handle 'resource' failed: %w", err)
+		return fmt.Errorf("handle 'resource' failed: %w", err)
 	}
 
 	var fullAPI marketapi.IMarketStruct

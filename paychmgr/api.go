@@ -2,9 +2,9 @@ package paychmgr
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
@@ -82,7 +82,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 			return nil, err
 		}
 		if sv.Voucher == nil {
-			return nil, xerrors.Errorf("Could not create voucher - shortfall of %d", sv.Shortfall)
+			return nil, fmt.Errorf("could not create voucher - shortfall of %d", sv.Shortfall)
 		}
 
 		svs[i] = sv.Voucher

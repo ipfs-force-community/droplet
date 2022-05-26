@@ -2,13 +2,13 @@ package retrievalprovider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 type PieceInfo struct {
@@ -28,7 +28,7 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 	// Get all pieces that contain the target block
 	piecesWithTargetBlock, err := pinfo.dagstore.GetPiecesContainingBlock(payloadCID)
 	if err != nil {
-		return nil, xerrors.Errorf("getting pieces for cid %s: %w", payloadCID, err)
+		return nil, fmt.Errorf("getting pieces for cid %s: %w", payloadCID, err)
 	}
 
 	var allMinerDeals []*types.MinerDeal
@@ -42,5 +42,5 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 	if len(allMinerDeals) > 0 {
 		return allMinerDeals, nil
 	}
-	return nil, xerrors.Errorf("unable to find ready data for piece (%s) payload (%s)", piececid, payloadCID)
+	return nil, fmt.Errorf("unable to find ready data for piece (%s) payload (%s)", piececid, payloadCID)
 }

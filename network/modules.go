@@ -4,6 +4,7 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 )
@@ -16,6 +17,7 @@ var (
 	SmuxTransportKey     = builder.Special{ID: 4} // Libp2p option
 	RelayKey             = builder.Special{ID: 5} // Libp2p option
 	SecurityKey          = builder.Special{ID: 6} // Libp2p option
+	ResourceManagerKey   = builder.Special{ID: 7} // Libp2p option
 )
 
 // Invokes are called in the order they are defined.
@@ -39,6 +41,8 @@ var NetworkOpts = func(server bool, simultaneousTransfersForRetrieval, simultane
 		builder.Override(SmuxTransportKey, SmuxTransport()),
 		builder.Override(RelayKey, NoRelay()),
 		builder.Override(SecurityKey, Security(true, false)),
+		builder.Override(new(network.ResourceManager), ResourceManager),
+		builder.Override(ResourceManagerKey, ResourceManagerOption),
 	)
 	if server {
 		return builder.Options(opts,

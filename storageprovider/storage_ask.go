@@ -2,9 +2,9 @@ package storageprovider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -60,7 +60,7 @@ func (storageAsk *StorageAsk) SetAsk(ctx context.Context, miner address.Address,
 
 	ts, err := storageAsk.fullNode.ChainHead(ctx)
 	if err != nil {
-		return xerrors.Errorf("Problem getting chain head:%w", err)
+		return fmt.Errorf("problem getting chain head:%w", err)
 	}
 
 	ask := &storagemarket.StorageAsk{
@@ -81,7 +81,7 @@ func (storageAsk *StorageAsk) SetAsk(ctx context.Context, miner address.Address,
 	var signedAsk *storagemarket.SignedStorageAsk
 
 	if signedAsk, err = storageAsk.signAsk(ask); err != nil {
-		return xerrors.Errorf("miner %s sign data failed: %v", miner.String(), err)
+		return fmt.Errorf("miner %s sign data failed: %v", miner.String(), err)
 	}
 
 	return storageAsk.repo.SetAsk(ctx, signedAsk)

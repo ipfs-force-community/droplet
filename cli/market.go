@@ -24,7 +24,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -213,23 +212,23 @@ var setAskCmd = &cli.Command{
 
 		dur, err := time.ParseDuration("720h0m0s")
 		if err != nil {
-			return xerrors.Errorf("cannot parse duration: %w", err)
+			return fmt.Errorf("cannot parse duration: %w", err)
 		}
 
 		qty := dur.Seconds() / float64(constants.MainNetBlockDelaySecs)
 
 		min, err := units.RAMInBytes(cctx.String("min-piece-size"))
 		if err != nil {
-			return xerrors.Errorf("cannot parse min-piece-size to quantity of bytes: %w", err)
+			return fmt.Errorf("cannot parse min-piece-size to quantity of bytes: %w", err)
 		}
 
 		if min < 256 {
-			return xerrors.New("minimum piece size (w/bit-padding) is 256B")
+			return errors.New("minimum piece size (w/bit-padding) is 256B")
 		}
 
 		max, err := units.RAMInBytes(cctx.String("max-piece-size"))
 		if err != nil {
-			return xerrors.Errorf("cannot parse max-piece-size to quantity of bytes: %w", err)
+			return fmt.Errorf("cannot parse max-piece-size to quantity of bytes: %w", err)
 		}
 
 		maddr, err := address.NewFromString(cctx.String("miner"))
@@ -249,7 +248,7 @@ var setAskCmd = &cli.Command{
 		}
 
 		if max > smax {
-			return xerrors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
+			return fmt.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
 		return api.MarketSetAsk(ctx, maddr, types.BigInt(pri), types.BigInt(vpri), abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
@@ -519,7 +518,7 @@ var updateStorageDealStateCmd = &cli.Command{
 		}
 
 		if !isParamOk {
-			return xerrors.Errorf("must set 'state' or 'piece-state'")
+			return fmt.Errorf("must set 'state' or 'piece-state'")
 		}
 
 		if !cctx.Bool("really-do-it") {
@@ -691,12 +690,12 @@ var setSealDurationCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 		if cctx.Args().Len() != 1 {
-			return xerrors.Errorf("must pass duration in minutes")
+			return fmt.Errorf("must pass duration in minutes")
 		}
 
 		hs, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
 		if err != nil {
-			return xerrors.Errorf("could not parse duration: %w", err)
+			return fmt.Errorf("could not parse duration: %w", err)
 		}
 
 		delay := hs * uint64(time.Minute)
@@ -947,7 +946,7 @@ var dealsPendingPublish = &cli.Command{
 
 		if cctx.Bool("publish-now") {
 			if err := api.MarketPublishPendingDeals(ctx); err != nil {
-				return xerrors.Errorf("publishing deals: %w", err)
+				return fmt.Errorf("publishing deals: %w", err)
 			}
 			fmt.Println("triggered deal publishing")
 			return nil
@@ -955,7 +954,7 @@ var dealsPendingPublish = &cli.Command{
 
 		pendings, err := api.MarketPendingDeals(ctx)
 		if err != nil {
-			return xerrors.Errorf("getting pending deals: %w", err)
+			return fmt.Errorf("getting pending deals: %w", err)
 		}
 
 		for _, pending := range pendings {

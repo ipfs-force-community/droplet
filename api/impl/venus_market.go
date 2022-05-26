@@ -13,8 +13,8 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/pkg/errors"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/shard"
@@ -104,13 +104,13 @@ func (m MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Addres
 		return minerInfo.SectorSize, nil
 	}
 
-	return 0, xerrors.New("not found")
+	return 0, errors.New("not found")
 }
 
 func (m MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
 	fi, err := os.Open(path)
 	if err != nil {
-		return xerrors.Errorf("failed to open file: %w", err)
+		return fmt.Errorf("failed to open file: %w", err)
 	}
 	defer fi.Close() //nolint:errcheck
 
@@ -700,7 +700,7 @@ func (m MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Addr
 func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {
 	fi, err := os.Open(fname)
 	if err != nil {
-		return xerrors.Errorf("failed to open given file: %w", err)
+		return fmt.Errorf("failed to open given file: %w", err)
 	}
 	defer fi.Close() //nolint:errcheck
 
