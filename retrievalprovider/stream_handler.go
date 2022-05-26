@@ -82,16 +82,12 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	}
 
 	minerDeals, err := p.pieceInfo.GetPieceInfoFromCid(ctx, query.PayloadCID, query.PieceCID)
-	if err != nil || len(minerDeals) == 0 {
+	if err != nil {
 		log.Errorf("Retrieval query: query ready data: %s", err)
 		answer.Status = retrievalmarket.QueryResponseError
-		if len(minerDeals) == 0 || errors.Is(err, repo.ErrNotFound) {
-			var usedCid = query.PieceCID
-			if usedCid == nil {
-				usedCid = &query.PayloadCID
-			}
-			answer.Message = fmt.Sprintf("failed to fetch piece to retrieve, index(%s) not exists",
-				usedCid.String())
+		if errors.Is(err, repo.ErrNotFound) {
+			answer.Message = fmt.Sprintf("retrieve piece(%s) or payload(%s) failed, not found",
+				query.PieceCID, query.PayloadCID)
 		} else {
 			answer.Message = fmt.Sprintf("failed to fetch piece to retrieve from: %s", err)
 		}

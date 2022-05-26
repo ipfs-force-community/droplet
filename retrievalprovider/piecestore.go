@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 )
 
 type PieceInfo struct {
@@ -23,7 +24,10 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 		if err != nil {
 			return nil, err
 		}
-		return minerDeals, nil
+		if len(minerDeals) > 0 {
+			return minerDeals, nil
+		}
+		return nil, xerrors.Errorf("unable to find deals by pieceCid:%s, %w", piececid.String(), repo.ErrNotFound)
 	}
 
 	// Get all pieces that contain the target block
@@ -43,5 +47,5 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 	if len(allMinerDeals) > 0 {
 		return allMinerDeals, nil
 	}
-	return nil, fmt.Errorf("unable to find ready data for piece (%s) payload (%s)", piececid, payloadCID)
+	return nil, xerrors.Errorf("unable to find ready data for payload (%s), %w", piececid, payloadCID, repo.ErrNotFound)
 }
