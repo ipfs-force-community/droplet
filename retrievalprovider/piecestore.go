@@ -16,13 +16,17 @@ type PieceInfo struct {
 	dealRepo repo.StorageDealRepo
 }
 
+// GetPieceInfoFromCid take `pieceCid` priority, then `payloadCid`
 func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.Cid, piececid *cid.Cid) ([]*types.MinerDeal, error) {
 	if piececid != nil && (*piececid).Defined() {
 		minerDeals, err := pinfo.dealRepo.GetDealsByPieceCidAndStatus(ctx, (*piececid), storageprovider.ReadyRetrievalDealStatus...)
 		if err != nil {
 			return nil, err
 		}
-		return minerDeals, nil
+		if len(minerDeals) > 0 {
+			return minerDeals, nil
+		}
+		return nil, fmt.Errorf("unable to find deals by pieceCid:%s, %w", piececid.String(), repo.ErrNotFound)
 	}
 
 	// Get all pieces that contain the target block
@@ -42,5 +46,5 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 	if len(allMinerDeals) > 0 {
 		return allMinerDeals, nil
 	}
-	return nil, fmt.Errorf("unable to find ready data for piece (%s) payload (%s)", piececid, payloadCID)
+	return nil, fmt.Errorf("unable to find ready data for payload (%s), %w", payloadCID, repo.ErrNotFound)
 }

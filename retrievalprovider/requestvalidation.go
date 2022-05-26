@@ -163,7 +163,7 @@ func (rv *ProviderRequestValidator) validatePull(ctx context.Context, isRestart 
 func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.ProviderDealState) (retrievalmarket.DealStatus, error) {
 	minerdeals, err := rv.pieceInfo.GetPieceInfoFromCid(ctx, deal.PayloadCID, deal.PieceCID)
 	if err != nil {
-		if err == repo.ErrNotFound {
+		if errors.Is(err, repo.ErrNotFound) {
 			return retrievalmarket.DealStatusDealNotFound, err
 		}
 		return retrievalmarket.DealStatusErrored, err

@@ -5,13 +5,11 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/v2/utils/test_helper"
-	"github.com/ipfs/go-datastore"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/v2/models/mysql"
+	"github.com/filecoin-project/venus-market/v2/utils/test_helper"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -37,7 +35,6 @@ func MysqlDB(t *testing.T) repo.Repo {
 }
 
 func BadgerDB(t *testing.T) *badger.Datastore {
-	datastore.ErrNotFound = repo.ErrNotFound
 	opts := &badger.DefaultOptions
 	opts.InMemory = true
 	db, err := badger.NewDatastore("", opts)

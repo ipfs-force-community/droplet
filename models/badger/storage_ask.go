@@ -25,9 +25,6 @@ func (ar *storageAskRepo) GetAsk(ctx context.Context, miner address.Address) (*s
 	key := statestore.ToKey(miner)
 	b, err := ar.ds.Get(ctx, key)
 	if err != nil {
-		if err == datastore.ErrNotFound {
-			return nil, repo.ErrNotFound
-		}
 		return nil, err
 	}
 

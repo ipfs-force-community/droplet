@@ -91,7 +91,6 @@ type ImportClientDS datastore.Batching
 type ClientTransferDS datastore.Batching
 
 func NewMetadataDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir) (MetadataDS, error) {
-	datastore.ErrNotFound = repo.ErrNotFound
 	db, err := badger.NewDatastore(path.Join(string(*homeDir), metadata), &badger.DefaultOptions)
 	if err != nil {
 		return nil, err
