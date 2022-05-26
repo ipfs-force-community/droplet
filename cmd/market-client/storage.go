@@ -763,6 +763,7 @@ uiLoop:
 				continue
 			}
 
+			maddrs = nil
 			for _, s := range strings.Fields(maddrsStr) {
 				maddr, err := address.NewFromString(strings.TrimSpace(s))
 				if err != nil {
