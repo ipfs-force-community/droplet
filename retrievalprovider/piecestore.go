@@ -47,5 +47,5 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 	if len(allMinerDeals) > 0 {
 		return allMinerDeals, nil
 	}
-	return nil, xerrors.Errorf("unable to find ready data for payload (%s), %w", piececid, payloadCID, repo.ErrNotFound)
+	return nil, xerrors.Errorf("unable to find ready data for payload (%s), %w", payloadCID, repo.ErrNotFound)
 }
