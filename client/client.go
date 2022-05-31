@@ -1184,9 +1184,13 @@ func (a *API) ClientListRetrievals(ctx context.Context) ([]types.RetrievalInfo, 
 
 func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan types.RetrievalInfo, error) {
 	updates := make(chan types.RetrievalInfo)
-
-	unsub := a.Retrieval.SubscribeToEvents(func(_ retrievalmarket.ClientEvent, deal retrievalmarket.ClientDealState) {
-		updates <- a.newRetrievalInfo(ctx, deal)
+	unsub := a.Retrieval.SubscribeToEvents(func(evt retrievalmarket.ClientEvent, deal retrievalmarket.ClientDealState) {
+		update := a.newRetrievalInfo(ctx, deal)
+		update.Event = &evt
+		select {
+		case updates <- update:
+		case <-ctx.Done():
+		}
 	})
 
 	go func() {
