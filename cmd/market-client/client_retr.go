@@ -172,7 +172,7 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi clientapi.IMarketClie
 				break readEvents
 			case retrievalmarket.DealStatusRejected:
 				return nil, fmt.Errorf("retrieval Proposal Rejected: %s", evt.Message)
-			case
+			case retrievalmarket.DealStatusCancelled,
 				retrievalmarket.DealStatusDealNotFound,
 				retrievalmarket.DealStatusErrored:
 				return nil, fmt.Errorf("retrieval Error: %s", evt.Message)
