@@ -527,7 +527,7 @@ func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch 
 
 	// Apply locally stored vouchers
 	vouchers, err := ca.vouchersForPaych(ctx, ch)
-	if err != nil && err != types.ErrChannelNotFound {
+	if err != nil && !errors.Is(err, repo.ErrNotFound) {
 		return nil, err
 	}
 

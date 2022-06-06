@@ -158,7 +158,7 @@ func (pm *Manager) AvailableFundsByFromTo(ctx context.Context, from address.Addr
 	}
 
 	ci, err := ca.outboundActiveByFromTo(ctx, from, to)
-	if err == types.ErrChannelNotFound {
+	if errors.Is(err, repo.ErrNotFound) {
 		// If there is no active channel between from / to we still want to
 		// return an empty ChannelAvailableFunds, so that clients can check
 		// for the existence of a channel between from / to without getting
@@ -191,7 +191,7 @@ func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address
 	pm.lk.Unlock()
 
 	if err != nil {
-		if err == types.ErrChannelNotFound {
+		if errors.Is(err, repo.ErrNotFound) {
 			return address.Undef, fmt.Errorf("could not find wait msg cid %s", mcid)
 		}
 		return address.Undef, err
@@ -316,7 +316,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	}
 
 	// If there's an error (besides channel not in store) return err
-	if err != types.ErrChannelNotFound {
+	if !errors.Is(err, repo.ErrNotFound) {
 		return nil, err
 	}
 
@@ -353,7 +353,7 @@ func (pm *Manager) trackChannel(ctx context.Context, ci *types.ChannelInfo) (*ty
 		return nil, err
 	case nil:
 		return nil, fmt.Errorf("already tracking channel: %s", ci.Channel)
-	case types.ErrChannelNotFound:
+	case repo.ErrNotFound:
 		err = pm.channelInfoRepo.SaveChannel(ctx, ci)
 		if err != nil {
 			return nil, err
