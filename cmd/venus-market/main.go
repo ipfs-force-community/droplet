@@ -12,6 +12,7 @@ import (
 	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
+	"github.com/mitchellh/go-homedir"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -152,9 +153,6 @@ func main() {
 			cli2.DagstoreCmd,
 			cli2.MigrateCmd,
 		},
-		Before: func(cctx *cli.Context) error {
-			return loadActorsWithCmdBefore(cctx)
-		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -293,10 +291,14 @@ var loadActorsWithCmdBefore = func(cctx *cli.Context) error {
 	if len(nodeToken) == 0 {
 		nodeToken = cctx.String(AuthTokeFlag.Name)
 	}
+	repoPath, err := homedir.Expand(cctx.String("repo"))
+	if err != nil {
+		return err
+	}
 	if len(nodeUrl) == 0 {
-		cfgPath := filepath.Join(cctx.String("repo"), "config.toml")
+		cfgPath := filepath.Join(repoPath, "config.toml")
 		marketCfg := config.DefaultMarketConfig
-		err := config.LoadConfig(cfgPath, marketCfg)
+		err = config.LoadConfig(cfgPath, marketCfg)
 		if err != nil {
 			if os.IsNotExist(err) {
 				return nil
@@ -304,6 +306,7 @@ var loadActorsWithCmdBefore = func(cctx *cli.Context) error {
 			return err
 		}
 		nodeUrl = marketCfg.Node.Url
+		nodeToken = marketCfg.Node.Token
 	}
 
 	apiInfo := apiinfo.NewAPIInfo(nodeUrl, nodeToken)
@@ -327,7 +330,7 @@ var loadActorsWithCmdBefore = func(cctx *cli.Context) error {
 		return err
 	}
 	builtinactors.SetNetworkBundle(nt)
-	if err := os.Setenv(builtinactors.RepoPath, cctx.String("repo")); err != nil {
+	if err := os.Setenv(builtinactors.RepoPath, repoPath); err != nil {
 		return fmt.Errorf("set env %s failed %v", builtinactors.RepoPath, err)
 	}
 

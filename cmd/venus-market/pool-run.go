@@ -50,6 +50,9 @@ var poolRunCmd = &cli.Command{
 		MinerListFlag,
 		PaymentAddressFlag,
 	},
+	Before: func(cctx *cli.Context) error {
+		return loadActorsWithCmdBefore(cctx)
+	},
 	Action: poolDaemon,
 }
 
