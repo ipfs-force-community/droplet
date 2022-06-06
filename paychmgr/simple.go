@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/sync/errgroup"
 
@@ -333,10 +335,10 @@ func (ca *channelAccessor) currentAvailableFunds(ctx context.Context, channelID 
 // message to be confirmed on chain)
 func (ca *channelAccessor) processTask(ctx context.Context, amt big.Int) *paychFundsRes {
 	// Get the payment channel for the from/to addresses.
-	// Note: It's ok if we get ErrChannelNotFound. It just means we need to
+	// Note: It's ok if we get repo.ErrNotFound. It just means we need to
 	// create a channel.
 	channelInfo, err := ca.channelInfoRepo.OutboundActiveByFromTo(ctx, ca.from, ca.to)
-	if err != nil && err != types.ErrChannelNotFound {
+	if err != nil && !errors.Is(err, repo.ErrNotFound) {
 		return &paychFundsRes{err: err}
 	}
 
