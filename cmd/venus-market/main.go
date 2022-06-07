@@ -292,7 +292,6 @@ var beforeCmdRun = func(cctx *cli.Context) error {
 		return err
 	}
 	cctx.Context = context.WithValue(cctx.Context, marketConfigKey, cfg)
-	return nil
 	return fetchAndLoadBundles(cctx.Context, cfg)
 }
 
