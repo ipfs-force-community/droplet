@@ -53,7 +53,7 @@ var soloRunCmd = &cli.Command{
 func soloDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
 	ctx := cctx.Context
-	cfg, ok := cctx.Context.Value(marketConfigKey).(*config.MarketConfig)
+	cfg, ok := cctx.Context.Value(contextKeyMarketConfig).(*config.MarketConfig)
 	if !ok {
 		return fmt.Errorf("market config not exists")
 	}

@@ -38,7 +38,9 @@ var (
 	ExtractApiKey  = builder.NextInvoke()
 )
 
-const marketConfigKey = "market-config"
+type contextKey string
+
+const contextKeyMarketConfig = contextKey("market-config")
 
 var (
 	RepoFlag = &cli.StringFlag{
@@ -296,7 +298,7 @@ var beforeCmdRun = func(cctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	cctx.Context = context.WithValue(cctx.Context, marketConfigKey, cfg)
+	cctx.Context = context.WithValue(cctx.Context, contextKeyMarketConfig, cfg)
 	return fetchAndLoadBundles(cctx.Context, cfg)
 }
 

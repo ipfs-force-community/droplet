@@ -279,7 +279,7 @@ func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCi
 		return nil, fmt.Errorf("WaitForPublishDeals failed to get chain head: %w", err)
 	}
 
-	res, err := n.dealInfo.GetCurrentDealInfo(ctx, head.Key(), (*market.DealProposal)(&proposal), publishCid)
+	res, err := n.dealInfo.GetCurrentDealInfo(ctx, head.Key(), &proposal, publishCid)
 	if err != nil {
 		return nil, fmt.Errorf("WaitForPublishDeals getting deal info errored: %w", err)
 	}
