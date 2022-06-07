@@ -57,12 +57,6 @@ var poolRunCmd = &cli.Command{
 func poolDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
 	ctx := cctx.Context
-	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
-		if err := cctx.Set(HidenSignerTypeFlag.Name, "gateway"); err != nil {
-			return fmt.Errorf("set %s with gateway failed %v", HidenSignerTypeFlag.Name, err)
-		}
-	}
-
 	cfg, ok := cctx.Context.Value(marketConfigKey).(*config.MarketConfig)
 	if !ok {
 		return fmt.Errorf("market config not exists")

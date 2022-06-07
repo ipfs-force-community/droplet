@@ -162,6 +162,11 @@ func main() {
 }
 
 func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
+	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
+		if err := cctx.Set(HidenSignerTypeFlag.Name, "wallet"); err != nil {
+			return nil, fmt.Errorf("set %s with wallet failed %v", HidenSignerTypeFlag.Name, err)
+		}
+	}
 	cfg := config.DefaultMarketConfig
 	cfg.HomeDir = cctx.String(RepoFlag.Name)
 	cfgPath, err := cfg.ConfigPath()

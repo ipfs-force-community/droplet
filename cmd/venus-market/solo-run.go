@@ -53,12 +53,6 @@ var soloRunCmd = &cli.Command{
 func soloDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
 	ctx := cctx.Context
-
-	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
-		if err := cctx.Set(HidenSignerTypeFlag.Name, "wallet"); err != nil {
-			return fmt.Errorf("set %s with wallet failed %v", HidenSignerTypeFlag.Name, err)
-		}
-	}
 	cfg, ok := cctx.Context.Value(marketConfigKey).(*config.MarketConfig)
 	if !ok {
 		return fmt.Errorf("market config not exists")
