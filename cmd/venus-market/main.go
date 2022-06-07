@@ -322,7 +322,7 @@ func fetchAndLoadBundles(ctx context.Context, cfg *config.MarketConfig) error {
 		return err
 	}
 	builtinactors.SetNetworkBundle(nt)
-	if err := os.Setenv(builtinactors.RepoPath, cfg.HomeDir); err != nil {
+	if err := os.Setenv(builtinactors.RepoPath, cfg.MustHomePath()); err != nil {
 		return fmt.Errorf("set env %s failed %v", builtinactors.RepoPath, err)
 	}
 
