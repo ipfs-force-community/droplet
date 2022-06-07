@@ -28,17 +28,17 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1-0.20220511223846-637436c27154
 	github.com/filecoin-project/specs-actors/v8 v8.0.0-20220422153930-0afe155bfffa
-	github.com/filecoin-project/specs-storage v0.4.0
-	github.com/filecoin-project/venus v1.3.0-rc2.0.20220530152607-c0a964715602
-	github.com/filecoin-project/venus-auth v1.4.0
-	github.com/filecoin-project/venus-messager v1.4.2-0.20220531015334-7a9441e3c25a
+	github.com/filecoin-project/specs-storage v0.4.1
+	github.com/filecoin-project/venus v1.6.0-pre-rc1
+	github.com/filecoin-project/venus-auth v1.6.0-pre-rc1
+	github.com/filecoin-project/venus-messager v1.6.0-pre-rc1
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab79c62a
-	github.com/ipfs-force-community/venus-gateway v1.4.1-0.20220531014242-13e9dcacfc80
+	github.com/ipfs-force-community/venus-gateway v1.6.0-pre-rc1
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.2.1
 	github.com/ipfs/go-cid v0.1.0
@@ -66,14 +66,14 @@ require (
 	github.com/ipld/go-ipld-prime v0.16.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-buffer-pool v0.0.2
-	github.com/libp2p/go-libp2p v0.18.0
-	github.com/libp2p/go-libp2p-core v0.14.0
-	github.com/libp2p/go-libp2p-noise v0.3.0
+	github.com/libp2p/go-libp2p v0.19.4
+	github.com/libp2p/go-libp2p-core v0.15.1
+	github.com/libp2p/go-libp2p-noise v0.4.0
 	github.com/libp2p/go-libp2p-peerstore v0.6.0
-	github.com/libp2p/go-libp2p-quic-transport v0.16.1
-	github.com/libp2p/go-libp2p-resource-manager v0.1.5
-	github.com/libp2p/go-libp2p-tls v0.3.1
-	github.com/libp2p/go-libp2p-yamux v0.8.2
+	github.com/libp2p/go-libp2p-quic-transport v0.17.0
+	github.com/libp2p/go-libp2p-resource-manager v0.2.1
+	github.com/libp2p/go-libp2p-tls v0.4.1
+	github.com/libp2p/go-libp2p-yamux v0.9.1
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.4

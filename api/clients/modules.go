@@ -34,15 +34,15 @@ func ConvertWalletToISinge(fullNode v1api.FullNode, signer ISinger) error {
 }
 
 func NewMarketEvent(mctx metrics.MetricsCtx) (*marketevent.MarketEventStream, error) {
-	stream := marketevent.NewMarketEventStream(mctx, &localMinerValidator{}, &types3.Config{
+	stream := marketevent.NewMarketEventStream(mctx, &localMinerValidator{}, &types3.RequestConfig{
 		RequestQueueSize: 30,
 		RequestTimeout:   time.Second * 30,
 	})
 	return stream, nil
 }
 
-func NewMarketEventAPI(stream *marketevent.MarketEventStream) (*marketevent.MarketEventAPI, error) {
-	return marketevent.NewMarketEventAPI(stream), nil
+func NewMarketEventAPI(stream *marketevent.MarketEventStream) (marketevent.IMarketEventAPI, error) {
+	return stream, nil
 }
 
 func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent, error) {
