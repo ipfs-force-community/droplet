@@ -50,23 +50,16 @@ var poolRunCmd = &cli.Command{
 		MinerListFlag,
 		PaymentAddressFlag,
 	},
-	Before: func(cctx *cli.Context) error {
-		return loadActorsWithCmdBefore(cctx)
-	},
+	Before: beforeCmdRun,
 	Action: poolDaemon,
 }
 
 func poolDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
 	ctx := cctx.Context
-	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
-		if err := cctx.Set(HidenSignerTypeFlag.Name, "gateway"); err != nil {
-			return fmt.Errorf("set %s with gateway failed %v", HidenSignerTypeFlag.Name, err)
-		}
-	}
-	cfg, err := prepare(cctx)
-	if err != nil {
-		return err
+	cfg, ok := cctx.Context.Value(contextKeyMarketConfig).(*config.MarketConfig)
+	if !ok {
+		return fmt.Errorf("market config not exists")
 	}
 
 	// venus-auth is must in 'pool' mode

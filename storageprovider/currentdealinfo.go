@@ -133,7 +133,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	// index of the target deal proposal
 	dealIdx := -1
 	for i, paramDeal := range pubDealsParams.Deals {
-		eq, err := mgr.CheckDealEquality(ctx, tok, *proposal, market.DealProposal(paramDeal.Proposal))
+		eq, err := mgr.CheckDealEquality(ctx, tok, *proposal, paramDeal.Proposal)
 		if err != nil {
 			return dealID, types.TipSetKey{}, fmt.Errorf("comparing publish deal message %s proposal to deal proposal: %w", publishCid, err)
 		}

@@ -1,10 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/filecoin-project/venus-market/v2/blockstore"
@@ -12,7 +12,6 @@ import (
 	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
-	"github.com/mitchellh/go-homedir"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -38,6 +37,10 @@ var (
 	InitJournalKey = builder.NextInvoke() //nolint
 	ExtractApiKey  = builder.NextInvoke()
 )
+
+type contextKey string
+
+const contextKeyMarketConfig = contextKey("market-config")
 
 var (
 	RepoFlag = &cli.StringFlag{
@@ -161,6 +164,11 @@ func main() {
 }
 
 func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
+	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
+		if err := cctx.Set(HidenSignerTypeFlag.Name, "wallet"); err != nil {
+			return nil, fmt.Errorf("set %s with wallet failed %v", HidenSignerTypeFlag.Name, err)
+		}
+	}
 	cfg := config.DefaultMarketConfig
 	cfg.HomeDir = cctx.String(RepoFlag.Name)
 	cfgPath, err := cfg.ConfigPath()
@@ -285,42 +293,28 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	return nil
 }
 
-var loadActorsWithCmdBefore = func(cctx *cli.Context) error {
-	nodeUrl := cctx.String(NodeUrlFlag.Name)
-	nodeToken := cctx.String(NodeTokenFlag.Name)
-	if len(nodeToken) == 0 {
-		nodeToken = cctx.String(AuthTokeFlag.Name)
-	}
-	repoPath, err := homedir.Expand(cctx.String("repo"))
+var beforeCmdRun = func(cctx *cli.Context) error {
+	cfg, err := prepare(cctx)
 	if err != nil {
 		return err
 	}
-	if len(nodeUrl) == 0 {
-		cfgPath := filepath.Join(repoPath, "config.toml")
-		marketCfg := config.DefaultMarketConfig
-		err = config.LoadConfig(cfgPath, marketCfg)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return err
-		}
-		nodeUrl = marketCfg.Node.Url
-		nodeToken = marketCfg.Node.Token
-	}
+	cctx.Context = context.WithValue(cctx.Context, contextKeyMarketConfig, cfg)
+	return fetchAndLoadBundles(cctx.Context, cfg)
+}
 
-	apiInfo := apiinfo.NewAPIInfo(nodeUrl, nodeToken)
+func fetchAndLoadBundles(ctx context.Context, cfg *config.MarketConfig) error {
+	apiInfo := apiinfo.NewAPIInfo(cfg.Node.Url, cfg.Node.Token)
 	addr, err := apiInfo.DialArgs("v1")
 	if err != nil {
 		return err
 	}
-	fullNodeAPI, closer, err := v1.NewFullNodeRPC(cctx.Context, addr, apiInfo.AuthHeader())
+	fullNodeAPI, closer, err := v1.NewFullNodeRPC(ctx, addr, apiInfo.AuthHeader())
 	if err != nil {
 		return err
 	}
 	defer closer()
 
-	networkName, err := fullNodeAPI.StateNetworkName(cctx.Context)
+	networkName, err := fullNodeAPI.StateNetworkName(ctx)
 	if err != nil {
 		return err
 	}
@@ -330,14 +324,14 @@ var loadActorsWithCmdBefore = func(cctx *cli.Context) error {
 		return err
 	}
 	builtinactors.SetNetworkBundle(nt)
-	if err := os.Setenv(builtinactors.RepoPath, repoPath); err != nil {
+	if err := os.Setenv(builtinactors.RepoPath, cfg.MustHomePath()); err != nil {
 		return fmt.Errorf("set env %s failed %v", builtinactors.RepoPath, err)
 	}
 
 	// preload manifest so that we have the correct code CID inventory for cli since that doesn't
 	// go through CI
 	bs := blockstore.NewMemory()
-	if err := builtinactors.FetchAndLoadBundles(cctx.Context, bs, builtinactors.BuiltinActorReleases); err != nil {
+	if err := builtinactors.FetchAndLoadBundles(ctx, bs, builtinactors.BuiltinActorReleases); err != nil {
 		return fmt.Errorf("failed to loading actor manifest: %v", err)
 	}
 

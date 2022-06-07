@@ -46,24 +46,16 @@ var soloRunCmd = &cli.Command{
 		MinerListFlag,
 		PaymentAddressFlag,
 	},
-	Before: func(cctx *cli.Context) error {
-		return loadActorsWithCmdBefore(cctx)
-	},
 	Action: soloDaemon,
+	Before: beforeCmdRun,
 }
 
 func soloDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
 	ctx := cctx.Context
-
-	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
-		if err := cctx.Set(HidenSignerTypeFlag.Name, "wallet"); err != nil {
-			return fmt.Errorf("set %s with wallet failed %v", HidenSignerTypeFlag.Name, err)
-		}
-	}
-	cfg, err := prepare(cctx)
-	if err != nil {
-		return err
+	cfg, ok := cctx.Context.Value(contextKeyMarketConfig).(*config.MarketConfig)
+	if !ok {
+		return fmt.Errorf("market config not exists")
 	}
 
 	resAPI := &impl.MarketNodeImpl{}
