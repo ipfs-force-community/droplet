@@ -109,6 +109,8 @@ func NewDAGStore(ctx context.Context, cfg *config.DAGStoreConfig, marketApi Mark
 		if err != nil {
 			return nil, nil, err
 		}
+	} else {
+		dcfg.TopLevelIndex = index.NewInverted(dstore)
 	}
 
 	dagst, err := dagstore.NewDAGStore(dcfg)
