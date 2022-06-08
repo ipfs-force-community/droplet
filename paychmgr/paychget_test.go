@@ -457,14 +457,14 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	require.NoError(t, err)
 
 	// Simulate shutting down system
-	mock.close()
+	mgr.Stop()
 
 	// Create a new manager with the same datastore
 	mock2 := newMockManagerAPI()
-	defer mock2.close()
 
 	mgr2, err := newManager(ctx, repo, mock2)
 	require.NoError(t, err)
+	defer mgr2.Stop()
 
 	// Send success add funds response
 	mock2.receiveMsgResponse(mcid2, types.MessageReceipt{
