@@ -31,7 +31,3 @@ COPY --from=buildenv  /usr/lib/x86_64-linux-gnu/libhwloc.so.5  \
 
 EXPOSE 41235 58418
 ENTRYPOINT ["/script/init.sh"]
-
-
-
-
