@@ -6,17 +6,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/venus/pkg/constants"
-
-	"github.com/filecoin-project/venus-market/v2/blockstore"
-	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
@@ -113,8 +109,7 @@ func NewManager(mctx metrics.MetricsCtx, repo repo.Repo, msgClient clients.IMixM
 
 // newManager is used by the tests to supply mocks
 func newManager(ctx context.Context, r repo.Repo, pchapi managerAPI) (*Manager, error) {
-	_, err := builtinactors.LoadBuiltinActorsTesting(ctx, blockstore.NewMemory(), constants.InsecurePoStValidation)
-	if err != nil {
+	if err := builtinactors.SetNetworkBundle(types2.NetworkMainnet); err != nil {
 		return nil, err
 	}
 	pm := &Manager{
