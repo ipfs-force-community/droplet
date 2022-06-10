@@ -256,8 +256,8 @@ func (ca *channelAccessor) queueSize() int {
 // msgWaitComplete is called when the message for a previous task is confirmed
 // or there is an error.
 func (ca *channelAccessor) msgWaitComplete(ctx context.Context, mcid cid.Cid, err error) {
-	// this error is caused by shutting down of manager, should not change anything.
-	if errors.Is(err, context.Canceled) {
+	// context related errors should be ignore
+	if err != nil && (errors.Is(err, ca.chctx.Err()) || errors.Is(err, ctx.Err())) {
 		return
 	}
 
