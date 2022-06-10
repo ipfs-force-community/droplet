@@ -108,12 +108,16 @@ func NewManager(mctx metrics.MetricsCtx, repo repo.Repo, msgClient clients.IMixM
 
 // newManager is used by the tests to supply mocks
 func newManager(ctx context.Context, r repo.Repo, pchapi managerAPI) (*Manager, error) {
+	var shutdown context.CancelFunc
+	ctx, shutdown = context.WithCancel(ctx)
 	pm := &Manager{
 		sa:              &stateAccessor{sm: pchapi},
 		channelInfoRepo: r.PaychChannelInfoRepo(),
 		msgInfoRepo:     r.PaychMsgInfoRepo(),
 		channels:        make(map[string]*channelAccessor),
 		pchapi:          pchapi,
+		ctx:             ctx,
+		shutdown:        shutdown,
 	}
 	return pm, pm.Start(ctx)
 }
