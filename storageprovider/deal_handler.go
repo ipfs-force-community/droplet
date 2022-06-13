@@ -449,6 +449,8 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		if err := stores.RegisterShardSync(ctx, storageDealPorcess.dagStore, deal.Proposal.PieceCID, carFilePath, true); err != nil {
 			err = fmt.Errorf("failed to activate shard: %w", err)
 			log.Error(err)
+		} else {
+			log.Infof("register shard successfully. deal:%d, proposalCid:%s, pieceCid:%s", deal.DealID, deal.ProposalCid, deal.Proposal.PieceCID)
 		}
 
 		log.Infow("successfully handed off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
