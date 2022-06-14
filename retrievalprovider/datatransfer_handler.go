@@ -43,7 +43,7 @@ func (d *DataTransferHandler) HandleAcceptFor(ctx context.Context, identifier rm
 	if err != nil {
 		return err
 	}
-	// state transfer should follow `ProviderEventDealAccepted` event
+	// state transition should follow `ProviderEventDealAccepted` event
 	// https://github.com/filecoin-project/go-fil-markets/blob/9e5f2499cba68968ffc75a22b89a085c5722f1a5/retrievalmarket/impl/providerstates/provider_fsm.go#L32-L38
 	deal.ChannelID = &channelId
 	if err = d.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
