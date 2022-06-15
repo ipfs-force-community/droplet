@@ -61,3 +61,11 @@ build: $(BUILD_DEPS)
 	rm -f venus-market
 	go build -o ./market-client $(GOFLAGS) ./cmd/market-client
 	go build -o ./venus-market $(GOFLAGS) ./cmd/venus-market
+
+
+	# docker
+.PHONY: docker
+BUILD_DOCKER_PROXY=
+
+docker:
+	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) -t venus-market .

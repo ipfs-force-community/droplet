@@ -104,11 +104,13 @@ func NewDAGStore(ctx context.Context, cfg *config.DAGStoreConfig, marketApi Mark
 		RecoverOnStart:            dagstore.RecoverNow,
 	}
 
-	if cfg.MongoTipIndex != nil {
-		dcfg.TopLevelIndex, err = NewMongoTopIndex(ctx, cfg.MongoTipIndex.Url)
+	if cfg.MongoTopIndex != nil {
+		dcfg.TopLevelIndex, err = NewMongoTopIndex(ctx, cfg.MongoTopIndex.Url)
 		if err != nil {
 			return nil, nil, err
 		}
+	} else {
+		dcfg.TopLevelIndex = index.NewInverted(dstore)
 	}
 
 	dagst, err := dagstore.NewDAGStore(dcfg)

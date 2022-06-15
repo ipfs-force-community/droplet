@@ -256,6 +256,11 @@ func (ca *channelAccessor) queueSize() int {
 // msgWaitComplete is called when the message for a previous task is confirmed
 // or there is an error.
 func (ca *channelAccessor) msgWaitComplete(ctx context.Context, mcid cid.Cid, err error) {
+	// context related errors should be ignore
+	if err != nil && (errors.Is(err, ca.chctx.Err()) || errors.Is(err, ctx.Err())) {
+		return
+	}
+
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
@@ -413,7 +418,7 @@ func (ca *channelAccessor) waitForPaychCreateMsg(ctx context.Context, channelID 
 func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID string, mcid cid.Cid) error {
 	mwait, err := ca.api.WaitMsg(ca.chctx, mcid, 1)
 	if err != nil {
-		log.Errorf("wait msg: %w", err)
+		log.Errorf("wait msg: %s", err)
 		return err
 	}
 	// If channel creation failed
