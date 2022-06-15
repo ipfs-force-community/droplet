@@ -112,12 +112,16 @@ func newManager(ctx context.Context, r repo.Repo, pchapi managerAPI) (*Manager, 
 	if err := builtinactors.SetNetworkBundle(types2.NetworkMainnet); err != nil {
 		return nil, err
 	}
+	var shutdown context.CancelFunc
+	ctx, shutdown = context.WithCancel(ctx)
 	pm := &Manager{
 		sa:              &stateAccessor{sm: pchapi},
 		channelInfoRepo: r.PaychChannelInfoRepo(),
 		msgInfoRepo:     r.PaychMsgInfoRepo(),
 		channels:        make(map[string]*channelAccessor),
 		pchapi:          pchapi,
+		ctx:             ctx,
+		shutdown:        shutdown,
 	}
 	return pm, pm.Start(ctx)
 }

@@ -1,0 +1,5 @@
+[PieceStorage]
+
+  [[PieceStorage.Fs]]
+    ReadOnly = false
+    Path = "/PieceStorage"
