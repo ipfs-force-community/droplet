@@ -22,14 +22,14 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.20.1-v16-1
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-padreader v0.0.1
-	github.com/filecoin-project/go-state-types v0.1.7
+	github.com/filecoin-project/go-state-types v0.1.8
 	github.com/filecoin-project/go-statemachine v1.0.2
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/specs-actors/v8 v8.0.0
 	github.com/filecoin-project/specs-storage v0.4.1
-	github.com/filecoin-project/venus v1.6.0-pre-rc1.0.20220614061509-4dfc30629d10
+	github.com/filecoin-project/venus v1.6.0-pre-rc1.0.20220615012919-4ba9561172f5
 	github.com/filecoin-project/venus-auth v1.6.0-pre-rc1
 	github.com/filecoin-project/venus-messager v1.6.0-pre-rc1.0.20220614071202-95a1180ad1b7
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
