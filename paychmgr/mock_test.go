@@ -139,7 +139,7 @@ func newMockPaychAPI() *mockPaychAPI {
 
 func (pchapi *mockPaychAPI) WaitMsg(ctx context.Context, mcid cid.Cid, confidence uint64) (*types.MsgLookup, error) {
 	pchapi.lk.Lock()
-	response := make(chan types.MessageReceipt)
+	response := make(chan types.MessageReceipt, 1)
 
 	if response, ok := pchapi.waitingResponses[mcid]; ok {
 		defer pchapi.lk.Unlock()
@@ -154,8 +154,12 @@ func (pchapi *mockPaychAPI) WaitMsg(ctx context.Context, mcid cid.Cid, confidenc
 	pchapi.waitingCalls[mcid] = &waitingCall{response: response}
 	pchapi.lk.Unlock()
 
-	receipt := <-response
-	return &types.MsgLookup{Receipt: receipt}, nil
+	select {
+	case receipt := <-response:
+		return &types.MsgLookup{Receipt: receipt}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (pchapi *mockPaychAPI) receiveMsgResponse(mcid cid.Cid, receipt types.MessageReceipt) {
