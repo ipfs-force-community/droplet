@@ -7,12 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filecoin-project/venus-market/v2/blockstore"
-	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	builtinactors "github.com/filecoin-project/venus/venus-shared/builtin-actors"
-	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 
@@ -21,6 +15,7 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
+	cmd "github.com/filecoin-project/venus-market/v2/cmd"
 	"github.com/filecoin-project/venus-market/v2/config"
 	_ "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/version"
@@ -299,59 +294,5 @@ var beforeCmdRun = func(cctx *cli.Context) error {
 		return err
 	}
 	cctx.Context = context.WithValue(cctx.Context, contextKeyMarketConfig, cfg)
-	return fetchAndLoadBundles(cctx.Context, cfg)
-}
-
-func fetchAndLoadBundles(ctx context.Context, cfg *config.MarketConfig) error {
-	apiInfo := apiinfo.NewAPIInfo(cfg.Node.Url, cfg.Node.Token)
-	addr, err := apiInfo.DialArgs("v1")
-	if err != nil {
-		return err
-	}
-	fullNodeAPI, closer, err := v1.NewFullNodeRPC(ctx, addr, apiInfo.AuthHeader())
-	if err != nil {
-		return err
-	}
-	defer closer()
-
-	networkName, err := fullNodeAPI.StateNetworkName(ctx)
-	if err != nil {
-		return err
-	}
-
-	nt, err := networkNameToNetworkType(networkName)
-	if err != nil {
-		return err
-	}
-	builtinactors.SetNetworkBundle(nt)
-	if err := os.Setenv(builtinactors.RepoPath, cfg.MustHomePath()); err != nil {
-		return fmt.Errorf("set env %s failed %v", builtinactors.RepoPath, err)
-	}
-
-	// preload manifest so that we have the correct code CID inventory for cli since that doesn't
-	// go through CI
-	bs := blockstore.NewMemory()
-	if err := builtinactors.FetchAndLoadBundles(ctx, bs, builtinactors.BuiltinActorReleases); err != nil {
-		return fmt.Errorf("failed to loading actor manifest: %v", err)
-	}
-
-	return nil
-}
-
-func networkNameToNetworkType(networkName types.NetworkName) (types.NetworkType, error) {
-	switch networkName {
-	case "":
-		return types.NetworkDefault, fmt.Errorf("network name is empty")
-	case "mainnet":
-		return types.NetworkMainnet, nil
-	case "calibrationnet", "calibnet":
-		return types.NetworkCalibnet, nil
-	case "butterflynet", "butterfly":
-		return types.NetworkButterfly, nil
-	case "interopnet", "interop":
-		return types.NetworkInterop, nil
-	default:
-		// include 2k force
-		return types.Network2k, nil
-	}
+	return cmd.FetchAndLoadBundles(cctx.Context, cfg.Node)
 }

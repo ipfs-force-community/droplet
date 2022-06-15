@@ -142,18 +142,19 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 			break
 		}
 	}
+	fmt.Printf("found dealIdx %d\n", dealIdx)
 
 	if dealIdx == -1 {
 		return dealID, types.TipSetKey{}, fmt.Errorf("could not find deal in publish deals message %s", publishCid)
 	}
 
-	if dealIdx >= len(dealIDs) {
+	if dealIdx >= len(pubDealsParams.Deals) {
 		return dealID, types.TipSetKey{}, fmt.Errorf(
-			"deal index %d out of bounds of deals (len %d) in publish deals message %s",
+			"deal index %d out of bounds of deals proposals (len %d) in publish deals message %s",
 			dealIdx, len(dealIDs), publishCid)
 	}
 
-	valid, err := retval.IsDealValid(uint64(dealIdx))
+	valid, outIdx, err := retval.IsDealValid(uint64(dealIdx))
 	if err != nil {
 		return dealID, types.TipSetKey{}, fmt.Errorf("determining deal validity: %w", err)
 	}
@@ -162,7 +163,12 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, types.TipSetKey{}, errors.New("deal was invalid at publication")
 	}
 
-	return dealIDs[dealIdx], lookup.TipSet, nil
+	// final check against for invalid return value output
+	// should not be reachable from onchain output, only pathological test cases
+	if outIdx >= len(dealIDs) {
+		return dealID, types.TipSetKey{}, fmt.Errorf("invalid publish storage deals ret marking %d as valid while only returning %d valid deals in publish deal message %s", outIdx, len(dealIDs), publishCid)
+	}
+	return dealIDs[outIdx], types.TipSetKey{}, nil
 }
 
 func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok types.TipSetKey, p1, p2 market.DealProposal) (bool, error) {
