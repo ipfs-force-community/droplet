@@ -2,6 +2,7 @@ package retrievalprovider
 
 import (
 	"context"
+	"fmt"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -43,8 +44,21 @@ func (d *DataTransferHandler) HandleAcceptFor(ctx context.Context, identifier rm
 	if err != nil {
 		return err
 	}
+	// state transition should follow `ProviderEventDealAccepted` event
+	// https://github.com/filecoin-project/go-fil-markets/blob/9e5f2499cba68968ffc75a22b89a085c5722f1a5/retrievalmarket/impl/providerstates/provider_fsm.go#L32-L38
 	deal.ChannelID = &channelId
-	return d.retrievalDealHandler.UnsealData(ctx, deal)
+	if err = d.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
+		return err
+	}
+
+	switch deal.Status {
+	case rm.DealStatusFundsNeededUnseal: // nothing needs to do.
+		return nil
+	case rm.DealStatusNew:
+		return d.retrievalDealHandler.UnsealData(ctx, deal)
+	default:
+		return fmt.Errorf("invalid state transition, state `%+v`, event `%+v`", deal.Status, rm.ProviderEventDealAccepted)
+	}
 }
 
 func (d *DataTransferHandler) HandleDisconnectFor(ctx context.Context, identifier rm.ProviderDealIdentifier, errIn error) error {
