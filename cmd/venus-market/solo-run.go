@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/venus-market/v2/cmd"
-
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/api/impl"
@@ -49,16 +47,16 @@ var soloRunCmd = &cli.Command{
 		PaymentAddressFlag,
 	},
 	Action: soloDaemon,
-	Before: beforeSoloRunCmd,
 }
 
 func soloDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
-	ctx := cctx.Context
-	cfg, ok := cctx.Context.Value(contextKeyMarketConfig).(*config.MarketConfig)
-	if !ok {
-		return fmt.Errorf("market config not exists")
+
+	cfg, err := prepare(cctx, config.SignerTypeWallet)
+	if err != nil {
+		return fmt.Errorf("prepare solo run failed:%w", err)
 	}
+	ctx := cctx.Context
 
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
@@ -116,18 +114,4 @@ func soloDaemon(cctx *cli.Context) error {
 	permission.PermissionProxy(marketapi.IMarket(resAPI), &fullAPI)
 
 	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, nil, &fullAPI, finishCh)
-}
-
-var beforeSoloRunCmd = func(cctx *cli.Context) error {
-	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
-		if err := cctx.Set(HidenSignerTypeFlag.Name, config.SignerTypeWallet); err != nil {
-			return fmt.Errorf("set %s with wallet failed %v", HidenSignerTypeFlag.Name, err)
-		}
-	}
-	cfg, err := prepare(cctx)
-	if err != nil {
-		return err
-	}
-	cctx.Context = context.WithValue(cctx.Context, contextKeyMarketConfig, cfg)
-	return cmd.FetchAndLoadBundles(cctx.Context, cfg.Node)
 }

@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/venus-market/v2/cmd"
-
 	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/api/impl"
@@ -52,22 +50,22 @@ var poolRunCmd = &cli.Command{
 		MinerListFlag,
 		PaymentAddressFlag,
 	},
-	Before: beforePoolRunCmd,
 	Action: poolDaemon,
 }
 
 func poolDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
-	ctx := cctx.Context
-	cfg, ok := cctx.Context.Value(contextKeyMarketConfig).(*config.MarketConfig)
-	if !ok {
-		return fmt.Errorf("market config not exists")
+	cfg, err := prepare(cctx, config.SignerTypeGateway)
+	if err != nil {
+		return fmt.Errorf("prepare pool run failed:%w", err)
 	}
 
 	// venus-auth is must in 'pool' mode
 	if len(cfg.AuthNode.Url) == 0 {
 		return fmt.Errorf("auth-url is required in 'pool' mode")
 	}
+
+	ctx := cctx.Context
 
 	// 'NewAuthClient' never returns an error, no needs to check
 	authClient, _ := jwtclient.NewAuthClient(cfg.AuthNode.Url)
@@ -127,18 +125,4 @@ func poolDaemon(cctx *cli.Context) error {
 	permission.PermissionProxy(marketapi.IMarket(resAPI), &fullAPI)
 
 	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, authClient, &fullAPI, finishCh)
-}
-
-var beforePoolRunCmd = func(cctx *cli.Context) error {
-	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
-		if err := cctx.Set(HidenSignerTypeFlag.Name, config.SignerTypeGateway); err != nil {
-			return fmt.Errorf("set %s with wallet failed %v", HidenSignerTypeFlag.Name, err)
-		}
-	}
-	cfg, err := prepare(cctx)
-	if err != nil {
-		return err
-	}
-	cctx.Context = context.WithValue(cctx.Context, contextKeyMarketConfig, cfg)
-	return cmd.FetchAndLoadBundles(cctx.Context, cfg.Node)
 }
