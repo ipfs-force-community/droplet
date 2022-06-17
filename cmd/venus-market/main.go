@@ -33,10 +33,6 @@ var (
 	ExtractApiKey  = builder.NextInvoke()
 )
 
-type contextKey string
-
-const contextKeyMarketConfig = contextKey("market-config")
-
 var (
 	RepoFlag = &cli.StringFlag{
 		Name:    "repo",
