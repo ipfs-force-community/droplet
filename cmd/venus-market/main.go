@@ -1,11 +1,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/filecoin-project/venus-market/v2/cmd"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -15,7 +16,6 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
-	cmd "github.com/filecoin-project/venus-market/v2/cmd"
 	"github.com/filecoin-project/venus-market/v2/config"
 	_ "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/version"
@@ -32,10 +32,6 @@ var (
 	InitJournalKey = builder.NextInvoke() //nolint
 	ExtractApiKey  = builder.NextInvoke()
 )
-
-type contextKey string
-
-const contextKeyMarketConfig = contextKey("market-config")
 
 var (
 	RepoFlag = &cli.StringFlag{
@@ -158,9 +154,9 @@ func main() {
 	}
 }
 
-func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
+func prepare(cctx *cli.Context, defSignerType config.SignerType) (*config.MarketConfig, error) {
 	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
-		if err := cctx.Set(HidenSignerTypeFlag.Name, "wallet"); err != nil {
+		if err := cctx.Set(HidenSignerTypeFlag.Name, defSignerType); err != nil {
 			return nil, fmt.Errorf("set %s with wallet failed %v", HidenSignerTypeFlag.Name, err)
 		}
 	}
@@ -196,7 +192,7 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 	} else {
 		return nil, err
 	}
-	return cfg, nil
+	return cfg, cmd.FetchAndLoadBundles(cctx.Context, cfg.Node)
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
@@ -286,13 +282,4 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		}
 	}
 	return nil
-}
-
-var beforeCmdRun = func(cctx *cli.Context) error {
-	cfg, err := prepare(cctx)
-	if err != nil {
-		return err
-	}
-	cctx.Context = context.WithValue(cctx.Context, contextKeyMarketConfig, cfg)
-	return cmd.FetchAndLoadBundles(cctx.Context, cfg.Node)
 }

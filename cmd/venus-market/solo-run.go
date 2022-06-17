@@ -47,16 +47,16 @@ var soloRunCmd = &cli.Command{
 		PaymentAddressFlag,
 	},
 	Action: soloDaemon,
-	Before: beforeCmdRun,
 }
 
 func soloDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
-	ctx := cctx.Context
-	cfg, ok := cctx.Context.Value(contextKeyMarketConfig).(*config.MarketConfig)
-	if !ok {
-		return fmt.Errorf("market config not exists")
+
+	cfg, err := prepare(cctx, config.SignerTypeWallet)
+	if err != nil {
+		return fmt.Errorf("prepare solo run failed:%w", err)
 	}
+	ctx := cctx.Context
 
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
