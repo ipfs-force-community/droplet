@@ -215,16 +215,22 @@ func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...types.User) erro
 				})
 			}
 
-			ownerKey, err := m.fullNode.StateAccountKey(ctx, minerInfo.Owner, vTypes.EmptyTSK)
-			if err != nil {
+			// since `multisig` address is not sign-able.
+			//   we should ignore the `owner`, if it is a `multisig`
+			if actor, err := m.fullNode.StateGetActor(ctx, minerInfo.Owner, vTypes.EmptyTSK); err != nil {
 				return err
-			}
-			if _, ok := filter[ownerKey]; !ok {
-				filter[ownerKey] = struct{}{}
-				m.miners = append(m.miners, types.User{
-					Addr:    ownerKey,
-					Account: usr.Account,
-				})
+			} else if builtin.IsAccountActor(actor.Code) {
+				ownerKey, err := m.fullNode.StateAccountKey(ctx, minerInfo.Owner, vTypes.EmptyTSK)
+				if err != nil {
+					return err
+				}
+				if _, ok := filter[ownerKey]; !ok {
+					filter[ownerKey] = struct{}{}
+					m.miners = append(m.miners, types.User{
+						Addr:    ownerKey,
+						Account: usr.Account,
+					})
+				}
 			}
 
 			for _, ctlAddr := range minerInfo.ControlAddresses {
