@@ -226,14 +226,22 @@ func (m *UserMgrImpl) appendAddress(ctx context.Context, account string, addr ad
 	}
 
 	if builtin.IsAccountActor(actor.Code) {
-		ownerKey, err := m.fullNode.StateAccountKey(ctx, addr, vTypes.EmptyTSK)
+		accountKey, err := m.fullNode.StateAccountKey(ctx, addr, vTypes.EmptyTSK)
 		if err != nil {
 			return err
 		}
-		if _, ok := filter[ownerKey]; !ok {
-			filter[ownerKey] = struct{}{}
+		if _, ok := filter[accountKey]; !ok {
+			filter[accountKey] = struct{}{}
 			m.miners = append(m.miners, types.User{
-				Addr:    ownerKey,
+				Addr:    accountKey,
+				Account: account,
+			})
+		}
+	} else if builtin.IsStorageMinerActor(actor.Code) {
+		if _, ok := filter[addr]; !ok {
+			filter[addr] = struct{}{}
+			m.miners = append(m.miners, types.User{
+				Addr:    addr,
 				Account: account,
 			})
 		}
