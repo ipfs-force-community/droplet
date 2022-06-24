@@ -18,6 +18,7 @@ import (
 	lminer "github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -28,6 +29,10 @@ var _ v1.FullNode = (*MockFullnode)(nil)
 
 type MockFullnode struct {
 	*testing.T
+}
+
+func (m MockFullnode) ChainPutObj(ctx context.Context, blk blocks.Block) error {
+	panic("implement me")
 }
 
 func (m MockFullnode) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*types.MarketDeal, error) {
