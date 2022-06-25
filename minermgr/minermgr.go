@@ -31,7 +31,6 @@ type IAddrMgr interface {
 	Has(ctx context.Context, addr address.Address) bool
 	GetMiners(ctx context.Context) ([]types.User, error)
 	GetAccount(ctx context.Context, addr address.Address) (string, error)
-	AddAddress(ctx context.Context, user types.User) error
 }
 
 type UserMgrImpl struct {
@@ -49,12 +48,12 @@ var _ IAddrMgr = (*UserMgrImpl)(nil)
 func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode v1api.FullNode, authClient *jwtclient.AuthClient, cfg *config.MarketConfig) (IAddrMgr, error) {
 	m := &UserMgrImpl{fullNode: fullNode, authClient: authClient, authNode: cfg.AuthNode}
 
-	err := m.distAddress(ctx, convertConfigAddress(cfg.StorageMiners)...)
+	err := m.addUser(ctx, convertConfigAddress(cfg.StorageMiners)...)
 	if err != nil {
 		return nil, err
 	}
 
-	err = m.distAddress(ctx, types.User{
+	err = m.addUser(ctx, types.User{
 		Addr:    address.Address(cfg.RetrievalPaymentAddress.Addr),
 		Account: cfg.RetrievalPaymentAddress.Account,
 	})
@@ -62,7 +61,7 @@ func NeAddrMgrImpl(ctx metrics.MetricsCtx, fullNode v1api.FullNode, authClient *
 		return nil, err
 	}
 
-	err = m.distAddress(ctx, convertConfigAddress(cfg.AddressConfig.DealPublishControl)...)
+	err = m.addUser(ctx, convertConfigAddress(cfg.AddressConfig.DealPublishControl)...)
 	if err != nil {
 		return nil, err
 	}
@@ -171,31 +170,20 @@ func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int
 	return users, nil
 }
 
-func (m *UserMgrImpl) AddAddress(ctx context.Context, user types.User) error {
-	return m.distAddress(ctx, user)
-}
-
-func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...types.User) error {
-	m.lk.Lock()
-	defer m.lk.Unlock()
-	filter := make(map[address.Address]struct{}, len(m.miners))
-	for _, miner := range m.miners {
-		filter[miner.Addr] = struct{}{}
-	}
-
-	for _, usr := range addrs {
+func (m *UserMgrImpl) addUser(ctx context.Context, usrs ...types.User) error {
+	for _, usr := range usrs {
 		if usr.Addr == address.Undef {
 			continue
 		}
-		if _, ok := filter[usr.Addr]; !ok {
-			filter[usr.Addr] = struct{}{}
-			m.miners = append(m.miners, usr)
-		}
+
 		actor, err := m.fullNode.StateGetActor(ctx, usr.Addr, vTypes.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
+		if err = m.appendAddress(ctx, usr.Account, usr.Addr); err != nil {
+			return err
+		}
 		if builtin.IsStorageMinerActor(actor.Code) {
 			// add owner/worker/controladdress for this miner
 			minerInfo, err := m.fullNode.StateMinerInfo(ctx, usr.Addr, vTypes.EmptyTSK)
@@ -203,45 +191,60 @@ func (m *UserMgrImpl) distAddress(ctx context.Context, addrs ...types.User) erro
 				return err
 			}
 
-			workerKey, err := m.fullNode.StateAccountKey(ctx, minerInfo.Worker, vTypes.EmptyTSK)
-			if err != nil {
+			//Notice `multisig` address is not sign-able. we should ignore the `owner`, if it is a `multisig`
+			if err = m.appendAddress(ctx, usr.Account, minerInfo.Owner); err != nil {
 				return err
-			}
-			if _, ok := filter[workerKey]; !ok {
-				filter[workerKey] = struct{}{}
-				m.miners = append(m.miners, types.User{
-					Addr:    workerKey,
-					Account: usr.Account,
-				})
 			}
 
-			ownerKey, err := m.fullNode.StateAccountKey(ctx, minerInfo.Owner, vTypes.EmptyTSK)
-			if err != nil {
+			if err = m.appendAddress(ctx, usr.Account, minerInfo.Worker); err != nil {
 				return err
-			}
-			if _, ok := filter[ownerKey]; !ok {
-				filter[ownerKey] = struct{}{}
-				m.miners = append(m.miners, types.User{
-					Addr:    ownerKey,
-					Account: usr.Account,
-				})
 			}
 
 			for _, ctlAddr := range minerInfo.ControlAddresses {
-				ctlKey, err := m.fullNode.StateAccountKey(ctx, ctlAddr, vTypes.EmptyTSK)
-				if err != nil {
+				if err = m.appendAddress(ctx, usr.Account, ctlAddr); err != nil {
 					return err
-				}
-				if _, ok := filter[ctlKey]; !ok {
-					filter[ctlKey] = struct{}{}
-					m.miners = append(m.miners, types.User{
-						Addr:    ctlKey,
-						Account: usr.Account,
-					})
 				}
 			}
 		}
 
+	}
+	return nil
+}
+
+func (m *UserMgrImpl) appendAddress(ctx context.Context, account string, addr address.Address) error {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+	filter := make(map[address.Address]struct{})
+	for _, miner := range m.miners {
+		filter[miner.Addr] = struct{}{}
+	}
+	// since `multisig` address is not sign-able.
+	//   we should ignore the `owner`, if it is a `multisig`
+	actor, err := m.fullNode.StateGetActor(ctx, addr, vTypes.EmptyTSK)
+	if err != nil {
+		return err
+	}
+
+	if builtin.IsAccountActor(actor.Code) {
+		accountKey, err := m.fullNode.StateAccountKey(ctx, addr, vTypes.EmptyTSK)
+		if err != nil {
+			return err
+		}
+		if _, ok := filter[accountKey]; !ok {
+			filter[accountKey] = struct{}{}
+			m.miners = append(m.miners, types.User{
+				Addr:    accountKey,
+				Account: account,
+			})
+		}
+	} else if builtin.IsStorageMinerActor(actor.Code) {
+		if _, ok := filter[addr]; !ok {
+			filter[addr] = struct{}{}
+			m.miners = append(m.miners, types.User{
+				Addr:    addr,
+				Account: account,
+			})
+		}
 	}
 	return nil
 }
@@ -259,7 +262,7 @@ func (m *UserMgrImpl) refreshOnce(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return m.distAddress(ctx, miners...)
+	return m.addUser(ctx, miners...)
 }
 
 func (m *UserMgrImpl) refreshUsers(ctx context.Context) {
