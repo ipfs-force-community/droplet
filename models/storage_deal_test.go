@@ -14,8 +14,8 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/stretchr/testify/assert"
@@ -43,9 +43,11 @@ func TestStorageDeal(t *testing.T) {
 func getTestMinerDeal(t *testing.T) *types.MinerDeal {
 	c := randCid(t)
 	pid, err := peer.Decode("12D3KooWG8tR9PHjjXcMknbNPVWT75BuXXA2RaYx3fMwwg2oPZXd")
-	if err != nil {
-		assert.Nil(t, err)
-	}
+	assert.Nil(t, err)
+
+	label, err := market.NewLabelFromString("label")
+	assert.Nil(t, err)
+
 	return &types.MinerDeal{
 		ClientDealProposal: market.ClientDealProposal{
 			Proposal: market.DealProposal{
@@ -54,7 +56,7 @@ func getTestMinerDeal(t *testing.T) *types.MinerDeal {
 				VerifiedDeal:         false,
 				Client:               randAddress(t),
 				Provider:             randAddress(t),
-				Label:                "label",
+				Label:                label,
 				StartEpoch:           10,
 				EndEpoch:             10,
 				StoragePricePerEpoch: abi.NewTokenAmount(10),

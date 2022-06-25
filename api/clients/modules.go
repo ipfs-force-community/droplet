@@ -2,7 +2,6 @@ package clients
 
 import (
 	"context"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/v2/config"
@@ -34,15 +33,12 @@ func ConvertWalletToISinge(fullNode v1api.FullNode, signer ISinger) error {
 }
 
 func NewMarketEvent(mctx metrics.MetricsCtx) (*marketevent.MarketEventStream, error) {
-	stream := marketevent.NewMarketEventStream(mctx, &localMinerValidator{}, &types3.Config{
-		RequestQueueSize: 30,
-		RequestTimeout:   time.Second * 30,
-	})
+	stream := marketevent.NewMarketEventStream(mctx, &localMinerValidator{}, types3.DefaultConfig())
 	return stream, nil
 }
 
-func NewMarketEventAPI(stream *marketevent.MarketEventStream) (*marketevent.MarketEventAPI, error) {
-	return marketevent.NewMarketEventAPI(stream), nil
+func NewMarketEventAPI(stream *marketevent.MarketEventStream) (marketevent.IMarketEventAPI, error) {
+	return stream, nil
 }
 
 func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent, error) {

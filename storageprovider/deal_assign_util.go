@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/bits"
 
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -107,7 +107,7 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spe
 		// next piece cantainer is not enough, we should put a zeroed-piece
 		if deal.PieceSize > nextPiece {
 			res = append(res, &mtypes.DealInfoIncludePath{
-				DealProposal: market7.DealProposal{
+				DealProposal: market.DealProposal{
 					PieceSize: nextPiece,
 					PieceCID:  zerocomm.ZeroPieceCommitment(nextPiece.Unpadded()),
 				},
@@ -153,7 +153,7 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spe
 
 		for _, fillSize := range fillers {
 			res = append(res, &mtypes.DealInfoIncludePath{
-				DealProposal: market7.DealProposal{
+				DealProposal: market.DealProposal{
 					PieceSize: fillSize,
 					PieceCID:  zerocomm.ZeroPieceCommitment(fillSize.Unpadded()),
 				},

@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/v8/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -145,7 +145,7 @@ var actorSetAddrsCmd = &cli.Command{
 			From:     minfo.Worker,
 			Value:    types.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   miner.Methods.ChangeMultiaddrs,
+			Method:   builtin.MethodsMiner.ChangeMultiaddrs,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -218,7 +218,7 @@ var actorSetPeeridCmd = &cli.Command{
 			From:     minfo.Worker,
 			Value:    types.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   miner.Methods.ChangePeerID,
+			Method:   builtin.MethodsMiner.ChangePeerID,
 			Params:   params,
 		}, nil)
 		if err != nil {

@@ -16,7 +16,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -688,10 +689,10 @@ func (env *fundManagerEnvironment) AddFunds(
 	}
 
 	msgId, aerr := env.api.PushMessage(ctx, &types2.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   wallet,
 		Value:  amt,
-		Method: market.Methods.AddBalance,
+		Method: builtin.MethodsMarket.AddBalance,
 		Params: params,
 	}, nil)
 
@@ -717,10 +718,10 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	}
 
 	msgId, aerr := env.api.PushMessage(ctx, &types2.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   wallet,
 		Value:  types2.NewInt(0),
-		Method: market.Methods.WithdrawBalance,
+		Method: builtin.MethodsMarket.WithdrawBalance,
 		Params: params,
 	}, nil)
 

@@ -12,6 +12,7 @@ sequence_chart.md
 .idea
 .vscode
 coverage.*
+.vscode
 # Test binary, built with `go test -c`
 *.test
 data-transfer

@@ -50,8 +50,15 @@ type Common struct {
 	Libp2p Libp2p
 }
 
+type SignerType = string
+
+const (
+	SignerTypeWallet  = "wallet"
+	SignerTypeGateway = "gateway"
+)
+
 type Signer struct {
-	SignerType string `toml:"Type"` // wallet/gateway
+	SignerType SignerType `toml:"Type"` // wallet/gateway
 	Url        string
 	Token      string
 }
