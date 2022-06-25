@@ -121,13 +121,6 @@ func (m mockAddrMgr) GetAccount(ctx context.Context, addr address.Address) (stri
 	panic("implement me")
 }
 
-func (m mockAddrMgr) AddAddress(ctx context.Context, user marketypes.User) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-var _ StorageProviderNode = (*mockProviderNode)(nil)
-
 type mockProviderNode struct {
 	mock.MockFullNode
 	dataLk sync.Mutex
