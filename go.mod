@@ -333,6 +333,7 @@ require (
 
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
+	github.com/filecoin-project/go-fil-markets => github.com/hunjixin/go-fil-markets v1.20.1-v16-2-fix.0.20220629015016-77caeda1b4b7
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21
 
 )
