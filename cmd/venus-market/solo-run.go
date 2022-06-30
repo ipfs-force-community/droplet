@@ -79,6 +79,10 @@ func soloDaemon(cctx *cli.Context) error {
 			return metrics2.CtxScope(context.Background(), "venus-market")
 		}),
 		builder.Override(new(types2.ShutdownChan), shutdownChan),
+
+		// override marketconfig
+		builder.Override(new(config.MarketConfig), cfg),
+
 		//config
 		config.ConfigServerOpts(cfg),
 
