@@ -177,6 +177,10 @@ func (s *s3PieceStorage) ReadOnly() bool {
 	return s.s3Cfg.ReadOnly
 }
 
+func (s *s3PieceStorage) GetName() string {
+	return s.s3Cfg.Name
+}
+
 var _ mount.Reader = (*seekWraper)(nil)
 
 type seekWraper struct {

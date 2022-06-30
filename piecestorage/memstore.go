@@ -34,6 +34,10 @@ func (m *MemPieceStore) Type() Protocol {
 	return MemStore
 }
 
+func (m *MemPieceStore) GetName() string {
+	return m.Name
+}
+
 func (m *MemPieceStore) SaveTo(ctx context.Context, resourceId string, reader io.Reader) (int64, error) {
 	m.dataLk.Lock()
 	defer m.dataLk.Unlock()
