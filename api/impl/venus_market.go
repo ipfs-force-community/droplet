@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -26,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
+	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/minermgr"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -66,6 +68,7 @@ type MarketNodeImpl struct {
 	MinerMgr                                    minermgr.IAddrMgr
 	PaychAPI                                    *paychmgr.PaychAPI
 	Repo                                        repo.Repo
+	Config                                      *config.MarketConfig
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc
 	ConsiderOnlineRetrievalDealsConfigFunc      config.ConsiderOnlineRetrievalDealsConfigFunc
@@ -824,4 +827,72 @@ func (m MarketNodeImpl) GetReadUrl(ctx context.Context, s string) (string, error
 
 func (m MarketNodeImpl) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
 	panic("not support")
+}
+
+func (m MarketNodeImpl) AddFsPieceStorage(ctx context.Context, readonly bool, path string, name string) error {
+	ifs := &config.FsPieceStorage{ReadOnly: readonly, Path: path, Name: name}
+	fsps, err := piecestorage.NewFsPieceStorage(ifs)
+	if err != nil {
+		return err
+	}
+	// add in memory
+	m.PieceStorageMgr.AddPieceStorage(fsps)
+
+	// add to config
+	return m.Config.AddFsPieceStorage(ifs)
+}
+
+func (m MarketNodeImpl) AddS3PieceStorage(ctx context.Context, readonly bool, endpoit string, name string, accessKeyID string, secretAccessKey string, token string) error {
+	ifs := &config.S3PieceStorage{ReadOnly: readonly, EndPoint: endpoit, Name: name, AccessKey: accessKeyID, SecretKey: secretAccessKey, Token: token}
+	s3ps, err := piecestorage.NewS3PieceStorage(ifs)
+	if err != nil {
+		return err
+	}
+	// add in memory
+	m.PieceStorageMgr.AddPieceStorage(s3ps)
+
+	// add to config
+	return m.Config.AddS3PieceStorage(ifs)
+}
+
+func (m MarketNodeImpl) ListPieceStorage(ctx context.Context) (string, error) {
+	storages := m.PieceStorageMgr.GetStorages()
+
+	w := tablewriter.New(tablewriter.Col("index"),
+		tablewriter.Col("name"),
+		tablewriter.Col("readonly"),
+		tablewriter.Col("type"),
+	)
+
+	for idx, storage := range storages {
+
+		w.Write(map[string]interface{}{
+			"index":    idx,
+			"name":     storage.GetName(),
+			"readonly": storage.ReadOnly(),
+			"type":     storage.Type(),
+		})
+	}
+
+	buf := new(bytes.Buffer)
+	err := w.Flush(buf)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func (m MarketNodeImpl) GetPieceStorages(ctx context.Context) types.PieceStorageList {
+	return m.PieceStorageMgr.ListStorages()
+}
+
+func (m MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) error {
+
+	err := m.PieceStorageMgr.RemovePieceStorage(name)
+	if err != nil {
+		return err
+	}
+
+	return m.Config.RemovePieceStorage(name)
+
 }
