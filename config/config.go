@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -171,11 +172,13 @@ type PieceStorage struct {
 }
 
 type FsPieceStorage struct {
+	Name     string
 	ReadOnly bool
 	Path     string
 }
 
 type S3PieceStorage struct {
+	Name     string
 	ReadOnly bool
 	EndPoint string
 
@@ -265,6 +268,34 @@ type MarketConfig struct {
 
 	MaxPublishDealsFee     types.FIL
 	MaxMarketBalanceAddFee types.FIL
+}
+
+func (m *MarketConfig) RemovePieceStorage(name string) error {
+	for i, s := range m.PieceStorage.Fs {
+		if s.Name == name {
+			m.PieceStorage.Fs = append(m.PieceStorage.Fs[:i], m.PieceStorage.Fs[i+1:]...)
+			SaveConfig(m)
+			return nil
+		}
+	}
+	for i, s := range m.PieceStorage.S3 {
+		if s.Name == name {
+			m.PieceStorage.S3 = append(m.PieceStorage.S3[:i], m.PieceStorage.S3[i+1:]...)
+			SaveConfig(m)
+			return nil
+		}
+	}
+	return fmt.Errorf("piece storage %s not found", name)
+}
+
+func (cfg *MarketConfig) AddFsPieceStorage(fsps *FsPieceStorage) (err error) {
+	cfg.PieceStorage.Fs = append(cfg.PieceStorage.Fs, fsps)
+	return SaveConfig(cfg)
+}
+
+func (cfg *MarketConfig) AddS3PieceStorage(fsps *S3PieceStorage) (err error) {
+	cfg.PieceStorage.S3 = append(cfg.PieceStorage.S3, fsps)
+	return SaveConfig(cfg)
 }
 
 type MarketClientConfig struct {
