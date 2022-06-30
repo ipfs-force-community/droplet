@@ -6,6 +6,7 @@ import (
 	"math/rand"
 
 	"github.com/filecoin-project/venus-market/v2/config"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 type PieceStorageManager struct {
@@ -14,8 +15,20 @@ type PieceStorageManager struct {
 
 func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, error) {
 	var storages []IPieceStorage
+	exist := make(map[string]bool)
+
+	// todo: extract name check logic to a function and check blank in name
 
 	for _, fsCfg := range cfg.Fs {
+		// check if storage already exist in manager and it's name is not empty
+		if fsCfg.Name == "" {
+			return nil, fmt.Errorf("fs piece storage name is empty")
+		}
+		if exist[fsCfg.Name] {
+			return nil, fmt.Errorf("duplicate storage name: %s", fsCfg.Name)
+		}
+		exist[fsCfg.Name] = true
+
 		st, err := NewFsPieceStorage(fsCfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create fs piece storage %w", err)
@@ -24,6 +37,15 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 	}
 
 	for _, s3Cfg := range cfg.S3 {
+		// check if storage already exist in manager and it's name is not empty
+		if s3Cfg.Name == "" {
+			return nil, fmt.Errorf("s3 pieceStorage name is empty")
+		}
+		if exist[s3Cfg.Name] {
+			return nil, fmt.Errorf("duplicate storage name: %s", s3Cfg.Name)
+		}
+		exist[s3Cfg.Name] = true
+
 		st, err := newS3PieceStorage(s3Cfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create object piece storage %w", err)
@@ -73,6 +95,10 @@ func (p *PieceStorageManager) AddMemPieceStorage(s IPieceStorage) {
 	p.storages = append(p.storages, s)
 }
 
+func (p *PieceStorageManager) AddPieceStorage(s IPieceStorage) {
+	p.storages = append(p.storages, s)
+}
+
 func randStorageSelector(storages []IPieceStorage) (IPieceStorage, error) {
 	switch len(storages) {
 	case 0:
@@ -81,5 +107,56 @@ func randStorageSelector(storages []IPieceStorage) (IPieceStorage, error) {
 		return storages[0], nil
 	default:
 		return storages[rand.Intn(len(storages))], nil
+	}
+}
+
+func (p *PieceStorageManager) GetStorages() []IPieceStorage {
+	return p.storages
+}
+
+func (p *PieceStorageManager) RemovePieceStorage(name string) error {
+	removed := false
+
+	for i := 0; i < len(p.storages); i++ {
+		if name == p.storages[i].GetName() {
+			removed = true
+			p.storages = append(p.storages[:i], p.storages[i+1:]...)
+			break
+
+		}
+	}
+
+	if !removed {
+		return fmt.Errorf("unable to find storage %s", name)
+	}
+	return nil
+}
+
+func (p *PieceStorageManager) ListStorages() types.PieceStorageList {
+	var fs = []types.FsStorage{}
+	var s3 = []types.S3Storage{}
+
+	for _, st := range p.storages {
+		switch st.Type() {
+		case S3:
+			cfg := st.(*s3PieceStorage).s3Cfg
+			s3 = append(s3, types.S3Storage{
+				Name:     cfg.Name,
+				EndPoint: cfg.EndPoint,
+				ReadOnly: cfg.ReadOnly,
+			})
+
+		case FS:
+			cfg := st.(*fsPieceStorage).fsCfg
+			fs = append(fs, types.FsStorage{
+				Name:     cfg.Name,
+				Path:     cfg.Path,
+				ReadOnly: cfg.ReadOnly,
+			})
+		}
+	}
+	return types.PieceStorageList{
+		FsStorage: fs,
+		S3Storage: s3,
 	}
 }
