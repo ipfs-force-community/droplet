@@ -53,9 +53,9 @@ func NewISignerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, params SignerPar
 	var closer jsonrpc.ClientCloser
 	var err error
 	switch params.SignerCfg.SignerType {
-	case "wallet":
+	case config.SignerTypeWallet:
 		signer, closer, err = newWalletClient(context.Background(), params.SignerCfg.Token, params.SignerCfg.Url)
-	case "gateway":
+	case config.SignerTypeGateway:
 		signer, closer, err = newGatewayWalletClient(context.Background(), params.Mgr, params.SignerCfg)
 	default:
 		return nil, fmt.Errorf("unsupport sign type %s", params.SignerCfg.SignerType)

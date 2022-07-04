@@ -55,7 +55,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 
 	"github.com/filecoin-project/venus-market/v2/config"
@@ -221,12 +221,17 @@ func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, is
 	// stateless flow from here to the end
 	//
 
+	label, err := market.NewLabelFromString(params.Data.Root.Encode(multibase.MustNewEncoder('u')))
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode label: %w", err)
+	}
+
 	dealProposal := &market.DealProposal{
 		PieceCID:             *params.Data.PieceCid,
 		PieceSize:            params.Data.PieceSize.Padded(),
 		Client:               walletKey,
 		Provider:             params.Miner,
-		Label:                params.Data.Root.Encode(multibase.MustNewEncoder('u')),
+		Label:                label,
 		StartEpoch:           dealStart,
 		EndEpoch:             calcDealExpiration(params.MinBlocksDuration, md, dealStart),
 		StoragePricePerEpoch: big.Zero(),

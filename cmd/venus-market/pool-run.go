@@ -55,21 +55,17 @@ var poolRunCmd = &cli.Command{
 
 func poolDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
-	ctx := cctx.Context
-	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
-		if err := cctx.Set(HidenSignerTypeFlag.Name, "gateway"); err != nil {
-			return fmt.Errorf("set %s with gateway failed %v", HidenSignerTypeFlag.Name, err)
-		}
-	}
-	cfg, err := prepare(cctx)
+	cfg, err := prepare(cctx, config.SignerTypeGateway)
 	if err != nil {
-		return err
+		return fmt.Errorf("prepare pool run failed:%w", err)
 	}
 
 	// venus-auth is must in 'pool' mode
 	if len(cfg.AuthNode.Url) == 0 {
 		return fmt.Errorf("auth-url is required in 'pool' mode")
 	}
+
+	ctx := cctx.Context
 
 	// 'NewAuthClient' never returns an error, no needs to check
 	authClient, _ := jwtclient.NewAuthClient(cfg.AuthNode.Url)

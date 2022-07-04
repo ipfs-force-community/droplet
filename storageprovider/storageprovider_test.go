@@ -13,16 +13,16 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models"
 	network2 "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"github.com/filecoin-project/venus/venus-shared/api/chain/v1/mock"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/filecoin-project/venus/venus-shared/types/market"
+	marketypes "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,7 +31,7 @@ import (
 var importDataJsonString []byte
 
 type dealCase struct {
-	Proposal *market.MinerDeal
+	Proposal *marketypes.MinerDeal
 	Result   bool
 }
 
@@ -106,22 +106,17 @@ func (m mockAddrMgr) ActorAddress(ctx context.Context) ([]address.Address, error
 	panic("implement me")
 }
 
-func (m mockAddrMgr) ActorList(ctx context.Context) ([]market.User, error) {
+func (m mockAddrMgr) ActorList(ctx context.Context) ([]marketypes.User, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m mockAddrMgr) GetMiners(ctx context.Context) ([]market.User, error) {
+func (m mockAddrMgr) GetMiners(ctx context.Context) ([]marketypes.User, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
 func (m mockAddrMgr) GetAccount(ctx context.Context, addr address.Address) (string, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m mockAddrMgr) AddAddress(ctx context.Context, user market.User) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -211,12 +206,12 @@ func (m *mockProviderNode) DealProviderCollateralBounds(ctx context.Context, siz
 	panic("implement me")
 }
 
-func (m *mockProviderNode) PublishDeals(ctx context.Context, deal market.MinerDeal) (cid.Cid, error) {
+func (m *mockProviderNode) PublishDeals(ctx context.Context, deal marketypes.MinerDeal) (cid.Cid, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m *mockProviderNode) WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market7.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
+func (m *mockProviderNode) WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
 	//TODO implement me
 	panic("implement me")
 }

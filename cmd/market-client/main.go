@@ -6,6 +6,7 @@ import (
 	"os"
 
 	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
+	"github.com/filecoin-project/venus-market/v2/cmd"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
@@ -220,6 +221,10 @@ func marketClient(cctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	if err := cmd.FetchAndLoadBundles(cctx.Context, cfg.Node); err != nil {
+		return err
+	}
+
 	resAPI := &impl.MarketClientNodeImpl{}
 	shutdownChan := make(chan struct{})
 	closeFunc, err := builder.New(ctx,

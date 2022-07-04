@@ -123,8 +123,8 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("incorrect provider for deal"))
 	}
 
-	if len(proposal.Label) > DealMaxLabelSize {
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("deal label can be at most %d bytes, is %d", DealMaxLabelSize, len(proposal.Label)))
+	if proposal.Label.Length() > DealMaxLabelSize {
+		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("deal label can be at most %d bytes, is %d", DealMaxLabelSize, proposal.Label.Length()))
 	}
 
 	if err := proposal.PieceSize.Validate(); err != nil {
@@ -449,6 +449,8 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		if err := stores.RegisterShardSync(ctx, storageDealPorcess.dagStore, deal.Proposal.PieceCID, carFilePath, true); err != nil {
 			err = fmt.Errorf("failed to activate shard: %w", err)
 			log.Error(err)
+		} else {
+			log.Infof("register shard successfully. deal:%d, proposalCid:%s, pieceCid:%s", deal.DealID, deal.ProposalCid, deal.Proposal.PieceCID)
 		}
 
 		log.Infow("successfully handed off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)

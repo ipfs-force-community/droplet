@@ -10,10 +10,10 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	"github.com/filecoin-project/venus/pkg/constants"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	marketactor "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 )
@@ -89,7 +89,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, types.TipSetKey{}, fmt.Errorf("getting network version: %w", err)
 	}
 
-	retval, err := market.DecodePublishStorageDealsReturn(lookup.Receipt.Return, nv)
+	retval, err := marketactor.DecodePublishStorageDealsReturn(lookup.Receipt.Return, nv)
 	if err != nil {
 		return dealID, types.TipSetKey{}, fmt.Errorf("looking for publish deal message %s: decoding message return: %w", publishCid, err)
 	}
@@ -124,7 +124,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, types.TipSetKey{}, fmt.Errorf("getting publish deal message %s: %w", publishCid, err)
 	}
 
-	var pubDealsParams market7.PublishStorageDealsParams
+	var pubDealsParams market.PublishStorageDealsParams
 	if err := pubDealsParams.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
 		return dealID, types.TipSetKey{}, fmt.Errorf("unmarshalling publish deal message params for message %s: %w", publishCid, err)
 	}
@@ -133,7 +133,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	// index of the target deal proposal
 	dealIdx := -1
 	for i, paramDeal := range pubDealsParams.Deals {
-		eq, err := mgr.CheckDealEquality(ctx, tok, *proposal, market.DealProposal(paramDeal.Proposal))
+		eq, err := mgr.CheckDealEquality(ctx, tok, *proposal, paramDeal.Proposal)
 		if err != nil {
 			return dealID, types.TipSetKey{}, fmt.Errorf("comparing publish deal message %s proposal to deal proposal: %w", publishCid, err)
 		}
@@ -142,18 +142,19 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 			break
 		}
 	}
+	fmt.Printf("found dealIdx %d\n", dealIdx)
 
 	if dealIdx == -1 {
 		return dealID, types.TipSetKey{}, fmt.Errorf("could not find deal in publish deals message %s", publishCid)
 	}
 
-	if dealIdx >= len(dealIDs) {
+	if dealIdx >= len(pubDealsParams.Deals) {
 		return dealID, types.TipSetKey{}, fmt.Errorf(
-			"deal index %d out of bounds of deals (len %d) in publish deals message %s",
+			"deal index %d out of bounds of deals proposals (len %d) in publish deals message %s",
 			dealIdx, len(dealIDs), publishCid)
 	}
 
-	valid, err := retval.IsDealValid(uint64(dealIdx))
+	valid, outIdx, err := retval.IsDealValid(uint64(dealIdx))
 	if err != nil {
 		return dealID, types.TipSetKey{}, fmt.Errorf("determining deal validity: %w", err)
 	}
@@ -162,7 +163,12 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, types.TipSetKey{}, errors.New("deal was invalid at publication")
 	}
 
-	return dealIDs[dealIdx], lookup.TipSet, nil
+	// final check against for invalid return value output
+	// should not be reachable from onchain output, only pathological test cases
+	if outIdx >= len(dealIDs) {
+		return dealID, types.TipSetKey{}, fmt.Errorf("invalid publish storage deals ret marking %d as valid while only returning %d valid deals in publish deal message %s", outIdx, len(dealIDs), publishCid)
+	}
+	return dealIDs[outIdx], types.TipSetKey{}, nil
 }
 
 func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok types.TipSetKey, p1, p2 market.DealProposal) (bool, error) {
@@ -177,7 +183,7 @@ func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok ty
 	return p1.PieceCID.Equals(p2.PieceCID) &&
 		p1.PieceSize == p2.PieceSize &&
 		p1.VerifiedDeal == p2.VerifiedDeal &&
-		p1.Label == p2.Label &&
+		p1.Label.Equals(p2.Label) &&
 		p1.StartEpoch == p2.StartEpoch &&
 		p1.EndEpoch == p2.EndEpoch &&
 		p1.StoragePricePerEpoch.Equals(p2.StoragePricePerEpoch) &&

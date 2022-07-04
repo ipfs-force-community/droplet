@@ -8,13 +8,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
-	builtinMarket "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
-	"github.com/filecoin-project/venus/venus-shared/types/market"
+	markettypes "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,9 +32,9 @@ func TestMarket(t *testing.T) {
 	pmgr.AddMemPieceStorage(memPieceStorage)
 
 	r := models.NewInMemoryRepo()
-	err = r.StorageDealRepo().SaveDeal(ctx, &market.MinerDeal{
-		ClientDealProposal: builtinMarket.ClientDealProposal{
-			Proposal: market0.DealProposal{
+	err = r.StorageDealRepo().SaveDeal(ctx, &markettypes.MinerDeal{
+		ClientDealProposal: market.ClientDealProposal{
+			Proposal: market.DealProposal{
 				Provider:  address.TestAddress,
 				Client:    address.TestAddress,
 				PieceCID:  testResourceId,

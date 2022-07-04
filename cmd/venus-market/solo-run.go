@@ -51,17 +51,12 @@ var soloRunCmd = &cli.Command{
 
 func soloDaemon(cctx *cli.Context) error {
 	utils.SetupLogLevels()
-	ctx := cctx.Context
 
-	if !cctx.IsSet(HidenSignerTypeFlag.Name) {
-		if err := cctx.Set(HidenSignerTypeFlag.Name, "wallet"); err != nil {
-			return fmt.Errorf("set %s with wallet failed %v", HidenSignerTypeFlag.Name, err)
-		}
-	}
-	cfg, err := prepare(cctx)
+	cfg, err := prepare(cctx, config.SignerTypeWallet)
 	if err != nil {
-		return err
+		return fmt.Errorf("prepare solo run failed:%w", err)
 	}
+	ctx := cctx.Context
 
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
