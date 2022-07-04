@@ -1,7 +1,6 @@
 package impl
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -27,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
-	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/minermgr"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -836,7 +834,10 @@ func (m MarketNodeImpl) AddFsPieceStorage(ctx context.Context, readonly bool, pa
 		return err
 	}
 	// add in memory
-	m.PieceStorageMgr.AddPieceStorage(fsps)
+	err = m.PieceStorageMgr.AddPieceStorage(fsps)
+	if err != nil {
+		return err
+	}
 
 	// add to config
 	return m.Config.AddFsPieceStorage(ifs)
@@ -849,37 +850,13 @@ func (m MarketNodeImpl) AddS3PieceStorage(ctx context.Context, readonly bool, en
 		return err
 	}
 	// add in memory
-	m.PieceStorageMgr.AddPieceStorage(s3ps)
+	err = m.PieceStorageMgr.AddPieceStorage(s3ps)
+	if err != nil {
+		return err
+	}
 
 	// add to config
 	return m.Config.AddS3PieceStorage(ifs)
-}
-
-func (m MarketNodeImpl) ListPieceStorage(ctx context.Context) (string, error) {
-	storages := m.PieceStorageMgr.GetStorages()
-
-	w := tablewriter.New(tablewriter.Col("index"),
-		tablewriter.Col("name"),
-		tablewriter.Col("readonly"),
-		tablewriter.Col("type"),
-	)
-
-	for idx, storage := range storages {
-
-		w.Write(map[string]interface{}{
-			"index":    idx,
-			"name":     storage.GetName(),
-			"readonly": storage.ReadOnly(),
-			"type":     storage.Type(),
-		})
-	}
-
-	buf := new(bytes.Buffer)
-	err := w.Flush(buf)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), nil
 }
 
 func (m MarketNodeImpl) GetPieceStorages(ctx context.Context) types.PieceStorageList {
