@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 
+	"github.com/chzyer/readline"
 	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
 	"github.com/urfave/cli/v2"
 )
@@ -87,24 +89,6 @@ var pieceStorageAddS3Cmd = &cli.Command{
 			Aliases: []string{"e"},
 			Usage:   "endpoint of the S3 bucket",
 		},
-		// access key
-		&cli.StringFlag{
-			Name:    "access-key",
-			Aliases: []string{"a"},
-			Usage:   "access key of the S3 bucket",
-		},
-		// secret key
-		&cli.StringFlag{
-			Name:    "secret-key",
-			Aliases: []string{"s"},
-			Usage:   "secret key of the S3 bucket",
-		},
-		// token
-		&cli.StringFlag{
-			Name:    "token",
-			Aliases: []string{"t"},
-			Usage:   "token of the S3 bucket",
-		},
 		// name
 		&cli.StringFlag{
 			Name:    "name",
@@ -124,21 +108,51 @@ var pieceStorageAddS3Cmd = &cli.Command{
 		if !cctx.IsSet("endpoint") {
 			return fmt.Errorf("endpoint is required")
 		}
-		if !cctx.IsSet("access-key") {
-			return fmt.Errorf("access-key is required")
-		}
-		if !cctx.IsSet("secret-key") {
-			return fmt.Errorf("secret-key is required")
-		}
 		if !cctx.IsSet("name") {
 			return fmt.Errorf("name is required")
 		}
 
+		// get access key , secret key ,token interactivelly
+		getS3Credentials := func() (string, string, string, error) {
+			// var accessKey, secretKey, token string
+			afmt := NewAppFmt(cctx.App)
+			cs := readline.NewCancelableStdin(afmt.Stdin)
+			go func() {
+				<-ctx.Done()
+				cs.Close() // nolint:errcheck
+			}()
+
+			rl := bufio.NewReader(cs)
+			afmt.Println("Please enter your S3 access key:")
+			_accessKey, _, err := rl.ReadLine()
+			if err != nil {
+				return "", "", "", err
+			}
+			accessKey := string(_accessKey)
+
+			afmt.Println("Please enter your S3 secret key:")
+			_secretKey, _, err := rl.ReadLine()
+			if err != nil {
+				return "", "", "", err
+			}
+			secretKey := string(_secretKey)
+
+			afmt.Println("Please enter your S3 token: (it could be empty)")
+			_token, _, err := rl.ReadLine()
+			if err != nil {
+				return "", "", "", err
+			}
+			token := string(_token)
+
+			return accessKey, secretKey, token, err
+		}
+
+		accessKey, secretKey, token, err := getS3Credentials()
+		if err != nil {
+			return err
+		}
 		readOnly := cctx.Bool("readonly")
 		endpoint := cctx.String("endpoint")
-		accessKey := cctx.String("access-key")
-		secretKey := cctx.String("secret-key")
-		token := cctx.String("token")
 		name := cctx.String("name")
 
 		err = nodeApi.AddS3PieceStorage(ctx, readOnly, endpoint, name, accessKey, secretKey, token)
