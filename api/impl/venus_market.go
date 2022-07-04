@@ -859,8 +859,8 @@ func (m MarketNodeImpl) AddS3PieceStorage(ctx context.Context, readonly bool, en
 	return m.Config.AddS3PieceStorage(ifs)
 }
 
-func (m MarketNodeImpl) GetPieceStorages(ctx context.Context) types.PieceStorageList {
-	return m.PieceStorageMgr.ListStorages()
+func (m MarketNodeImpl) GetPieceStorages(ctx context.Context) types.PieceStorageInfos {
+	return m.PieceStorageMgr.ListStorageInfos()
 }
 
 func (m MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) error {

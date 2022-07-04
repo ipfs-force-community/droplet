@@ -128,7 +128,7 @@ func (p *PieceStorageManager) RemovePieceStorage(name string) error {
 	return nil
 }
 
-func (p *PieceStorageManager) ListStorages() types.PieceStorageList {
+func (p *PieceStorageManager) ListStorageInfos() types.PieceStorageInfos {
 	var fs = []types.FsStorage{}
 	var s3 = []types.S3Storage{}
 
@@ -151,7 +151,7 @@ func (p *PieceStorageManager) ListStorages() types.PieceStorageList {
 			})
 		}
 	}
-	return types.PieceStorageList{
+	return types.PieceStorageInfos{
 		FsStorage: fs,
 		S3Storage: s3,
 	}
