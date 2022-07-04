@@ -10,12 +10,11 @@ import (
 )
 
 type PieceStorageManager struct {
-	storages []IPieceStorage
+	storages map[string]IPieceStorage
 }
 
 func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, error) {
-	var storages []IPieceStorage
-	exist := make(map[string]bool)
+	var storages = make(map[string]IPieceStorage)
 
 	// todo: extract name check logic to a function and check blank in name
 
@@ -24,16 +23,16 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 		if fsCfg.Name == "" {
 			return nil, fmt.Errorf("fs piece storage name is empty")
 		}
-		if exist[fsCfg.Name] {
+		_, ok := storages[fsCfg.Name]
+		if ok {
 			return nil, fmt.Errorf("duplicate storage name: %s", fsCfg.Name)
 		}
-		exist[fsCfg.Name] = true
 
 		st, err := NewFsPieceStorage(fsCfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create fs piece storage %w", err)
 		}
-		storages = append(storages, st)
+		storages[fsCfg.Name] = st
 	}
 
 	for _, s3Cfg := range cfg.S3 {
@@ -41,16 +40,16 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 		if s3Cfg.Name == "" {
 			return nil, fmt.Errorf("s3 pieceStorage name is empty")
 		}
-		if exist[s3Cfg.Name] {
+		_, ok := storages[s3Cfg.Name]
+		if ok {
 			return nil, fmt.Errorf("duplicate storage name: %s", s3Cfg.Name)
 		}
-		exist[s3Cfg.Name] = true
 
 		st, err := newS3PieceStorage(s3Cfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create object piece storage %w", err)
 		}
-		storages = append(storages, st)
+		storages[s3Cfg.Name] = st
 	}
 	return &PieceStorageManager{storages: storages}, nil
 }
@@ -92,22 +91,16 @@ func (p *PieceStorageManager) FindStorageForWrite(size int64) (IPieceStorage, er
 }
 
 func (p *PieceStorageManager) AddMemPieceStorage(s IPieceStorage) {
-	p.storages = append(p.storages, s)
+	p.storages[s.GetName()] = s
 }
 
 func (p *PieceStorageManager) AddPieceStorage(s IPieceStorage) error {
 	// check if storage already exist in manager and it's name is not empty
-	if s.GetName() == "" {
-		return fmt.Errorf("storage name is empty")
+	_, ok := p.storages[s.GetName()]
+	if ok {
+		return fmt.Errorf("duplicate storage name: %s", s.GetName())
 	}
-	for _, st := range p.storages {
-		if st.GetName() == s.GetName() {
-			return fmt.Errorf("duplicate storage name: %s", s.GetName())
-		}
-	}
-
-	p.storages = append(p.storages, s)
-
+	p.storages[s.GetName()] = s
 	return nil
 }
 
@@ -122,25 +115,16 @@ func randStorageSelector(storages []IPieceStorage) (IPieceStorage, error) {
 	}
 }
 
-func (p *PieceStorageManager) GetStorages() []IPieceStorage {
+func (p *PieceStorageManager) GetStorages() map[string]IPieceStorage {
 	return p.storages
 }
 
 func (p *PieceStorageManager) RemovePieceStorage(name string) error {
-	removed := false
-
-	for i := 0; i < len(p.storages); i++ {
-		if name == p.storages[i].GetName() {
-			removed = true
-			p.storages = append(p.storages[:i], p.storages[i+1:]...)
-			break
-
-		}
+	_, exist := p.storages[name]
+	if !exist {
+		return fmt.Errorf("storage %s not exist", name)
 	}
-
-	if !removed {
-		return fmt.Errorf("unable to find storage %s", name)
-	}
+	delete(p.storages, name)
 	return nil
 }
 
