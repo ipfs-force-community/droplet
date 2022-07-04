@@ -288,12 +288,12 @@ func (m *MarketConfig) RemovePieceStorage(name string) error {
 	return fmt.Errorf("piece storage %s not found", name)
 }
 
-func (cfg *MarketConfig) AddFsPieceStorage(fsps *FsPieceStorage) (err error) {
+func (cfg *MarketConfig) AddFsPieceStorage(fsps *FsPieceStorage) error {
 	cfg.PieceStorage.Fs = append(cfg.PieceStorage.Fs, fsps)
 	return SaveConfig(cfg)
 }
 
-func (cfg *MarketConfig) AddS3PieceStorage(fsps *S3PieceStorage) (err error) {
+func (cfg *MarketConfig) AddS3PieceStorage(fsps *S3PieceStorage) error {
 	cfg.PieceStorage.S3 = append(cfg.PieceStorage.S3, fsps)
 	return SaveConfig(cfg)
 }

@@ -95,8 +95,20 @@ func (p *PieceStorageManager) AddMemPieceStorage(s IPieceStorage) {
 	p.storages = append(p.storages, s)
 }
 
-func (p *PieceStorageManager) AddPieceStorage(s IPieceStorage) {
+func (p *PieceStorageManager) AddPieceStorage(s IPieceStorage) error {
+	// check if storage already exist in manager and it's name is not empty
+	if s.GetName() == "" {
+		return fmt.Errorf("storage name is empty")
+	}
+	for _, st := range p.storages {
+		if st.GetName() == s.GetName() {
+			return fmt.Errorf("duplicate storage name: %s", s.GetName())
+		}
+	}
+
 	p.storages = append(p.storages, s)
+
+	return nil
 }
 
 func randStorageSelector(storages []IPieceStorage) (IPieceStorage, error) {
