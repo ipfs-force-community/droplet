@@ -13,14 +13,14 @@ var PieceStorageCmd = &cli.Command{
 	Usage:       "Manage piece storage ",
 	Description: "The piece storage will decide where to store pieces and how to store them",
 	Subcommands: []*cli.Command{
-		addFsPieceStorageCmd,
-		addS3PieceStorageCmd,
-		PieceStorageListCmd,
-		PieceStorageRemoveCmd,
+		pieceStorageAddFsCmd,
+		pieceStorageAddS3Cmd,
+		pieceStorageListCmd,
+		pieceStorageRemoveCmd,
 	},
 }
 
-var addFsPieceStorageCmd = &cli.Command{
+var pieceStorageAddFsCmd = &cli.Command{
 	Name:  "add-fs",
 	Usage: "add a local filesystem piece storage",
 	Flags: []cli.Flag{
@@ -30,10 +30,9 @@ var addFsPieceStorageCmd = &cli.Command{
 			Usage:   "path to the filesystem piece storage",
 		},
 		&cli.BoolFlag{
-			Name:        "read-only",
-			Aliases:     []string{"r"},
-			Usage:       "read-only filesystem piece storage",
-			DefaultText: "false",
+			Name:    "read-only",
+			Aliases: []string{"r"},
+			Usage:   "read-only filesystem piece storage",
 		},
 		// name
 		&cli.StringFlag{
@@ -49,17 +48,17 @@ var addFsPieceStorageCmd = &cli.Command{
 		}
 		defer closer()
 
+		if !cctx.IsSet("path") {
+			return fmt.Errorf("path is required")
+		}
+		if !cctx.IsSet("name") {
+			return fmt.Errorf("name is required")
+		}
+
 		ctx := ReqContext(cctx)
 		path := cctx.String("path")
 		readOnly := cctx.Bool("read-only")
 		name := cctx.String("name")
-
-		if path == "" {
-			return fmt.Errorf("path is required")
-		}
-		if name == "" {
-			return fmt.Errorf("name is required")
-		}
 
 		err = nodeApi.AddFsPieceStorage(ctx, readOnly, path, name)
 		if err != nil {
@@ -71,7 +70,7 @@ var addFsPieceStorageCmd = &cli.Command{
 	},
 }
 
-var addS3PieceStorageCmd = &cli.Command{
+var pieceStorageAddS3Cmd = &cli.Command{
 	Name:  "add-s3",
 	Usage: "add a object storage for piece storage",
 	Flags: []cli.Flag{
@@ -122,25 +121,25 @@ var addS3PieceStorageCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
+		if !cctx.IsSet("endpoint") {
+			return fmt.Errorf("endpoint is required")
+		}
+		if !cctx.IsSet("access-key") {
+			return fmt.Errorf("access-key is required")
+		}
+		if !cctx.IsSet("secret-key") {
+			return fmt.Errorf("secret-key is required")
+		}
+		if !cctx.IsSet("name") {
+			return fmt.Errorf("name is required")
+		}
+
 		readOnly := cctx.Bool("readonly")
 		endpoint := cctx.String("endpoint")
 		accessKey := cctx.String("access-key")
 		secretKey := cctx.String("secret-key")
 		token := cctx.String("token")
 		name := cctx.String("name")
-
-		if endpoint == "" {
-			return fmt.Errorf("endpoint are required")
-		}
-		if accessKey == "" {
-			return fmt.Errorf("access key are required")
-		}
-		if secretKey == "" {
-			return fmt.Errorf("secret key are required")
-		}
-		if name == "" {
-			return fmt.Errorf("name are required")
-		}
 
 		err = nodeApi.AddS3PieceStorage(ctx, readOnly, endpoint, name, accessKey, secretKey, token)
 		if err != nil {
@@ -152,7 +151,7 @@ var addS3PieceStorageCmd = &cli.Command{
 	},
 }
 
-var PieceStorageListCmd = &cli.Command{
+var pieceStorageListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "list piece storages",
 	Action: func(cctx *cli.Context) error {
@@ -197,9 +196,10 @@ var PieceStorageListCmd = &cli.Command{
 	},
 }
 
-var PieceStorageRemoveCmd = &cli.Command{
-	Name:  "remove",
-	Usage: "remove a piece storage",
+var pieceStorageRemoveCmd = &cli.Command{
+	Name:      "remove",
+	ArgsUsage: "<name>",
+	Usage:     "remove a piece storage",
 	Action: func(cctx *cli.Context) error {
 		// get idx
 		name := cctx.Args().Get(0)
