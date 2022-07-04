@@ -274,15 +274,13 @@ func (m *MarketConfig) RemovePieceStorage(name string) error {
 	for i, s := range m.PieceStorage.Fs {
 		if s.Name == name {
 			m.PieceStorage.Fs = append(m.PieceStorage.Fs[:i], m.PieceStorage.Fs[i+1:]...)
-			SaveConfig(m)
-			return nil
+			return SaveConfig(m)
 		}
 	}
 	for i, s := range m.PieceStorage.S3 {
 		if s.Name == name {
 			m.PieceStorage.S3 = append(m.PieceStorage.S3[:i], m.PieceStorage.S3[i+1:]...)
-			SaveConfig(m)
-			return nil
+			return SaveConfig(m)
 		}
 	}
 	return fmt.Errorf("piece storage %s not found", name)
