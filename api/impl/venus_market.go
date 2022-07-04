@@ -864,12 +864,10 @@ func (m MarketNodeImpl) GetPieceStorages(ctx context.Context) types.PieceStorage
 }
 
 func (m MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) error {
-
 	err := m.PieceStorageMgr.RemovePieceStorage(name)
 	if err != nil {
 		return err
 	}
 
 	return m.Config.RemovePieceStorage(name)
-
 }
