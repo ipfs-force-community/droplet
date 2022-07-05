@@ -287,14 +287,14 @@ func channelStatusString(useColor bool, status datatransfer.Status) string {
 
 type AppFmt struct {
 	app   *cli.App
-	Stdin *os.File
+	Stdin gopass.FdReader
 }
 
 func NewAppFmt(a *cli.App) *AppFmt {
-	var stdin *os.File
+	var stdin gopass.FdReader
 	istdin, ok := a.Metadata["stdin"]
 	if ok {
-		stdin = istdin.(*os.File)
+		stdin = istdin.(gopass.FdReader)
 	} else {
 		stdin = os.Stdin
 	}
