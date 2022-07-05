@@ -1,11 +1,9 @@
 package cli
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 
-	"github.com/chzyer/readline"
 	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
 	"github.com/urfave/cli/v2"
 )
@@ -116,33 +114,21 @@ var pieceStorageAddS3Cmd = &cli.Command{
 		getS3Credentials := func() (string, string, string, error) {
 			// var accessKey, secretKey, token string
 			afmt := NewAppFmt(cctx.App)
-			cs := readline.NewCancelableStdin(afmt.Stdin)
-			go func() {
-				<-ctx.Done()
-				cs.Close() // nolint:errcheck
-			}()
 
-			rl := bufio.NewReader(cs)
-			afmt.Println("Please enter your S3 access key:")
-			_accessKey, _, err := rl.ReadLine()
+			accessKey, err := afmt.GetScret("access key:", true)
 			if err != nil {
 				return "", "", "", err
 			}
-			accessKey := string(_accessKey)
 
-			afmt.Println("Please enter your S3 secret key:")
-			_secretKey, _, err := rl.ReadLine()
+			secretKey, err := afmt.GetScret("secret key:", true)
 			if err != nil {
 				return "", "", "", err
 			}
-			secretKey := string(_secretKey)
 
-			afmt.Println("Please enter your S3 token: (it could be empty)")
-			_token, _, err := rl.ReadLine()
+			token, err := afmt.GetScret("token:", true)
 			if err != nil {
 				return "", "", "", err
 			}
-			token := string(_token)
 
 			return accessKey, secretKey, token, err
 		}

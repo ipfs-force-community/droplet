@@ -14,6 +14,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
+	"github.com/howeyc/gopass"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multibase"
@@ -286,14 +287,14 @@ func channelStatusString(useColor bool, status datatransfer.Status) string {
 
 type AppFmt struct {
 	app   *cli.App
-	Stdin io.Reader
+	Stdin *os.File
 }
 
 func NewAppFmt(a *cli.App) *AppFmt {
-	var stdin io.Reader
+	var stdin *os.File
 	istdin, ok := a.Metadata["stdin"]
 	if ok {
-		stdin = istdin.(io.Reader)
+		stdin = istdin.(*os.File)
 	} else {
 		stdin = os.Stdin
 	}
@@ -314,4 +315,12 @@ func (a *AppFmt) Printf(fmtstr string, args ...interface{}) {
 
 func (a *AppFmt) Scan(args ...interface{}) (int, error) {
 	return fmt.Fscan(a.Stdin, args...)
+}
+
+func (a *AppFmt) GetScret(prompt string, isMasked bool) (string, error) {
+	pw, err := gopass.GetPasswdPrompt(prompt, isMasked, a.Stdin, a.app.Writer)
+	if err != nil {
+		return "", err
+	}
+	return string(pw), nil
 }
