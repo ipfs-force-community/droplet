@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sync"
 
 	"github.com/filecoin-project/venus-market/v2/config"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 type PieceStorageManager struct {
+	sync.RWMutex
 	storages map[string]IPieceStorage
 }
 
@@ -56,6 +58,7 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 
 func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) (IPieceStorage, error) {
 	var storages []IPieceStorage
+	p.RLock()
 	for _, st := range p.storages {
 		has, err := st.Has(ctx, s)
 		if err != nil {
@@ -66,6 +69,7 @@ func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) 
 			storages = append(storages, st)
 		}
 	}
+	p.RUnlock()
 
 	if len(storages) == 0 {
 		return nil, fmt.Errorf("unable to find piece in storage %s", s)
@@ -76,12 +80,14 @@ func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) 
 
 func (p *PieceStorageManager) FindStorageForWrite(size int64) (IPieceStorage, error) {
 	var storages []IPieceStorage
+	p.RLock()
 	for _, st := range p.storages {
 		//todo readuce too much check on storage
 		if !st.ReadOnly() && st.CanAllocate(size) {
 			storages = append(storages, st)
 		}
 	}
+	p.RUnlock()
 
 	if len(storages) == 0 {
 		return nil, fmt.Errorf("unable to find enough space for size %d", size)
@@ -91,16 +97,22 @@ func (p *PieceStorageManager) FindStorageForWrite(size int64) (IPieceStorage, er
 }
 
 func (p *PieceStorageManager) AddMemPieceStorage(s IPieceStorage) {
+	p.Lock()
 	p.storages[s.GetName()] = s
+	p.Unlock()
 }
 
 func (p *PieceStorageManager) AddPieceStorage(s IPieceStorage) error {
 	// check if storage already exist in manager and it's name is not empty
+	p.RLock()
 	_, ok := p.storages[s.GetName()]
+	p.RUnlock()
 	if ok {
 		return fmt.Errorf("duplicate storage name: %s", s.GetName())
 	}
+	p.Lock()
 	p.storages[s.GetName()] = s
+	p.Unlock()
 	return nil
 }
 
@@ -115,16 +127,16 @@ func randStorageSelector(storages []IPieceStorage) (IPieceStorage, error) {
 	}
 }
 
-func (p *PieceStorageManager) GetStorages() map[string]IPieceStorage {
-	return p.storages
-}
-
 func (p *PieceStorageManager) RemovePieceStorage(name string) error {
+	p.RLock()
 	_, exist := p.storages[name]
+	p.RUnlock()
 	if !exist {
 		return fmt.Errorf("storage %s not exist", name)
 	}
+	p.Lock()
 	delete(p.storages, name)
+	p.Unlock()
 	return nil
 }
 
@@ -132,6 +144,7 @@ func (p *PieceStorageManager) ListStorageInfos() types.PieceStorageInfos {
 	var fs = []types.FsStorage{}
 	var s3 = []types.S3Storage{}
 
+	p.RLock()
 	for _, st := range p.storages {
 		switch st.Type() {
 		case S3:
@@ -151,6 +164,8 @@ func (p *PieceStorageManager) ListStorageInfos() types.PieceStorageInfos {
 			})
 		}
 	}
+	p.RUnlock()
+
 	return types.PieceStorageInfos{
 		FsStorage: fs,
 		S3Storage: s3,
