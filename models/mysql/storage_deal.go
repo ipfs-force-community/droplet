@@ -362,6 +362,34 @@ func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(ctx context.Context, pie
 	return deals, nil
 }
 
+func (sdr *storageDealRepo) GetDealsByDataCidAndDealStatus(ctx context.Context, mAddr address.Address, dataCid cid.Cid, pieceStatuss []types.PieceStatus) ([]*types.MinerDeal, error) {
+	var md []storageDeal
+
+	query := sdr.WithContext(ctx).Table((&storageDeal{}).TableName()).Where("ref_root=?", DBCid(dataCid).String())
+	if mAddr != address.Undef {
+		query.Where("cdp_provider=?", DBAddress(mAddr).String())
+	}
+	if len(pieceStatuss) > 0 {
+		query.Where("piece_status in ?", pieceStatuss)
+	}
+	err := query.Find(&md).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	var deals = make([]*types.MinerDeal, len(md))
+
+	for idx, deal := range md {
+		if deals[idx], err = toStorageDeal(&deal); err != nil {
+			return nil, fmt.Errorf("convert StorageDeal(%s) to a types.MinerDeal failed:%w",
+				deal.ProposalCid, err)
+		}
+	}
+
+	return deals, nil
+}
+
 func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	var md []storageDeal
 
