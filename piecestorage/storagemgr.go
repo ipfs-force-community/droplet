@@ -4,37 +4,63 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sync"
 
 	"github.com/filecoin-project/venus-market/v2/config"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 type PieceStorageManager struct {
-	storages []IPieceStorage
+	sync.RWMutex
+	storages map[string]IPieceStorage
 }
 
 func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, error) {
-	var storages []IPieceStorage
+	var storages = make(map[string]IPieceStorage)
+
+	// todo: extract name check logic to a function and check blank in name
 
 	for _, fsCfg := range cfg.Fs {
+		// check if storage already exist in manager and it's name is not empty
+		if fsCfg.Name == "" {
+			return nil, fmt.Errorf("fs piece storage name is empty")
+		}
+		_, ok := storages[fsCfg.Name]
+		if ok {
+			return nil, fmt.Errorf("duplicate storage name: %s", fsCfg.Name)
+		}
+
 		st, err := NewFsPieceStorage(fsCfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create fs piece storage %w", err)
 		}
-		storages = append(storages, st)
+		storages[fsCfg.Name] = st
 	}
 
 	for _, s3Cfg := range cfg.S3 {
+		// check if storage already exist in manager and it's name is not empty
+		if s3Cfg.Name == "" {
+			return nil, fmt.Errorf("s3 pieceStorage name is empty")
+		}
+		_, ok := storages[s3Cfg.Name]
+		if ok {
+			return nil, fmt.Errorf("duplicate storage name: %s", s3Cfg.Name)
+		}
+
 		st, err := newS3PieceStorage(s3Cfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create object piece storage %w", err)
 		}
-		storages = append(storages, st)
+		storages[s3Cfg.Name] = st
 	}
 	return &PieceStorageManager{storages: storages}, nil
 }
 
 func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) (IPieceStorage, error) {
 	var storages []IPieceStorage
+	p.RLock()
+	defer p.RUnlock()
+
 	for _, st := range p.storages {
 		has, err := st.Has(ctx, s)
 		if err != nil {
@@ -55,6 +81,9 @@ func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) 
 
 func (p *PieceStorageManager) FindStorageForWrite(size int64) (IPieceStorage, error) {
 	var storages []IPieceStorage
+	p.RLock()
+	defer p.RUnlock()
+
 	for _, st := range p.storages {
 		//todo readuce too much check on storage
 		if !st.ReadOnly() && st.CanAllocate(size) {
@@ -70,7 +99,23 @@ func (p *PieceStorageManager) FindStorageForWrite(size int64) (IPieceStorage, er
 }
 
 func (p *PieceStorageManager) AddMemPieceStorage(s IPieceStorage) {
-	p.storages = append(p.storages, s)
+	p.Lock()
+	defer p.Unlock()
+
+	p.storages[s.GetName()] = s
+}
+
+func (p *PieceStorageManager) AddPieceStorage(s IPieceStorage) error {
+	// check if storage already exist in manager and it's name is not empty
+	p.Lock()
+	defer p.Unlock()
+
+	_, ok := p.storages[s.GetName()]
+	if ok {
+		return fmt.Errorf("duplicate storage name: %s", s.GetName())
+	}
+	p.storages[s.GetName()] = s
+	return nil
 }
 
 func randStorageSelector(storages []IPieceStorage) (IPieceStorage, error) {
@@ -81,5 +126,49 @@ func randStorageSelector(storages []IPieceStorage) (IPieceStorage, error) {
 		return storages[0], nil
 	default:
 		return storages[rand.Intn(len(storages))], nil
+	}
+}
+
+func (p *PieceStorageManager) RemovePieceStorage(name string) error {
+	p.Lock()
+	defer p.Unlock()
+
+	_, exist := p.storages[name]
+	if !exist {
+		return fmt.Errorf("storage %s not exist", name)
+	}
+	delete(p.storages, name)
+	return nil
+}
+
+func (p *PieceStorageManager) ListStorageInfos() types.PieceStorageInfos {
+	var fs = []types.FsStorage{}
+	var s3 = []types.S3Storage{}
+
+	p.RLock()
+	for _, st := range p.storages {
+		switch st.Type() {
+		case S3:
+			cfg := st.(*s3PieceStorage).s3Cfg
+			s3 = append(s3, types.S3Storage{
+				Name:     cfg.Name,
+				EndPoint: cfg.EndPoint,
+				ReadOnly: cfg.ReadOnly,
+			})
+
+		case FS:
+			cfg := st.(*fsPieceStorage).fsCfg
+			fs = append(fs, types.FsStorage{
+				Name:     cfg.Name,
+				Path:     cfg.Path,
+				ReadOnly: cfg.ReadOnly,
+			})
+		}
+	}
+	p.RUnlock()
+
+	return types.PieceStorageInfos{
+		FsStorage: fs,
+		S3Storage: s3,
 	}
 }

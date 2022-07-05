@@ -29,7 +29,7 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
-	github.com/filecoin-project/venus v1.6.0
+	github.com/filecoin-project/venus v1.6.1-0.20220705010019-246520384fea
 	github.com/filecoin-project/venus-auth v1.6.0
 	github.com/filecoin-project/venus-messager v1.6.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
@@ -37,6 +37,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
+	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20211122032945-eb6cab79c62a
 	github.com/ipfs-force-community/venus-gateway v1.6.0
 	github.com/ipfs/go-block-format v0.0.3
@@ -316,6 +317,7 @@ require (
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/net v0.0.0-20220418201149-a630d4f3e7a2 // indirect
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	golang.org/x/tools v0.1.10 // indirect
@@ -335,5 +337,4 @@ replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-fil-markets => github.com/hunjixin/go-fil-markets v1.20.1-v16-2-fix.0.20220629015016-77caeda1b4b7
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21
-
 )

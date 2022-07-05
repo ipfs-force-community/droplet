@@ -83,6 +83,8 @@ func poolDaemon(cctx *cli.Context) error {
 		builder.Override(new(metrics.MetricsCtx), func() context.Context {
 			return metrics2.CtxScope(context.Background(), "venus-market")
 		}),
+		// override marketconfig
+		builder.Override(new(config.MarketConfig), cfg),
 		builder.Override(new(types2.ShutdownChan), shutdownChan),
 		//config
 		config.ConfigServerOpts(cfg),

@@ -29,6 +29,7 @@ type StorageStatus struct {
 type IPieceStorage interface {
 	Type() Protocol
 	ReadOnly() bool
+	GetName() string
 	SaveTo(context.Context, string, io.Reader) (int64, error)
 	Len(context.Context, string) (int64, error)
 	//GetMountReader use direct read if storage have low performance effecitive ReadAt

@@ -66,6 +66,7 @@ type MarketNodeImpl struct {
 	MinerMgr                                    minermgr.IAddrMgr
 	PaychAPI                                    *paychmgr.PaychAPI
 	Repo                                        repo.Repo
+	Config                                      *config.MarketConfig
 	ConsiderOnlineStorageDealsConfigFunc        config.ConsiderOnlineStorageDealsConfigFunc
 	SetConsiderOnlineStorageDealsConfigFunc     config.SetConsiderOnlineStorageDealsConfigFunc
 	ConsiderOnlineRetrievalDealsConfigFunc      config.ConsiderOnlineRetrievalDealsConfigFunc
@@ -824,4 +825,49 @@ func (m MarketNodeImpl) GetReadUrl(ctx context.Context, s string) (string, error
 
 func (m MarketNodeImpl) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
 	panic("not support")
+}
+
+func (m MarketNodeImpl) AddFsPieceStorage(ctx context.Context, readonly bool, path string, name string) error {
+	ifs := &config.FsPieceStorage{ReadOnly: readonly, Path: path, Name: name}
+	fsps, err := piecestorage.NewFsPieceStorage(ifs)
+	if err != nil {
+		return err
+	}
+	// add in memory
+	err = m.PieceStorageMgr.AddPieceStorage(fsps)
+	if err != nil {
+		return err
+	}
+
+	// add to config
+	return m.Config.AddFsPieceStorage(ifs)
+}
+
+func (m MarketNodeImpl) AddS3PieceStorage(ctx context.Context, readonly bool, endpoit string, name string, accessKeyID string, secretAccessKey string, token string) error {
+	ifs := &config.S3PieceStorage{ReadOnly: readonly, EndPoint: endpoit, Name: name, AccessKey: accessKeyID, SecretKey: secretAccessKey, Token: token}
+	s3ps, err := piecestorage.NewS3PieceStorage(ifs)
+	if err != nil {
+		return err
+	}
+	// add in memory
+	err = m.PieceStorageMgr.AddPieceStorage(s3ps)
+	if err != nil {
+		return err
+	}
+
+	// add to config
+	return m.Config.AddS3PieceStorage(ifs)
+}
+
+func (m MarketNodeImpl) GetPieceStorages(ctx context.Context) types.PieceStorageInfos {
+	return m.PieceStorageMgr.ListStorageInfos()
+}
+
+func (m MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) error {
+	err := m.PieceStorageMgr.RemovePieceStorage(name)
+	if err != nil {
+		return err
+	}
+
+	return m.Config.RemovePieceStorage(name)
 }

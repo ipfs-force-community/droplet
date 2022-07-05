@@ -63,7 +63,7 @@ build: $(BUILD_DEPS)
 	go build -o ./venus-market $(GOFLAGS) ./cmd/venus-market
 
 
-	# docker
+# docker
 .PHONY: docker
 
 docker:

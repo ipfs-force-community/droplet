@@ -116,10 +116,19 @@ func (f *fsPieceStorage) ReadOnly() bool {
 	return f.fsCfg.ReadOnly
 }
 
+func (f *fsPieceStorage) GetName() string {
+	return f.fsCfg.Name
+}
+
 func NewFsPieceStorage(fsCfg *config.FsPieceStorage) (IPieceStorage, error) {
 	fs := &fsPieceStorage{baseUrl: fsCfg.Path, fsCfg: fsCfg}
 	if err := fs.Validate(fsCfg.Path); err != nil {
 		return nil, err
 	}
 	return fs, nil
+}
+
+func NewS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
+	s3 := &s3PieceStorage{s3Cfg: s3Cfg}
+	return s3, nil
 }
