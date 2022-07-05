@@ -1,11 +1,81 @@
 package piecestorage
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestFsAddPieceStorage(t *testing.T) {
+	psm, err := NewPieceStorageManager(&config.PieceStorage{})
+	assert.Nil(t, err)
+	path := os.TempDir()
+
+	ps, err := NewFsPieceStorage(&config.FsPieceStorage{
+		ReadOnly: false,
+		Path:     path,
+		Name:     "test",
+	})
+	assert.Nil(t, err)
+
+	err = psm.AddPieceStorage(ps)
+	assert.Nil(t, err)
+
+	info := psm.ListStorageInfos()
+	assert.Equal(t, 1, len(info.FsStorage))
+
+}
+
+func TestListStorageInfos(t *testing.T) {
+	psm, err := NewPieceStorageManager(&config.PieceStorage{})
+	assert.Nil(t, err)
+	path := os.TempDir()
+	name := "test"
+
+	ps, err := NewFsPieceStorage(&config.FsPieceStorage{
+		ReadOnly: false,
+		Path:     path,
+		Name:     name,
+	})
+	assert.Nil(t, err)
+
+	err = psm.AddPieceStorage(ps)
+	assert.Nil(t, err)
+
+	info := psm.ListStorageInfos()
+	assert.Equal(t, 1, len(info.FsStorage))
+}
+
+func TestRmPieceStorage(t *testing.T) {
+	psm, err := NewPieceStorageManager(&config.PieceStorage{})
+	assert.Nil(t, err)
+	path := os.TempDir()
+	name := "test"
+
+	ps, err := NewFsPieceStorage(&config.FsPieceStorage{
+		ReadOnly: false,
+		Path:     path,
+		Name:     name,
+	})
+	assert.Nil(t, err)
+
+	err = psm.AddPieceStorage(ps)
+	assert.Nil(t, err)
+
+	err = psm.RemovePieceStorage("test2")
+	ErrPieceStorageNotFound := fmt.Errorf("storage test2 not exist")
+
+	assert.Equal(t, ErrPieceStorageNotFound, err)
+
+	err = psm.RemovePieceStorage(name)
+	assert.Nil(t, err)
+
+	info := psm.ListStorageInfos()
+	assert.Equal(t, 0, len(info.FsStorage))
+}
 
 func TestRandSelect(t *testing.T) {
 	psm, err := NewPieceStorageManager(&config.PieceStorage{})
