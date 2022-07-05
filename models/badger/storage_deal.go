@@ -148,7 +148,7 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr add
 	var err error
 	if err = travelDeals(ctx, sdr.ds,
 		func(deal *types.MinerDeal) (stop bool, err error) {
-			if deal.ClientDealProposal.Proposal.Provider == addr {
+			if addr == address.Undef || deal.ClientDealProposal.Proposal.Provider == addr {
 				if _, ok := filter[deal.State]; !ok {
 					return
 				}
@@ -275,29 +275,18 @@ func (sdr *storageDealRepo) GetDealByDealID(ctx context.Context, mAddr address.A
 	return deal, err
 }
 
-func (sdr *storageDealRepo) GetDealsByPieceStatusV0(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus) ([]*types.MinerDeal, error) {
-	var deals []*types.MinerDeal
-	var err error
-	if err = travelDeals(ctx, sdr.ds,
-		func(inDeal *types.MinerDeal) (bool, error) {
-			if inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.PieceStatus == pieceStatus {
-				deals = append(deals, inDeal)
-			}
-			return false, nil
-		}); err != nil {
-		return nil, err
-	}
-
-	return deals, nil
-}
-
 func (sdr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus) ([]*types.MinerDeal, error) {
 	var deals []*types.MinerDeal
 
 	return deals, travelDeals(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
-		if inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.PieceStatus == pieceStatus {
-			deals = append(deals, inDeal)
+		if inDeal.PieceStatus != pieceStatus {
+			return
 		}
+		if mAddr != address.Undef && inDeal.ClientDealProposal.Proposal.Provider != mAddr {
+			return
+		}
+
+		deals = append(deals, inDeal)
 		return false, nil
 	})
 }

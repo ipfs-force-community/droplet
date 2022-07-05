@@ -100,6 +100,25 @@ func (s *s3PieceStorage) Len(ctx context.Context, piececid string) (int64, error
 	return *result.ContentLength, nil
 }
 
+func (s *s3PieceStorage) ListResourceIds(ctx context.Context) ([]string, error) {
+	params := &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.bucket),
+	}
+
+	result, err := s.s3Client.ListObjectsV2(params)
+	if err != nil {
+		return nil, err
+	}
+	var pieces []string
+	for _, obj := range result.Contents {
+		var name = *obj.Key
+		if name[len(name)-1] != '/' && obj.Size != nil && *obj.Size != 0 {
+			pieces = append(pieces, name)
+		}
+	}
+	return pieces, nil
+}
+
 func (s s3PieceStorage) GetReaderCloser(ctx context.Context, resourceId string) (io.ReadCloser, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),

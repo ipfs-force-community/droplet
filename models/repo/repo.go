@@ -28,17 +28,22 @@ type FundRepo interface {
 
 type StorageDealRepo interface {
 	SaveDeal(ctx context.Context, StorageDeal *types.MinerDeal) error
-	GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error)
-	GetDealsByPieceCidAndStatus(ctx context.Context, piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
-	GetDealByAddrAndStatus(ctx context.Context, addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
 	UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState types.PieceStatus) error
+
+	GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error)
+	GetDealByDealID(ctx context.Context, mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error)
+
+	//todo rename Getxxx to Listxxx if return deals list
 	GetDeals(ctx context.Context, mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error)
+	//GetDealsByPieceStatus list deals by providor and piece status, but if addr is Undef, only filter by piece status
 	GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus) ([]*types.MinerDeal, error)
 	//GetDealsByDataCidAndDealStatus query deals from address data cid and deal status, if mAddr equal undef wont filter by address
 	GetDealsByDataCidAndDealStatus(ctx context.Context, mAddr address.Address, dataCid cid.Cid, pieceStatuss []types.PieceStatus) ([]*types.MinerDeal, error)
-	GetDealByDealID(ctx context.Context, mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error)
+	GetDealsByPieceCidAndStatus(ctx context.Context, piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
+	GetDealByAddrAndStatus(ctx context.Context, addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
 	ListDealByAddr(ctx context.Context, mAddr address.Address) ([]*types.MinerDeal, error)
 	ListDeal(ctx context.Context) ([]*types.MinerDeal, error)
+
 	GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error)
 	GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error)
 	ListPieceInfoKeys(ctx context.Context) ([]cid.Cid, error)

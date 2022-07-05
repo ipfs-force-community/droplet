@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/stretchr/testify/require"
 
@@ -73,7 +75,7 @@ func getTestMinerDeal(t *testing.T) *types.MinerDeal {
 		PublishCid:    &c,
 		Miner:         pid,
 		Client:        pid,
-		State:         0,
+		State:         storagemarket.StorageDealActive,
 		PiecePath:     "path",
 		MetadataPath:  "path",
 		SlashEpoch:    10,
@@ -94,6 +96,7 @@ func getTestMinerDeal(t *testing.T) *types.MinerDeal {
 		SectorNumber:          10,
 		InboundCAR:            "InboundCAR",
 		Offset:                1022222,
+		PieceStatus:           types.Proving,
 	}
 }
 
@@ -158,6 +161,33 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	pieceCids, err := dealRepo.ListPieceInfoKeys(ctx)
 	assert.Nil(t, err)
 	assert.Len(t, pieceCids, 1)
+
+	deals, err := dealRepo.GetDealsByDataCidAndDealStatus(ctx, deal2.ClientDealProposal.Proposal.Provider, deal2.Ref.Root, []types.PieceStatus{deal2.PieceStatus})
+	assert.Nil(t, err)
+	assert.Len(t, deals, 1)
+	compareDeal(t, deals[0], deal2)
+
+	deals, err = dealRepo.GetDealsByPieceStatus(ctx, deal2.ClientDealProposal.Proposal.Provider, types.Proving)
+	assert.Nil(t, err)
+	assert.Len(t, deals, 1)
+	compareDeal(t, deals[0], deal2)
+
+	deals, err = dealRepo.GetDealsByPieceStatus(ctx, address.Undef, types.Proving)
+	assert.Nil(t, err)
+	assert.Len(t, deals, 2)
+
+	deals, err = dealRepo.GetDealByAddrAndStatus(ctx, address.Undef, storagemarket.StorageDealActive)
+	assert.Nil(t, err)
+	assert.Len(t, deals, 2)
+
+	_, err = dealRepo.GetDealByAddrAndStatus(ctx, address.Undef, storagemarket.StorageDealAcceptWait)
+	assert.Equal(t, repo.ErrNotFound, err)
+
+	deals, err = dealRepo.GetDealByAddrAndStatus(ctx, deal.ClientDealProposal.Proposal.Provider, storagemarket.StorageDealActive)
+	assert.Nil(t, err)
+	assert.Len(t, deals, 1)
+	compareDeal(t, deals[0], deal)
+
 }
 
 func compareDeal(t *testing.T, actual, excepted *types.MinerDeal) {

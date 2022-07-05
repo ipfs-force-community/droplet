@@ -9,6 +9,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/stores"
+
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -62,6 +64,7 @@ type MarketNodeImpl struct {
 	Messager                                    clients2.IMixMessage
 	StorageAsk                                  storageprovider.IStorageAsk
 	DAGStore                                    *dagstore.DAGStore
+	DAGStoreWrapper                             stores.DAGStoreWrapper
 	PieceStorageMgr                             *piecestorage.PieceStorageManager
 	MinerMgr                                    minermgr.IAddrMgr
 	PaychAPI                                    *paychmgr.PaychAPI
@@ -472,71 +475,58 @@ func (m MarketNodeImpl) DagstoreListShards(ctx context.Context) ([]types.Dagstor
 }
 
 func (m MarketNodeImpl) DagstoreInitializeShard(ctx context.Context, key string) error {
-	k := shard.KeyFromString(key)
-
-	info, err := m.DAGStore.GetShardInfo(k)
+	//check whether key valid
+	cidKey, err := cid.Decode(key)
 	if err != nil {
+		return err
+	}
+	_, err = m.Repo.StorageDealRepo().GetPieceInfo(ctx, cidKey)
+	if err != nil {
+		return err
+	}
+
+	//check whether shard info exit
+	k := shard.KeyFromString(key)
+	info, err := m.DAGStore.GetShardInfo(k)
+	if err != nil && err != dagstore.ErrShardUnknown {
 		return fmt.Errorf("failed to get shard info: %w", err)
 	}
+
 	if st := info.ShardState; st != dagstore.ShardStateNew {
 		return fmt.Errorf("cannot initialize shard; expected state ShardStateNew, was: %s", st.String())
 	}
 
-	ch := make(chan dagstore.ShardResult, 1)
-	if err = m.DAGStore.AcquireShard(ctx, k, ch, dagstore.AcquireOpts{}); err != nil {
-		return fmt.Errorf("failed to acquire shard: %w", err)
+	bs, err := m.DAGStoreWrapper.LoadShard(ctx, cidKey)
+	if err != nil {
+		return err
 	}
-
-	var res dagstore.ShardResult
-	select {
-	case res = <-ch:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-
-	if err := res.Error; err != nil {
-		return fmt.Errorf("failed to acquire shard: %w", err)
-	}
-
-	if res.Accessor != nil {
-		err = res.Accessor.Close()
-		if err != nil {
-			log.Warnw("failed to close shard accessor; continuing", "shard_key", k, "error", err)
-		}
-	}
-
-	return nil
+	return bs.Close()
 }
 
 func (m MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.DagstoreInitializeAllParams) (<-chan types.DagstoreInitializeAllEvent, error) {
-	// prepare the thottler tokens.
-	var throttle chan struct{}
-	if c := params.MaxConcurrency; c > 0 {
-		throttle = make(chan struct{}, c)
-		for i := 0; i < c; i++ {
-			throttle <- struct{}{}
-		}
-	}
 
+	deals, err := m.Repo.StorageDealRepo().GetDealByAddrAndStatus(ctx, address.Undef, storageprovider.ReadyRetrievalDealStatus...)
+	if err != nil {
+		return nil, err
+	}
 	// are we initializing only unsealed pieces?
 	onlyUnsealed := !params.IncludeSealed
 
-	info := m.DAGStore.AllShardsInfo()
 	var toInitialize []string
-	for k, i := range info {
-		if i.ShardState != dagstore.ShardStateNew {
+	for _, deal := range deals {
+		pieceCid := deal.ClientDealProposal.Proposal.PieceCID
+		info, err := m.DAGStore.GetShardInfo(shard.KeyFromCID(pieceCid))
+		if err != nil && err != dagstore.ErrShardUnknown {
+			return nil, err
+		}
+
+		if info.ShardState != dagstore.ShardStateNew {
 			continue
 		}
 
 		// if we're initializing only unsealed pieces, check if there's an
 		// unsealed deal for this piece available.
 		if onlyUnsealed {
-			pieceCid, err := cid.Decode(k.String())
-			if err != nil {
-				log.Warnw("DagstoreInitializeAll: failed to decode shard key as piece CID; skipping", "shard_key", k.String(), "error", err)
-				continue
-			}
-
 			_, err = m.PieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 			if err != nil {
 				//todounseal
@@ -544,9 +534,56 @@ func (m MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.
 				continue
 			}
 		}
-
+		//todo trigger unseal
 		// yes, we're initializing this shard.
-		toInitialize = append(toInitialize, k.String())
+		toInitialize = append(toInitialize, pieceCid.String())
+	}
+
+	return m.dagstoreLoadShards(ctx, toInitialize, params.MaxConcurrency)
+}
+
+func (m *MarketNodeImpl) DagstoreInitializeStorage(ctx context.Context, storageName string, params types.DagstoreInitializeAllParams) (<-chan types.DagstoreInitializeAllEvent, error) {
+	storage, err := m.PieceStorageMgr.GetPieceStorageByName(storageName)
+	if err != nil {
+		return nil, err
+	}
+	resourceIds, err := storage.ListResourceIds(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var toInitialize []string
+	for _, resource := range resourceIds {
+		pieceCid, err := cid.Decode(resource)
+		if err != nil {
+			log.Warnf("resource name (%s) was not a valid piece cid %v", resource, err)
+			continue
+		}
+		pieceInfo, err := m.Repo.StorageDealRepo().GetPieceInfo(ctx, pieceCid)
+		if err != nil || (pieceInfo != nil && len(pieceInfo.Deals) == 0) {
+			log.Warnf("piece cid %s not in storage deals", pieceCid)
+			continue
+		}
+
+		_, err = m.DAGStore.GetShardInfo(shard.KeyFromString(resource))
+		if err != nil && !errors.Is(err, dagstore.ErrShardUnknown) {
+			return nil, err
+		}
+
+		toInitialize = append(toInitialize, resource)
+	}
+
+	return m.dagstoreLoadShards(ctx, toInitialize, params.MaxConcurrency)
+}
+
+func (m MarketNodeImpl) dagstoreLoadShards(ctx context.Context, toInitialize []string, concurrency int) (<-chan types.DagstoreInitializeAllEvent, error) {
+	// prepare the thottler tokens.
+	var throttle chan struct{}
+	if c := concurrency; c > 0 {
+		throttle = make(chan struct{}, c)
+		for i := 0; i < c; i++ {
+			throttle <- struct{}{}
+		}
 	}
 
 	total := len(toInitialize)
@@ -623,11 +660,8 @@ func (m MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.
 	}()
 
 	return res, nil
-
 }
-
 func (m MarketNodeImpl) DagstoreRecoverShard(ctx context.Context, key string) error {
-
 	k := shard.KeyFromString(key)
 
 	info, err := m.DAGStore.GetShardInfo(k)
@@ -716,6 +750,7 @@ func (m MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Addres
 	return m.PaychAPI.PaychVoucherList(ctx, pch)
 }
 
+//ImportV1Data deprecated api
 func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 	type minerDealsIncludeStatus struct {
 		MinerDeal storagemarket.MinerDeal
@@ -819,10 +854,12 @@ func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 	return nil
 }
 
+//GetReadUrl deprecated api
 func (m MarketNodeImpl) GetReadUrl(ctx context.Context, s string) (string, error) {
 	panic("not support")
 }
 
+//GetWriteUrl deprecated api
 func (m MarketNodeImpl) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
 	panic("not support")
 }

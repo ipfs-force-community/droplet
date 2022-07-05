@@ -23,7 +23,7 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 	for _, fsCfg := range cfg.Fs {
 		// check if storage already exist in manager and it's name is not empty
 		if fsCfg.Name == "" {
-			return nil, fmt.Errorf("fs piece storage name is empty")
+			return nil, fmt.Errorf("fs piece storage name is empty, must set storage name in piece storage config `name=yourname`")
 		}
 		_, ok := storages[fsCfg.Name]
 		if ok {
@@ -40,7 +40,7 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 	for _, s3Cfg := range cfg.S3 {
 		// check if storage already exist in manager and it's name is not empty
 		if s3Cfg.Name == "" {
-			return nil, fmt.Errorf("s3 pieceStorage name is empty")
+			return nil, fmt.Errorf("s3 pieceStorage name is empty, must set storage name in piece storage config `name=yourname`")
 		}
 		_, ok := storages[s3Cfg.Name]
 		if ok {
@@ -96,6 +96,16 @@ func (p *PieceStorageManager) FindStorageForWrite(size int64) (IPieceStorage, er
 	}
 	//todo better to use argorithems base on stroage capacity and usage
 	return randStorageSelector(storages)
+}
+
+func (p *PieceStorageManager) GetPieceStorageByName(name string) (IPieceStorage, error) {
+	p.Lock()
+	defer p.Unlock()
+
+	if storage, ok := p.storages[name]; ok {
+		return storage, nil
+	}
+	return nil, fmt.Errorf("storage %s not exit please check config", name)
 }
 
 func (p *PieceStorageManager) AddMemPieceStorage(s IPieceStorage) {

@@ -31,6 +31,20 @@ func (f *fsPieceStorage) Len(ctx context.Context, resourceId string) (int64, err
 	return st.Size(), err
 }
 
+func (f *fsPieceStorage) ListResourceIds(ctx context.Context) ([]string, error) {
+	entries, err := os.ReadDir(f.baseUrl)
+	if err != nil {
+		return nil, err
+	}
+	var resources []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			resources = append(resources, entry.Name())
+		}
+	}
+	return resources, nil
+}
+
 func (f *fsPieceStorage) SaveTo(ctx context.Context, resourceId string, r io.Reader) (int64, error) {
 	if f.fsCfg.ReadOnly {
 		return 0, fmt.Errorf("do not write to a 'readonly' piece store")

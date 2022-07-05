@@ -56,7 +56,16 @@ func (m *MemPieceStore) Len(ctx context.Context, resourceId string) (int64, erro
 		return int64(len(data)), nil
 	}
 	return 0, fmt.Errorf("unable to find resource %s", resourceId)
+}
 
+func (m *MemPieceStore) ListResourceIds(ctx context.Context) ([]string, error) {
+	m.dataLk.RLock()
+	defer m.dataLk.RUnlock()
+	var resources []string
+	for key := range m.data {
+		resources = append(resources, key)
+	}
+	return resources, nil
 }
 
 func (m *MemPieceStore) GetReaderCloser(ctx context.Context, resourceId string) (io.ReadCloser, error) {
