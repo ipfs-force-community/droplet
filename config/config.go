@@ -293,14 +293,14 @@ func (m *MarketConfig) RemovePieceStorage(name string) error {
 	return fmt.Errorf("piece storage %s not found", name)
 }
 
-func (cfg *MarketConfig) AddFsPieceStorage(fsps *FsPieceStorage) error {
-	cfg.PieceStorage.Fs = append(cfg.PieceStorage.Fs, fsps)
-	return SaveConfig(cfg)
+func (m *MarketConfig) AddFsPieceStorage(fsps *FsPieceStorage) error {
+	m.PieceStorage.Fs = append(m.PieceStorage.Fs, fsps)
+	return SaveConfig(m)
 }
 
-func (cfg *MarketConfig) AddS3PieceStorage(fsps *S3PieceStorage) error {
-	cfg.PieceStorage.S3 = append(cfg.PieceStorage.S3, fsps)
-	return SaveConfig(cfg)
+func (m *MarketConfig) AddS3PieceStorage(fsps *S3PieceStorage) error {
+	m.PieceStorage.S3 = append(m.PieceStorage.S3, fsps)
+	return SaveConfig(m)
 }
 
 type MarketClientConfig struct {

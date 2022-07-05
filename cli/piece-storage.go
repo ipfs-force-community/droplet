@@ -204,9 +204,7 @@ var pieceStorageListCmd = &cli.Command{
 			})
 		}
 
-		w.Flush(os.Stdout)
-
-		return nil
+		return w.Flush(os.Stdout)
 	},
 }
 
