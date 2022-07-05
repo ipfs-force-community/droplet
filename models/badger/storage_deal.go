@@ -105,6 +105,39 @@ func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(ctx context.Context, pie
 	return storageDeals, err
 }
 
+func (sdr *storageDealRepo) GetDealsByDataCidAndDealStatus(ctx context.Context, mAddr address.Address, dataCid cid.Cid, pieceStatuss []types.PieceStatus) ([]*types.MinerDeal, error) {
+	filter := map[types.PieceStatus]struct{}{}
+	for _, status := range pieceStatuss {
+		filter[status] = struct{}{}
+	}
+
+	var storageDeals []*types.MinerDeal
+	var err error
+	if err = travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
+		if mAddr != address.Undef && deal.ClientDealProposal.Proposal.Provider != mAddr {
+			return
+		}
+		if deal.Ref.Root != dataCid {
+			return
+		}
+
+		if _, ok := filter[deal.PieceStatus]; !ok {
+			return
+		}
+
+		storageDeals = append(storageDeals, deal)
+		return
+	}); err != nil {
+		return nil, err
+	}
+
+	if len(storageDeals) == 0 {
+		err = repo.ErrNotFound
+	}
+
+	return storageDeals, err
+}
+
 func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr address.Address, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	filter := map[storagemarket.StorageDealStatus]struct{}{}
 	for _, status := range statues {
