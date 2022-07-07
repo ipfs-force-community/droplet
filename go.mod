@@ -29,7 +29,7 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
-	github.com/filecoin-project/venus v1.6.1-0.20220705010019-246520384fea
+	github.com/filecoin-project/venus v1.6.1-0.20220707073004-2febbe50573a
 	github.com/filecoin-project/venus-auth v1.6.0
 	github.com/filecoin-project/venus-messager v1.6.0
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
