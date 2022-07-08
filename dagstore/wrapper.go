@@ -90,7 +90,7 @@ func NewDAGStore(ctx context.Context, cfg *config.DAGStoreConfig, marketApi Mark
 		return nil, nil, fmt.Errorf("failed to initialise dagstore index repo")
 	}
 
-	dcfg := dagstore.Config{
+	dCfg := dagstore.Config{
 		TransientsDir: transientsDir,
 		IndexRepo:     irepo,
 		Datastore:     dstore,
@@ -105,15 +105,15 @@ func NewDAGStore(ctx context.Context, cfg *config.DAGStoreConfig, marketApi Mark
 	}
 
 	if cfg.MongoTopIndex != nil {
-		dcfg.TopLevelIndex, err = NewMongoTopIndex(ctx, cfg.MongoTopIndex.Url)
+		dCfg.TopLevelIndex, err = NewMongoTopIndex(ctx, cfg.MongoTopIndex.Url)
 		if err != nil {
 			return nil, nil, err
 		}
 	} else {
-		dcfg.TopLevelIndex = index.NewInverted(dstore)
+		dCfg.TopLevelIndex = index.NewInverted(dstore)
 	}
 
-	dagst, err := dagstore.NewDAGStore(dcfg)
+	dagst, err := dagstore.NewDAGStore(dCfg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create DAG store: %w", err)
 	}

@@ -99,4 +99,10 @@ func TestRandSelect(t *testing.T) {
 	assert.Contains(t, selectName, "2")
 	assert.Contains(t, selectName, "3")
 	assert.NotContains(t, selectName, "4")
+
+	_, err = psm.GetPieceStorageByName("1")
+	assert.Nil(t, err)
+
+	_, err = psm.GetPieceStorageByName("10")
+	assert.NotNil(t, err)
 }

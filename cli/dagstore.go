@@ -20,6 +20,7 @@ var DagstoreCmd = &cli.Command{
 		dagstoreInitializeShardCmd,
 		dagstoreRecoverShardCmd,
 		dagstoreInitializeAllCmd,
+		dagstoreInitializeStorageCmd,
 		dagstoreGcCmd,
 	},
 }
@@ -188,6 +189,81 @@ var dagstoreInitializeAllCmd = &cli.Command{
 		}
 
 		ch, err := marketsApi.DagstoreInitializeAll(ctx, params)
+		if err != nil {
+			return err
+		}
+
+		for {
+			select {
+			case evt, ok := <-ch:
+				if !ok {
+					return nil
+				}
+				_, _ = fmt.Fprint(os.Stdout, color.New(color.BgHiBlack).Sprintf("(%d/%d)", evt.Current, evt.Total))
+				_, _ = fmt.Fprint(os.Stdout, " ")
+				if evt.Event == "start" {
+					_, _ = fmt.Fprintln(os.Stdout, evt.Key, color.New(color.Reset).Sprint("STARTING"))
+				} else {
+					if evt.Success {
+						_, _ = fmt.Fprintln(os.Stdout, evt.Key, color.New(color.FgGreen).Sprint("SUCCESS"))
+					} else {
+						_, _ = fmt.Fprintln(os.Stdout, evt.Key, color.New(color.FgRed).Sprint("ERROR"), evt.Error)
+					}
+				}
+
+			case <-ctx.Done():
+				return fmt.Errorf("aborted")
+			}
+		}
+	},
+}
+
+var dagstoreInitializeStorageCmd = &cli.Command{
+	Name:  "initialize-storage",
+	Usage: "Initialize all uninitialized shards in specify piece storage",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "storage",
+			Usage:    "specify storage to scan for index",
+			Required: true,
+		},
+		&cli.UintFlag{
+			Name:     "concurrency",
+			Usage:    "maximum shards to initialize concurrently at a time; use 0 for unlimited",
+			Required: true,
+		},
+		&cli.BoolFlag{
+			Name:  "include-sealed",
+			Usage: "initialize sealed pieces as well",
+		},
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
+		storageName := cctx.String("storage")
+		concurrency := cctx.Uint("concurrency")
+		sealed := cctx.Bool("sealed")
+
+		marketsApi, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		params := types.DagstoreInitializeAllParams{
+			MaxConcurrency: int(concurrency),
+			IncludeSealed:  sealed,
+		}
+
+		ch, err := marketsApi.DagstoreInitializeStorage(ctx, storageName, params)
 		if err != nil {
 			return err
 		}

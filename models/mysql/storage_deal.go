@@ -390,10 +390,18 @@ func (sdr *storageDealRepo) GetDealsByDataCidAndDealStatus(ctx context.Context, 
 	return deals, nil
 }
 
-func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, mAddr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	var md []storageDeal
 
-	err := sdr.WithContext(ctx).Table((&storageDeal{}).TableName()).Find(&md, "cdp_provider = ? AND state in ?", DBAddress(addr).String(), status).Error
+	query := sdr.WithContext(ctx).Table((&storageDeal{}).TableName())
+	if mAddr != address.Undef {
+		query.Where("cdp_provider=?", DBAddress(mAddr).String())
+	}
+	if len(status) > 0 {
+		query.Where("state in ?", status)
+	}
+
+	err := query.Find(&md).Error
 	if err != nil {
 		return nil, err
 	}
@@ -501,8 +509,13 @@ func (sdr *storageDealRepo) GetDealByDealID(ctx context.Context, mAddr address.A
 }
 
 func (sdr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus) ([]*types.MinerDeal, error) {
+	query := sdr.WithContext(ctx).Table(storageDealTableName).Where("piece_status = ?", pieceStatus)
+	if mAddr != address.Undef {
+		query.Where("cdp_provider=?", DBAddress(mAddr).String())
+	}
+
 	var dbDeals []*storageDeal
-	if err := sdr.WithContext(ctx).Table(storageDealTableName).Find(&dbDeals, "cdp_provider = ? and piece_status = ?", DBAddress(mAddr).String(), pieceStatus).Error; err != nil {
+	if err := query.Find(&dbDeals).Error; err != nil {
 		return nil, err
 	}
 
