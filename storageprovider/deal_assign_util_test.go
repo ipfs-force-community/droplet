@@ -15,14 +15,21 @@ const (
 	nonDeal = abi.DealID(0)
 )
 
-func generateTestingDeals(sizes []abi.PaddedPieceSize) []*mtypes.DealInfoIncludePath {
+func generateTestingDeals(sizes []abi.PaddedPieceSize, lifetimes [][2]abi.ChainEpoch) []*mtypes.DealInfoIncludePath {
 	deals := make([]*mtypes.DealInfoIncludePath, len(sizes))
 	for si, size := range sizes {
+		proposal := market.DealProposal{
+			PieceSize: size,
+		}
+
+		if len(lifetimes) > 0 {
+			proposal.StartEpoch = lifetimes[si][0]
+			proposal.EndEpoch = lifetimes[si][1]
+		}
+
 		deals[si] = &mtypes.DealInfoIncludePath{
-			DealID: isDeal,
-			DealProposal: market.DealProposal{
-				PieceSize: size,
-			},
+			DealID:       isDeal,
+			DealProposal: proposal,
 		}
 	}
 
@@ -35,6 +42,7 @@ func TestDealAssignPickAndAlign(t *testing.T) {
 	cases := []struct {
 		name              string
 		sectorSize        abi.SectorSize
+		lifetimes         [][2]abi.ChainEpoch
 		sizes             []abi.PaddedPieceSize
 		spec              *mtypes.GetDealSpec
 		expectedDealIDs   []abi.DealID
@@ -219,6 +227,216 @@ func TestDealAssignPickAndAlign(t *testing.T) {
 			expectedPieceSize: []abi.PaddedPieceSize{},
 			expectedErr:       nil,
 		},
+
+		// for lifetime filter
+		{
+			name:       "no lifetime limit",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 0,
+				EndEpoch:   0,
+			},
+			expectedDealIDs:   []abi.DealID{isDeal, isDeal, isDeal, nonDeal, isDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 128, 128, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:       "with start only, all included",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 10,
+				EndEpoch:   0,
+			},
+			expectedDealIDs:   []abi.DealID{isDeal, isDeal, isDeal, nonDeal, isDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 128, 128, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:       "with end only, all included",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 0,
+				EndEpoch:   35,
+			},
+			expectedDealIDs:   []abi.DealID{isDeal, isDeal, isDeal, nonDeal, isDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 128, 128, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:       "with start only, edge case",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 12,
+				EndEpoch:   0,
+			},
+			expectedDealIDs:   []abi.DealID{isDeal, nonDeal, nonDeal, isDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 256, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:       "with end only, edge case",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 0,
+				EndEpoch:   33,
+			},
+			expectedDealIDs:   []abi.DealID{isDeal, isDeal, nonDeal, nonDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 256, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:       "with start only, all ignored",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 14,
+				EndEpoch:   0,
+			},
+			expectedDealIDs:   []abi.DealID{},
+			expectedPieceSize: []abi.PaddedPieceSize{},
+			expectedErr:       nil,
+		},
+
+		{
+			name:       "with end only, all ignored",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 0,
+				EndEpoch:   31,
+			},
+			expectedDealIDs:   []abi.DealID{},
+			expectedPieceSize: []abi.PaddedPieceSize{},
+			expectedErr:       nil,
+		},
+
+		{
+			name:       "with start & end, all included",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 10,
+				EndEpoch:   35,
+			},
+			expectedDealIDs:   []abi.DealID{isDeal, isDeal, isDeal, nonDeal, isDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 128, 128, 512, 1024},
+			expectedErr:       nil,
+		},
+
+		{
+			name:       "with start & end, all ignored as start too late",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 14,
+				EndEpoch:   35,
+			},
+			expectedDealIDs:   []abi.DealID{},
+			expectedPieceSize: []abi.PaddedPieceSize{},
+			expectedErr:       nil,
+		},
+
+		{
+			name:       "with start & end, all ignored as end too early",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 10,
+				EndEpoch:   31,
+			},
+			expectedDealIDs:   []abi.DealID{},
+			expectedPieceSize: []abi.PaddedPieceSize{},
+			expectedErr:       nil,
+		},
+
+		{
+			name:       "with start & end, 2 picked",
+			sectorSize: SectorSize2K,
+			sizes:      []abi.PaddedPieceSize{128, 128, 128, 512},
+			lifetimes: [][2]abi.ChainEpoch{
+				{11, 31},
+				{12, 32},
+				{13, 33},
+				{14, 34},
+			},
+			spec: &mtypes.GetDealSpec{
+				StartEpoch: 11,
+				EndEpoch:   34,
+			},
+			expectedDealIDs:   []abi.DealID{isDeal, isDeal, nonDeal, nonDeal, nonDeal},
+			expectedPieceSize: []abi.PaddedPieceSize{128, 128, 256, 512, 1024},
+			expectedErr:       nil,
+		},
 	}
 
 	for ci := range cases {
@@ -226,7 +444,7 @@ func TestDealAssignPickAndAlign(t *testing.T) {
 		expectedPieceCount := len(c.expectedPieceSize)
 		require.Lenf(t, c.expectedDealIDs, expectedPieceCount, "<%s> expected deal ids & piece sizes should be equal", c.name)
 
-		caseDeals := generateTestingDeals(c.sizes)
+		caseDeals := generateTestingDeals(c.sizes, c.lifetimes)
 		gotDeals, gotErr := pickAndAlign(caseDeals, c.sectorSize, c.spec)
 
 		if c.expectedErr != nil {

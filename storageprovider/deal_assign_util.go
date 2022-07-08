@@ -25,6 +25,31 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spe
 		return nil, fmt.Errorf("%w: %d", errInvalidSpaceSize, space)
 	}
 
+	// 为了方便测试，将此过滤置于此位置
+	// 如果为了考虑效率，且有合适的方式进行测试，则可以移动到前置逻辑中进行过滤
+	// 确保订单在:
+	//   1. (spec.StartEpoch, spec.EndEpoch)
+	//   2. (0, spec.EndEpoch)
+	//   3. (spec.StartEpoch, +inf)
+	// 范围内
+	if spec != nil && (spec.StartEpoch > 0 || spec.EndEpoch > 0) {
+		picked := make([]*mtypes.DealInfoIncludePath, 0, len(deals))
+		for di := range deals {
+			deal := deals[di]
+			if spec.StartEpoch > 0 && deal.DealProposal.StartEpoch <= spec.StartEpoch {
+				continue
+			}
+
+			if spec.EndEpoch > 0 && deal.DealProposal.EndEpoch >= spec.EndEpoch {
+				continue
+			}
+
+			picked = append(picked, deal)
+		}
+
+		deals = picked
+	}
+
 	if len(deals) > 0 && deals[0].PieceSize.Validate() != nil {
 		return nil, fmt.Errorf("%w: first deal size: %d", errInvalidDealPieceSize, deals[0].PieceSize)
 	}
