@@ -6,11 +6,11 @@ on:
       - '**'
   pull_request:
     branches:
+      - main
       - master
   push:
     branches:
       - master
-      - test*
 jobs:
   build:
     runs-on: ubuntu-latest
