@@ -48,28 +48,35 @@ type SignerParams struct {
 	Mgr       minermgr.IAddrMgr `optional:"true"`
 }
 
-func NewISignerClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, params SignerParams) (ISinger, error) {
-	var signer ISinger
-	var closer jsonrpc.ClientCloser
-	var err error
-	switch params.SignerCfg.SignerType {
-	case config.SignerTypeWallet:
-		signer, closer, err = newWalletClient(context.Background(), params.SignerCfg.Token, params.SignerCfg.Url)
-	case config.SignerTypeGateway:
-		signer, closer, err = newGatewayWalletClient(context.Background(), params.Mgr, params.SignerCfg)
-	default:
-		return nil, fmt.Errorf("unsupport sign type %s", params.SignerCfg.SignerType)
+func NewISignerClient(isServer bool) func(metrics.MetricsCtx, fx.Lifecycle, SignerParams) (ISinger, error) {
+
+	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, params SignerParams) (ISinger, error) {
+		var signer ISinger
+		var closer jsonrpc.ClientCloser
+		var err error
+		switch params.SignerCfg.SignerType {
+		case config.SignerTypeWallet:
+			signer, closer, err = newWalletClient(context.Background(), params.SignerCfg.Token, params.SignerCfg.Url)
+		case config.SignerTypeGateway:
+			if !isServer {
+				return nil, fmt.Errorf("gateway signer not supported in client mode")
+			}
+			signer, closer, err = newGatewayWalletClient(context.Background(), params.Mgr, params.SignerCfg)
+		default:
+			return nil, fmt.Errorf("unsupport sign type %s", params.SignerCfg.SignerType)
+		}
+
+		lc.Append(fx.Hook{
+			OnStop: func(_ context.Context) error {
+				if closer != nil {
+					closer()
+				}
+				return nil
+			},
+		})
+		return signer, err
 	}
 
-	lc.Append(fx.Hook{
-		OnStop: func(_ context.Context) error {
-			if closer != nil {
-				closer()
-			}
-			return nil
-		},
-	})
-	return signer, err
 }
 
 func newWalletClient(ctx context.Context, token, url string) (*WalletClient, jsonrpc.ClientCloser, error) {
