@@ -57,7 +57,7 @@ var ClientsOpts = func(server bool, mode string, mCfg *config.Messager, signerCf
 			func(s *builder.Settings) bool {
 				return len(signerCfg.SignerType) > 0 && len(signerCfg.Url) > 0
 			},
-			builder.Override(new(ISinger), NewISignerClient),
+			builder.Override(new(ISinger), NewISignerClient(server)),
 			builder.Override(ReplaceWalletMethod, ConvertWalletToISinge),
 		),
 	)
