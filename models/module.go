@@ -19,17 +19,20 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 		builder.ApplyIfElse(func(s *builder.Settings) bool {
 			return server
 		}, builder.Options(
+			// if server, use mysql
 			builder.Override(new(badger2.StagingDS), badger2.NewStagingDS),
 			builder.Override(new(badger2.StagingBlockstore), badger2.NewStagingBlockStore),
 			builder.Override(new(badger2.DagTransferDS), badger2.NewDagTransferDS),
 			builder.ApplyIfElse(func(s *builder.Settings) bool {
 				return mysqlCfg != nil && len(mysqlCfg.ConnectionString) > 0
 			}, builder.Options(
+				// if mysql is configured, use mysql
 				builder.Override(new(repo.Repo), func() (repo.Repo, error) {
 					return mysql.InitMysql(mysqlCfg)
 				}),
 			),
 				builder.Options(
+					// if mysql is not configured, use badger
 					builder.Override(new(badger2.PieceMetaDs), badger2.NewPieceMetaDs),
 					builder.Override(new(badger2.CIDInfoDS), badger2.NewCidInfoDs),
 					builder.Override(new(badger2.RetrievalProviderDS), badger2.NewRetrievalProviderDS),
@@ -46,6 +49,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 			),
 		),
 			builder.Options(
+				// if not server, use badger
 				builder.Override(new(badger2.ClientDatastore), badger2.NewClientDatastore),
 				builder.Override(new(badger2.ClientBlockstore), badger2.NewClientBlockstore),
 				builder.Override(new(badger2.FundMgrDS), badger2.NewFundMgrDS),

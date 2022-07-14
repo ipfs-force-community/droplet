@@ -1210,7 +1210,7 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 
 	if verbose {
 		w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tVerified\tMessage\n")
+		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tDataCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tVerified\tMessage\n")
 		for _, d := range deals {
 			onChain := "N"
 			if d.OnChainDealState.SectorStartEpoch != -1 {
@@ -1238,7 +1238,7 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 				//	transferPct = fmt.Sprintf("%d%%", pct)
 				//}
 			}
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%v\t%s\n",
+			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%v\t%s\n",
 				d.LocalDeal.CreationTime.Format(time.Stamp),
 				d.LocalDeal.ProposalCid,
 				d.LocalDeal.DealID,
@@ -1247,6 +1247,7 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 				onChain,
 				slashed,
 				d.LocalDeal.PieceCID,
+				d.LocalDeal.DataRef.Root,
 				types.SizeStr(types.NewInt(d.LocalDeal.Size)),
 				price,
 				d.LocalDeal.Duration,
@@ -1265,6 +1266,7 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 		tablewriter.Col("On Chain?"),
 		tablewriter.Col("Slashed?"),
 		tablewriter.Col("PieceCID"),
+		tablewriter.Col("DataCID"),
 		tablewriter.Col("Size"),
 		tablewriter.Col("Price"),
 		tablewriter.Col("Duration"),
@@ -1273,6 +1275,7 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 
 	for _, d := range deals {
 		propcid := ellipsis(d.LocalDeal.ProposalCid.String(), 8)
+		datacid := ellipsis(d.LocalDeal.DataRef.Root.String(), 8)
 
 		onChain := "N"
 		if d.OnChainDealState.SectorStartEpoch != -1 {
@@ -1296,6 +1299,7 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 			"On Chain?": onChain,
 			"Slashed?":  slashed,
 			"PieceCID":  piece,
+			"DataCID":   datacid,
 			"Size":      types.SizeStr(types.NewInt(d.LocalDeal.Size)),
 			"Price":     price,
 			"Verified":  d.LocalDeal.Verified,
