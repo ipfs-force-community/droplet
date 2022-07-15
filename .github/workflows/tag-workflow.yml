@@ -1,16 +1,9 @@
 name: build for test/release
 on:
   workflow_dispatch:
-  create:
-    tags:
-      - '**'
-  pull_request:
-    branches:
-      - main
-      - master
   push:
-    branches:
-      - master
+    branches: ['prep/**', 'release/**', 'test/**', master, main]
+    tags: ['**']
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,10 +28,15 @@ jobs:
           export job_url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           export oss_exists=0
           export ftp_exists=0
-          
-          export rx='^v([0-9]+\.){0,2}(\*|[0-9]+)(-rc[0-9]*){0,1}$'
-          if [[ "${{github.ref_type}}" == "tag" ]] && [[ "${{github.event_name}}" == "create" ]] && [[ "$github_tag" =~ $rx ]]; then
-            export pub_method=pushRelease
+          export is_tag_create=false
+
+          export rx_tag='^refs\/tags\/.*'
+          export rx_version_tag='^v([0-9]+\.){0,2}(\*|[0-9]+)(-rc[0-9]*){0,1}$'
+          if [[ "${{github.ref}}" =~ $rx_tag ]]; then
+            export is_tag_create=true
+            if [[ "${{github.ref_name}}" =~ $rx_version_tag ]]; then
+              export pub_method=pushRelease
+            fi
           fi
           
           if [[ "${{secrets.OSS_KEY_ID}}" != "" && \
@@ -63,6 +61,7 @@ jobs:
           echo "::set-output name=pub_method::$pub_method"
           echo "::set-output name=oss_exists::$oss_exists"
           echo "::set-output name=ftp_exists::$ftp_exists"
+          echo "::set-output name=is_tag_create:$is_tag_create"
 
       - name: show environment
         run: |
@@ -178,7 +177,7 @@ jobs:
           set -e
 
       - name: Publish the Docker image 
-        if: ${{ github.ref_type == 'tag' && github.event_name == 'create' }}
+        if: ${{ steps.vars.outputs.is_tag_create == 'true' }}
         run: |
           docker build . --file dockerfile --tag filvenus/venus-market:latest
           docker tag filvenus/venus-market:latest filvenus/venus-market:${{steps.vars.outputs.github_tag}}
