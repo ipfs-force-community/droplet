@@ -147,6 +147,7 @@ func main() {
 			cli2.DagstoreCmd,
 			cli2.MigrateCmd,
 			cli2.PieceStorageCmd,
+			cli2.MarketCmds,
 		},
 	}
 
