@@ -248,6 +248,13 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	}
 
 	if cctx.IsSet(MinerListFlag.Name) {
+		storageMiners := make(map[config.Address]struct{}, 0)
+		for _, storageMiner := range cfg.StorageMiners {
+			if _, ok := storageMiners[storageMiner.Addr]; !ok {
+				storageMiners[storageMiner.Addr] = struct{}{}
+			}
+		}
+
 		addrStrs := cctx.StringSlice(MinerListFlag.Name)
 		for _, miners := range addrStrs {
 			addrStr := strings.Split(miners, ":")
@@ -259,11 +266,13 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 			if len(addrStr) >= 2 {
 				account = addrStr[1]
 			}
-			// todo 这里是追加不是替换
-			cfg.StorageMiners = append(cfg.StorageMiners, config.User{
-				Addr:    config.Address(addr),
-				Account: account,
-			})
+
+			if _, ok := storageMiners[config.Address(addr)]; !ok {
+				cfg.StorageMiners = append(cfg.StorageMiners, config.User{
+					Addr:    config.Address(addr),
+					Account: account,
+				})
+			}
 		}
 	}
 
