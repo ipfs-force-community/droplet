@@ -61,7 +61,7 @@ jobs:
           echo "::set-output name=pub_method::$pub_method"
           echo "::set-output name=oss_exists::$oss_exists"
           echo "::set-output name=ftp_exists::$ftp_exists"
-          echo "::set-output name=is_tag_create:$is_tag_create"
+          echo "::set-output name=is_tag_create::$is_tag_create"
 
       - name: show environment
         run: |
