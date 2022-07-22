@@ -103,7 +103,7 @@ Index = ""
 UseTransient = false
 
 
-# ******** 数据索取配置 ********
+# ******** 数据检索配置 ********
 
 [RetrievalPaymentAddress]
 Addr = ""
@@ -159,7 +159,7 @@ PieceCidBlocklist = []
 # 时间字符串是由数字和时间单位组成的字符串，数字包括整数和小数，合法的单位包括 "ns", "us" (or "µs"), "ms", "s", "m", "h".
 ExpectedSealDuration = "24h0m0s"
 
-# 预期订单开始epoch出现的最大延迟
+# 预期订单封装完成时间
 # 时间字符串 默认为："336h0m0s"
 MaxDealStartDelay = "336h0m0s"
 
@@ -167,7 +167,7 @@ MaxDealStartDelay = "336h0m0s"
 # 时间字符串 默认为："1h0m0s"
 PublishMsgPeriod = "5m0s"
 
-# 在一个消息推送周期内的最大订单书数量
+# 在一个消息推送周期内的最大订数量
 # 整数类型 默认为8 
 MaxDealsPerPublishMsg = 8
 
@@ -187,12 +187,10 @@ SimultaneousTransfersForStoragePerClient = 20
 # 整数类型 默认为：20
 SimultaneousTransfersForRetrieval = 20
 
-# 实现存储订单精细控制的过滤器
-# 执行命令的字符串 可选 （详情参见 https://lotus.filecoin.io/storage-providers/advanced-configurations/market/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance）
+# 保留字段
 Filter = ""
 
-# 获取数据订单精细控制的过滤器
-# 执行命令的字符串 可选
+# 保留字段
 RetrievalFilter = ""
 
 # 订单传输数据的存储位置
@@ -248,7 +246,7 @@ AnnounceAddresses = []
 # 保留字段
 NoAnnounceAddresses = []
 
-# 用于p2p加密通信的私钥
+# 用于生成p2p节点的peerid
 # 字符串 可选（没设置则自动生成）
 PrivateKey = "08011240ae580daabbe087007d2b4db4e880af10d582215d2272669a94c49c854f36f99c35"
 ```
@@ -408,7 +406,7 @@ Path = "/piecestorage/"
 [PieceStorage.S3]
 # 存储空间的名称，它在market的所有的存储空间中，必须是唯一的
 # 字符串类型 必选
-Name:"s3"
+Name = "s3"
 
 # 该存储空间是否可写（ read only false 即为可写）
 # 布尔值 默认为 false
@@ -440,6 +438,8 @@ Path = "journal"
 
 ## 消息发送地址的配置
 
+该设置为保留字段，当前无效
+
 ```
 [AddressConfig]
 
@@ -466,6 +466,7 @@ Account =""
 DAG 数据存储的配置
 
 ```
+# 参考 github.com/filecoin-project/dagstore/dagstore.go
 [DAGStore]
 
 # DAG数据存储的根目录
@@ -476,7 +477,7 @@ RootDir = "/root/.venusmarket/dagstore"
 # 整数类型 默认为5 0表示不限制
 MaxConcurrentIndex = 5
 
-# 可以同时被捉取的最大未封装订单的数量
+# 可以同时被抓取的最大未封装订单的数量
 # 整数类型 默认为0 0表示不限制
 MaxConcurrentReadyFetches = 0
 
@@ -497,13 +498,13 @@ Transient = ""
 # 字符串类型 可选 不设置则使用RooDir目录下的'index'文件夹
 Index = ""
 
-# 决定读取扇区数据时的时候是否跳过 Transient 中的文件，直接读取
+#不使用本地缓存，直接读取数据源
 # 布尔类型 默认为 false
 UseTransient = false
 ```
 
 
-## 数据索取配置
+## 数据检索
 
 获取订单中存储的扇区数据时的相关配置
 
@@ -517,7 +518,8 @@ Account = ""
 ```
 
 ### [RetrievalPricing]
-获取订单扇区数据时，使用的定价策略
+
+保留字段，当前配置无效
 
 ``` 
 [RetrievalPricing]
