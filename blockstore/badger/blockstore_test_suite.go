@@ -11,6 +11,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	u "github.com/ipfs/go-ipfs-util"
+	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/filecoin-project/venus-market/v2/blockstore"
 
@@ -52,7 +53,7 @@ func (s *Suite) TestGetWhenKeyNotPresent(t *testing.T) {
 	c := cid.NewCidV0(u.Hash([]byte("stuff")))
 	bl, err := bs.Get(context.Background(), c)
 	require.Nil(t, bl)
-	require.Equal(t, blockstore.ErrNotFound, err)
+	require.True(t, ipld.IsNotFound(err))
 }
 
 func (s *Suite) TestGetWhenKeyIsNil(t *testing.T) {
@@ -62,7 +63,7 @@ func (s *Suite) TestGetWhenKeyIsNil(t *testing.T) {
 	}
 
 	_, err := bs.Get(context.Background(), cid.Undef)
-	require.Equal(t, blockstore.ErrNotFound, err)
+	require.True(t, ipld.IsNotFound(err))
 }
 
 func (s *Suite) TestPutThenGetBlock(t *testing.T) {
@@ -143,7 +144,7 @@ func (s *Suite) TestPutThenGetSizeBlock(t *testing.T) {
 	require.Zero(t, emptySize)
 
 	missingSize, err := bs.GetSize(ctx, missingBlock.Cid())
-	require.Equal(t, blockstore.ErrNotFound, err)
+	require.True(t, ipld.IsNotFound(err))
 	require.Equal(t, -1, missingSize)
 }
 
