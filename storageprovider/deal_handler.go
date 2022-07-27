@@ -429,10 +429,14 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			if err != nil {
 				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database"))
 			}
+			dr, err := v2r.DataReader()
+			if err != nil {
+				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("failed to get car data reader: %w", err))
+			}
 			// Hand the deal off to the process that adds it to a sector
 			var packingErr error
 			log.Infow("handing off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
-			packingErr = storageDealPorcess.savePieceFile(ctx, deal, v2r.DataReader(), v2r.Header.DataSize)
+			packingErr = storageDealPorcess.savePieceFile(ctx, deal, dr, v2r.Header.DataSize)
 			// Close the reader as we're done reading from it.
 			if err := v2r.Close(); err != nil {
 				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("failed to close CARv2 reader: %w", err))
@@ -650,8 +654,12 @@ func (storageDealPorcess *StorageDealProcessImpl) GeneratePieceCommitment(propos
 	}()
 
 	// dump the CARv1 payload of the CARv2 file to the Commp Writer and get back the CommP.
+	dr, err := rd.DataReader()
+	if err != nil {
+		return cid.Undef, "", fmt.Errorf("failed to get car data reader: %w", err)
+	}
 	w := &writer.Writer{}
-	written, err := io.Copy(w, rd.DataReader())
+	written, err := io.Copy(w, dr)
 	if err != nil {
 		return cid.Undef, "", fmt.Errorf("failed to write to CommP writer: %w", err)
 	}

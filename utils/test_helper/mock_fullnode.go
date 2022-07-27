@@ -21,7 +21,9 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/metrics"
+	network2 "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/multiformats/go-multiaddr"
 )
 
@@ -47,7 +49,7 @@ func (m MockFullnode) StateLookupRobustAddress(context.Context, address.Address,
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkPing(context.Context, peer.ID) (time.Duration, error) {
+func (m MockFullnode) NetPing(context.Context, peer.ID) (time.Duration, error) {
 	panic("implement me")
 }
 
@@ -543,35 +545,83 @@ func (m MockFullnode) MsigGetVested(ctx context.Context, addr address.Address, s
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkGetBandwidthStats(ctx context.Context) metrics.Stats {
+func (m MockFullnode) NetGetBandwidthStats(ctx context.Context) metrics.Stats {
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkGetPeerAddresses(ctx context.Context) []multiaddr.Multiaddr {
+func (m MockFullnode) NetGetPeerAddresses(ctx context.Context) []multiaddr.Multiaddr {
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkGetPeerID(ctx context.Context) peer.ID {
+func (m MockFullnode) NetGetPeerID(ctx context.Context) peer.ID {
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo {
+func (m MockFullnode) NetFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo {
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkGetClosestPeers(ctx context.Context, key string) ([]peer.ID, error) {
+func (m MockFullnode) NetGetClosestPeers(ctx context.Context, key string) ([]peer.ID, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
+func (m MockFullnode) NetFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkConnect(ctx context.Context, addrs []string) (<-chan types.ConnectionResult, error) {
+func (m MockFullnode) NetConnect(ctx context.Context, pi peer.AddrInfo) error {
 	panic("implement me")
 }
 
-func (m MockFullnode) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*types.SwarmConnInfos, error) {
+func (m MockFullnode) NetPeers(ctx context.Context) ([]peer.AddrInfo, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) ID(ctx context.Context) (peer.ID, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetAutoNatStatus(context.Context) (types.NatInfo, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metrics.Stats, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetProtectAdd(ctx context.Context, acl []peer.ID) error {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetProtectRemove(ctx context.Context, acl []peer.ID) error {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetProtectList(ctx context.Context) ([]peer.ID, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetConnectedness(context.Context, peer.ID) (network2.Connectedness, error) {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetDisconnect(ctx context.Context, p peer.ID) error {
+	panic("implement me")
+}
+
+func (m MockFullnode) NetPeerInfo(ctx context.Context, p peer.ID) (*types.ExtendedPeerInfo, error) {
 	panic("implement me")
 }
 
