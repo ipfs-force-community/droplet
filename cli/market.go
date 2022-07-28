@@ -3,9 +3,11 @@ package cli
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -323,6 +325,7 @@ var StorageDealsCmd = &cli.Command{
 	Usage: "Manage storage deals and related configuration",
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
+		importOfflineDealCmd,
 		dealsListCmd,
 		updateStorageDealStateCmd,
 		storageDealSelectionCmd,
@@ -362,6 +365,40 @@ var dealsImportDataCmd = &cli.Command{
 
 		return api.DealsImportData(ctx, propCid, fpath)
 
+	},
+}
+
+var importOfflineDealCmd = &cli.Command{
+	Name:      "import-offlinedeal",
+	Usage:     "Manually import offline deal",
+	ArgsUsage: "<deal_file_json>",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := DaemonContext(cctx)
+
+		if cctx.Args().Len() < 1 {
+			return fmt.Errorf("must specify file path which records the deal")
+		}
+
+		fpath := cctx.Args().Get(0)
+
+		dealbyte, err := ioutil.ReadFile(fpath)
+		if err != nil {
+			return fmt.Errorf("read deal file(%s) fail %w", fpath, err)
+		}
+
+		data := market.MinerDeal{}
+		err = json.Unmarshal(dealbyte, &data)
+		if err != nil {
+			return err
+		}
+
+		return api.OfflineDealImport(ctx, data)
 	},
 }
 
