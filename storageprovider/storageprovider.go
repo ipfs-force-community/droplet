@@ -444,10 +444,9 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 
 //ImportPublishedDeal manually import published deals for an storage deal
 func (p *StorageProviderImpl) ImportOfflineDeal(ctx context.Context, deal types.MinerDeal) error {
-
 	// check deal state
 	if deal.State != storagemarket.StorageDealWaitingForData {
-		return fmt.Errorf("deal state %d not match %d", deal.State, storagemarket.StorageDealWaitingForData)
+		return fmt.Errorf("deal state %s not match %s", storagemarket.DealStates[deal.State], storagemarket.DealStates[storagemarket.StorageDealWaitingForData])
 	}
 
 	//check if miner exit
@@ -458,6 +457,8 @@ func (p *StorageProviderImpl) ImportOfflineDeal(ctx context.Context, deal types.
 	//check if local exit the deal
 	if _, err := p.dealStore.GetDeal(ctx, deal.ProposalCid); err == nil {
 		return fmt.Errorf("deal exist proposal cid %s id %d", deal.ProposalCid, deal.DealID)
+	} else if !errors.Is(err, repo.ErrNotFound) {
+		return err
 	}
 
 	// check client signature
