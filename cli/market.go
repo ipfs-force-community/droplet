@@ -372,6 +372,16 @@ var importOfflineDealCmd = &cli.Command{
 	Name:      "import-offlinedeal",
 	Usage:     "Manually import offline deal",
 	ArgsUsage: "<deal_file_json>",
+	Flags: []cli.Flag{
+		// verbose
+		&cli.BoolFlag{
+			Name:  "verbose",
+			Usage: "Print verbose output",
+			Aliases: []string{
+				"v",
+			},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
@@ -382,7 +392,7 @@ var importOfflineDealCmd = &cli.Command{
 		ctx := DaemonContext(cctx)
 
 		if cctx.Args().Len() < 1 {
-			return fmt.Errorf("must specify file path which records the deal")
+			return fmt.Errorf("must specify the path of json file which records the deal")
 		}
 
 		fpath := cctx.Args().Get(0)
@@ -392,13 +402,34 @@ var importOfflineDealCmd = &cli.Command{
 			return fmt.Errorf("read deal file(%s) fail %w", fpath, err)
 		}
 
-		data := market.MinerDeal{}
+		data := []market.MinerDeal{}
 		err = json.Unmarshal(dealbyte, &data)
 		if err != nil {
-			return err
+			return fmt.Errorf("parse deal file(%s) fail %w", fpath, err)
 		}
 
-		return api.OfflineDealImport(ctx, data)
+		totalCount := len(data)
+		importedCount := 0
+
+		// if verbose, print the deal info
+
+		for i := 0; i < totalCount; i++ {
+			err := api.OfflineDealImport(ctx, data[i])
+			if err != nil {
+				if cctx.Bool("verbose") {
+					fmt.Printf("( %d / %d ) %s : fail : %v\n", i+1, totalCount, data[i].ProposalCid, err)
+				}
+			} else {
+				importedCount++
+				if cctx.Bool("verbose") {
+					fmt.Printf("( %d / %d ) %s : success\n", i+1, totalCount, data[i].ProposalCid)
+				}
+			}
+		}
+
+		fmt.Printf("import %d deals, %d deal success , %d deal fail .\n", totalCount, importedCount, totalCount-importedCount)
+
+		return nil
 	},
 }
 
