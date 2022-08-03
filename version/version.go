@@ -7,5 +7,5 @@ var (
 )
 
 func UserVersion() string {
-	return "venus-market " + Version + " " + CurrentCommit
+	return Version + CurrentCommit
 }
