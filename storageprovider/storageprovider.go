@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -65,6 +66,9 @@ type StorageProvider interface {
 
 	//ImportPublishedDeal manually import published deals to storage deals
 	ImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error
+
+	//ImportOfflineDeal manually import offline deals to storage deals
+	ImportOfflineDeal(ctx context.Context, deal types.MinerDeal) error
 
 	// SubscribeToEvents listens for events that happen related to storage deals on a provider
 	SubscribeToEvents(subscriber storagemarket.ProviderSubscriber) shared.Unsubscribe
@@ -436,6 +440,43 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 		InboundCAR:        "",
 	}
 	return p.dealStore.SaveDeal(ctx, improtDeal)
+}
+
+//ImportPublishedDeal manually import published deals for an storage deal
+func (p *StorageProviderImpl) ImportOfflineDeal(ctx context.Context, deal types.MinerDeal) error {
+	// check deal state
+	if deal.State != storagemarket.StorageDealWaitingForData {
+		return fmt.Errorf("deal state %s not match %s", storagemarket.DealStates[deal.State], storagemarket.DealStates[storagemarket.StorageDealWaitingForData])
+	}
+
+	//check if miner exit
+	if !p.minerMgr.Has(ctx, deal.Proposal.Provider) {
+		return fmt.Errorf("miner %s not support", deal.Proposal.Provider)
+	}
+
+	//check if local exit the deal
+	if _, err := p.dealStore.GetDeal(ctx, deal.ProposalCid); err == nil {
+		return fmt.Errorf("deal exist proposal cid %s id %d", deal.ProposalCid, deal.DealID)
+	} else if !errors.Is(err, repo.ErrNotFound) {
+		return err
+	}
+
+	// check client signature
+	tok, _, err := p.spn.GetChainHead(ctx)
+	if err != nil {
+		return fmt.Errorf("node error getting most recent state id: %w", err)
+	}
+
+	if err := providerutils.VerifyProposal(ctx, deal.ClientDealProposal, tok, p.spn.VerifySignature); err != nil {
+		return fmt.Errorf("verifying StorageDealProposal: %w", err)
+	}
+
+	err = p.dealStore.SaveDeal(ctx, &deal)
+	if err != nil {
+		return fmt.Errorf("save miner deal to database %w", err)
+	}
+
+	return nil
 }
 
 // AddStorageCollateral adds storage collateral

@@ -20,6 +20,10 @@ import (
 	"github.com/filecoin-project/venus-market/v2/models"
 	network2 "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
+	"github.com/filecoin-project/venus-market/v2/storageprovider"
+	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
+	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
+	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/venus-shared/api/chain/v1/mock"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	marketypes "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -30,14 +34,30 @@ import (
 //go:embed testdata/import_deal.json
 var importDataJsonString []byte
 
-type dealCase struct {
+type publishdealCase struct {
 	Proposal *marketypes.MinerDeal
 	Result   bool
 }
 
+type importOfflineDealResult int
+
+const (
+	success importOfflineDealResult = iota
+	dealExists
+	minerNotFound
+	signatureInvalid
+	dealStatusInvalid
+)
+
+type offlinedealCase struct {
+	Proposal *marketypes.MinerDeal
+	Result   importOfflineDealResult
+}
+
 type testGroud struct {
-	DealsOnChain map[abi.DealID]types.MarketDeal
-	Cases        []*dealCase
+	DealsOnChain     map[abi.DealID]types.MarketDeal
+	PublishDealCases []*publishdealCase
+	OfflineDealCase  []*offlinedealCase
 }
 
 func TestStorageProviderImpl_ImportPublishedDeal(t *testing.T) {
@@ -49,13 +69,44 @@ func TestStorageProviderImpl_ImportPublishedDeal(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	for _, c := range testGround.Cases {
+	for _, c := range testGround.PublishDealCases {
 		err = provider.ImportPublishedDeal(ctx, *c.Proposal)
 		assert.Equal(t, c.Result, err == nil, "ProposalCid: %v, err: %v", c.Proposal.ProposalCid, err)
 	}
 }
 
-func setup(t *testing.T) StorageProvider {
+func TestStorageProviderImpl_ImportOfflineDeal(t *testing.T) {
+	provider := setup(t)
+	ctx := context.Background()
+
+	var testGround testGroud
+	err := json.Unmarshal(importDataJsonString, &testGround)
+	if err != nil {
+		t.Error(err)
+	}
+	for _, c := range testGround.OfflineDealCase {
+		err = provider.ImportOfflineDeal(ctx, *c.Proposal)
+		switch c.Result {
+		case success:
+			assert.NoError(t, err)
+			t.Log("Success")
+		case dealExists:
+			assert.Contains(t, err.Error(), "deal exist")
+			t.Logf("DealExists: %v", err)
+		case minerNotFound:
+			assert.Contains(t, err.Error(), fmt.Sprintf("miner %s not support", c.Proposal.Proposal.Provider.String()))
+			t.Logf("MinerNotFound: %v", err)
+		case signatureInvalid:
+			assert.Contains(t, err.Error(), "verifying StorageDealProposal")
+			t.Logf("SignatureInvalid: %v", err)
+		case dealStatusInvalid:
+			assert.Contains(t, err.Error(), "deal state")
+			t.Logf("DealStatusInvalid: %v", err)
+		}
+	}
+}
+
+func setup(t *testing.T) storageprovider.StorageProvider {
 	ctx := context.Background()
 	spn := newMockProviderNode()
 
@@ -70,7 +121,7 @@ func setup(t *testing.T) StorageProvider {
 	}
 
 	r := models.NewInMemoryRepo()
-	ask := &StorageAsk{r.StorageAskRepo(), spn}
+	ask, _ := storageprovider.NewStorageAsk(ctx, r, spn)
 	h, err := network2.MockHost(ctx)
 	if err != nil {
 		t.Error(err)
@@ -87,7 +138,7 @@ func setup(t *testing.T) StorageProvider {
 	addrMgr := mockAddrMgr{}
 
 	//todo how to mock dagstore
-	provider, err := NewStorageProvider(ask, h, config.DefaultMarketConfig, &homeDir, psManager, dt, spn, nil, r, addrMgr, nil)
+	provider, err := storageprovider.NewStorageProvider(ask, h, config.DefaultMarketConfig, &homeDir, psManager, dt, spn, nil, r, addrMgr, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -98,7 +149,7 @@ type mockAddrMgr struct {
 }
 
 func (m mockAddrMgr) Has(ctx context.Context, addr address.Address) bool {
-	return addr.String() == "t01043"
+	return addr.String() == "t01043" || addr.String() == "t010938"
 }
 
 func (m mockAddrMgr) ActorAddress(ctx context.Context) ([]address.Address, error) {
@@ -167,8 +218,12 @@ func (m *mockProviderNode) SignWithGivenMiner(mAddr address.Address) network.Res
 }
 
 func (m *mockProviderNode) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	//TODO implement me
-	panic("implement me")
+	head, err := m.ChainHead(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return head.Key().Bytes(), head.Height(), nil
 }
 
 func (m *mockProviderNode) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
@@ -192,8 +247,8 @@ func (m *mockProviderNode) GetBalance(ctx context.Context, addr address.Address,
 }
 
 func (m *mockProviderNode) VerifySignature(ctx context.Context, signature crypto.Signature, signer address.Address, plaintext []byte, tok shared.TipSetToken) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+	err := vCrypto.Verify(&signature, signer, plaintext)
+	return err == nil, err
 }
 
 func (m *mockProviderNode) WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, cid.Cid, error) error) error {

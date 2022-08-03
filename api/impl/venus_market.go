@@ -908,3 +908,7 @@ func (m MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) err
 
 	return m.Config.RemovePieceStorage(name)
 }
+
+func (m MarketNodeImpl) OfflineDealImport(ctx context.Context, deal types.MinerDeal) error {
+	return m.StorageProvider.ImportOfflineDeal(ctx, deal)
+}
