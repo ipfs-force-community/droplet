@@ -47,6 +47,7 @@ const (
 	minerNotFound
 	signatureInvalid
 	dealStatusInvalid
+	transferTypeInvalid
 )
 
 type offlinedealCase struct {
@@ -102,6 +103,9 @@ func TestStorageProviderImpl_ImportOfflineDeal(t *testing.T) {
 		case dealStatusInvalid:
 			assert.Contains(t, err.Error(), "deal state")
 			t.Logf("DealStatusInvalid: %v", err)
+		case transferTypeInvalid:
+			assert.Contains(t, err.Error(), "transfer type")
+			t.Logf("TransferTypeInvalid: %v", err)
 		}
 	}
 }
