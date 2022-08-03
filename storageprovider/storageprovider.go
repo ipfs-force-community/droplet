@@ -449,6 +449,11 @@ func (p *StorageProviderImpl) ImportOfflineDeal(ctx context.Context, deal types.
 		return fmt.Errorf("deal state %s not match %s", storagemarket.DealStates[deal.State], storagemarket.DealStates[storagemarket.StorageDealWaitingForData])
 	}
 
+	// check transfer type
+	if deal.Ref.TransferType != storagemarket.TTManual {
+		return fmt.Errorf("transfer type %s not match %s", deal.Ref.TransferType, storagemarket.TTManual)
+	}
+
 	//check if miner exit
 	if !p.minerMgr.Has(ctx, deal.Proposal.Provider) {
 		return fmt.Errorf("miner %s not support", deal.Proposal.Provider)
