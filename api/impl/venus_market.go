@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"github.com/filecoin-project/venus-market/v2/retrievalprovider"
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
+	"github.com/filecoin-project/venus-market/v2/version"
 
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus/pkg/constants"
@@ -911,4 +912,8 @@ func (m MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) err
 
 func (m MarketNodeImpl) OfflineDealImport(ctx context.Context, deal types.MinerDeal) error {
 	return m.StorageProvider.ImportOfflineDeal(ctx, deal)
+}
+
+func (m MarketNodeImpl) Version(ctx context.Context) (vTypes.Version, error) {
+	return vTypes.Version{Version: version.UserVersion()}, nil
 }
