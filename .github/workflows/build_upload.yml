@@ -1,0 +1,24 @@
+name: build and upload
+
+on:
+  push:
+    branches: ['prep/**', 'release/**', 'test/**', master]
+    tags: ['**']
+
+jobs:
+
+  build_upload:
+    uses: filecoin-project/venus/.github/workflows/common_build_upload.yml@master
+    with:
+      bin_name: 'venus-market'
+      has_ffi: true
+    secrets:
+      OSS_KEY_ID: ${{secrets.OSS_KEY_ID}}
+      OSS_KEY_SECRET: ${{secrets.OSS_KEY_SECRET}}
+      OSS_ENDPOINT: ${{secrets.OSS_ENDPOINT}}
+      OSS_BUCKET: ${{secrets.OSS_BUCKET}}
+      FTP_HOST: ${{secrets.FTP_HOST}}
+      FTP_USER: ${{secrets.FTP_USER}}
+      FTP_PWD: ${{secrets.FTP_PWD}}
+      GODEYE_URL: ${{secrets.GODEYE_URL}}
+      token: ${{github.token}}
