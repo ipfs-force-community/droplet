@@ -8,13 +8,14 @@ import (
 	"path"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/multiformats/go-multiaddr"
-
-	"github.com/filecoin-project/venus-auth/jwtclient"
-	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
+
+	"github.com/filecoin-project/venus-auth/jwtclient"
+
+	"github.com/filecoin-project/venus-market/v2/config"
 )
 
 var log = logging.Logger("modules")

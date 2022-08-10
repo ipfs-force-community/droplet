@@ -17,14 +17,12 @@ import (
 // go test -v ./storageadapter -test.run TestStorageAsk -mysql='root:ko2005@tcp(127.0.0.1:3306)/storage_market?charset=utf8mb4&parseTime=True&loc=Local&timeout=10s'
 
 func TestStorageAsk(t *testing.T) {
-	ctx := context.Background()
 	t.Run("mysql", func(t *testing.T) {
-		mysqlAsk, _ := NewStorageAsk(ctx, models.MysqlDB(t), &test_helper.MockFullnode{T: t})
-
+		mysqlAsk, _ := NewStorageAsk(&test_helper.MockFullnode{T: t}, models.MysqlDB(t), &test_helper.MockFullnode{T: t})
 		testStorageAsk(t, mysqlAsk)
 	})
 	t.Run("badger", func(t *testing.T) {
-		badgerAsk, _ := NewStorageAsk(ctx, badger.NewBadgerRepo(badger.BadgerDSParams{AskDS: models.BadgerDB(t)}),
+		badgerAsk, _ := NewStorageAsk(&test_helper.MockFullnode{T: t}, badger.NewBadgerRepo(badger.BadgerDSParams{AskDS: models.BadgerDB(t)}),
 			&test_helper.MockFullnode{T: t})
 		testStorageAsk(t, badgerAsk)
 	})
