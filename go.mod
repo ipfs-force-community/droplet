@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/BurntSushi/toml v1.1.0
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/aws/aws-sdk-go v1.43.10
 	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
@@ -29,7 +30,7 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
-	github.com/filecoin-project/venus v1.6.1-0.20220803064712-14d26a4e39f0
+	github.com/filecoin-project/venus v1.6.1-0.20220809015458-f63fbca0f646
 	github.com/filecoin-project/venus-auth v1.6.0
 	github.com/filecoin-project/venus-messager v1.6.2-0.20220722073101-cc0865f9be71
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
