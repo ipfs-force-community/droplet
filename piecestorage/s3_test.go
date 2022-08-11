@@ -43,13 +43,14 @@ func TestS3PieceStorage(t *testing.T) {
 	key := os.Getenv("AWS_ACCESS_KEY_ID")
 	secret := os.Getenv("AWS_SECRET_ACCESS_KEY")
 	bucket := os.Getenv("AWS_BUCKET")
+	endpoint := os.Getenv("AWS_EndPoint")
 
 	if key == "" || secret == "" || bucket == "" {
-		t.Skip("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set in env")
+		t.Skip("AWS_ACCESS_KEY_ID , AWS_SECRET_ACCESS_KEY ,AWS_EndPoint and AWS_BUCKET must be set in env")
 	}
 
 	s3Cfg := &config.S3PieceStorage{
-		EndPoint:  "oss-cn-wulanchabu.aliyuncs.com",
+		EndPoint:  endpoint,
 		Bucket:    bucket,
 		AccessKey: key,
 		SecretKey: secret,
