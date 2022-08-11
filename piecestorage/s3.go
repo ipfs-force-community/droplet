@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
+	valid "github.com/asaskevich/govalidator"
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/utils"
@@ -24,35 +25,58 @@ import (
 
 var log = logging.Logger("piece-storage")
 
-func parseS3Endpoint(endPoint string) (string, string, string, error) {
-	endPointUrl, err := url.Parse(endPoint)
-	if err != nil {
-		return "", "", "", fmt.Errorf("parser s3 endpoint %s %w", endPoint, err)
+func parseS3Endpoint(endPoint string, bucket string) (EndPoint string, Region string, Err error) {
+	// trim endpoint and get region
+	var host string
+	if valid.IsRequestURL(endPoint) {
+		endPointUrl, err := url.ParseRequestURI(endPoint)
+		if err != nil {
+			return "", "", fmt.Errorf("parser s3 endpoint %s %w", endPoint, err)
+		}
+		host = endPointUrl.Host
+	} else if valid.IsHost(endPoint) {
+		host = endPoint
+	} else {
+		return "", "", fmt.Errorf("parser s3 endpoint %s %w", endPoint, fmt.Errorf("not a valid url or host"))
 	}
 
-	hostSeq := strings.Split(endPointUrl.Host, ".")
+	host = strings.TrimPrefix(host, bucket+".")
+
+	hostSeq := strings.Split(host, ".")
 	if len(hostSeq) < 2 {
-		return "", "", "", fmt.Errorf("must specify region in host %s", endPoint)
+		return "", "", fmt.Errorf("must specify region in host %s", endPoint)
 	}
+	region := hostSeq[len(hostSeq)-3]
 
-	if endPointUrl.Path == "" {
-		return "", "", "", fmt.Errorf("must append bucket in endpoint %s", endPoint)
+	return host, region, nil
+}
+
+type subdirWrapper func(string) string
+
+func newSubdirWrapper(subdir string) subdirWrapper {
+	if subdir == "" {
+		return func(piececid string) string {
+			return piececid
+		}
 	}
-	bucket := strings.Trim(endPointUrl.Path, "/")
-
-	endPointUrl.Path = ""
-	return endPointUrl.String(), hostSeq[0], bucket, nil
+	return func(pieceId string) string {
+		return subdir + pieceId
+	}
 }
 
 type s3PieceStorage struct {
-	bucket   string
-	s3Client *s3.S3
-	uploader *s3manager.Uploader
-	s3Cfg    *config.S3PieceStorage
+	bucket        string
+	subdir        string
+	s3Client      *s3.S3
+	uploader      *s3manager.Uploader
+	s3Cfg         *config.S3PieceStorage
+	subdirWrapper subdirWrapper
 }
 
 func newS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
-	endpoint, region, bucket, err := parseS3Endpoint(s3Cfg.EndPoint)
+
+	endpoint, region, err := parseS3Endpoint(s3Cfg.EndPoint, s3Cfg.Bucket)
+
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +90,25 @@ func newS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
 	uploader := s3manager.NewUploader(sess, func(uploader *s3manager.Uploader) {
 		uploader.Concurrency = 8
 	})
-	return &s3PieceStorage{s3Cfg: s3Cfg, bucket: bucket, s3Client: s3.New(sess), uploader: uploader}, nil
+
+	if s3Cfg.SubDir != "" {
+		s3Cfg.SubDir = strings.Trim(s3Cfg.SubDir, "/")
+		s3Cfg.SubDir += "/"
+	}
+
+	wrapper := newSubdirWrapper(s3Cfg.SubDir)
+
+	// t := s3.New(sess)
+	// t.GetObjectRequest(&s3.GetObjectInput{})
+
+	return &s3PieceStorage{
+		s3Cfg:         s3Cfg,
+		bucket:        s3Cfg.Bucket,
+		subdir:        s3Cfg.SubDir,
+		s3Client:      s3.New(sess),
+		uploader:      uploader,
+		subdirWrapper: wrapper,
+	}, nil
 }
 
 func (s *s3PieceStorage) SaveTo(ctx context.Context, resourceId string, r io.Reader) (int64, error) {
@@ -77,7 +119,7 @@ func (s *s3PieceStorage) SaveTo(ctx context.Context, resourceId string, r io.Rea
 	countReader := utils.NewCounterBufferReader(r)
 	resp, err := s.uploader.Upload(&s3manager.UploadInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(resourceId),
+		Key:    aws.String(s.subdirWrapper(resourceId)),
 		Body:   countReader,
 	})
 	if err != nil {
@@ -90,7 +132,7 @@ func (s *s3PieceStorage) SaveTo(ctx context.Context, resourceId string, r io.Rea
 func (s *s3PieceStorage) Len(ctx context.Context, piececid string) (int64, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(piececid),
+		Key:    aws.String(s.subdirWrapper(piececid)),
 	}
 
 	result, err := s.s3Client.GetObject(params)
@@ -105,6 +147,10 @@ func (s *s3PieceStorage) ListResourceIds(ctx context.Context) ([]string, error) 
 		Bucket: aws.String(s.bucket),
 	}
 
+	if s.subdir != "" {
+		params.Prefix = aws.String(s.subdir)
+	}
+
 	result, err := s.s3Client.ListObjectsV2(params)
 	if err != nil {
 		return nil, err
@@ -113,7 +159,7 @@ func (s *s3PieceStorage) ListResourceIds(ctx context.Context) ([]string, error) 
 	for _, obj := range result.Contents {
 		var name = *obj.Key
 		if name[len(name)-1] != '/' && obj.Size != nil && *obj.Size != 0 {
-			pieces = append(pieces, name)
+			pieces = append(pieces, strings.TrimPrefix(name, s.subdir))
 		}
 	}
 	return pieces, nil
@@ -122,7 +168,7 @@ func (s *s3PieceStorage) ListResourceIds(ctx context.Context) ([]string, error) 
 func (s s3PieceStorage) GetReaderCloser(ctx context.Context, resourceId string) (io.ReadCloser, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(resourceId),
+		Key:    aws.String(s.subdirWrapper(resourceId)),
 	}
 
 	result, err := s.s3Client.GetObject(params)
@@ -137,19 +183,19 @@ func (s s3PieceStorage) GetMountReader(ctx context.Context, resourceId string) (
 	if err != nil {
 		return nil, err
 	}
-	return newSeekWraper(s.s3Client, s.bucket, resourceId, len-1), nil
+	return newSeekWraper(s.s3Client, s.bucket, s.subdirWrapper(resourceId), len-1), nil
 }
 
 func (s s3PieceStorage) GetRedirectUrl(ctx context.Context, resourceId string) (string, error) {
 	if has, err := s.Has(ctx, resourceId); err != nil {
-		return "", fmt.Errorf("check object: %s exist error:%w", resourceId, err)
+		return "", fmt.Errorf("check object: %s exist error:%w", s.subdirWrapper(resourceId), err)
 	} else if !has {
-		return "", fmt.Errorf("object: %s not exists", resourceId)
+		return "", fmt.Errorf("object: %s not exists", s.subdirWrapper(resourceId))
 	}
 
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(resourceId),
+		Key:    aws.String(s.subdirWrapper(resourceId)),
 	}
 
 	req, _ := s.s3Client.GetObjectRequest(params)
@@ -163,7 +209,7 @@ func (s *s3PieceStorage) CanAllocate(size int64) bool {
 func (s *s3PieceStorage) Has(ctx context.Context, piececid string) (bool, error) {
 	params := &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(piececid),
+		Key:    aws.String(s.subdirWrapper(piececid)),
 	}
 
 	_, err := s.s3Client.HeadObject(params)
