@@ -72,7 +72,7 @@ func testS3PieceStorage(t *testing.T, s3Cfg *config.S3PieceStorage) {
 	assert.NoError(t, err)
 
 	// gen rand key string
-	testkey := "test_key_" + RandomString(10)
+	testkey := "test_key_" + randomString(10)
 
 	_, err = ps.SaveTo(ctx, testkey, strings.NewReader("test"))
 	assert.NoError(t, err)
@@ -133,7 +133,7 @@ func testS3PieceStorage(t *testing.T, s3Cfg *config.S3PieceStorage) {
 
 }
 
-func RandomString(n int) string {
+func randomString(n int) string {
 	rand.Seed(time.Now().UnixNano())
 	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
