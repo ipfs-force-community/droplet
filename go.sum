@@ -112,6 +112,8 @@ github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310/go.mod h1:ufUuZ+zHj
 github.com/armon/go-radix v1.0.0/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgIH9cCH8=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/aryann/difflib v0.0.0-20170710044230-e206f873d14a/go.mod h1:DAHtR1m6lCRdSC2Tm3DSWRPvIPr6xNKyeHdqDQSQT+A=
+github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
+github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/awnumar/memcall v0.0.0-20191004114545-73db50fd9f80 h1:8kObYoBO4LNmQ+fLiScBfxEdxF1w2MHlvH/lr9MLaTg=
 github.com/awnumar/memcall v0.0.0-20191004114545-73db50fd9f80/go.mod h1:S911igBPR9CThzd/hYQQmTc9SWNu3ZHIlCGaWsWsoJo=
 github.com/awnumar/memguard v0.22.2 h1:tMxcq1WamhG13gigK8Yaj9i/CHNUO3fFlpS9ABBQAxw=
@@ -450,8 +452,8 @@ github.com/filecoin-project/test-vectors/schema v0.0.5/go.mod h1:iQ9QXLpYWL3m7wa
 github.com/filecoin-project/venus v1.2.4/go.mod h1:hJULXHGAnWuq5S5KRtPkwbT8DqgM9II7NwyNU7t59D0=
 github.com/filecoin-project/venus v1.6.0/go.mod h1:ukA+xwqDs40lixoa+HDNfuN8b1G4jpm4k0ujceVejSk=
 github.com/filecoin-project/venus v1.6.1-0.20220718091042-a51da69e1731/go.mod h1:ukA+xwqDs40lixoa+HDNfuN8b1G4jpm4k0ujceVejSk=
-github.com/filecoin-project/venus v1.6.1-0.20220803064712-14d26a4e39f0 h1:wZrxCsxU+5zDq7NacnkGOeekVSkkaiSDJ+8JDcBpYEY=
-github.com/filecoin-project/venus v1.6.1-0.20220803064712-14d26a4e39f0/go.mod h1:Ibaxk3dWQuVjrwm656L8jogcv0heFsoNhlqT6MWX9Cg=
+github.com/filecoin-project/venus v1.6.1-0.20220809015458-f63fbca0f646 h1:V27ZtZZobzi7aNedtU/Jg9MuQrqB/wi2qePtIDWHsp8=
+github.com/filecoin-project/venus v1.6.1-0.20220809015458-f63fbca0f646/go.mod h1:Ibaxk3dWQuVjrwm656L8jogcv0heFsoNhlqT6MWX9Cg=
 github.com/filecoin-project/venus-auth v1.3.2/go.mod h1:m5Jog2GYxztwP7w3m/iJdv/V1/bTcAVU9rm/CbhxRQU=
 github.com/filecoin-project/venus-auth v1.6.0 h1:DLl7q5g1eh6UTpp98MLpRWAI79k6TUw1Myh/RLeaFpU=
 github.com/filecoin-project/venus-auth v1.6.0/go.mod h1:x/Cv3zz9z5O+/uqIKgYtk5UsL7nYu+CtiPjyVQ8Lywg=

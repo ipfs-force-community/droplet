@@ -164,6 +164,8 @@ func (p *PieceStorageManager) ListStorageInfos() types.PieceStorageInfos {
 				Name:     cfg.Name,
 				EndPoint: cfg.EndPoint,
 				ReadOnly: cfg.ReadOnly,
+				Bucket:   cfg.Bucket,
+				SubDir:   cfg.SubDir,
 			})
 
 		case FS:

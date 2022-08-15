@@ -414,7 +414,16 @@ ReadOnly = true
 
 # 对象存储服务的入口
 # 字符串类型 必选
-EndPoint = "http://oss-cn-shanghai.aliyuncs.com/venus-market-test"
+# 支持单独的EndPoint（"oss-cn-shanghai.aliyuncs.com"）和完整的EndPoint Url（"http://oss-cn-shanghai.aliyuncs.com"）
+EndPoint = "oss-cn-shanghai.aliyuncs.com"
+
+# 对象存储服务的Bucket名称
+# 字符串类型 必选
+Bucket = "venus-market"
+
+# 指定在Bucket 中的子目录
+# 字符串类型 可选
+SubDir = "dir1/dir2"
 
 # 访问对象存储服务的参数
 # 字符串类型 其中AccessKey，SecretKey必选，token 可选

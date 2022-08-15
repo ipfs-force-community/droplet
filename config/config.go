@@ -188,6 +188,8 @@ type S3PieceStorage struct {
 	Name     string
 	ReadOnly bool
 	EndPoint string
+	Bucket   string
+	SubDir   string
 
 	AccessKey string
 	SecretKey string

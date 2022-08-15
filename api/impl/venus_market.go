@@ -865,7 +865,7 @@ func (m MarketNodeImpl) GetWriteUrl(ctx context.Context, s2 string) (string, err
 	panic("not support")
 }
 
-func (m MarketNodeImpl) AddFsPieceStorage(ctx context.Context, readonly bool, path string, name string) error {
+func (m MarketNodeImpl) AddFsPieceStorage(ctx context.Context, name string, path string, readonly bool) error {
 	ifs := &config.FsPieceStorage{ReadOnly: readonly, Path: path, Name: name}
 	fsps, err := piecestorage.NewFsPieceStorage(ifs)
 	if err != nil {
@@ -881,8 +881,16 @@ func (m MarketNodeImpl) AddFsPieceStorage(ctx context.Context, readonly bool, pa
 	return m.Config.AddFsPieceStorage(ifs)
 }
 
-func (m MarketNodeImpl) AddS3PieceStorage(ctx context.Context, readonly bool, endpoit string, name string, accessKeyID string, secretAccessKey string, token string) error {
-	ifs := &config.S3PieceStorage{ReadOnly: readonly, EndPoint: endpoit, Name: name, AccessKey: accessKeyID, SecretKey: secretAccessKey, Token: token}
+func (m MarketNodeImpl) AddS3PieceStorage(ctx context.Context, name, endpoit, bucket, subdir, accessKeyID, secretAccessKey, token string, readonly bool) error {
+	ifs := &config.S3PieceStorage{
+		ReadOnly:  readonly,
+		EndPoint:  endpoit,
+		Name:      name,
+		Bucket:    bucket,
+		SubDir:    subdir,
+		AccessKey: accessKeyID,
+		SecretKey: secretAccessKey,
+		Token:     token}
 	s3ps, err := piecestorage.NewS3PieceStorage(ifs)
 	if err != nil {
 		return err

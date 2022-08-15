@@ -60,7 +60,7 @@ var pieceStorageAddFsCmd = &cli.Command{
 		readOnly := cctx.Bool("read-only")
 		name := cctx.String("name")
 
-		err = nodeApi.AddFsPieceStorage(ctx, readOnly, path, name)
+		err = nodeApi.AddFsPieceStorage(ctx, name, path, readOnly)
 		if err != nil {
 			return err
 		}
@@ -83,15 +83,30 @@ var pieceStorageAddS3Cmd = &cli.Command{
 		},
 		// Endpoint
 		&cli.StringFlag{
-			Name:    "endpoint",
-			Aliases: []string{"e"},
-			Usage:   "endpoint of the S3 bucket",
+			Name:     "endpoint",
+			Aliases:  []string{"e"},
+			Usage:    "endpoint of the S3 storage provider",
+			Required: true,
 		},
 		// name
 		&cli.StringFlag{
-			Name:    "name",
-			Aliases: []string{"n"},
-			Usage:   "name of the S3 bucket",
+			Name:     "name",
+			Aliases:  []string{"n"},
+			Usage:    "name of the S3 piece storage",
+			Required: true,
+		},
+		// bucket
+		&cli.StringFlag{
+			Name:     "bucket",
+			Aliases:  []string{"b"},
+			Usage:    "name of the S3 bucket",
+			Required: true,
+		},
+		// dir
+		&cli.StringFlag{
+			Name:    "subdir",
+			Aliases: []string{"d"},
+			Usage:   "subdirectory of the S3 bucket to store the pieces in. ",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -102,13 +117,6 @@ var pieceStorageAddS3Cmd = &cli.Command{
 		defer closer()
 
 		ctx := ReqContext(cctx)
-
-		if !cctx.IsSet("endpoint") {
-			return fmt.Errorf("endpoint is required")
-		}
-		if !cctx.IsSet("name") {
-			return fmt.Errorf("name is required")
-		}
 
 		// get access key , secret key ,token interactivelly
 		getS3Credentials := func() (string, string, string, error) {
@@ -140,8 +148,10 @@ var pieceStorageAddS3Cmd = &cli.Command{
 		readOnly := cctx.Bool("readonly")
 		endpoint := cctx.String("endpoint")
 		name := cctx.String("name")
+		bucket := cctx.String("bucket")
+		subdir := cctx.String("subdir")
 
-		err = nodeApi.AddS3PieceStorage(ctx, readOnly, endpoint, name, accessKey, secretKey, token)
+		err = nodeApi.AddS3PieceStorage(ctx, name, endpoint, bucket, subdir, accessKey, secretKey, token, readOnly)
 		if err != nil {
 			return err
 		}
@@ -183,10 +193,10 @@ var pieceStorageListCmd = &cli.Command{
 
 		for _, storage := range storagelist.S3Storage {
 			w.Write(map[string]interface{}{
-				"Name":                storage.Name,
-				"Readonly":            storage.ReadOnly,
-				"Path or Enter point": storage.EndPoint,
-				"Type":                "S3",
+				"Name":     storage.Name,
+				"Readonly": storage.ReadOnly,
+				"Path":     storage.EndPoint + "/" + storage.SubDir + storage.Bucket,
+				"Type":     "S3",
 			})
 		}
 
