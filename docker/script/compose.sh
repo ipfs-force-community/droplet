@@ -9,9 +9,13 @@ token=$(cat /env/token )
 echo "token:"
 echo ${token}
 
-echo "set default piece storage path: /PieceStorage"
+
 mkdir -p ~/.venusmarket/
-cat /docker/config/PieceStorage.toml > ~/.venusmarket/config.toml
+if [ ! -f ~/.venusmarket/config.toml ]; then
+    echo "set default piece storage path: /PieceStorage"
+    cat /docker/config/PieceStorage.toml > ~/.venusmarket/config.toml
+fi
+
 
 echo "Compose Int End!"
 
