@@ -15,6 +15,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/dagstore v0.5.2
 	github.com/filecoin-project/go-address v1.0.0
+	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-data-transfer v1.15.2
@@ -33,6 +34,7 @@ require (
 	github.com/filecoin-project/venus v1.7.1-0.20220909080041-c603dbeaccad
 	github.com/filecoin-project/venus-auth v1.7.0
 	github.com/filecoin-project/venus-messager v1.7.0
+	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0

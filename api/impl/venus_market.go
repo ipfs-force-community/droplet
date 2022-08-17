@@ -9,8 +9,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/stores"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -25,7 +23,9 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
 	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/config"
@@ -38,7 +38,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	"github.com/filecoin-project/venus-market/v2/version"
 
-	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
@@ -67,7 +66,7 @@ type MarketNodeImpl struct {
 	DAGStore                                    *dagstore.DAGStore
 	DAGStoreWrapper                             stores.DAGStoreWrapper
 	PieceStorageMgr                             *piecestorage.PieceStorageManager
-	MinerMgr                                    minermgr.IAddrMgr
+	UserMgr                                     minermgr.IMinerMgr
 	PaychAPI                                    *paychmgr.PaychAPI
 	Repo                                        repo.Repo
 	Config                                      *config.MarketConfig
@@ -91,16 +90,16 @@ type MarketNodeImpl struct {
 	SetExpectedSealDurationFunc config.SetExpectedSealDurationFunc
 }
 
-func (m *MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
-	return m.MinerMgr.ActorList(ctx)
+func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
+	return m.UserMgr.ActorList(ctx)
 }
 
-func (m *MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {
-	return m.MinerMgr.Has(ctx, addr), nil
+func (m MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {
+	return m.UserMgr.Has(ctx, addr), nil
 }
 
-func (m *MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
-	if bHas := m.MinerMgr.Has(ctx, addr); bHas {
+func (m MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
+	if bHas := m.UserMgr.Has(ctx, addr); bHas {
 		minerInfo, err := m.FullNode.StateMinerInfo(ctx, addr, vTypes.EmptyTSK)
 		if err != nil {
 			return 0, err
@@ -432,7 +431,7 @@ func (m *MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address)
 	}
 
 	for _, deal := range allDeals {
-		if m.MinerMgr.Has(ctx, deal.Proposal.Provider) && has(deal.Proposal.Provider) {
+		if m.UserMgr.Has(ctx, deal.Proposal.Provider) && has(deal.Proposal.Provider) {
 			out = append(out, deal)
 		}
 	}

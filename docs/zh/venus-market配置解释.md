@@ -537,7 +537,7 @@ UseTransient = false
 获取订单中存储的扇区数据时的相关配置
 
 ### [RetrievalPaymentAddress]
-获取订单扇区数据时，使用的支付地址
+获取订单扇区数据时，使用的收款地址
 ```
 [RetrievalPaymentAddress]
 Addr = ""

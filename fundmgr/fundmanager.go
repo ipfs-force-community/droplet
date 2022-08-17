@@ -5,23 +5,23 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/venus-market/v2/api/clients"
-	"github.com/filecoin-project/venus/venus-shared/actors"
-
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-
-	"github.com/filecoin-project/venus/pkg/constants"
-	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+
+	"github.com/filecoin-project/venus-market/v2/api/clients"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+
+	"github.com/filecoin-project/venus/pkg/constants"
+	"github.com/filecoin-project/venus/venus-shared/actors"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"go.uber.org/fx"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var log = logging.Logger("market_adapter")
@@ -688,13 +688,15 @@ func (env *fundManagerEnvironment) AddFunds(
 		return cid.Undef, err
 	}
 
-	msgId, aerr := env.api.PushMessage(ctx, &types2.Message{
-		To:     builtin.StorageMarketActorAddr,
-		From:   wallet,
-		Value:  amt,
-		Method: builtin.MethodsMarket.AddBalance,
-		Params: params,
-	}, nil)
+	msgId, aerr := env.api.PushMessage(
+		ctx,
+		&types2.Message{
+			To:     builtin.StorageMarketActorAddr,
+			From:   wallet,
+			Value:  amt,
+			Method: builtin.MethodsMarket.AddBalance,
+			Params: params,
+		}, nil)
 
 	if aerr != nil {
 		return cid.Undef, aerr
@@ -717,13 +719,15 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 		return cid.Undef, fmt.Errorf("serializing params: %w", err)
 	}
 
-	msgId, aerr := env.api.PushMessage(ctx, &types2.Message{
-		To:     builtin.StorageMarketActorAddr,
-		From:   wallet,
-		Value:  types2.NewInt(0),
-		Method: builtin.MethodsMarket.WithdrawBalance,
-		Params: params,
-	}, nil)
+	msgId, aerr := env.api.PushMessage(
+		ctx,
+		&types2.Message{
+			To:     builtin.StorageMarketActorAddr,
+			From:   wallet,
+			Value:  types2.NewInt(0),
+			Method: builtin.MethodsMarket.WithdrawBalance,
+			Params: params,
+		}, nil)
 
 	if aerr != nil {
 		return cid.Undef, aerr

@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"text/tabwriter"
 
-	"github.com/libp2p/go-libp2p-core/peer"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/v8/actors/builtin"
+	"github.com/libp2p/go-libp2p-core/peer"
+	ma "github.com/multiformats/go-multiaddr"
+
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )

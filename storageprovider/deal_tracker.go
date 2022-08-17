@@ -6,14 +6,15 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/fx"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus-market/v2/minermgr"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
-	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 
@@ -23,13 +24,13 @@ import (
 type DealTracker struct {
 	period      time.Duration // TODO: Preferably configurable?
 	storageRepo repo.StorageDealRepo
-	minerMgr    minermgr.IAddrMgr
+	minerMgr    minermgr.IMinerMgr
 	fullNode    v1api.FullNode
 }
 
 var ReadyRetrievalDealStatus = []storagemarket.StorageDealStatus{storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive}
 
-func NewDealTracker(lc fx.Lifecycle, r repo.Repo, minerMgr minermgr.IAddrMgr, fullNode v1api.FullNode) *DealTracker {
+func NewDealTracker(lc fx.Lifecycle, r repo.Repo, minerMgr minermgr.IMinerMgr, fullNode v1api.FullNode) *DealTracker {
 	tracker := &DealTracker{period: time.Minute, storageRepo: r.StorageDealRepo(), minerMgr: minerMgr, fullNode: fullNode}
 
 	lc.Append(fx.Hook{
@@ -56,7 +57,7 @@ func (dealTracker *DealTracker) Start(ctx metrics.MetricsCtx) {
 }
 
 func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
-	addrs, err := dealTracker.minerMgr.ActorAddress(ctx)
+	addrs, err := dealTracker.minerMgr.MinerList(ctx)
 	if err != nil {
 		log.Errorf("get miners list %w", err)
 	}
@@ -68,7 +69,6 @@ func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
 	for _, addr := range addrs {
 		dealTracker.checkSlash(ctx, addr, head.Key())
 		dealTracker.checkPreCommitAndCommit(ctx, addr, head.Key())
-		//todo check expire
 	}
 }
 

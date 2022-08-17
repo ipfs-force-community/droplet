@@ -822,6 +822,7 @@ github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21 
 github.com/ipfs-force-community/go-jsonrpc v0.1.4-0.20210721095535-a67dff16de21/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
 github.com/ipfs-force-community/metrics v1.0.0/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs-force-community/metrics v1.0.1-0.20211022060227-11142a08b729/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
+github.com/ipfs-force-community/metrics v1.0.1-0.20220719063006-2c54bb379466 h1:oPQtpBVmYot48fGuUwqVuzD1ilMnHUXkkGSWy5VzUL8=
 github.com/ipfs-force-community/metrics v1.0.1-0.20220719063006-2c54bb379466/go.mod h1:MOGtsAHKkSXi/ce9Ggci7nXq5jShePzwPDvdBSGDETk=
 github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea h1:mtR+uqI444dF1j3IcpDq3MCFBR5B/OQnHFulTuM7a6o=
 github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea/go.mod h1:5rXHGpIN2wCkdgDnucJ1rEeKhLzbAur5IO1aWAIwogY=

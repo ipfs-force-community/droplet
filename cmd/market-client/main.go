@@ -5,21 +5,23 @@ import (
 	"fmt"
 	"os"
 
-	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
-	"github.com/filecoin-project/venus-market/v2/cmd"
-	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
-
 	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
 
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
+	"github.com/ipfs-force-community/venus-common-utils/metrics"
+
+	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
 	"github.com/filecoin-project/venus-market/v2/client"
+	"github.com/filecoin-project/venus-market/v2/cmd"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/fundmgr"
 	"github.com/filecoin-project/venus-market/v2/models"
@@ -29,15 +31,19 @@ import (
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus-market/v2/utils"
-	"github.com/filecoin-project/venus/venus-shared/api/permission"
-
 	"github.com/filecoin-project/venus-market/v2/version"
+
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+<<<<<<< HEAD
 
 	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
+=======
+	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
+	"github.com/filecoin-project/venus/venus-shared/api/permission"
+>>>>>>> feat: refactor signer interface & impl
 )
 
 var ExtractApiKey = builder.NextInvoke()
@@ -74,6 +80,12 @@ var (
 		Usage: "token used to connect venus chain service components, eg. venus-meassger, venus",
 	}
 
+	HiddenSignerTypeFlag = &cli.StringFlag{
+		Name:   "signer-type",
+		Usage:  "signer service type（lotusnode, wallet, gateway）",
+		Value:  config.SignerTypeWallet,
+		Hidden: true,
+	}
 	SignerUrlFlag = &cli.StringFlag{
 		Name:  "wallet-url",
 		Usage: "used to connect wallet service for sign",
@@ -118,6 +130,7 @@ func main() {
 					MessagerUrlFlag,
 					MessagerTokenFlag,
 					AuthTokenFlag,
+					HiddenSignerTypeFlag,
 					SignerUrlFlag,
 					SignerTokenFlag,
 					DefaultAddressFlag,
@@ -156,14 +169,20 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 		cfg.Messager.Token = cctx.String(MessagerTokenFlag.Name)
 	}
 
-	if cctx.IsSet(SignerUrlFlag.Name) {
-		if !cctx.IsSet(SignerTokenFlag.Name) {
-			return fmt.Errorf("signer-url is set, but signer-token is not set")
+	signerType := cctx.String(HiddenSignerTypeFlag.Name)
+	switch signerType {
+	case config.SignerTypeWallet, config.SignerTypeGateway:
+		{
+			cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
+			cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
 		}
-
-		cfg.Signer.SignerType = "wallet"
-		cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
-		cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
+	case config.SignerTypeLotusnode:
+		{
+			cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
+			cfg.Signer.Token = cctx.String(NodeTokenFlag.Name)
+		}
+	default:
+		return fmt.Errorf("unsupport signer type %s", signerType)
 	}
 
 	if cctx.IsSet(DefaultAddressFlag.Name) {
@@ -221,6 +240,14 @@ func marketClient(cctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Configuration sanity check
+	{
+		if len(cfg.Signer.Url) == 0 {
+			return fmt.Errorf("the signer node must be configured")
+		}
+	}
+
 	if err := cmd.FetchAndLoadBundles(cctx.Context, cfg.Node); err != nil {
 		return err
 	}

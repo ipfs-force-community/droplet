@@ -18,13 +18,14 @@ import (
 
 func TestStorageAsk(t *testing.T) {
 	t.Run("mysql", func(t *testing.T) {
-		mysqlAsk, _ := NewStorageAsk(ctx, models.MysqlDB(t), &test_helper.MockFullnode{T: t}
+		mysqlAsk, _ := NewStorageAsk(ctx, models.MysqlDB(t), &test_helper.MockFullnode{T: t})
 
 		testStorageAsk(t, mysqlAsk)
 	})
 	t.Run("badger", func(t *testing.T) {
 		badgerAsk, _ := NewStorageAsk(ctx, badger.NewBadgerRepo(badger.BadgerDSParams{AskDS: models.BadgerDB(t)}),
 			&test_helper.MockFullnode{T: t})
+
 		testStorageAsk(t, badgerAsk)
 	})
 }

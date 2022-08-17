@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ipfs-force-community/metrics"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
 )
 
 // API contains configs for API endpoint
@@ -55,8 +54,9 @@ type Common struct {
 type SignerType = string
 
 const (
-	SignerTypeWallet  = "wallet"
-	SignerTypeGateway = "gateway"
+	SignerTypeLotusnode = "lotusnode"
+	SignerTypeWallet    = "wallet"
+	SignerTypeGateway   = "gateway"
 )
 
 type Signer struct {

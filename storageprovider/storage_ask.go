@@ -8,31 +8,38 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
-	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/venus-market/v2/api/clients/signer"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
+
+	"github.com/ipfs-force-community/metrics"
+
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/ipfs-force-community/metrics"
 )
 
 type IStorageAsk interface {
-	ListAsk(ctx context.Context) ([]*types2.SignedStorageAsk, error)
-	GetAsk(mctx context.Context, Addr address.Address) (*types2.SignedStorageAsk, error)
+	ListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error)
+	GetAsk(ctx context.Context, Addr address.Address) (*storagemarket.SignedStorageAsk, error)
 	SetAsk(ctx context.Context, mAddr address.Address, price abi.TokenAmount, verifiedPrice abi.TokenAmount, duration abi.ChainEpoch, options ...storagemarket.StorageAskOption) error
 }
 
 func NewStorageAsk(
-	ctx metrics.MetricsCtx,
+	fullNode v1api.FullNode,
 	repo repo.Repo,
-	fullnode v1api.FullNode,
+	signer signer.ISigner,
 ) (IStorageAsk, error) {
-	return &StorageAsk{repo: repo.StorageAskRepo(), fullNode: fullnode}, nil
+	return &StorageAsk{
+		fullNode: fullNode,
+		repo:     repo.StorageAskRepo(),
+		signer:   signer,
+	}, nil
 }
 
 type StorageAsk struct {
 	repo     repo.IStorageAskRepo
 	fullNode v1api.FullNode
+	signer   signer.ISigner
 }
 
 func (storageAsk *StorageAsk) ListAsk(ctx context.Context) ([]*types2.SignedStorageAsk, error) {
@@ -77,21 +84,20 @@ func (storageAsk *StorageAsk) SetAsk(ctx context.Context, miner address.Address,
 
 	var signedAsk *types2.SignedStorageAsk
 
-	if signedAsk, err = storageAsk.signAsk(ask); err != nil {
+	if signedAsk, err = storageAsk.signAsk(ctx, ask); err != nil {
 		return fmt.Errorf("miner %s sign data failed: %v", miner.String(), err)
 	}
 
 	return storageAsk.repo.SetAsk(ctx, signedAsk)
 }
 
-func (storageAsk *StorageAsk) signAsk(ask *storagemarket.StorageAsk) (*types2.SignedStorageAsk, error) {
+func (storageAsk *StorageAsk) signAsk(ctx context.Context, ask *storagemarket.StorageAsk) (*storagemarket.SignedStorageAsk, error) {
 	askBytes, err := cborutil.Dump(ask)
 	if err != nil {
 		return nil, err
 	}
 
 	// get worker address for miner
-	ctx := context.TODO()
 	tok, err := storageAsk.fullNode.ChainHead(ctx)
 	if err != nil {
 		return nil, err
@@ -107,9 +113,7 @@ func (storageAsk *StorageAsk) signAsk(ask *storagemarket.StorageAsk) (*types2.Si
 		return nil, err
 	}
 
-	sig, err := storageAsk.fullNode.WalletSign(ctx, addr, askBytes, types.MsgMeta{
-		Type: types.MTStorageAsk,
-	})
+	sig, err := storageAsk.signer.WalletSign(ctx, addr, askBytes, types.MsgMeta{Type: types.MTStorageAsk})
 	if err != nil {
 		return nil, err
 	}

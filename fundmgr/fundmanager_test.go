@@ -7,21 +7,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
+	ds_sync "github.com/ipfs/go-datastore/sync"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+
 	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
+
 	"github.com/filecoin-project/venus/pkg/config"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/pkg/wallet"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
-	ds_sync "github.com/ipfs/go-datastore/sync"
-	"github.com/stretchr/testify/require"
 )
 
 // TestFundManagerBasic verifies that the basic fund manager operations work

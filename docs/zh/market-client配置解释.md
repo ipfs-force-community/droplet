@@ -6,7 +6,10 @@ market-client 的一份典型的配置如下
 
 SimultaneousTransfersForRetrieval = 20
 SimultaneousTransfersForStorage = 20
-DefaultMarketAddress = "t3qkgm5h7nmusacfggd744w7fdj45rn6iyl7n6s6lr34t4qlfebiphmm3vxtwc4a4acqi4nv3pqk6h7ddqqz5q"
+
+[DefaultMarketAddress]
+  Addr = "t3qkgm5h7nmusacfggd744w7fdj45rn6iyl7n6s6lr34t4qlfebiphmm3vxtwc4a4acqi4nv3pqk6h7ddqqz5q"
+  Account = ""
 
 [API]
   ListenAddress = "/ip4/127.0.0.1/tcp/41231/ws"
@@ -152,5 +155,5 @@ SimultaneousTransfersForStorage = 20
 
 # 当前market-client的默认地址
 # 字符串类型 可选 （也可以直接通过命令行的 --addr flag 进行配置）
-DefaultMarketAddress = "t3qkgm5h7nmusacfggd744w7fdj45rn6iyl7n6s6lr34t4qlfebiphmm3vxtwc4a4acqi4nv3pqk6h7ddqqz5q"
+DefaultMarketAddress = "t3qkgm5h7nmusacfggd744w7fdj45rn6iyl7n6s6lr34t4qlfebiphmm3vxtwc4a4acqi4nv3pqk6h7ddqqz5q:username"
 ```
