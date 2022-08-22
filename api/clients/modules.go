@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/config"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	api "github.com/filecoin-project/venus/venus-shared/api/gateway/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
@@ -37,7 +38,7 @@ func NewMarketEvent(mctx metrics.MetricsCtx) (*marketevent.MarketEventStream, er
 	return stream, nil
 }
 
-func NewMarketEventAPI(stream *marketevent.MarketEventStream) (marketevent.IMarketEventAPI, error) {
+func NewMarketEventAPI(stream *marketevent.MarketEventStream) (api.IMarketServiceProvider, error) {
 	return stream, nil
 }
 
@@ -71,7 +72,7 @@ var ClientsOpts = func(server bool, mode string, mCfg *config.Messager, signerCf
 					return mode == "solo"
 				},
 				builder.Override(new(*marketevent.MarketEventStream), NewMarketEvent),
-				builder.Override(new(marketevent.IMarketEventAPI), NewMarketEventAPI),
+				builder.Override(new(api.IMarketServiceProvider), NewMarketEventAPI),
 				builder.Override(new(MarketRequestEvent), NewIMarketEvent),
 			),
 		)
