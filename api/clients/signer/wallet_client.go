@@ -6,11 +6,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
-
 	"github.com/filecoin-project/venus-market/v2/config"
 
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
+	"github.com/filecoin-project/venus/venus-shared/api"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
 
@@ -30,7 +29,7 @@ func (walletClient *WalletClient) WalletSign(ctx context.Context, addr address.A
 }
 
 func newWalletClient(ctx context.Context, nodeCfg *config.Signer) (ISigner, jsonrpc.ClientCloser, error) {
-	apiInfo := apiinfo.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
+	apiInfo := api.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
 	addr, err := apiInfo.DialArgs("v0")
 	if err != nil {
 		return nil, nil, err

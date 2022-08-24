@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/filecoin-project/venus-market/v2/config"
+
+	"github.com/filecoin-project/venus/venus-shared/api"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/utils"
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 )
 
 func FetchAndLoadBundles(ctx context.Context, nodeCfg config.Node) error {
-	apiInfo := apiinfo.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
+	apiInfo := api.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
 	addr, err := apiInfo.DialArgs("v1")
 	if err != nil {
 		return err

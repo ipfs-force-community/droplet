@@ -22,13 +22,15 @@ import (
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-jsonrpc"
+
 	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
 	"github.com/filecoin-project/venus-market/v2/config"
+
+	"github.com/filecoin-project/venus/venus-shared/api"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 )
 
 var CidBaseFlag = cli.StringFlag{
@@ -86,7 +88,7 @@ func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, 
 	if err != nil {
 		return nil, nil, err
 	}
-	apiInfo := apiinfo.NewAPIInfo(string(apiUrl), string(token))
+	apiInfo := api.NewAPIInfo(string(apiUrl), string(token))
 	addr, err := apiInfo.DialArgs("v0")
 	if err != nil {
 		return nil, nil, err
@@ -109,7 +111,7 @@ func NewMarketClientNode(cctx *cli.Context) (clientapi.IMarketClient, jsonrpc.Cl
 	if err != nil {
 		return nil, nil, err
 	}
-	apiInfo := apiinfo.NewAPIInfo(string(apiUrl), string(token))
+	apiInfo := api.NewAPIInfo(string(apiUrl), string(token))
 	addr, err := apiInfo.DialArgs("v0")
 	if err != nil {
 		return nil, nil, err
@@ -125,7 +127,7 @@ func NewFullNode(cctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error
 	if err != nil {
 		return nil, nil, err
 	}
-	apiInfo := apiinfo.NewAPIInfo(marketCfg.Node.Url, marketCfg.Node.Token)
+	apiInfo := api.NewAPIInfo(marketCfg.Node.Url, marketCfg.Node.Token)
 	addr, err := apiInfo.DialArgs("v1")
 	if err != nil {
 		return nil, nil, err

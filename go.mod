@@ -31,9 +31,9 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
-	github.com/filecoin-project/venus v1.7.1-0.20220909080041-c603dbeaccad
-	github.com/filecoin-project/venus-auth v1.7.0
-	github.com/filecoin-project/venus-messager v1.7.0
+	github.com/filecoin-project/venus v1.6.1-0.20220823095415-660c34f0964d
+	github.com/filecoin-project/venus-auth v1.6.1-0.20220824071529-5592c2f105db
+	github.com/filecoin-project/venus-messager v1.6.2-0.20220824084230-104cac9e1a18
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
