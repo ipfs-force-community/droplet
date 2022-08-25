@@ -67,6 +67,8 @@ github.com/BurntSushi/toml v0.4.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbi
 github.com/BurntSushi/toml v1.1.0 h1:ksErzDEI1khOiGPgpwuI7x2ebx/uXQNw7xJpn9Eq1+I=
 github.com/BurntSushi/toml v1.1.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
+github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20OEh60=
+github.com/DATA-DOG/go-sqlmock v1.5.0/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/DataDog/zstd v1.4.1 h1:3oxKN3wbHibqx897utPC2LTQU4J+IHWWJO+glkAkpFM=
 github.com/DataDog/zstd v1.4.1/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
@@ -453,11 +455,13 @@ github.com/filecoin-project/test-vectors/schema v0.0.5/go.mod h1:iQ9QXLpYWL3m7wa
 github.com/filecoin-project/venus v1.2.4/go.mod h1:hJULXHGAnWuq5S5KRtPkwbT8DqgM9II7NwyNU7t59D0=
 github.com/filecoin-project/venus v1.6.0/go.mod h1:ukA+xwqDs40lixoa+HDNfuN8b1G4jpm4k0ujceVejSk=
 github.com/filecoin-project/venus v1.6.1-0.20220718091042-a51da69e1731/go.mod h1:ukA+xwqDs40lixoa+HDNfuN8b1G4jpm4k0ujceVejSk=
+github.com/filecoin-project/venus v1.6.1-0.20220803064712-14d26a4e39f0/go.mod h1:Ibaxk3dWQuVjrwm656L8jogcv0heFsoNhlqT6MWX9Cg=
 github.com/filecoin-project/venus v1.6.1-0.20220809015458-f63fbca0f646 h1:V27ZtZZobzi7aNedtU/Jg9MuQrqB/wi2qePtIDWHsp8=
 github.com/filecoin-project/venus v1.6.1-0.20220809015458-f63fbca0f646/go.mod h1:Ibaxk3dWQuVjrwm656L8jogcv0heFsoNhlqT6MWX9Cg=
 github.com/filecoin-project/venus-auth v1.3.2/go.mod h1:m5Jog2GYxztwP7w3m/iJdv/V1/bTcAVU9rm/CbhxRQU=
-github.com/filecoin-project/venus-auth v1.6.0 h1:DLl7q5g1eh6UTpp98MLpRWAI79k6TUw1Myh/RLeaFpU=
 github.com/filecoin-project/venus-auth v1.6.0/go.mod h1:x/Cv3zz9z5O+/uqIKgYtk5UsL7nYu+CtiPjyVQ8Lywg=
+github.com/filecoin-project/venus-auth v1.6.1-0.20220818060206-3313af6a9ba1 h1:05GqP2sgTlGDLLSmMgkdz/1RgYBwnKDf08Qj5OrcjvU=
+github.com/filecoin-project/venus-auth v1.6.1-0.20220818060206-3313af6a9ba1/go.mod h1:eqjx1U5sJ/3bqqc3PDJutap9A1GAO4fXVt25J6Sm9Fk=
 github.com/filecoin-project/venus-messager v1.6.2-0.20220722073101-cc0865f9be71 h1:Cky7ZOsATAPDvkHv7Hw1lUeerjaeyvaVmT87mSSToaM=
 github.com/filecoin-project/venus-messager v1.6.2-0.20220722073101-cc0865f9be71/go.mod h1:BpQcTuKelNSQQJJO69PQAzk3Y6ZAD3zBAr38wIZXwM8=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
@@ -820,8 +824,8 @@ github.com/ipfs-force-community/venus-common-utils v0.0.0-20210924063144-1d3a5b3
 github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7 h1:v/1/INcqm3kHLauWQYB63MwWJRWGz+3WEuUPp0jzIl8=
 github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7/go.mod h1:sSTUXgIu95tPHvgcYhdLuELmgPJWCP/pNMFtsrVtOyA=
 github.com/ipfs-force-community/venus-gateway v1.6.0/go.mod h1:BvtUgOPZZSdVKzDmyABPY9D6CjavWnK9iYs+QjTG3LE=
-github.com/ipfs-force-community/venus-gateway v1.6.2-0.20220818064711-6812ad1f9a38 h1:6tJ8WsSYPJMGeaUsBu9AnmUidSA/R7PSNSo6fxxgbeI=
-github.com/ipfs-force-community/venus-gateway v1.6.2-0.20220818064711-6812ad1f9a38/go.mod h1:H2Hjo12ozlFOrpxw2gAwxnik1kEzqjB0nC+ILYbBRFw=
+github.com/ipfs-force-community/venus-gateway v1.6.2-0.20220825071140-7fe252f3ab6b h1:vQmQyLdZpHNMdAhLS0cZW2427aFmRyyU+eo6bJUOTB8=
+github.com/ipfs-force-community/venus-gateway v1.6.2-0.20220825071140-7fe252f3ab6b/go.mod h1:OuFfayJFDNc2YTzdgyT0LA8IKME5IXapwNp5Z9P90lY=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=
 github.com/ipfs/bbloom v0.0.4 h1:Gi+8EGJ2y5qiD5FbsbpX/TMNcJw8gSqr7eyjHa4Fhvs=
 github.com/ipfs/bbloom v0.0.4/go.mod h1:cS9YprKXpoZ9lT0n/Mw/a6/aFV6DTjTLYHeA+gyqMG0=
