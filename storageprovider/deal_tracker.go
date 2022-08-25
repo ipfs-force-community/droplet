@@ -82,7 +82,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 		dealProposal, err := dealTracker.fullNode.StateMarketStorageDeal(ctx, deal.DealID, tsk)
 		if err != nil {
 			//todo if deal not found maybe need to market storage deal as error
-			log.Errorf("get market deal for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+			log.Errorf("get market deal for sector %d of miner %s %s", deal.SectorNumber, addr, err.Error())
 			continue
 		}
 		if dealProposal.State.SectorStartEpoch > -1 { //include in sector
