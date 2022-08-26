@@ -96,10 +96,8 @@ func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
 
   - `venus-market` 的接发单服务是不依赖于 `venus-cluster` 的，设计上矿工的 `venus-cluster` 没有注册到 `venus-gateway`也不妨碍其接发单的。这种情况下 `venus-market` 为那些矿工提供市场服务就没有了来源。
   
-综上所述，`venus-market` 提供服务的矿工需要一个源头，最好还是在 `venus-auth` 中有一个表记录使用链服务的矿工列表，不与账号绑定，仅用于记录该链服务的矿工，故不会破坏签名地址与账号强绑定的设计理念。
+综上所述，venus链服务的设计初衷是先要知道为那些矿工提供服务的，因此 account-miner 关系仍然保持。
 
-
-- 相比现在的实现更加依赖 `venus-gateway`，动态的矿工列表会不会引起别的问题或实现困难需要在开发时进一步研究！
 
 
 ## 内外部接口协调
@@ -108,17 +106,16 @@ func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
 
 ### 消息接口
 
-`venus-market` 中的接口不变，移除 `venus-messager` 中依赖 `account` 的接口，调用和客户端同样的接口：
+`venus-market` 对外接口不变，移除 `venus-messager` 中依赖 `account` 的接口，统一内外部接口：
 
 ```
-type IMessager interface {                                                            //perm:read
-	ForcePushMessage(ctx context.Context, account string, msg *shared.Message, meta *types.SendSpec) (string, error)                                           //perm:admin
-	ForcePushMessageWithId(ctx context.Context, id string, account string, msg *shared.Message, meta *types.SendSpec) (string, error)                          //perm:write
-	PushMessage(ctx context.Context, msg *shared.Message, meta *types.SendSpec) (string, error)                                                                //perm:write
-	PushMessageWithId(ctx context.Context, id string, msg *shared.Message, meta *types.SendSpec) (string, error)      
+type IMessager interface {
+    PushMessage(ctx context.Context, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                                                  //perm:write
+    PushMessageWithId(ctx context.Context, id string, msg *types.Message, meta *mtypes.SendSpec) (string, error)                                                 //perm:write
 }
 ```
-- `venus-messager` 中移除根据 `token` 解析 `account` 的逻辑，改为从 `venus-auth` 获取 `account` 的方式。
+
+`venus-messager` 中移除根据 `token` 解析 `account` 的逻辑，由 `venus-gateway` 处理,详见 `venus-gateway` 的设计文档。 
 
 
 ### 签名接口
