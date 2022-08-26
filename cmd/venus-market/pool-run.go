@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
@@ -11,6 +10,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/dagstore"
 	"github.com/filecoin-project/venus-market/v2/fundmgr"
+	"github.com/filecoin-project/venus-market/v2/metrics"
 	"github.com/filecoin-project/venus-market/v2/minermgr"
 	"github.com/filecoin-project/venus-market/v2/models"
 	"github.com/filecoin-project/venus-market/v2/network"
@@ -26,8 +26,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
-	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 )
@@ -80,9 +78,7 @@ func poolDaemon(cctx *cli.Context) error {
 			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)
 		}),
 
-		builder.Override(new(metrics.MetricsCtx), func() context.Context {
-			return metrics2.CtxScope(context.Background(), "venus-market")
-		}),
+		metrics.MetricsOpts("venus-market", &cfg.Metrics),
 		// override marketconfig
 		builder.Override(new(config.MarketConfig), cfg),
 		builder.Override(new(types2.ShutdownChan), shutdownChan),
@@ -96,7 +92,7 @@ func poolDaemon(cctx *cli.Context) error {
 		clients.ClientsOpts(true, "pool", &cfg.Messager, &cfg.Signer),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),
-		piecestorage.PieceStorageOpts(cfg),
+		piecestorage.PieceStorageOpts(&cfg.PieceStorage),
 		fundmgr.FundMgrOpts,
 		dagstore.DagstoreOpts,
 		paychmgr.PaychOpts,

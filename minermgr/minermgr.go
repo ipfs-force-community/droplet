@@ -16,7 +16,7 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 )
@@ -250,8 +250,9 @@ func (m *UserMgrImpl) appendAddress(ctx context.Context, account string, addr ad
 }
 
 // todo: looks like refreshUsers only add miners,
-//   considering venus-auth may delete/disable user(very few, but occurs),
-//   the correct way is syncing 'miners' with venus-auth.
+//
+//	considering venus-auth may delete/disable user(very few, but occurs),
+//	the correct way is syncing 'miners' with venus-auth.
 func (m *UserMgrImpl) refreshOnce(ctx context.Context) error {
 	if m.authClient == nil {
 		return errors.Errorf("authClient is nil")

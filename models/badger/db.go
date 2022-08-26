@@ -7,7 +7,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/blockstore"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -44,10 +44,10 @@ type FundMgrDS datastore.Batching
 // /metadata/storagemarket
 type PieceMetaDs datastore.Batching
 
-//  /metadata/storagemarket/cid-infos
+// /metadata/storagemarket/cid-infos
 type CIDInfoDS datastore.Batching
 
-//  /metadata/storagemarket/pieces
+// /metadata/storagemarket/pieces
 type PieceInfoDS datastore.Batching
 
 // /metadata/retrievals/provider
@@ -74,7 +74,7 @@ type StorageAskDS datastore.Batching //key = latest
 // /metadata/paych/
 type PayChanDS datastore.Batching
 
-//*********************************client
+// *********************************client
 // /metadata/deals/client
 type ClientDatastore datastore.Batching
 
@@ -162,12 +162,12 @@ func NewClientTransferDS(ds MetadataDS) ClientTransferDS {
 	return namespace.Wrap(ds, datastore.NewKey(clientTransfer))
 }
 
-//nolint
+// nolint
 type BadgerRepo struct {
 	dsParams *BadgerDSParams
 }
 
-//nolint
+// nolint
 type BadgerDSParams struct {
 	fx.In
 	FundDS           FundMgrDS        `optional:"true"`

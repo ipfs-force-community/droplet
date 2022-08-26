@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/v2/models"
 	"github.com/filecoin-project/venus-market/v2/models/badger"
-	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	"github.com/filecoin-project/venus-market/v2/utils/test_helper"
 	"github.com/stretchr/testify/require"
 )
@@ -20,18 +19,18 @@ import (
 func TestStorageAsk(t *testing.T) {
 	ctx := context.Background()
 	t.Run("mysql", func(t *testing.T) {
-		mysqlAsk, _ := storageprovider.NewStorageAsk(ctx, models.MysqlDB(t), test_helper.MockFullnode{T: t})
+		mysqlAsk, _ := NewStorageAsk(ctx, models.MysqlDB(t), &test_helper.MockFullnode{T: t})
 
 		testStorageAsk(t, mysqlAsk)
 	})
 	t.Run("badger", func(t *testing.T) {
-		badgerAsk, _ := storageprovider.NewStorageAsk(ctx, badger.NewBadgerRepo(badger.BadgerDSParams{AskDS: models.BadgerDB(t)}),
-			test_helper.MockFullnode{T: t})
+		badgerAsk, _ := NewStorageAsk(ctx, badger.NewBadgerRepo(badger.BadgerDSParams{AskDS: models.BadgerDB(t)}),
+			&test_helper.MockFullnode{T: t})
 		testStorageAsk(t, badgerAsk)
 	})
 }
 
-func testStorageAsk(t *testing.T, repo storageprovider.IStorageAsk) {
+func testStorageAsk(t *testing.T, repo IStorageAsk) {
 	ctx := context.Background()
 	miner, _ := address.NewFromString("f02438")
 	price := abi.NewTokenAmount(100)

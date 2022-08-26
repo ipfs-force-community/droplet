@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus/venus-shared/api/messager"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 	"go.uber.org/fx"
 )
 

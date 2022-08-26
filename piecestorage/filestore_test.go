@@ -42,7 +42,8 @@ func TestReWrite(t *testing.T) {
 		require.Equal(t, int64(len(buf)), int64(100))
 	}
 
-	require.True(t, ifs.CanAllocate(1))
+	_, err = ifs.GetStorageStatus()
+	require.Nil(t, err)
 	require.Equal(t, FS, ifs.Type())
 	length, err := ifs.Len(ctx, name)
 	require.NoError(t, err, "fail to get length")

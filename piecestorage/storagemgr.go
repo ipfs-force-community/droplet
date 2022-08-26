@@ -11,7 +11,7 @@ import (
 )
 
 type PieceStorageManager struct {
-	sync.RWMutex
+	lk       sync.RWMutex
 	storages map[string]IPieceStorage
 }
 
@@ -47,30 +47,31 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 			return nil, fmt.Errorf("duplicate storage name: %s", s3Cfg.Name)
 		}
 
-		st, err := newS3PieceStorage(s3Cfg)
+		st, err := NewS3PieceStorage(s3Cfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create object piece storage %w", err)
 		}
 		storages[s3Cfg.Name] = st
 	}
-	return &PieceStorageManager{storages: storages}, nil
+	return &PieceStorageManager{
+		lk:       sync.RWMutex{},
+		storages: storages,
+	}, nil
 }
 
 func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) (IPieceStorage, error) {
 	var storages []IPieceStorage
-	p.RLock()
-	defer p.RUnlock()
-
-	for _, st := range p.storages {
+	_ = p.EachPieceStorage(func(st IPieceStorage) error {
 		has, err := st.Has(ctx, s)
 		if err != nil {
 			log.Warnf("got error while check avaibale in storageg")
-			continue
+			return nil
 		}
 		if has {
 			storages = append(storages, st)
 		}
-	}
+		return nil
+	})
 
 	if len(storages) == 0 {
 		return nil, fmt.Errorf("unable to find piece in storage %s", s)
@@ -81,26 +82,31 @@ func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) 
 
 func (p *PieceStorageManager) FindStorageForWrite(size int64) (IPieceStorage, error) {
 	var storages []IPieceStorage
-	p.RLock()
-	defer p.RUnlock()
-
-	for _, st := range p.storages {
-		//todo readuce too much check on storage
-		if !st.ReadOnly() && st.CanAllocate(size) {
+	_ = p.EachPieceStorage(func(st IPieceStorage) error {
+		if st.ReadOnly() {
+			return nil
+		}
+		storageSt, err := st.GetStorageStatus()
+		if err != nil {
+			log.Errorf("get available bytes from storage(%s)", st.GetName())
+			return nil
+		}
+		if storageSt.Available > size {
 			storages = append(storages, st)
 		}
-	}
+		return nil
+	})
 
 	if len(storages) == 0 {
-		return nil, fmt.Errorf("unable to find enough space for size %d", size)
+		return nil, fmt.Errorf("unable to select a piece storage that have enough space for piece(%d)", size)
 	}
 	//todo better to use argorithems base on stroage capacity and usage
 	return randStorageSelector(storages)
 }
 
 func (p *PieceStorageManager) GetPieceStorageByName(name string) (IPieceStorage, error) {
-	p.Lock()
-	defer p.Unlock()
+	p.lk.Lock()
+	defer p.lk.Unlock()
 
 	if storage, ok := p.storages[name]; ok {
 		return storage, nil
@@ -109,22 +115,34 @@ func (p *PieceStorageManager) GetPieceStorageByName(name string) (IPieceStorage,
 }
 
 func (p *PieceStorageManager) AddMemPieceStorage(s IPieceStorage) {
-	p.Lock()
-	defer p.Unlock()
+	p.lk.Lock()
+	defer p.lk.Unlock()
 
 	p.storages[s.GetName()] = s
 }
 
 func (p *PieceStorageManager) AddPieceStorage(s IPieceStorage) error {
-	// check if storage already exist in manager and it's name is not empty
-	p.Lock()
-	defer p.Unlock()
+	p.lk.Lock()
+	defer p.lk.Unlock()
 
+	// check if storage already exist in manager and it's name is not empty
 	_, ok := p.storages[s.GetName()]
 	if ok {
 		return fmt.Errorf("duplicate storage name: %s", s.GetName())
 	}
 	p.storages[s.GetName()] = s
+	return nil
+}
+
+func (p *PieceStorageManager) EachPieceStorage(fn func(IPieceStorage) error) error {
+	p.lk.Lock()
+	defer p.lk.Unlock()
+
+	for _, s := range p.storages {
+		if err := fn(s); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -140,8 +158,8 @@ func randStorageSelector(storages []IPieceStorage) (IPieceStorage, error) {
 }
 
 func (p *PieceStorageManager) RemovePieceStorage(name string) error {
-	p.Lock()
-	defer p.Unlock()
+	p.lk.Lock()
+	defer p.lk.Unlock()
 
 	_, exist := p.storages[name]
 	if !exist {
@@ -152,11 +170,15 @@ func (p *PieceStorageManager) RemovePieceStorage(name string) error {
 }
 
 func (p *PieceStorageManager) ListStorageInfos() types.PieceStorageInfos {
-	var fs = []types.FsStorage{}
-	var s3 = []types.S3Storage{}
+	var fs []types.FsStorage
+	var s3 []types.S3Storage
 
-	p.RLock()
-	for _, st := range p.storages {
+	_ = p.EachPieceStorage(func(st IPieceStorage) error {
+		status, err := st.GetStorageStatus()
+		if err != nil {
+			log.Errorf("get storage status failed")
+			return nil
+		}
 		switch st.Type() {
 		case S3:
 			cfg := st.(*s3PieceStorage).s3Cfg
@@ -166,6 +188,7 @@ func (p *PieceStorageManager) ListStorageInfos() types.PieceStorageInfos {
 				ReadOnly: cfg.ReadOnly,
 				Bucket:   cfg.Bucket,
 				SubDir:   cfg.SubDir,
+				Status:   status,
 			})
 
 		case FS:
@@ -174,10 +197,11 @@ func (p *PieceStorageManager) ListStorageInfos() types.PieceStorageInfos {
 				Name:     cfg.Name,
 				Path:     cfg.Path,
 				ReadOnly: cfg.ReadOnly,
+				Status:   status,
 			})
 		}
-	}
-	p.RUnlock()
+		return nil
+	})
 
 	return types.PieceStorageInfos{
 		FsStorage: fs,

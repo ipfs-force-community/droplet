@@ -7,6 +7,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/ipfs-force-community/metrics"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
@@ -113,6 +115,7 @@ func providerDispatcher(evt pubsub.Event, fn pubsub.SubscriberFn) error {
 
 // NewStorageProvider returns a new storage provider
 func NewStorageProvider(
+	mCtx metrics.MetricsCtx,
 	storedAsk IStorageAsk,
 	h host.Host,
 	cfg *config.MarketConfig,
@@ -156,7 +159,7 @@ func NewStorageProvider(
 		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, repo, pieceStorageMgr, dataTransfer, dagStore)
+	dealProcess, err := NewStorageDealProcessImpl(mCtx, spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, repo, pieceStorageMgr, dataTransfer, dagStore)
 	if err != nil {
 		return nil, err
 	}
@@ -344,8 +347,8 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 	return nil
 }
 
-//ImportPublishedDeal manually import published deals for an storage deal
-//It will verify that the deal is actually online
+// ImportPublishedDeal manually import published deals for an storage deal
+// It will verify that the deal is actually online
 func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error {
 	//check if exit
 	if !p.minerMgr.Has(ctx, deal.Proposal.Provider) {
@@ -442,7 +445,7 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 	return p.dealStore.SaveDeal(ctx, improtDeal)
 }
 
-//ImportPublishedDeal manually import published deals for an storage deal
+// ImportPublishedDeal manually import published deals for an storage deal
 func (p *StorageProviderImpl) ImportOfflineDeal(ctx context.Context, deal types.MinerDeal) error {
 	// check deal state
 	if deal.State != storagemarket.StorageDealWaitingForData {

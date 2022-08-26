@@ -11,6 +11,7 @@ import (
 
 type MarketEventAPI struct {
 	fx.In
+
 	Event api.IMarketServiceProvider `optional:"true"`
 }
 

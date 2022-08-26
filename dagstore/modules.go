@@ -12,12 +12,12 @@ import (
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-fil-markets/stores"
 
+	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
 )
 
 var (
@@ -30,8 +30,8 @@ const (
 )
 
 // NewMarketAPI creates a new MarketAPI adaptor for the dagstore mounts.
-func CreateAndStartMarketAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage *piecestorage.PieceStorageManager) (MarketAPI, error) {
-	mountApi := NewMarketAPI(repo, pieceStorage, r.UseTransient)
+func CreateAndStartMarketAPI(ctx metrics.MetricsCtx, lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage *piecestorage.PieceStorageManager) (MarketAPI, error) {
+	mountApi := NewMarketAPI(ctx, repo, pieceStorage, r.UseTransient)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return mountApi.Start(ctx)
@@ -46,7 +46,7 @@ func CreateAndStartMarketAPI(lc fx.Lifecycle, r *config.DAGStoreConfig, repo rep
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func NewWrapperDAGStore(lc fx.Lifecycle, ctx metrics.MetricsCtx, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI MarketAPI) (*dagstore.DAGStore, stores.DAGStoreWrapper, error) {
+func NewWrapperDAGStore(ctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI MarketAPI) (*dagstore.DAGStore, stores.DAGStoreWrapper, error) {
 	// fall back to default root directory if not explicitly set in the config.
 	if cfg.RootDir == "" {
 		cfg.RootDir = filepath.Join(string(*homeDir), DefaultDAGStoreDir)

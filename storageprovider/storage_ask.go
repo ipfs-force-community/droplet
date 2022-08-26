@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 
 	"github.com/filecoin-project/venus-market/v2/models/repo"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )

@@ -31,8 +31,8 @@ func TestLotusMount(t *testing.T) {
 
 	mockLotusMountAPI.EXPECT().IsUnsealed(gomock.Any(), cid).Return(true, nil).Times(1)
 
-	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(testReader(), nil).Times(1)
-	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(testReader(), nil).Times(1)
+	mockLotusMountAPI.EXPECT().FetchFromPieceStorage(gomock.Any(), cid).Return(testReader(), nil).Times(1)
+	mockLotusMountAPI.EXPECT().FetchFromPieceStorage(gomock.Any(), cid).Return(testReader(), nil).Times(1)
 	mockLotusMountAPI.EXPECT().GetUnpaddedCARSize(ctx, cid).Return(uint64(100), nil).Times(1)
 
 	mnt, err := NewPieceMount(cid, false, mockLotusMountAPI)

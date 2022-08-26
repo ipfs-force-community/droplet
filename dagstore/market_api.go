@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"io"
 
+	mmetrics "github.com/filecoin-project/venus-market/v2/metrics"
+	"github.com/ipfs-force-community/metrics"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/dagstore/mount"
@@ -16,7 +21,7 @@ import (
 )
 
 type MarketAPI interface {
-	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error)
+	FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error)
 	GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error)
 	IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error)
 	Start(ctx context.Context) error
@@ -26,15 +31,17 @@ type marketAPI struct {
 	pieceStorageMgr *piecestorage.PieceStorageManager
 	pieceRepo       repo.StorageDealRepo
 	useTransient    bool
+	metricsCtx      metrics.MetricsCtx
 }
 
 var _ MarketAPI = (*marketAPI)(nil)
 
-func NewMarketAPI(repo repo.Repo, pieceStorageMgr *piecestorage.PieceStorageManager, useTransient bool) MarketAPI {
+func NewMarketAPI(ctx metrics.MetricsCtx, repo repo.Repo, pieceStorageMgr *piecestorage.PieceStorageManager, useTransient bool) MarketAPI {
 	return &marketAPI{
 		pieceRepo:       repo.StorageDealRepo(),
 		pieceStorageMgr: pieceStorageMgr,
 		useTransient:    useTransient,
+		metricsCtx:      ctx,
 	}
 }
 
@@ -51,7 +58,7 @@ func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, err
 	//todo check isunseal from miner
 }
 
-func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
+func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
 	payloadSize, pieceSize, err := m.pieceRepo.GetPieceSize(ctx, pieceCid)
 	if err != nil {
 		return nil, err
@@ -61,6 +68,14 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (m
 	if err != nil {
 		return nil, err
 	}
+	storageName := pieceStorage.GetName()
+	size, err := pieceStorage.Len(ctx, pieceCid.String())
+	if err != nil {
+		return nil, err
+	}
+	//assume reader always succes, wrapper reader for metrics was expensive
+	stats.Record(m.metricsCtx, mmetrics.DagStorePRBytesRequested.M(size))
+	_ = stats.RecordWithTags(ctx, []tag.Mutator{tag.Upsert(mmetrics.StorageNameTag, storageName)}, mmetrics.StorageRetrievalHitCount.M(1))
 	if m.useTransient {
 		//only need reader stream
 		r, err := pieceStorage.GetReaderCloser(ctx, pieceCid.String())
@@ -72,6 +87,7 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (m
 		if err != nil {
 			return nil, err
 		}
+		stats.Record(m.metricsCtx, mmetrics.DagStorePRInitCount.M(1))
 		return &mountWrapper{r, padR}, nil
 	}
 	//must support seek/readeat
@@ -79,6 +95,7 @@ func (m *marketAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (m
 	if err != nil {
 		return nil, err
 	}
+	stats.Record(m.metricsCtx, mmetrics.DagStorePRInitCount.M(1))
 	return utils.NewAlgnZeroMountReader(r, int(payloadSize), int(pieceSize)), nil
 }
 
@@ -94,7 +111,7 @@ func (m *marketAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (u
 
 	len := pieceInfo.Deals[0].Length
 
-	// todois this size need to convert to unpad size
+	// todo is this size need to convert to unpad size
 	return uint64(len), nil
 }
 
@@ -113,7 +130,8 @@ func (r *mountWrapper) Seek(offset int64, whence int) (int64, error) {
 	return 0, fmt.Errorf("Seek called but not implemented")
 }
 func (r *mountWrapper) Read(p []byte) (n int, err error) {
-	return r.readR.Read(p)
+	n, err = r.readR.Read(p)
+	return
 }
 
 func (r *mountWrapper) Close() error {

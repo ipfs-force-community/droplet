@@ -3,6 +3,8 @@ package config
 import (
 	"time"
 
+	"github.com/ipfs-force-community/metrics"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
@@ -93,6 +95,7 @@ var DefaultMarketConfig = &MarketConfig{
 
 	MaxPublishDealsFee:     types.FIL(types.NewInt(0)),
 	MaxMarketBalanceAddFee: types.FIL(types.NewInt(0)),
+	Metrics:                *metrics.DefaultMetricsConfig(),
 }
 
 var DefaultMarketClientConfig = &MarketClientConfig{

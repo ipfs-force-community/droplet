@@ -8,6 +8,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/filecoin-project/venus/venus-shared/types/market"
+
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/utils"
@@ -113,13 +115,16 @@ func (f *fsPieceStorage) Validate(resourceId string) error {
 	return nil
 }
 
-func (f *fsPieceStorage) CanAllocate(size int64) bool {
+func (f *fsPieceStorage) GetStorageStatus() (market.StorageStatus, error) {
 	st, err := fsutil.Statfs(f.baseUrl)
 	if err != nil {
 		log.Warn("unable to get status of %s", f.baseUrl)
-		return false
+		return market.StorageStatus{}, nil
 	}
-	return st.Available > size
+	return market.StorageStatus{
+		Capacity:  st.Capacity,
+		Available: st.Available,
+	}, nil
 }
 
 func (f *fsPieceStorage) Type() Protocol {
@@ -140,9 +145,4 @@ func NewFsPieceStorage(fsCfg *config.FsPieceStorage) (IPieceStorage, error) {
 		return nil, err
 	}
 	return fs, nil
-}
-
-func NewS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
-	s3 := &s3PieceStorage{s3Cfg: s3Cfg}
-	return s3, nil
 }

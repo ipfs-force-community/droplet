@@ -36,19 +36,19 @@ func (m *MockLotusAccessor) EXPECT() *MockLotusAccessorMockRecorder {
 	return m.recorder
 }
 
-// FetchUnsealedPiece mocks base method.
-func (m *MockLotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
+// FetchFromPieceStorage mocks base method.
+func (m *MockLotusAccessor) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FetchUnsealedPiece", ctx, pieceCid)
+	ret := m.ctrl.Call(m, "FetchFromPieceStorage", ctx, pieceCid)
 	ret0, _ := ret[0].(mount.Reader)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// FetchUnsealedPiece indicates an expected call of FetchUnsealedPiece.
-func (mr *MockLotusAccessorMockRecorder) FetchUnsealedPiece(ctx, pieceCid interface{}) *gomock.Call {
+// FetchFromPieceStorage indicates an expected call of FetchFromPieceStorage.
+func (mr *MockLotusAccessorMockRecorder) FetchFromPieceStorage(ctx, pieceCid interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchUnsealedPiece", reflect.TypeOf((*MockLotusAccessor)(nil).FetchUnsealedPiece), ctx, pieceCid)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchFromPieceStorage", reflect.TypeOf((*MockLotusAccessor)(nil).FetchFromPieceStorage), ctx, pieceCid)
 }
 
 // GetUnpaddedCARSize mocks base method.

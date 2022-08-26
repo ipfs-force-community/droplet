@@ -1,8 +1,9 @@
 package main
 
 import (
-	"context"
 	"fmt"
+
+	"github.com/filecoin-project/venus-market/v2/metrics"
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
@@ -26,8 +27,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
-	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 )
@@ -70,9 +69,7 @@ func soloDaemon(cctx *cli.Context) error {
 			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)
 		}),
 
-		builder.Override(new(metrics.MetricsCtx), func() context.Context {
-			return metrics2.CtxScope(context.Background(), "venus-market")
-		}),
+		metrics.MetricsOpts("venus-market", &cfg.Metrics),
 		builder.Override(new(types2.ShutdownChan), shutdownChan),
 
 		// override marketconfig
@@ -88,7 +85,7 @@ func soloDaemon(cctx *cli.Context) error {
 		clients.ClientsOpts(true, "solo", &cfg.Messager, &cfg.Signer),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),
-		piecestorage.PieceStorageOpts(cfg),
+		piecestorage.PieceStorageOpts(&cfg.PieceStorage),
 		fundmgr.FundMgrOpts,
 		dagstore.DagstoreOpts,
 		paychmgr.PaychOpts,
