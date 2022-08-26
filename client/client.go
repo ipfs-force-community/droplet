@@ -800,7 +800,7 @@ func (a *API) doRetrieval(ctx context.Context, order types.RetrievalOrder, sel d
 		return 0, fmt.Errorf("cannot make retrieval deal for zero bytes")
 	}
 
-	ppb := vTypes.BigDiv(order.Total, vTypes.NewInt(order.Size))
+	ppb := vTypes.BigDiv(big.Add(order.Total, order.UnsealPrice.Neg()), vTypes.NewInt(order.Size))
 
 	params, err := retrievalmarket.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, sel, order.Piece, order.UnsealPrice)
 	if err != nil {
