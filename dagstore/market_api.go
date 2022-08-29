@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	mmetrics "github.com/filecoin-project/venus-market/v2/metrics"
+	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
 	"github.com/ipfs-force-community/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -74,8 +74,8 @@ func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid)
 		return nil, err
 	}
 	//assume reader always succes, wrapper reader for metrics was expensive
-	stats.Record(m.metricsCtx, mmetrics.DagStorePRBytesRequested.M(size))
-	_ = stats.RecordWithTags(ctx, []tag.Mutator{tag.Upsert(mmetrics.StorageNameTag, storageName)}, mmetrics.StorageRetrievalHitCount.M(1))
+	stats.Record(m.metricsCtx, marketMetrics.DagStorePRBytesRequested.M(size))
+	_ = stats.RecordWithTags(ctx, []tag.Mutator{tag.Upsert(marketMetrics.StorageNameTag, storageName)}, marketMetrics.StorageRetrievalHitCount.M(1))
 	if m.useTransient {
 		//only need reader stream
 		r, err := pieceStorage.GetReaderCloser(ctx, pieceCid.String())
@@ -87,7 +87,7 @@ func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid)
 		if err != nil {
 			return nil, err
 		}
-		stats.Record(m.metricsCtx, mmetrics.DagStorePRInitCount.M(1))
+		stats.Record(m.metricsCtx, marketMetrics.DagStorePRInitCount.M(1))
 		return &mountWrapper{r, padR}, nil
 	}
 	//must support seek/readeat
@@ -95,7 +95,7 @@ func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid)
 	if err != nil {
 		return nil, err
 	}
-	stats.Record(m.metricsCtx, mmetrics.DagStorePRInitCount.M(1))
+	stats.Record(m.metricsCtx, marketMetrics.DagStorePRInitCount.M(1))
 	return utils.NewAlgnZeroMountReader(r, int(payloadSize), int(pieceSize)), nil
 }
 

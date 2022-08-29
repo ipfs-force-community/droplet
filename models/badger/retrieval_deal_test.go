@@ -18,7 +18,7 @@ func Test_retrievalDealRepo_GroupRetrievalDealNumberByStatus(t *testing.T) {
 	repo := setup(t)
 	r := repo.RetrievalDealRepo()
 
-	deals := make([]market.ProviderDealState, 10, 10)
+	deals := make([]market.ProviderDealState, 10)
 	testutil.Provide(t, &deals)
 
 	result := map[retrievalmarket.DealStatus]int64{}

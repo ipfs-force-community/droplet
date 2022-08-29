@@ -22,7 +22,7 @@ func Test_storageDealRepo_GroupDealsByStatus(t *testing.T) {
 		repo := setup(t)
 		r := repo.StorageDealRepo()
 
-		deals := make([]market.MinerDeal, 100, 100)
+		deals := make([]market.MinerDeal, 100)
 		testutil.Provide(t, &deals)
 
 		var addrs []address.Address
@@ -59,7 +59,7 @@ func Test_storageDealRepo_GroupDealsByStatus(t *testing.T) {
 		repo := setup(t)
 		r := repo.StorageDealRepo()
 
-		deals := make([]market.MinerDeal, 10, 10)
+		deals := make([]market.MinerDeal, 10)
 		testutil.Provide(t, &deals)
 
 		result := map[storagemarket.StorageDealStatus]int64{}

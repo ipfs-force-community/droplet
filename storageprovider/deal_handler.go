@@ -8,7 +8,7 @@ import (
 
 	"github.com/ipfs-force-community/metrics"
 
-	mmetrics "github.com/filecoin-project/venus-market/v2/metrics"
+	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 
@@ -494,7 +494,7 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 		if err != nil {
 			return err
 		}
-		_ = stats.RecordWithTags(storageDealPorcess.metricsCtx, []tag.Mutator{tag.Upsert(mmetrics.StorageNameTag, ps.GetName())}, mmetrics.StorageSaveHitCount.M(1))
+		_ = stats.RecordWithTags(storageDealPorcess.metricsCtx, []tag.Mutator{tag.Upsert(marketMetrics.StorageNameTag, ps.GetName())}, marketMetrics.StorageSaveHitCount.M(1))
 		log.Infof("success to write file %s to piece storage", pieceCid)
 	}
 	return nil
