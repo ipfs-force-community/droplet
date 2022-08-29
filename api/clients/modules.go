@@ -32,16 +32,8 @@ var log = logging.Logger("clients")
 //	return nil
 //}
 
-func NewMarketEvent(mctx metrics.MetricsCtx) (*marketevent.MarketEventStream, error) {
+func NewMarketEvent(mctx metrics.MetricsCtx) (v1Gateway.IMarketEvent, error) {
 	stream := marketevent.NewMarketEventStream(mctx, &localMinerValidator{}, gwTypes.DefaultConfig())
-	return stream, nil
-}
-
-func NewMarketEventAPI(stream *marketevent.MarketEventStream) (v1Gateway.IMarketEvent, error) {
-	return stream, nil
-}
-
-func NewIMarketEvent(stream *marketevent.MarketEventStream) (MarketRequestEvent, error) {
 	return stream, nil
 }
 
@@ -71,9 +63,7 @@ var ClientsOpts = func(server bool, mode string, msgCfg *config.Messager, signer
 				func(s *builder.Settings) bool {
 					return mode == "solo"
 				},
-				builder.Override(new(*marketevent.MarketEventStream), NewMarketEvent),
-				builder.Override(new(v1Gateway.IMarketEvent), NewMarketEventAPI),
-				builder.Override(new(MarketRequestEvent), NewIMarketEvent),
+				builder.Override(new(v1Gateway.IMarketEvent), NewMarketEvent),
 			),
 		)
 	}
