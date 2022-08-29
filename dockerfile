@@ -1,5 +1,8 @@
 FROM filvenus/venus-buildenv AS buildenv
 
+COPY ./go.mod ./venus-market/go.mod
+COPY ./extern/ ./venus-market/extern/
+RUN export GOPROXY=https://goproxy.cn && cd venus-market   && go mod download 
 COPY . ./venus-market
 RUN export GOPROXY=https://goproxy.cn && cd venus-market  && make deps && make
 RUN cd venus-market && ldd ./venus-market
