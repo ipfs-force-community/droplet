@@ -10,9 +10,6 @@ RUN cd venus-market && ldd ./venus-market
 
 FROM filvenus/venus-runtime
 
-# DIR for app
-WORKDIR /app
-
 # copy the app from build env
 COPY --from=buildenv  /go/venus-market/venus-market /app/venus-market
 COPY ./docker/script  /script
