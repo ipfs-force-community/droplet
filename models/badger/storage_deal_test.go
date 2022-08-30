@@ -46,9 +46,7 @@ func Test_storageDealRepo_GroupDealsByStatus(t *testing.T) {
 			if deal.Proposal.Provider != addrs[0] {
 				continue
 			}
-			count := result[deal.State]
-			count++
-			result[deal.State] = count
+			result[deal.State]++
 		}
 		result2, err := r.GroupStorageDealNumberByStatus(ctx, addrs[0])
 		assert.Nil(t, err)
@@ -64,9 +62,7 @@ func Test_storageDealRepo_GroupDealsByStatus(t *testing.T) {
 
 		result := map[storagemarket.StorageDealStatus]int64{}
 		for _, deal := range deals {
-			count := result[deal.State]
-			count++
-			result[deal.State] = count
+			result[deal.State]++
 		}
 
 		for _, deal := range deals {

@@ -24,9 +24,7 @@ func Test_retrievalDealRepo_GroupRetrievalDealNumberByStatus(t *testing.T) {
 	result := map[retrievalmarket.DealStatus]int64{}
 	for index, deal := range deals {
 		deals[index].Params.Selector = nil
-		count := result[deal.Status]
-		count++
-		result[deal.Status] = count
+		result[deal.Status]++
 	}
 
 	for _, deal := range deals {
@@ -63,4 +61,8 @@ func Test_retrievalDealRepo_ListDeals(t *testing.T) {
 	result2, err := r.ListDeals(ctx, 1, 2)
 	assert.Nil(t, err)
 	assert.Equal(t, dealInDb[:2], result2)
+
+	result2, err = r.ListDeals(ctx, 2, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, dealInDb[2:4], result2)
 }

@@ -316,9 +316,7 @@ func (sdr *storageDealRepo) GroupStorageDealNumberByStatus(ctx context.Context, 
 		if mAddr != address.Undef && mAddr != inDeal.Proposal.Provider {
 			return false, nil
 		}
-		count := result[inDeal.State]
-		count++
-		result[inDeal.State] = count
+		result[inDeal.State]++
 		return false, nil
 	})
 }

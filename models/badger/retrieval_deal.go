@@ -86,10 +86,15 @@ func (r retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize in
 	to := from + pageSize
 	defer result.Close() //nolint:errcheck
 
-	retrievalDeals := make([]*types.ProviderDealState, 0)
+	var retrievalDeals []*types.ProviderDealState
 	index := 0
 	for res := range result.Next() {
-		if index < from || index >= to {
+		if index < from {
+			index++
+			continue
+		}
+
+		if index >= to {
 			break
 		}
 		index++
@@ -109,9 +114,7 @@ func (r retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize in
 func (r retrievalDealRepo) GroupRetrievalDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[retrievalmarket.DealStatus]int64, error) {
 	result := map[retrievalmarket.DealStatus]int64{}
 	return result, travelDeals(ctx, r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
-		count := result[deal.Status]
-		count++
-		result[deal.Status] = count
+		result[deal.Status]++
 		return false, nil
 	})
 }

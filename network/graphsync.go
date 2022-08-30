@@ -73,6 +73,8 @@ func graphsyncStats(mctx metrics.MetricsCtx, lc fx.Lifecycle, gs graphsync.Graph
 		OnStart: func(context.Context) error {
 			go func() {
 				t := time.NewTicker(10 * time.Second)
+				defer t.Stop()
+
 				for {
 					select {
 					case <-t.C:
