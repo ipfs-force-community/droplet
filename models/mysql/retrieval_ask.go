@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"context"
-	"time"
 
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
@@ -51,6 +50,7 @@ func (rar *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (
 		UnsealPrice:             fbig.Int{Int: mAsk.UnsealPrice.Int},
 		PaymentInterval:         mAsk.PaymentInterval,
 		PaymentIntervalIncrease: mAsk.PaymentIntervalIncrease,
+		TimeStamp:               mAsk.Timestamp(),
 	}, nil
 }
 
@@ -64,8 +64,7 @@ func (rar *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk
 		UnsealPrice:             convertBigInt(ask.UnsealPrice),
 		PaymentInterval:         ask.PaymentInterval,
 		PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
-		TimeStampOrm:            TimeStampOrm{UpdatedAt: uint64(time.Now().Unix())},
-	}).Error
+		TimeStampOrm:            newRefreshedTimestampOrm(&ask.TimeStamp)}).Error
 }
 
 func (rar *retrievalAskRepo) ListAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {
@@ -82,6 +81,7 @@ func (rar *retrievalAskRepo) ListAsk(ctx context.Context) ([]*types.RetrievalAsk
 			UnsealPrice:             fbig.Int{Int: ask.UnsealPrice.Int},
 			PaymentInterval:         ask.PaymentInterval,
 			PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
+			TimeStamp:               ask.Timestamp(),
 		}
 	}
 	return results, nil

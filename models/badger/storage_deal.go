@@ -27,6 +27,7 @@ func NewStorageDealRepo(ds StorageDealsDS) repo.StorageDealRepo {
 }
 
 func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.MinerDeal) error {
+	storageDeal.TimeStamp = repo.NewRefreshedTimeStamp(&storageDeal.TimeStamp)
 	b, err := cborrpc.Dump(storageDeal)
 	if err != nil {
 		return err

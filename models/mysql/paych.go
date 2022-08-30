@@ -53,6 +53,7 @@ func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 		PendingAmount: convertBigInt(src.PendingAmount),
 		Settling:      src.Settling,
 		VoucherInfo:   src.Vouchers,
+		TimeStampOrm:  newRefreshedTimestampOrm(&src.TimeStamp),
 	}
 	if src.Channel == nil {
 		info.Channel = UndefDBAddress
@@ -87,6 +88,7 @@ func toChannelInfo(src *channelInfo) (*types.ChannelInfo, error) {
 		CreateMsg:     src.CreateMsg.cidPtr(),
 		AddFundsMsg:   src.AddFundsMsg.cidPtr(),
 		Settling:      src.Settling,
+		TimeStamp:     src.Timestamp(),
 	}
 
 	return info, nil
@@ -203,9 +205,7 @@ func (cir *channelInfoRepo) SaveChannel(ctx context.Context, ci *types.ChannelIn
 	if len(ci.ChannelID) == 0 {
 		ci.ChannelID = uuid.NewString()
 	}
-	info := fromChannelInfo(ci)
-	info.UpdatedAt = uint64(time.Now().Unix())
-	return cir.WithContext(ctx).Save(info).Error
+	return cir.WithContext(ctx).Save(fromChannelInfo(ci)).Error
 }
 
 func (cir *channelInfoRepo) RemoveChannel(ctx context.Context, channelID string) error {
@@ -234,10 +234,11 @@ func (m *msgInfo) TableName() string {
 
 func fromMsgInfo(src *types.MsgInfo) *msgInfo {
 	return &msgInfo{
-		ChannelID: src.ChannelID,
-		MsgCid:    DBCid(src.MsgCid),
-		Received:  src.Received,
-		Err:       src.Err,
+		ChannelID:    src.ChannelID,
+		MsgCid:       DBCid(src.MsgCid),
+		Received:     src.Received,
+		TimeStampOrm: newRefreshedTimestampOrm(&src.TimeStamp),
+		Err:          src.Err,
 	}
 }
 
@@ -246,6 +247,7 @@ func toMsgInfo(src *msgInfo) (*types.MsgInfo, error) {
 		ChannelID: src.ChannelID,
 		MsgCid:    src.MsgCid.cid(),
 		Received:  src.Received,
+		TimeStamp: src.Timestamp(),
 		Err:       src.Err,
 	}, nil
 }

@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/ipfs/go-datastore"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -124,4 +125,16 @@ func UniformNotFoundErrors() {
 
 func init() {
 	UniformNotFoundErrors()
+}
+
+func NewRefreshedTimeStamp(ts *types.TimeStamp) types.TimeStamp {
+	var newTs types.TimeStamp
+	if ts != nil {
+		newTs = *ts
+	}
+	newTs.UpdatedAt = uint64(time.Now().Unix())
+	if newTs.CreatedAt == 0 {
+		newTs.CreatedAt = newTs.UpdatedAt
+	}
+	return newTs
 }

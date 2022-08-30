@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"context"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -27,8 +26,9 @@ func (fas *fundedAddressState) TableName() string {
 
 func fromFundedAddressState(src *types.FundedAddressState) *fundedAddressState {
 	fds := &fundedAddressState{
-		Addr:        DBAddress(src.Addr),
-		AmtReserved: convertBigInt(src.AmtReserved),
+		Addr:         DBAddress(src.Addr),
+		AmtReserved:  convertBigInt(src.AmtReserved),
+		TimeStampOrm: newRefreshedTimestampOrm(&src.TimeStamp),
 	}
 	if src.MsgCid == nil {
 		fds.MsgCid = UndefDBCid
@@ -44,8 +44,8 @@ func toFundedAddressState(src *fundedAddressState) (*types.FundedAddressState, e
 		AmtReserved: abi.TokenAmount{Int: src.AmtReserved.Int},
 		MsgCid:      src.MsgCid.cidPtr(),
 		Addr:        src.Addr.addr(),
+		TimeStamp:   src.Timestamp(),
 	}
-
 	return fds, nil
 }
 
@@ -58,9 +58,7 @@ func NewFundedAddressStateRepo(db *gorm.DB) repo.FundRepo {
 }
 
 func (far *fundedAddressStateRepo) SaveFundedAddressState(ctx context.Context, fds *types.FundedAddressState) error {
-	state := fromFundedAddressState(fds)
-	state.UpdatedAt = uint64(time.Now().Unix())
-	return far.WithContext(ctx).Save(state).Error
+	return far.WithContext(ctx).Save(fromFundedAddressState(fds)).Error
 }
 
 func (far *fundedAddressStateRepo) GetFundedAddressState(ctx context.Context, addr address.Address) (*types.FundedAddressState, error) {

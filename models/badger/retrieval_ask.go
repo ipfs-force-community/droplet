@@ -38,6 +38,7 @@ func (r *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (*t
 }
 
 func (r *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk) error {
+	ask.TimeStamp = repo.NewRefreshedTimeStamp(&ask.TimeStamp)
 	data, err := cborrpc.Dump(ask)
 	if err != nil {
 		return err

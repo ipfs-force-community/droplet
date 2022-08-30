@@ -3,7 +3,6 @@ package mysql
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -15,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const retrievalDealTableName = "retrieval_deals"
@@ -69,8 +69,8 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 		Message:               deal.Message,
 		CurrentInterval:       deal.CurrentInterval,
 		LegacyProtocol:        deal.LegacyProtocol,
+		TimeStampOrm:          newRefreshedTimestampOrm(&deal.TimeStamp),
 	}
-	deal.Identifier()
 	if deal.Selector != nil {
 		newdeal.Selector = &deal.Selector.Raw
 	}
@@ -112,6 +112,7 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 		Message:               deal.Message,
 		CurrentInterval:       deal.CurrentInterval,
 		LegacyProtocol:        deal.LegacyProtocol,
+		TimeStamp:             deal.Timestamp(),
 	}
 	var err error
 
@@ -147,8 +148,8 @@ type retrievalDealRepo struct {
 
 func (rdr *retrievalDealRepo) SaveDeal(ctx context.Context, deal *types.ProviderDealState) error {
 	dbDeal := fromProviderDealState(deal)
-	dbDeal.UpdatedAt = uint64(time.Now().Unix())
-	return rdr.WithContext(ctx).Save(dbDeal).Error
+	return rdr.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).
+		Create(dbDeal).Error
 }
 
 func (rdr *retrievalDealRepo) GetDeal(ctx context.Context, id peer.ID, id2 rm.DealID) (*types.ProviderDealState, error) {

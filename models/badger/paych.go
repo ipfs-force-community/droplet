@@ -3,6 +3,7 @@ package badger
 import (
 	"bytes"
 	"context"
+	"errors"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -190,6 +191,16 @@ func (pr *paychRepo) findChans(ctx context.Context, filter func(*types.ChannelIn
 func (pr *paychRepo) SaveChannel(ctx context.Context, ci *types.ChannelInfo) error {
 	if len(ci.ChannelID) == 0 {
 		ci.ChannelID = uuid.New().String()
+	} else {
+		oldCi, err := pr.GetChannelByChannelID(ctx, ci.ChannelID)
+		if err != nil {
+			if !errors.Is(err, repo.ErrNotFound) {
+				return err
+			}
+			ci.TimeStamp = repo.NewRefreshedTimeStamp(nil)
+		} else {
+			ci.TimeStamp = repo.NewRefreshedTimeStamp(&oldCi.TimeStamp)
+		}
 	}
 
 	key := dskeyForChannel(ci.ChannelID)
@@ -266,8 +277,17 @@ func (pr *paychRepo) GetMessage(ctx context.Context, mcid cid.Cid) (*types.MsgIn
 
 // SaveMessage is called when a message is sent
 func (pr *paychRepo) SaveMessage(ctx context.Context, info *types.MsgInfo) error {
-	k := dskeyForMsg(info.MsgCid)
+	oldInfo, err := pr.GetMessage(ctx, info.MsgCid)
+	if err != nil {
+		if !errors.Is(err, repo.ErrNotFound) {
+			return err
+		}
+		info.TimeStamp = repo.NewRefreshedTimeStamp(nil)
+	} else {
+		info.TimeStamp = repo.NewRefreshedTimeStamp(&oldInfo.TimeStamp)
+	}
 
+	k := dskeyForMsg(info.MsgCid)
 	b, err := cborutil.Dump(info)
 	if err != nil {
 		return err
@@ -288,6 +308,7 @@ func (pr *paychRepo) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr
 	if msgErr != nil {
 		minfo.Err = msgErr.Error()
 	}
+	minfo.TimeStamp = repo.NewRefreshedTimeStamp(&minfo.TimeStamp)
 
 	b, err := cborutil.Dump(minfo)
 	if err != nil {
