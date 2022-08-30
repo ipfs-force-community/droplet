@@ -2,13 +2,14 @@ FROM filvenus/venus-buildenv AS buildenv
 
 COPY ./go.mod ./venus-market/go.mod
 COPY ./extern/ ./venus-market/extern/
-RUN export GOPROXY=https://goproxy.cn && cd venus-market   && go mod download 
+RUN export GOPROXY=https://goproxy.cn,direct && cd venus-market   && go mod download 
 COPY . ./venus-market
-RUN export GOPROXY=https://goproxy.cn && cd venus-market  && make deps && make
+RUN export GOPROXY=https://goproxy.cn,direct && cd venus-market  && make deps && make
 RUN cd venus-market && ldd ./venus-market
 
 
 FROM filvenus/venus-runtime
+
 
 # copy the app from build env
 COPY --from=buildenv  /go/venus-market/venus-market /app/venus-market
