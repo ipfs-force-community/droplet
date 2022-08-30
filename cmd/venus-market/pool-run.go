@@ -61,6 +61,7 @@ var poolRunCmd = &cli.Command{
 		MessagerTokenFlag,
 		GatewayUrlFlag,
 		GatewayTokenFlag,
+		SignerTypeFlag,
 		SignerUrlFlag,
 		SignerTokenFlag,
 		MysqlDsnFlag,

@@ -37,6 +37,10 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		if len(cfg.Messager.Url) > 0 {
 			cfg.Messager.Token = cctx.String(AuthTokeFlag.Name)
 		}
+
+		if len(cfg.Signer.Url) > 0 {
+			cfg.Signer.Token = cctx.String(AuthTokeFlag.Name)
+		}
 	}
 
 	if cctx.IsSet(NodeTokenFlag.Name) {
@@ -46,26 +50,39 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		cfg.Messager.Token = cctx.String(MessagerTokenFlag.Name)
 	}
 
-	signerType := cctx.String(HiddenSignerTypeFlag.Name)
+	signerType := cctx.String(SignerTypeFlag.Name)
 	switch signerType {
 	case config.SignerTypeGateway:
 		{
-			cfg.Signer.Url = cctx.String(GatewayUrlFlag.Name)
-			cfg.Signer.Token = cctx.String(GatewayTokenFlag.Name)
+			if cctx.IsSet(GatewayUrlFlag.Name) {
+				cfg.Signer.Url = cctx.String(GatewayUrlFlag.Name)
+			}
+			if cctx.IsSet(GatewayTokenFlag.Name) {
+				cfg.Signer.Token = cctx.String(GatewayTokenFlag.Name)
+			}
 		}
 	case config.SignerTypeWallet:
 		{
-			cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
-			cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
+			if cctx.IsSet(SignerUrlFlag.Name) {
+				cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
+			}
+			if cctx.IsSet(SignerTokenFlag.Name) {
+				cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
+			}
 		}
 	case config.SignerTypeLotusnode:
 		{
-			cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
-			cfg.Signer.Token = cctx.String(NodeTokenFlag.Name)
+			if cctx.IsSet(NodeUrlFlag.Name) {
+				cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
+			}
+			if cctx.IsSet(NodeTokenFlag.Name) {
+				cfg.Signer.Token = cctx.String(NodeTokenFlag.Name)
+			}
 		}
 	default:
 		return fmt.Errorf("unsupport signer type %s", signerType)
 	}
+	cfg.Signer.SignerType = signerType
 
 	if cctx.IsSet(MysqlDsnFlag.Name) {
 		cfg.Mysql.ConnectionString = cctx.String(MysqlDsnFlag.Name)
@@ -120,9 +137,9 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 }
 
 func prepare(cctx *cli.Context, defSignerType config.SignerType) (*config.MarketConfig, error) {
-	if !cctx.IsSet(HiddenSignerTypeFlag.Name) {
-		if err := cctx.Set(HiddenSignerTypeFlag.Name, defSignerType); err != nil {
-			return nil, fmt.Errorf("set `%s` with wallet failed %w", HiddenSignerTypeFlag.Name, err)
+	if !cctx.IsSet(SignerTypeFlag.Name) {
+		if err := cctx.Set(SignerTypeFlag.Name, defSignerType); err != nil {
+			return nil, fmt.Errorf("set `%s` with wallet failed %w", SignerTypeFlag.Name, err)
 		}
 	}
 	cfg := config.DefaultMarketConfig

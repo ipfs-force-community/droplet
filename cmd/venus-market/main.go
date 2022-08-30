@@ -61,11 +61,10 @@ var (
 		Hidden: true,
 	}
 
-	HiddenSignerTypeFlag = &cli.StringFlag{
-		Name:        "signer-type",
-		Usage:       "signer service type（lotusnode, wallet, gateway）",
-		DefaultText: "wallet",
-		Hidden:      true,
+	SignerTypeFlag = &cli.StringFlag{
+		Name:   "signer-type",
+		Usage:  "signer service type(lotusnode, wallet, gateway)",
+		Hidden: false,
 	}
 	SignerUrlFlag = &cli.StringFlag{
 		Name:  "signer-url",
@@ -77,14 +76,12 @@ var (
 	}
 
 	GatewayUrlFlag = &cli.StringFlag{
-		Name:    "gateway-url",
-		Aliases: []string{"signer-url"},
-		Usage:   "used to connect gateway service for sign",
+		Name:  "gateway-url",
+		Usage: "used to connect gateway service for sign",
 	}
 	GatewayTokenFlag = &cli.StringFlag{
-		Name:    "gateway-token",
-		Aliases: []string{"signer-token"},
-		Usage:   "used to connect gateway service for sign",
+		Name:  "gateway-token",
+		Usage: "used to connect gateway service for sign",
 	}
 
 	MysqlDsnFlag = &cli.StringFlag{

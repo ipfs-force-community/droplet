@@ -56,7 +56,7 @@ var soloRunCmd = &cli.Command{
 	Flags: []cli.Flag{
 		NodeUrlFlag,
 		NodeTokenFlag,
-		HiddenSignerTypeFlag,
+		SignerTypeFlag,
 		SignerUrlFlag,
 		SignerTokenFlag,
 		MysqlDsnFlag,

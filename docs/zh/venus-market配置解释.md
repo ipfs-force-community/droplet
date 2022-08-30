@@ -13,7 +13,7 @@ ConsiderUnverifiedStorageDeals = true
 PieceCidBlocklist = []
 ExpectedSealDuration = "24h0m0s"
 MaxDealStartDelay = "336h0m0s"
-PublishMsgPeriod = "5m0s"
+PublishMsgPeriod = "1h0m0s"
 MaxDealsPerPublishMsg = 8
 MaxProviderCollateralMultiplier = 2
 SimultaneousTransfersForStorage = 20
@@ -23,41 +23,41 @@ Filter = ""
 RetrievalFilter = ""
 TransfePath = ""
 MaxPublishDealsFee = "0 FIL"
-MaxMarketBalanceAddFee = "0 FIL"
+MaxMarketBalanceAddFee = "0 FIL
 
 
 # ****** venus market 网络配置  ********
 
 [API]
-ListenAddress = "/ip4/0.0.0.0/tcp/41235"
-RemoteListenAddress = ""
-Secret = "878f9c1f88c6f68ee7be17e5f0848c9312897b5d22ff7d89ca386ed0a583da3c"
-Timeout = "30s"
+  ListenAddress = "/ip4/127.0.0.1/tcp/41235"
+  RemoteListenAddress = ""
+  Secret = "e647ee23cf95424162b974cd641b6a6479cbc7cb1209cc755f762c8248d50ba4"
+  Timeout = "30s"
 
 [Libp2p]
-ListenAddresses = ["/ip4/0.0.0.0/tcp/58418", "/ip6/::/tcp/0"]
-AnnounceAddresses = []
-NoAnnounceAddresses = []
-PrivateKey = "08011240ae580daabbe087007d2b4db4e880af10d582215d2272669a94c49c854f36f99c35c38130ac8731dedae9cc885c644554d3e4ca9203ffeeeb9ee7a689a3e52a21"
+  ListenAddresses = ["/ip4/0.0.0.0/tcp/58418", "/ip6/::/tcp/0"]
+  AnnounceAddresses = []
+  NoAnnounceAddresses = []
+  PrivateKey = "08011240d47934b6fccf8b79786335a55ccc04bdb9c92866cae2c0cea2fdefe0f2e7c18650dfbde5dd126c2a23a0d1c60686d3dedd064b67ba97c6161dd8007f0675e1a9"
 
 
 # ****** venus 组件服务配置 ********
 [Node]
-Url = "/ip4/192.168.200.128/tcp/3453"
-Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
+  Url = "/ip4/192.168.200.151/tcp/3453"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdC11c2VyMDEiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.ETjNy3HMDS3ScZ3cax9xYb6AopNWYp4y71lZGCvYxMg"
 
 [Messager]
-Url = "/ip4/192.168.200.128/tcp/39812/"
-Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
+  Url = "/ip4/127.0.0.1/tcp/39812"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdC11c2VyMDEiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.ETjNy3HMDS3ScZ3cax9xYb6AopNWYp4y71lZGCvYxMg"
 
 [Signer]
-Type = "gateway"
-Url = "/ip4/192.168.200.128/tcp/45132/"
-Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
+  Type = "gateway"
+  Url = "/ip4/127.0.0.1/tcp/45132"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdC11c2VyMDEiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.ETjNy3HMDS3ScZ3cax9xYb6AopNWYp4y71lZGCvYxMg"
 
 [AuthNode]
-Url = "http://192.168.200.128:8989"
-Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
+  Url = "http://127.0.0.1:8989"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdC11c2VyMDEiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.ETjNy3HMDS3ScZ3cax9xYb6AopNWYp4y71lZGCvYxMg"
 
 
 
@@ -314,7 +314,7 @@ venus 提供签名服务的组件，它可以由两种类型：由venus-wallet�
 ```
 [Signer]
 # 签名服务组件的类型
-# 字符串类型  枚举："gateway"，"wallet"
+# 字符串类型  枚举："gateway"，"wallet"，"lotusnode"
 Type = "gateway"
 
 # 签名服务入口

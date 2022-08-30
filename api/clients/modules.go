@@ -46,13 +46,6 @@ var ClientsOpts = func(server bool, mode string, msgCfg *config.Messager, signer
 				return len(msgCfg.Url) > 0
 			},
 			builder.Override(new(IVenusMessager), MessagerClient)),
-		//builder.ApplyIf(
-		//	func(s *builder.Settings) bool {
-		//		return len(signerCfg.SignerType) > 0 && len(signerCfg.Url) > 0
-		//	},
-		//	builder.Override(new(signer.ISigner), signer.NewISignerClient(server)),
-		//	builder.Override(ReplaceWalletMethod, ConvertWalletToISinge),
-		//),
 	)
 
 	if server {
@@ -67,6 +60,7 @@ var ClientsOpts = func(server bool, mode string, msgCfg *config.Messager, signer
 			),
 		)
 	}
+
 	return builder.Options(opts,
 		builder.Override(new(v1api.FullNode), NodeClient),
 	)

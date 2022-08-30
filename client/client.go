@@ -96,7 +96,7 @@ type API struct {
 	Host         host.Host
 	Cfg          *config.MarketClientConfig
 
-	signer signer.ISigner
+	Signer signer.ISigner
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -255,7 +255,7 @@ func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, is
 		return nil, fmt.Errorf("failed to serialize deal proposal: %w", err)
 	}
 
-	dealProposalSig, err := a.signer.WalletSign(ctx, walletKey, dealProposalSerialized,
+	dealProposalSig, err := a.Signer.WalletSign(ctx, walletKey, dealProposalSerialized,
 		vTypes.MsgMeta{
 			Type:  vTypes.MTDealProposal,
 			Extra: dealProposalSerialized,

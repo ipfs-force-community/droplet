@@ -80,18 +80,18 @@ var (
 		Usage: "token used to connect venus chain service components, eg. venus-meassger, venus",
 	}
 
-	HiddenSignerTypeFlag = &cli.StringFlag{
+	SignerTypeFlag = &cli.StringFlag{
 		Name:   "signer-type",
-		Usage:  "signer service type（lotusnode, wallet, gateway）",
+		Usage:  "signer service type(lotusnode, wallet, gateway)",
 		Value:  config.SignerTypeWallet,
-		Hidden: true,
+		Hidden: false,
 	}
 	SignerUrlFlag = &cli.StringFlag{
-		Name:  "wallet-url",
+		Name:  "signer-url",
 		Usage: "used to connect wallet service for sign",
 	}
 	SignerTokenFlag = &cli.StringFlag{
-		Name:  "wallet-token",
+		Name:  "signer-token",
 		Usage: "wallet token for connect signer service",
 	}
 
@@ -130,7 +130,7 @@ func main() {
 					MessagerUrlFlag,
 					MessagerTokenFlag,
 					AuthTokenFlag,
-					HiddenSignerTypeFlag,
+					SignerTypeFlag,
 					SignerUrlFlag,
 					SignerTokenFlag,
 					DefaultAddressFlag,
@@ -169,21 +169,30 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 		cfg.Messager.Token = cctx.String(MessagerTokenFlag.Name)
 	}
 
-	signerType := cctx.String(HiddenSignerTypeFlag.Name)
+	signerType := cctx.String(SignerTypeFlag.Name)
 	switch signerType {
 	case config.SignerTypeWallet, config.SignerTypeGateway:
 		{
-			cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
-			cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
+			if cctx.IsSet(SignerUrlFlag.Name) {
+				cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
+			}
+			if cctx.IsSet(SignerTokenFlag.Name) {
+				cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
+			}
 		}
 	case config.SignerTypeLotusnode:
 		{
-			cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
-			cfg.Signer.Token = cctx.String(NodeTokenFlag.Name)
+			if cctx.IsSet(NodeUrlFlag.Name) {
+				cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
+			}
+			if cctx.IsSet(NodeTokenFlag.Name) {
+				cfg.Signer.Token = cctx.String(NodeTokenFlag.Name)
+			}
 		}
 	default:
 		return fmt.Errorf("unsupport signer type %s", signerType)
 	}
+	cfg.Signer.SignerType = signerType
 
 	if cctx.IsSet(DefaultAddressFlag.Name) {
 		addr, err := address.NewFromString(cctx.String(DefaultAddressFlag.Name))
