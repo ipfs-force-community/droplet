@@ -12,8 +12,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	auth2 "github.com/filecoin-project/venus-auth/auth"
-	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-auth/core"
+	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"

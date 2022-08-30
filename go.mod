@@ -31,7 +31,7 @@ require (
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
 	github.com/filecoin-project/venus v1.6.1-0.20220809015458-f63fbca0f646
-	github.com/filecoin-project/venus-auth v1.6.0
+	github.com/filecoin-project/venus-auth v1.6.1-0.20220818060206-3313af6a9ba1
 	github.com/filecoin-project/venus-messager v1.6.2-0.20220722073101-cc0865f9be71
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/golang/mock v1.6.0
@@ -40,7 +40,7 @@ require (
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
-	github.com/ipfs-force-community/venus-gateway v1.6.0
+	github.com/ipfs-force-community/venus-gateway v1.6.2-0.20220825071140-7fe252f3ab6b
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.3.0
 	github.com/ipfs/go-cid v0.2.0
@@ -70,10 +70,8 @@ require (
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-libp2p v0.20.1
 	github.com/libp2p/go-libp2p-core v0.16.1
-	github.com/libp2p/go-libp2p-noise v0.4.0
 	github.com/libp2p/go-libp2p-peerstore v0.7.0
 	github.com/libp2p/go-libp2p-resource-manager v0.3.0
-	github.com/libp2p/go-libp2p-tls v0.4.1
 	github.com/libp2p/go-libp2p-yamux v0.9.1
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
@@ -107,6 +105,7 @@ require (
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee // indirect
 	github.com/Stebalien/go-bitfield v0.0.1 // indirect
 	github.com/acobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249 // indirect
+	github.com/ahmetb/go-linq/v3 v3.2.0 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/awnumar/memcall v0.0.0-20191004114545-73db50fd9f80 // indirect
 	github.com/awnumar/memguard v0.22.2 // indirect
@@ -157,6 +156,7 @@ require (
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.8.1 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect
@@ -297,6 +297,7 @@ require (
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/go-logging v0.0.1 // indirect
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.0.2 // indirect
 	github.com/xdg-go/stringprep v1.0.2 // indirect

@@ -8,8 +8,8 @@ import (
 
 	auth2 "github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/venus-auth/auth"
-	"github.com/filecoin-project/venus-auth/cmd/jwtclient"
 	"github.com/filecoin-project/venus-auth/core"
+	"github.com/filecoin-project/venus-auth/jwtclient"
 	jwt3 "github.com/gbrlsnchs/jwt/v3"
 )
 

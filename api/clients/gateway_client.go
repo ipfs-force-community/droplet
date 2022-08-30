@@ -3,27 +3,19 @@ package clients
 import (
 	"context"
 
+	api "github.com/filecoin-project/venus/venus-shared/api/gateway/v1"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/minermgr"
-	"github.com/filecoin-project/venus-messager/gateway"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 )
 
 func newGatewayWalletClient(mctx metrics.MetricsCtx, mgr minermgr.IAddrMgr, nodeCfg *config.Signer) (ISinger, jsonrpc.ClientCloser, error) {
-	info := apiinfo.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
-	dialAddr, err := info.DialArgs("v0")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var client gateway.WalletClient
-	closer, err := jsonrpc.NewClient(mctx, dialAddr, "Gateway", &client, info.AuthHeader())
-
+	client, closer, err := api.DialIGatewayRPC(mctx, nodeCfg.Url, nodeCfg.Token, nil)
 	return &GatewayClient{
 		innerClient: client,
 		importMgr:   mgr,
@@ -31,7 +23,7 @@ func newGatewayWalletClient(mctx metrics.MetricsCtx, mgr minermgr.IAddrMgr, node
 }
 
 type GatewayClient struct {
-	innerClient gateway.WalletClient
+	innerClient api.IWalletClient
 	importMgr   minermgr.IAddrMgr
 }
 
