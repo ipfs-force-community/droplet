@@ -55,7 +55,8 @@ type IRetrievalDealRepo interface {
 	GetDeal(context.Context, peer.ID, retrievalmarket.DealID) (*types.ProviderDealState, error)
 	GetDealByTransferId(context.Context, datatransfer.ChannelID) (*types.ProviderDealState, error)
 	HasDeal(context.Context, peer.ID, retrievalmarket.DealID) (bool, error)
-	ListDeals(context.Context, int, int) ([]*types.ProviderDealState, error)
+	//ListDeals pageIndex index from 1
+	ListDeals(ctx context.Context, pageIndex int, pageSize int) ([]*types.ProviderDealState, error)
 	GroupRetrievalDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[retrievalmarket.DealStatus]int64, error)
 }
 

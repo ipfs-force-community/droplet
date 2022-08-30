@@ -535,7 +535,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleReject(ctx context.Conte
 	deal.State = event
 	deal.Message = err.Error()
 
-	err = storageDealPorcess.SendSignedResponse(context.TODO(), deal.Proposal.Provider, &network.Response{
+	err = storageDealPorcess.SendSignedResponse(ctx, deal.Proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealFailing,
 		Message:  deal.Message,
 		Proposal: deal.ProposalCid,
@@ -587,7 +587,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleError(ctx context.Contex
 		}
 	}
 
-	storageDealPorcess.releaseReservedFunds(context.TODO(), deal)
+	storageDealPorcess.releaseReservedFunds(ctx, deal)
 
 	return storageDealPorcess.deals.SaveDeal(ctx, deal)
 }

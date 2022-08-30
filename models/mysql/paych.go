@@ -214,7 +214,7 @@ func (cir *channelInfoRepo) RemoveChannel(ctx context.Context, channelID string)
 	if err != nil {
 		return err
 	}
-	return cir.DB.WithContext(ctx).WithContext(ctx).Model(&channelInfo{}).Where("channel_id = ?", channelID).
+	return cir.DB.WithContext(ctx).Model(&channelInfo{}).Where("channel_id = ?", channelID).
 		Updates(map[string]interface{}{"is_deleted": 1, "updated_at": time.Now().Unix()}).Error
 }
 

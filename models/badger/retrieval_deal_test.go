@@ -38,3 +38,29 @@ func Test_retrievalDealRepo_GroupRetrievalDealNumberByStatus(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, result, result2)
 }
+
+func Test_retrievalDealRepo_ListDeals(t *testing.T) {
+	ctx := context.Background()
+	repo := setup(t)
+	r := repo.RetrievalDealRepo()
+
+	deals := make([]*market.ProviderDealState, 10)
+	testutil.Provide(t, &deals)
+
+	for index := range deals {
+		deals[index].Params.Selector = nil
+	}
+
+	for _, deal := range deals {
+		err := r.SaveDeal(ctx, deal)
+		assert.Nil(t, err)
+	}
+
+	dealInDb, err := r.ListDeals(ctx, 1, 10)
+	assert.Nil(t, err)
+	assert.Len(t, dealInDb, 10)
+
+	result2, err := r.ListDeals(ctx, 1, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, dealInDb[:2], result2)
+}

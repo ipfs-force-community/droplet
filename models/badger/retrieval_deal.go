@@ -82,11 +82,17 @@ func (r retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize in
 	if err != nil {
 		return nil, err
 	}
-
+	from := (pageIndex - 1) * pageSize
+	to := from + pageSize
 	defer result.Close() //nolint:errcheck
 
 	retrievalDeals := make([]*types.ProviderDealState, 0)
+	index := 0
 	for res := range result.Next() {
+		if index < from || index >= to {
+			break
+		}
+		index++
 		if res.Error != nil {
 			return nil, err
 		}

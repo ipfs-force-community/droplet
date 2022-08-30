@@ -68,7 +68,7 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 
 func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.ProviderDealState, payment *retrievalmarket.DealPayment) (*retrievalmarket.DealResponse, error) {
 	// Save voucher
-	received, err := pr.payAPI.PaychVoucherAdd(context.TODO(), payment.PaymentChannel, payment.PaymentVoucher, nil, big.Zero())
+	received, err := pr.payAPI.PaychVoucherAdd(ctx, payment.PaymentChannel, payment.PaymentVoucher, nil, big.Zero())
 	if err != nil {
 		log.Errorf("unable to add paych voucher %v", err)
 		_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)

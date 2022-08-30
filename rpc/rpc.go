@@ -64,7 +64,7 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 		case <-ctx.Done():
 		}
 		log.Warn("RPC Shutting down...")
-		if err := srv.Shutdown(context.TODO()); err != nil && err != http.ErrServerClosed {
+		if err := srv.Shutdown(context.Background()); err != nil && err != http.ErrServerClosed {
 			log.Errorf("shutting down RPC server failed: %s", err)
 		}
 		log.Warn("RPC Graceful shutdown successful")

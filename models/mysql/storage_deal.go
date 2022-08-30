@@ -34,7 +34,7 @@ type storageDeal struct {
 	ProposalCid DBCid  `gorm:"column:proposal_cid;type:varchar(256);primary_key"`
 	AddFundsCid DBCid  `gorm:"column:add_funds_cid;type:varchar(256);"`
 	PublishCid  DBCid  `gorm:"column:publish_cid;type:varchar(256);"`
-	Miner       string `gorm:"column:miner_peer;type:varchar(128);index;index:miner_state"`
+	Miner       string `gorm:"column:miner_peer;type:varchar(128);index:miner_state"`
 	Client      string `gorm:"column:client_peer;type:varchar(128);"`
 	State       uint64 `gorm:"column:state;type:bigint unsigned;index;index:miner_state"`
 

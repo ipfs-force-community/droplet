@@ -143,7 +143,7 @@ func (p *RetrievalProvider) Start(ctx context.Context) error {
 
 // ListDeals lists all known retrieval deals
 func (p *RetrievalProvider) ListDeals(ctx context.Context) (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error) {
-	deals, err := p.retrievalDealRepo.ListDeals(ctx, 0, math.MaxInt32)
+	deals, err := p.retrievalDealRepo.ListDeals(ctx, 1, math.MaxInt32)
 	if err != nil {
 		return nil, err
 	}

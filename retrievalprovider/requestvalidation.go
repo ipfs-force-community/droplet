@@ -169,7 +169,7 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 		return retrievalmarket.DealStatusErrored, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), askTimeout)
+	ctx, cancel := context.WithTimeout(ctx, askTimeout)
 	defer cancel()
 
 	//todo how to select deal

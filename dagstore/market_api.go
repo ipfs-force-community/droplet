@@ -73,9 +73,9 @@ func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid)
 	if err != nil {
 		return nil, err
 	}
-	//assume reader always succes, wrapper reader for metrics was expensive
+	//assume reader always success, wrapper reader for metrics was expensive
 	stats.Record(m.metricsCtx, marketMetrics.DagStorePRBytesRequested.M(size))
-	_ = stats.RecordWithTags(ctx, []tag.Mutator{tag.Upsert(marketMetrics.StorageNameTag, storageName)}, marketMetrics.StorageRetrievalHitCount.M(1))
+	_ = stats.RecordWithTags(m.metricsCtx, []tag.Mutator{tag.Upsert(marketMetrics.StorageNameTag, storageName)}, marketMetrics.StorageRetrievalHitCount.M(1))
 	if m.useTransient {
 		//only need reader stream
 		r, err := pieceStorage.GetReaderCloser(ctx, pieceCid.String())
@@ -90,7 +90,7 @@ func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid)
 		stats.Record(m.metricsCtx, marketMetrics.DagStorePRInitCount.M(1))
 		return &mountWrapper{r, padR}, nil
 	}
-	//must support seek/readeat
+	//must support Seek/ReadAt
 	r, err := pieceStorage.GetMountReader(ctx, pieceCid.String())
 	if err != nil {
 		return nil, err
