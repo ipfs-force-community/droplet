@@ -17,7 +17,6 @@ type API struct {
 	// Binding address for the Lotus API
 	ListenAddress       string
 	RemoteListenAddress string
-	Secret              string
 	Timeout             Duration
 }
 
