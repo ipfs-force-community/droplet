@@ -1,16 +1,21 @@
 package network
 
 import (
+	"context"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/filecoin-project/venus-market/v2/config"
+	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
 	"github.com/filecoin-project/venus-market/v2/models/badger"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
+	"github.com/ipfs/go-graphsync"
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
 	"github.com/libp2p/go-libp2p-core/host"
+	"go.opencensus.io/stats"
 	"go.uber.org/fx"
 )
 
@@ -37,6 +42,7 @@ func NewGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfersForSto
 			graphsyncimpl.MaxLinksPerIncomingRequests(MaxTraversalLinks),
 			graphsyncimpl.MaxLinksPerOutgoingRequests(MaxTraversalLinks),
 		)
+		graphsyncStats(mctx, lc, gs)
 		return gs, nil
 	}
 }
@@ -56,6 +62,48 @@ func NewStagingGraphsync(simultaneousTransfersForRetrieval, simultaneousTransfer
 			graphsyncimpl.MaxLinksPerOutgoingRequests(MaxTraversalLinks),
 		)
 
+		graphsyncStats(mctx, lc, gs)
 		return gs
 	}
+}
+
+func graphsyncStats(mctx metrics.MetricsCtx, lc fx.Lifecycle, gs graphsync.GraphExchange) {
+	stopStats := make(chan struct{})
+	lc.Append(fx.Hook{
+		OnStart: func(context.Context) error {
+			go func() {
+				t := time.NewTicker(10 * time.Second)
+				defer t.Stop()
+
+				for {
+					select {
+					case <-t.C:
+
+						st := gs.Stats()
+						stats.Record(mctx, marketMetrics.GraphsyncReceivingPeersCount.M(int64(st.OutgoingRequests.TotalPeers)))
+						stats.Record(mctx, marketMetrics.GraphsyncReceivingActiveCount.M(int64(st.OutgoingRequests.Active)))
+						stats.Record(mctx, marketMetrics.GraphsyncReceivingCountCount.M(int64(st.OutgoingRequests.Pending)))
+						stats.Record(mctx, marketMetrics.GraphsyncReceivingTotalMemoryAllocated.M(int64(st.IncomingResponses.TotalAllocatedAllPeers)))
+						stats.Record(mctx, marketMetrics.GraphsyncReceivingTotalPendingAllocations.M(int64(st.IncomingResponses.TotalPendingAllocations)))
+						stats.Record(mctx, marketMetrics.GraphsyncReceivingPeersPending.M(int64(st.IncomingResponses.NumPeersWithPendingAllocations)))
+						stats.Record(mctx, marketMetrics.GraphsyncSendingPeersCount.M(int64(st.IncomingRequests.TotalPeers)))
+						stats.Record(mctx, marketMetrics.GraphsyncSendingActiveCount.M(int64(st.IncomingRequests.Active)))
+						stats.Record(mctx, marketMetrics.GraphsyncSendingCountCount.M(int64(st.IncomingRequests.Pending)))
+						stats.Record(mctx, marketMetrics.GraphsyncSendingTotalMemoryAllocated.M(int64(st.OutgoingResponses.TotalAllocatedAllPeers)))
+						stats.Record(mctx, marketMetrics.GraphsyncSendingTotalPendingAllocations.M(int64(st.OutgoingResponses.TotalPendingAllocations)))
+						stats.Record(mctx, marketMetrics.GraphsyncSendingPeersPending.M(int64(st.OutgoingResponses.NumPeersWithPendingAllocations)))
+
+					case <-stopStats:
+						return
+					}
+				}
+			}()
+
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			close(stopStats)
+			return nil
+		},
+	})
 }

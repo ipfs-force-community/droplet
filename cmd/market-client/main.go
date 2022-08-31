@@ -35,9 +35,9 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 
+	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
 )
 
 var ExtractApiKey = builder.NextInvoke()

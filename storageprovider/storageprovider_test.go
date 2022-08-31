@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/models"
 	network2 "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
-	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
@@ -110,7 +109,7 @@ func TestStorageProviderImpl_ImportOfflineDeal(t *testing.T) {
 	}
 }
 
-func setup(t *testing.T) storageprovider.StorageProvider {
+func setup(t *testing.T) StorageProvider {
 	ctx := context.Background()
 	spn := newMockProviderNode()
 
@@ -125,7 +124,7 @@ func setup(t *testing.T) storageprovider.StorageProvider {
 	}
 
 	r := models.NewInMemoryRepo()
-	ask, _ := storageprovider.NewStorageAsk(ctx, r, spn)
+	ask, _ := NewStorageAsk(ctx, r, spn)
 	h, err := network2.MockHost(ctx)
 	if err != nil {
 		t.Error(err)
@@ -142,7 +141,7 @@ func setup(t *testing.T) storageprovider.StorageProvider {
 	addrMgr := mockAddrMgr{}
 
 	//todo how to mock dagstore
-	provider, err := storageprovider.NewStorageProvider(ask, h, config.DefaultMarketConfig, &homeDir, psManager, dt, spn, nil, r, addrMgr, nil)
+	provider, err := NewStorageProvider(ctx, ask, h, config.DefaultMarketConfig, &homeDir, psManager, dt, spn, nil, r, addrMgr, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -207,6 +206,20 @@ func (m *mockProviderNode) StateMarketStorageDeal(ctx context.Context, dealID ab
 	return nil, fmt.Errorf("unable to find deal %d", dealID)
 }
 
+func (m *mockProviderNode) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
+	head, err := m.ChainHead(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return head.Key().Bytes(), head.Height(), nil
+}
+
+func (m *mockProviderNode) VerifySignature(ctx context.Context, signature crypto.Signature, signer address.Address, plaintext []byte, tok shared.TipSetToken) (bool, error) {
+	err := vCrypto.Verify(&signature, signer, plaintext)
+	return err == nil, err
+}
+
 func (m *mockProviderNode) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	return m.head, nil
 }
@@ -219,15 +232,6 @@ func (m *mockProviderNode) Sign(ctx context.Context, data interface{}) (*crypto.
 func (m *mockProviderNode) SignWithGivenMiner(mAddr address.Address) network.ResigningFunc {
 	//TODO implement me
 	panic("implement me")
-}
-
-func (m *mockProviderNode) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
-	head, err := m.ChainHead(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return head.Key().Bytes(), head.Height(), nil
 }
 
 func (m *mockProviderNode) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
@@ -248,11 +252,6 @@ func (m *mockProviderNode) ReleaseFunds(ctx context.Context, addr address.Addres
 func (m *mockProviderNode) GetBalance(ctx context.Context, addr address.Address, tok shared.TipSetToken) (storagemarket.Balance, error) {
 	//TODO implement me
 	panic("implement me")
-}
-
-func (m *mockProviderNode) VerifySignature(ctx context.Context, signature crypto.Signature, signer address.Address, plaintext []byte, tok shared.TipSetToken) (bool, error) {
-	err := vCrypto.Verify(&signature, signer, plaintext)
-	return err == nil, err
 }
 
 func (m *mockProviderNode) WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, cid.Cid, error) error) error {

@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/minermgr"
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 	"go.uber.org/fx"
 )
 
@@ -31,7 +31,7 @@ func NewISignerClient(isServer bool) func(metrics.MetricsCtx, fx.Lifecycle, Sign
 	return func(mctx metrics.MetricsCtx, lc fx.Lifecycle, params SignerParams) (ISinger, error) {
 		var (
 			cfg    = params.SignerCfg
-			ctx    = context.TODO()
+			ctx    = metrics.LifecycleCtx(mctx, lc)
 			signer ISinger
 			closer jsonrpc.ClientCloser
 			err    error

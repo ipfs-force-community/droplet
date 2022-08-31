@@ -53,12 +53,12 @@ func TestMarket(t *testing.T) {
 	_, err = memPieceStorage.SaveTo(ctx, testResourceId.String(), payloadWriter)
 	assert.Nil(t, err)
 
-	marketAPI := NewMarketAPI(r, pmgr, false)
+	marketAPI := NewMarketAPI(ctx, r, pmgr, false)
 
 	size, err := marketAPI.GetUnpaddedCARSize(ctx, testResourceId)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(flen), size)
 
-	_, err = marketAPI.FetchUnsealedPiece(ctx, testResourceId)
+	_, err = marketAPI.FetchFromPieceStorage(ctx, testResourceId)
 	assert.Nil(t, err)
 }

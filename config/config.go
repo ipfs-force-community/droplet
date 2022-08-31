@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ipfs-force-community/metrics"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
@@ -15,7 +17,6 @@ type API struct {
 	// Binding address for the Lotus API
 	ListenAddress       string
 	RemoteListenAddress string
-	Secret              string
 	Timeout             Duration
 }
 
@@ -277,6 +278,8 @@ type MarketConfig struct {
 
 	MaxPublishDealsFee     types.FIL
 	MaxMarketBalanceAddFee types.FIL
+
+	Metrics metrics.MetricsConfig
 }
 
 func (m *MarketConfig) RemovePieceStorage(name string) error {

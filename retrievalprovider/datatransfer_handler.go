@@ -36,7 +36,7 @@ func (d *DataTransferHandler) HandleCompleteFor(ctx context.Context, identifier 
 	if err != nil {
 		return err
 	}
-	return d.retrievalDealHandler.CleanupDeal(context.TODO(), deal)
+	return d.retrievalDealHandler.CleanupDeal(ctx, deal)
 }
 
 func (d *DataTransferHandler) HandleAcceptFor(ctx context.Context, identifier rm.ProviderDealIdentifier, channelId datatransfer.ChannelID) error {

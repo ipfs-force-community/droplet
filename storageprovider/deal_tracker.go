@@ -17,7 +17,7 @@ import (
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 )
 
 type DealTracker struct {

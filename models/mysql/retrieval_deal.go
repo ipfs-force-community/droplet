@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -16,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const RetrievalDealTableName = "retrieval_deals"
+const retrievalDealTableName = "retrieval_deals"
 
 type retrievalDeal struct {
 	DealProposal          `gorm:"embedded;embeddedPrefix:cdp_"`
@@ -46,7 +47,7 @@ type DealProposal struct {
 }
 
 func (m *retrievalDeal) TableName() string {
-	return RetrievalDealTableName
+	return retrievalDealTableName
 }
 
 func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
@@ -152,7 +153,7 @@ func (rdr *retrievalDealRepo) SaveDeal(ctx context.Context, deal *types.Provider
 
 func (rdr *retrievalDealRepo) GetDeal(ctx context.Context, id peer.ID, id2 rm.DealID) (*types.ProviderDealState, error) {
 	deal := &retrievalDeal{}
-	err := rdr.WithContext(ctx).WithContext(ctx).Table(RetrievalDealTableName).Take(deal, "cdp_proposal_id=? AND receiver=? ", id2, id.String()).Error
+	err := rdr.WithContext(ctx).Table(retrievalDealTableName).Take(deal, "cdp_proposal_id=? AND receiver=? ", id2, id.String()).Error
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +162,7 @@ func (rdr *retrievalDealRepo) GetDeal(ctx context.Context, id peer.ID, id2 rm.De
 
 func (rdr *retrievalDealRepo) GetDealByTransferId(ctx context.Context, chid datatransfer.ChannelID) (*types.ProviderDealState, error) {
 	deal := &retrievalDeal{}
-	err := rdr.WithContext(ctx).WithContext(ctx).Table(RetrievalDealTableName).Take(deal, "ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ?", chid.Initiator.String(), chid.Responder.String(), chid.ID).Error
+	err := rdr.WithContext(ctx).Table(retrievalDealTableName).Take(deal, "ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ?", chid.Initiator.String(), chid.Responder.String(), chid.ID).Error
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +171,7 @@ func (rdr *retrievalDealRepo) GetDealByTransferId(ctx context.Context, chid data
 
 func (rdr *retrievalDealRepo) HasDeal(ctx context.Context, id peer.ID, id2 rm.DealID) (bool, error) {
 	var count int64
-	err := rdr.WithContext(ctx).WithContext(ctx).Table(RetrievalDealTableName).Where("cdp_proposal_id=? AND receiver=? ", id2, id.String()).Count(&count).Error
+	err := rdr.WithContext(ctx).Table(retrievalDealTableName).Where("cdp_proposal_id=? AND receiver=? ", id2, id.String()).Count(&count).Error
 	if err != nil {
 		return false, err
 	}
@@ -178,7 +179,7 @@ func (rdr *retrievalDealRepo) HasDeal(ctx context.Context, id peer.ID, id2 rm.De
 }
 
 func (rdr *retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize int) ([]*types.ProviderDealState, error) {
-	query := rdr.DB.Table(RetrievalDealTableName).Offset((pageIndex - 1) * pageSize).Limit(pageSize)
+	query := rdr.DB.Table(retrievalDealTableName).Offset((pageIndex - 1) * pageSize).Limit(pageSize)
 
 	var sqlMsgs []*retrievalDeal
 	err := query.Find(&sqlMsgs).Error
@@ -194,6 +195,25 @@ func (rdr *retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize
 		}
 	}
 	return result, err
+}
+
+// GroupRetrievalDealNumberByStatus Count the number of retrieval deal by status
+// todo address undefined is invalid, it is currently not possible to directly associate an order with a miner
+func (rdr *retrievalDealRepo) GroupRetrievalDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[rm.DealStatus]int64, error) {
+	query := rdr.WithContext(ctx).Table(retrievalDealTableName).Group("state").Select("state, count(1) as count")
+	var items []struct {
+		State rm.DealStatus
+		Count int64
+	}
+	if err := query.Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	result := map[rm.DealStatus]int64{}
+	for _, item := range items {
+		result[(item.State)] = item.Count
+	}
+	return result, nil
 }
 
 func NewRetrievalDealRepo(db *gorm.DB) repo.IRetrievalDealRepo {

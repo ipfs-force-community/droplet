@@ -25,7 +25,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/fundmgr"
 	"github.com/filecoin-project/venus-market/v2/utils"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"

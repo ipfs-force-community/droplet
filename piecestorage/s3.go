@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/venus/venus-shared/types/market"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -73,8 +76,7 @@ type s3PieceStorage struct {
 	subdirWrapper subdirWrapper
 }
 
-func newS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
-
+func NewS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
 	endpoint, region, err := parseS3Endpoint(s3Cfg.EndPoint, s3Cfg.Bucket)
 
 	if err != nil {
@@ -202,8 +204,11 @@ func (s s3PieceStorage) GetRedirectUrl(ctx context.Context, resourceId string) (
 	return req.Presign(time.Hour * 24)
 }
 
-func (s *s3PieceStorage) CanAllocate(size int64) bool {
-	return true
+func (s *s3PieceStorage) GetStorageStatus() (market.StorageStatus, error) {
+	return market.StorageStatus{
+		Capacity:  0,
+		Available: math.MaxInt64, //The available space for the object storage type is treated as unlimited
+	}, nil
 }
 
 func (s *s3PieceStorage) Has(ctx context.Context, piececid string) (bool, error) {

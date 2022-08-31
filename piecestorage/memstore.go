@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"sync"
 
+	"github.com/filecoin-project/venus/venus-shared/types/market"
+
 	"github.com/filecoin-project/dagstore/mount"
 )
 
@@ -17,11 +19,11 @@ type MemPieceStore struct {
 	Name              string
 	data              map[string][]byte
 	dataLk            *sync.RWMutex
-	status            *StorageStatus //status for testing
+	status            *market.StorageStatus //status for testing
 	RedirectResources map[string]bool
 }
 
-func NewMemPieceStore(name string, status *StorageStatus) *MemPieceStore {
+func NewMemPieceStore(name string, status *market.StorageStatus) *MemPieceStore {
 	return &MemPieceStore{
 		data:              make(map[string][]byte),
 		dataLk:            &sync.RWMutex{},
@@ -90,11 +92,11 @@ func (m *MemPieceStore) Has(ctx context.Context, resourceId string) (bool, error
 	return ok, nil
 }
 
-func (m *MemPieceStore) CanAllocate(size int64) bool {
+func (m *MemPieceStore) GetStorageStatus() (market.StorageStatus, error) {
 	if m.status != nil {
-		return m.status.Available > size
+		return *m.status, nil
 	}
-	return true
+	return market.StorageStatus{}, nil
 }
 
 func (m *MemPieceStore) GetRedirectUrl(_ context.Context, resourceId string) (string, error) {

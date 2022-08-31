@@ -34,9 +34,9 @@ type storageDeal struct {
 	ProposalCid DBCid  `gorm:"column:proposal_cid;type:varchar(256);primary_key"`
 	AddFundsCid DBCid  `gorm:"column:add_funds_cid;type:varchar(256);"`
 	PublishCid  DBCid  `gorm:"column:publish_cid;type:varchar(256);"`
-	Miner       string `gorm:"column:miner_peer;type:varchar(128);"`
+	Miner       string `gorm:"column:miner_peer;type:varchar(128);index:miner_state"`
 	Client      string `gorm:"column:client_peer;type:varchar(128);"`
-	State       uint64 `gorm:"column:state;type:bigint unsigned;index"`
+	State       uint64 `gorm:"column:state;type:bigint unsigned;index;index:miner_state"`
 
 	PayloadSize           uint64     `gorm:"column:payload_size;type:bigint;"`
 	PiecePath             string     `gorm:"column:piece_path;type:varchar(256);"`
@@ -529,6 +529,27 @@ func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) 
 	}
 
 	return deal.PayloadSize, abi.PaddedPieceSize(deal.PieceSize), nil
+}
+
+func (sdr *storageDealRepo) GroupStorageDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[storagemarket.StorageDealStatus]int64, error) {
+	query := sdr.WithContext(ctx).Table(storageDealTableName).Group("state").Select("state, count(1) as count")
+	if mAddr != address.Undef {
+		query.Where("cdp_provider = ?", DBAddress(mAddr).String())
+	}
+
+	var items []struct {
+		State int
+		Count int64
+	}
+	if err := query.Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	result := map[storagemarket.StorageDealStatus]int64{}
+	for _, item := range items {
+		result[storagemarket.StorageDealStatus(item.State)] = item.Count
+	}
+	return result, nil
 }
 
 func fromDbDeals(dbDeals []*storageDeal) ([]*types.MinerDeal, error) {

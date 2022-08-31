@@ -68,7 +68,7 @@ func testS3PieceStorage(t *testing.T, s3Cfg *config.S3PieceStorage) {
 	endpoint, region, err := parseS3Endpoint(s3Cfg.EndPoint, s3Cfg.Bucket)
 	assert.NoError(t, err)
 
-	ps, err := newS3PieceStorage(s3Cfg)
+	ps, err := NewS3PieceStorage(s3Cfg)
 	assert.NoError(t, err)
 
 	// gen rand key string

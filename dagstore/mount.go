@@ -62,7 +62,7 @@ func (l *PieceMount) Deserialize(u *url.URL) error {
 }
 
 func (l *PieceMount) Fetch(ctx context.Context) (mount.Reader, error) {
-	r, err := l.API.FetchUnsealedPiece(ctx, l.PieceCid)
+	r, err := l.API.FetchFromPieceStorage(ctx, l.PieceCid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch unsealed piece %s: %w", l.PieceCid, err)
 	}

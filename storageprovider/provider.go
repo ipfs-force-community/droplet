@@ -35,7 +35,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/fundmgr"
 	"github.com/filecoin-project/venus-market/v2/utils"
 	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 )
 
 var defaultMaxProviderCollateralMultiplier = uint64(2)
@@ -161,7 +161,6 @@ func (n *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*cryp
 	return localSignature, nil
 }
 
-//
 func (n *ProviderNodeAdapter) SignWithGivenMiner(mAddr address.Address) network.ResigningFunc {
 	return func(ctx context.Context, data interface{}) (*crypto.Signature, error) {
 		tok, _, err := n.GetChainHead(ctx)

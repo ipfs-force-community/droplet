@@ -309,3 +309,14 @@ func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) 
 	}
 	return deal.PayloadSize, deal.ClientDealProposal.Proposal.PieceSize, nil
 }
+
+func (sdr *storageDealRepo) GroupStorageDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[storagemarket.StorageDealStatus]int64, error) {
+	result := map[storagemarket.StorageDealStatus]int64{}
+	return result, travelDeals(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+		if mAddr != address.Undef && mAddr != inDeal.Proposal.Provider {
+			return false, nil
+		}
+		result[inDeal.State]++
+		return false, nil
+	})
+}

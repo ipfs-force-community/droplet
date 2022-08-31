@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/filecoin-project/venus/venus-shared/types/market"
+
 	"github.com/filecoin-project/dagstore/mount"
 )
 
@@ -20,11 +22,6 @@ const (
 	S3        Protocol = "s3"
 	PreSignS3 Protocol = "presigns3"
 )
-
-type StorageStatus struct {
-	Capacity  int64
-	Available int64 // Available to use for sector storage
-}
 
 type IPieceStorage interface {
 	Type() Protocol
@@ -42,5 +39,5 @@ type IPieceStorage interface {
 	GetRedirectUrl(context.Context, string) (string, error)
 	Has(context.Context, string) (bool, error)
 	Validate(string) error
-	CanAllocate(int64) bool
+	GetStorageStatus() (market.StorageStatus, error)
 }

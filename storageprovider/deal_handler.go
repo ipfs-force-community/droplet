@@ -6,6 +6,12 @@ import (
 	"io"
 	"os"
 
+	"github.com/ipfs-force-community/metrics"
+
+	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
+
 	"github.com/ipfs/go-cid"
 	carv2 "github.com/ipld/go-car/v2"
 
@@ -48,6 +54,7 @@ type StorageDealHandler interface {
 var _ StorageDealHandler = (*StorageDealProcessImpl)(nil)
 
 type StorageDealProcessImpl struct {
+	metricsCtx metrics.MetricsCtx
 	conns      *connmanager.ConnManager
 	peerTagger network.PeerTagger
 	spn        StorageProviderNode
@@ -63,6 +70,7 @@ type StorageDealProcessImpl struct {
 
 // NewStorageDealProcessImpl returns a new deal process instance
 func NewStorageDealProcessImpl(
+	metricsCtx metrics.MetricsCtx,
 	conns *connmanager.ConnManager,
 	peerTagger network.PeerTagger,
 	spn StorageProviderNode,
@@ -88,6 +96,7 @@ func NewStorageDealProcessImpl(
 	}
 
 	return &StorageDealProcessImpl{
+		metricsCtx: metricsCtx,
 		conns:      conns,
 		peerTagger: peerTagger,
 		spn:        spn,
@@ -485,6 +494,7 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 		if err != nil {
 			return err
 		}
+		_ = stats.RecordWithTags(storageDealPorcess.metricsCtx, []tag.Mutator{tag.Upsert(marketMetrics.StorageNameTag, ps.GetName())}, marketMetrics.StorageSaveHitCount.M(1))
 		log.Infof("success to write file %s to piece storage", pieceCid)
 	}
 	return nil
@@ -525,7 +535,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleReject(ctx context.Conte
 	deal.State = event
 	deal.Message = err.Error()
 
-	err = storageDealPorcess.SendSignedResponse(context.TODO(), deal.Proposal.Provider, &network.Response{
+	err = storageDealPorcess.SendSignedResponse(ctx, deal.Proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealFailing,
 		Message:  deal.Message,
 		Proposal: deal.ProposalCid,
@@ -577,7 +587,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleError(ctx context.Contex
 		}
 	}
 
-	storageDealPorcess.releaseReservedFunds(context.TODO(), deal)
+	storageDealPorcess.releaseReservedFunds(ctx, deal)
 
 	return storageDealPorcess.deals.SaveDeal(ctx, deal)
 }

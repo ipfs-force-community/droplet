@@ -14,7 +14,7 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 )

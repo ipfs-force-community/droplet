@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -81,11 +82,22 @@ func (r retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize in
 	if err != nil {
 		return nil, err
 	}
-
+	from := (pageIndex - 1) * pageSize
+	to := from + pageSize
 	defer result.Close() //nolint:errcheck
 
-	retrievalDeals := make([]*types.ProviderDealState, 0)
+	var retrievalDeals []*types.ProviderDealState
+	index := 0
 	for res := range result.Next() {
+		if index < from {
+			index++
+			continue
+		}
+
+		if index >= to {
+			break
+		}
+		index++
 		if res.Error != nil {
 			return nil, err
 		}
@@ -97,4 +109,12 @@ func (r retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize in
 	}
 
 	return retrievalDeals, nil
+}
+
+func (r retrievalDealRepo) GroupRetrievalDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[retrievalmarket.DealStatus]int64, error) {
+	result := map[retrievalmarket.DealStatus]int64{}
+	return result, travelDeals(ctx, r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
+		result[deal.Status]++
+		return false, nil
+	})
 }

@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,8 +10,6 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/multiformats/go-multiaddr"
 
-	auth2 "github.com/filecoin-project/venus-auth/auth"
-	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-auth/jwtclient"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/gorilla/mux"
@@ -34,19 +31,11 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 	mux.Handle("/rpc/v0", rpcServer)
 	mux.PathPrefix("/").Handler(http.DefaultServeMux)
 
-	secKey, err := makeSecret(cfg)
+	localJwtClient, token, err := jwtclient.NewLocalAuthClient()
 	if err != nil {
 		return err
 	}
-	localJwtClient := NewJwtClient(secKey)
-	token, err := localJwtClient.NewAuth(auth2.JWTPayload{
-		Perm: core.PermAdmin,
-		Name: "MarketLocalToken",
-	})
-	if err != nil {
-		return err
-	}
-	if err = saveAPIInfo(home, cfg, secKey, token); err != nil {
+	if err = saveAPIInfo(home, cfg, token); err != nil {
 		return err
 	}
 
@@ -64,7 +53,7 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 		case <-ctx.Done():
 		}
 		log.Warn("RPC Shutting down...")
-		if err := srv.Shutdown(context.TODO()); err != nil && err != http.ErrServerClosed {
+		if err := srv.Shutdown(context.Background()); err != nil && err != http.ErrServerClosed {
 			log.Errorf("shutting down RPC server failed: %s", err)
 		}
 		log.Warn("RPC Graceful shutdown successful")
@@ -87,32 +76,12 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 	return nil
 }
 
-func makeSecret(apiCfg *config.API) ([]byte, error) {
-	if len(apiCfg.Secret) != 0 {
-		secret, err := hex.DecodeString(apiCfg.Secret)
-		if err != nil {
-			return nil, fmt.Errorf("unable to decode api security key")
-		}
-		return secret, nil
-	}
-
-	return RandSecret()
-}
-
-func saveAPIInfo(home config.IHome, apiCfg *config.API, secKey, token []byte) error {
-	if len(apiCfg.Secret) == 0 {
-		apiCfg.Secret = hex.EncodeToString(secKey)
-		err := config.SaveConfig(home)
-		if err != nil {
-			return fmt.Errorf("save config failed:%s", err.Error())
-		}
-	}
+func saveAPIInfo(home config.IHome, apiCfg *config.API, token []byte) error {
 	homePath, err := home.HomePath()
 	if err != nil {
 		return fmt.Errorf("unable to home path to save api/token")
 	}
 	_ = ioutil.WriteFile(path.Join(string(homePath), "api"), []byte(apiCfg.ListenAddress), 0644)
 	_ = ioutil.WriteFile(path.Join(string(homePath), "token"), token, 0644)
-
 	return nil
 }

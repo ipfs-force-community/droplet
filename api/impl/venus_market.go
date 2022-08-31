@@ -91,15 +91,15 @@ type MarketNodeImpl struct {
 	SetExpectedSealDurationFunc config.SetExpectedSealDurationFunc
 }
 
-func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
+func (m *MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
 	return m.MinerMgr.ActorList(ctx)
 }
 
-func (m MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {
+func (m *MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {
 	return m.MinerMgr.Has(ctx, addr), nil
 }
 
-func (m MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
+func (m *MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
 	if bHas := m.MinerMgr.Has(ctx, addr); bHas {
 		minerInfo, err := m.FullNode.StateMinerInfo(ctx, addr, vTypes.EmptyTSK)
 		if err != nil {
@@ -112,7 +112,7 @@ func (m MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Addres
 	return 0, errors.New("not found")
 }
 
-func (m MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
+func (m *MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
 	fi, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
@@ -122,15 +122,15 @@ func (m MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.Ci
 	return m.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
 }
 
-func (m MarketNodeImpl) MarketImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error {
+func (m *MarketNodeImpl) MarketImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error {
 	return m.StorageProvider.ImportPublishedDeal(ctx, deal)
 }
 
-func (m MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Address) ([]*vTypes.MarketDeal, error) {
+func (m *MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Address) ([]*vTypes.MarketDeal, error) {
 	return m.listDeals(ctx, addrs)
 }
 
-func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]types.ProviderDealState, error) {
+func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]types.ProviderDealState, error) {
 	var out []types.ProviderDealState
 	deals, err := m.RetrievalProvider.ListDeals(ctx)
 	if err != nil {
@@ -149,7 +149,7 @@ func (m MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr addr
 	return out, nil
 }
 
-func (m MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan types.MinerDeal, error) {
+func (m *MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan types.MinerDeal, error) {
 	results := make(chan types.MinerDeal)
 	unsub := m.StorageProvider.SubscribeToEvents(func(evt storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
 		mDeal, err := m.Repo.StorageDealRepo().GetDeal(ctx, deal.ProposalCid)
@@ -170,7 +170,7 @@ func (m MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan types.
 	return results, nil
 }
 
-func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]types.MinerDeal, error) {
+func (m *MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]types.MinerDeal, error) {
 	var deals []*types.MinerDeal
 	var err error
 	if mAddr == address.Undef {
@@ -193,11 +193,11 @@ func (m MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr add
 	return resDeals, nil
 }
 
-func (m MarketNodeImpl) UpdateStorageDealStatus(ctx context.Context, dealProposal cid.Cid, state storagemarket.StorageDealStatus, pieceState types.PieceStatus) error {
+func (m *MarketNodeImpl) UpdateStorageDealStatus(ctx context.Context, dealProposal cid.Cid, state storagemarket.StorageDealStatus, pieceState types.PieceStatus) error {
 	return m.Repo.StorageDealRepo().UpdateDealStatus(ctx, dealProposal, state, pieceState)
 }
 
-func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
+func (m *MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
 	options := []storagemarket.StorageAskOption{
 		storagemarket.MinPieceSize(minPieceSize),
 		storagemarket.MaxPieceSize(maxPieceSize),
@@ -206,15 +206,15 @@ func (m MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address,
 	return m.StorageAsk.SetAsk(ctx, mAddr, price, verifiedPrice, duration, options...)
 }
 
-func (m MarketNodeImpl) MarketListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error) {
+func (m *MarketNodeImpl) MarketListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error) {
 	return m.StorageAsk.ListAsk(ctx)
 }
 
-func (m MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*storagemarket.SignedStorageAsk, error) {
+func (m *MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*storagemarket.SignedStorageAsk, error) {
 	return m.StorageAsk.GetAsk(ctx, mAddr)
 }
 
-func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, ask *retrievalmarket.Ask) error {
+func (m *MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, ask *retrievalmarket.Ask) error {
 	return m.Repo.RetrievalAskRepo().SetAsk(ctx, &types.RetrievalAsk{
 		Miner:                   mAddr,
 		PricePerByte:            ask.PricePerByte,
@@ -224,11 +224,11 @@ func (m MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address
 	})
 }
 
-func (m MarketNodeImpl) MarketListRetrievalAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {
+func (m *MarketNodeImpl) MarketListRetrievalAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {
 	return m.Repo.RetrievalAskRepo().ListAsk(ctx)
 }
 
-func (m MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error) {
+func (m *MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error) {
 	ask, err := m.Repo.RetrievalAskRepo().GetAsk(ctx, mAddr)
 	if err != nil {
 		return nil, err
@@ -241,7 +241,7 @@ func (m MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context, mAddr address
 	}, nil
 }
 
-func (m MarketNodeImpl) MarketListDataTransfers(ctx context.Context) ([]types.DataTransferChannel, error) {
+func (m *MarketNodeImpl) MarketListDataTransfers(ctx context.Context) ([]types.DataTransferChannel, error) {
 	inProgressChannels, err := m.DataTransfer.InProgressChannels(ctx)
 	if err != nil {
 		return nil, err
@@ -255,7 +255,7 @@ func (m MarketNodeImpl) MarketListDataTransfers(ctx context.Context) ([]types.Da
 	return apiChannels, nil
 }
 
-func (m MarketNodeImpl) MarketDataTransferUpdates(ctx context.Context) (<-chan types.DataTransferChannel, error) {
+func (m *MarketNodeImpl) MarketDataTransferUpdates(ctx context.Context) (<-chan types.DataTransferChannel, error) {
 	channels := make(chan types.DataTransferChannel)
 
 	unsub := m.DataTransfer.SubscribeToEvents(func(evt datatransfer.Event, channelState datatransfer.ChannelState) {
@@ -274,7 +274,7 @@ func (m MarketNodeImpl) MarketDataTransferUpdates(ctx context.Context) (<-chan t
 	return channels, nil
 }
 
-func (m MarketNodeImpl) MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
+func (m *MarketNodeImpl) MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
 	selfPeer := m.Host.ID()
 	if isInitiator {
 		return m.DataTransfer.RestartDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: selfPeer, Responder: otherPeer, ID: transferID})
@@ -282,7 +282,7 @@ func (m MarketNodeImpl) MarketRestartDataTransfer(ctx context.Context, transferI
 	return m.DataTransfer.RestartDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: otherPeer, Responder: selfPeer, ID: transferID})
 }
 
-func (m MarketNodeImpl) MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
+func (m *MarketNodeImpl) MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error {
 	selfPeer := m.Host.ID()
 	if isInitiator {
 		return m.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: selfPeer, Responder: otherPeer, ID: transferID})
@@ -290,24 +290,24 @@ func (m MarketNodeImpl) MarketCancelDataTransfer(ctx context.Context, transferID
 	return m.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: otherPeer, Responder: selfPeer, ID: transferID})
 }
 
-func (m MarketNodeImpl) MarketPendingDeals(ctx context.Context) ([]types.PendingDealInfo, error) {
+func (m *MarketNodeImpl) MarketPendingDeals(ctx context.Context) ([]types.PendingDealInfo, error) {
 	return m.DealPublisher.PendingDeals(), nil
 }
 
-func (m MarketNodeImpl) MarketPublishPendingDeals(ctx context.Context) error {
+func (m *MarketNodeImpl) MarketPublishPendingDeals(ctx context.Context) error {
 	m.DealPublisher.ForcePublishPendingDeals()
 	return nil
 }
 
-func (m MarketNodeImpl) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
+func (m *MarketNodeImpl) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {
 	return m.Repo.StorageDealRepo().ListPieceInfoKeys(ctx)
 }
 
-func (m MarketNodeImpl) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
+func (m *MarketNodeImpl) PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error) {
 	return m.Repo.CidInfoRepo().ListCidInfoKeys(ctx)
 }
 
-func (m MarketNodeImpl) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
+func (m *MarketNodeImpl) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid) (*piecestore.PieceInfo, error) {
 	pi, err := m.Repo.StorageDealRepo().GetPieceInfo(ctx, pieceCid)
 	if err != nil {
 		return nil, err
@@ -315,7 +315,7 @@ func (m MarketNodeImpl) PiecesGetPieceInfo(ctx context.Context, pieceCid cid.Cid
 	return pi, nil
 }
 
-func (m MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
+func (m *MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid) (*piecestore.CIDInfo, error) {
 	ci, err := m.Repo.CidInfoRepo().GetCIDInfo(ctx, payloadCid)
 	if err != nil {
 		return nil, err
@@ -324,76 +324,76 @@ func (m MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Cid
 	return &ci, nil
 }
 
-func (m MarketNodeImpl) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
+func (m *MarketNodeImpl) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
 	return m.ConsiderOnlineStorageDealsConfigFunc()
 }
 
-func (m MarketNodeImpl) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
+func (m *MarketNodeImpl) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
 	return m.SetConsiderOnlineStorageDealsConfigFunc(b)
 }
 
-func (m MarketNodeImpl) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
+func (m *MarketNodeImpl) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
 	return m.ConsiderOnlineRetrievalDealsConfigFunc()
 }
 
-func (m MarketNodeImpl) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
+func (m *MarketNodeImpl) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
 	return m.SetConsiderOnlineRetrievalDealsConfigFunc(b)
 }
 
-func (m MarketNodeImpl) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
+func (m *MarketNodeImpl) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
 	return m.StorageDealPieceCidBlocklistConfigFunc()
 }
 
-func (m MarketNodeImpl) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
+func (m *MarketNodeImpl) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
 	return m.SetStorageDealPieceCidBlocklistConfigFunc(cids)
 }
 
-func (m MarketNodeImpl) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {
+func (m *MarketNodeImpl) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {
 	return m.ConsiderOfflineStorageDealsConfigFunc()
 }
 
-func (m MarketNodeImpl) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {
+func (m *MarketNodeImpl) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {
 	return m.SetConsiderOfflineStorageDealsConfigFunc(b)
 }
 
-func (m MarketNodeImpl) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {
+func (m *MarketNodeImpl) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {
 	return m.ConsiderOfflineRetrievalDealsConfigFunc()
 }
 
-func (m MarketNodeImpl) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
+func (m *MarketNodeImpl) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
 	return m.SetConsiderOfflineRetrievalDealsConfigFunc(b)
 }
 
-func (m MarketNodeImpl) DealsConsiderVerifiedStorageDeals(ctx context.Context) (bool, error) {
+func (m *MarketNodeImpl) DealsConsiderVerifiedStorageDeals(ctx context.Context) (bool, error) {
 	return m.ConsiderVerifiedStorageDealsConfigFunc()
 }
 
-func (m MarketNodeImpl) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, b bool) error {
+func (m *MarketNodeImpl) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, b bool) error {
 	return m.SetConsiderVerifiedStorageDealsConfigFunc(b)
 }
 
-func (m MarketNodeImpl) DealsConsiderUnverifiedStorageDeals(ctx context.Context) (bool, error) {
+func (m *MarketNodeImpl) DealsConsiderUnverifiedStorageDeals(ctx context.Context) (bool, error) {
 	return m.ConsiderUnverifiedStorageDealsConfigFunc()
 }
 
-func (m MarketNodeImpl) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, b bool) error {
+func (m *MarketNodeImpl) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, b bool) error {
 	return m.SetConsiderUnverifiedStorageDealsConfigFunc(b)
 }
 
-func (m MarketNodeImpl) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
+func (m *MarketNodeImpl) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
 	return m.GetExpectedSealDurationFunc()
 }
 
-func (m MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, duration time.Duration) error {
+func (m *MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, duration time.Duration) error {
 	return m.SetExpectedSealDurationFunc(duration)
 }
 
-func (m MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error) {
+func (m *MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error) {
 	//WaitMsg method has been replace in messager mode
 	return m.Messager.WaitMsg(ctx, mid, constants.MessageConfidence, constants.LookbackNoLimit, false)
 }
 
-func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *vTypes.MessageSendSpec) (cid.Cid, error) {
+func (m *MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *vTypes.MessageSendSpec) (cid.Cid, error) {
 	var spec *vTypes.MessageSendSpec
 	if meta != nil {
 		spec = &vTypes.MessageSendSpec{
@@ -404,11 +404,11 @@ func (m MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Mes
 	return m.Messager.PushMessage(ctx, msg, spec)
 }
 
-func (m MarketNodeImpl) MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error) {
+func (m *MarketNodeImpl) MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error) {
 	return m.Messager.GetMessage(ctx, mid)
 }
 
-func (m MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) ([]*vTypes.MarketDeal, error) {
+func (m *MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) ([]*vTypes.MarketDeal, error) {
 	ts, err := m.FullNode.ChainHead(ctx)
 	if err != nil {
 		return nil, err
@@ -440,18 +440,18 @@ func (m MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address) 
 	return out, nil
 }
 
-func (m MarketNodeImpl) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
+func (m *MarketNodeImpl) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 	return peer.AddrInfo{
 		ID:    m.Host.ID(),
 		Addrs: m.Host.Addrs(),
 	}, nil
 }
 
-func (m MarketNodeImpl) ID(context.Context) (peer.ID, error) {
+func (m *MarketNodeImpl) ID(context.Context) (peer.ID, error) {
 	return m.Host.ID(), nil
 }
 
-func (m MarketNodeImpl) DagstoreListShards(ctx context.Context) ([]types.DagstoreShardInfo, error) {
+func (m *MarketNodeImpl) DagstoreListShards(ctx context.Context) ([]types.DagstoreShardInfo, error) {
 	info := m.DAGStore.AllShardsInfo()
 	ret := make([]types.DagstoreShardInfo, 0, len(info))
 	for k, i := range info {
@@ -475,7 +475,7 @@ func (m MarketNodeImpl) DagstoreListShards(ctx context.Context) ([]types.Dagstor
 	return ret, nil
 }
 
-func (m MarketNodeImpl) DagstoreInitializeShard(ctx context.Context, key string) error {
+func (m *MarketNodeImpl) DagstoreInitializeShard(ctx context.Context, key string) error {
 	//check whether key valid
 	cidKey, err := cid.Decode(key)
 	if err != nil {
@@ -504,7 +504,7 @@ func (m MarketNodeImpl) DagstoreInitializeShard(ctx context.Context, key string)
 	return bs.Close()
 }
 
-func (m MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.DagstoreInitializeAllParams) (<-chan types.DagstoreInitializeAllEvent, error) {
+func (m *MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.DagstoreInitializeAllParams) (<-chan types.DagstoreInitializeAllEvent, error) {
 
 	deals, err := m.Repo.StorageDealRepo().GetDealByAddrAndStatus(ctx, address.Undef, storageprovider.ReadyRetrievalDealStatus...)
 	if err != nil {
@@ -577,7 +577,7 @@ func (m *MarketNodeImpl) DagstoreInitializeStorage(ctx context.Context, storageN
 	return m.dagstoreLoadShards(ctx, toInitialize, params.MaxConcurrency)
 }
 
-func (m MarketNodeImpl) dagstoreLoadShards(ctx context.Context, toInitialize []string, concurrency int) (<-chan types.DagstoreInitializeAllEvent, error) {
+func (m *MarketNodeImpl) dagstoreLoadShards(ctx context.Context, toInitialize []string, concurrency int) (<-chan types.DagstoreInitializeAllEvent, error) {
 	// prepare the thottler tokens.
 	var throttle chan struct{}
 	if c := concurrency; c > 0 {
@@ -662,7 +662,7 @@ func (m MarketNodeImpl) dagstoreLoadShards(ctx context.Context, toInitialize []s
 
 	return res, nil
 }
-func (m MarketNodeImpl) DagstoreRecoverShard(ctx context.Context, key string) error {
+func (m *MarketNodeImpl) DagstoreRecoverShard(ctx context.Context, key string) error {
 	k := shard.KeyFromString(key)
 
 	info, err := m.DAGStore.GetShardInfo(k)
@@ -688,7 +688,7 @@ func (m MarketNodeImpl) DagstoreRecoverShard(ctx context.Context, key string) er
 	return res.Error
 }
 
-func (m MarketNodeImpl) DagstoreGC(ctx context.Context) ([]types.DagstoreShardResult, error) {
+func (m *MarketNodeImpl) DagstoreGC(ctx context.Context) ([]types.DagstoreShardResult, error) {
 	if m.DAGStore == nil {
 		return nil, fmt.Errorf("dagstore not available on this node")
 	}
@@ -713,27 +713,27 @@ func (m MarketNodeImpl) DagstoreGC(ctx context.Context) ([]types.DagstoreShardRe
 	return ret, nil
 }
 
-func (m MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
+func (m *MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
 	return m.DealAssigner.GetUnPackedDeals(ctx, miner, spec)
 }
 
-func (m MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
+func (m *MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
 	return m.DealAssigner.AssignUnPackedDeals(ctx, sid, ssize, spec)
 }
 
-func (m MarketNodeImpl) MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error {
+func (m *MarketNodeImpl) MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error {
 	return m.DealAssigner.MarkDealsAsPacking(ctx, miner, deals)
 }
 
-func (m MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.Address, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
+func (m *MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.Address, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
 	return m.DealAssigner.UpdateDealOnPacking(ctx, miner, dealId, sectorid, offset)
 }
 
-func (m MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status types.PieceStatus) error {
+func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status types.PieceStatus) error {
 	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, status)
 }
 
-func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {
+func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {
 	fi, err := os.Open(fname)
 	if err != nil {
 		return fmt.Errorf("failed to open given file: %w", err)
@@ -743,16 +743,16 @@ func (m MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid
 	return m.StorageProvider.ImportDataForDeal(ctx, dealPropCid, fi)
 }
 
-func (m MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error) {
+func (m *MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error) {
 	return m.DealAssigner.GetDeals(ctx, miner, pageIndex, pageSize)
 }
 
-func (m MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
+func (m *MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
 	return m.PaychAPI.PaychVoucherList(ctx, pch)
 }
 
-//ImportV1Data deprecated api
-func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
+// ImportV1Data deprecated api
+func (m *MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 	type minerDealsIncludeStatus struct {
 		MinerDeal storagemarket.MinerDeal
 		DealInfo  piecestore.DealInfo
@@ -855,17 +855,7 @@ func (m MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 	return nil
 }
 
-//GetReadUrl deprecated api
-func (m MarketNodeImpl) GetReadUrl(ctx context.Context, s string) (string, error) {
-	panic("not support")
-}
-
-//GetWriteUrl deprecated api
-func (m MarketNodeImpl) GetWriteUrl(ctx context.Context, s2 string) (string, error) {
-	panic("not support")
-}
-
-func (m MarketNodeImpl) AddFsPieceStorage(ctx context.Context, name string, path string, readonly bool) error {
+func (m *MarketNodeImpl) AddFsPieceStorage(ctx context.Context, name string, path string, readonly bool) error {
 	ifs := &config.FsPieceStorage{ReadOnly: readonly, Path: path, Name: name}
 	fsps, err := piecestorage.NewFsPieceStorage(ifs)
 	if err != nil {
@@ -881,7 +871,7 @@ func (m MarketNodeImpl) AddFsPieceStorage(ctx context.Context, name string, path
 	return m.Config.AddFsPieceStorage(ifs)
 }
 
-func (m MarketNodeImpl) AddS3PieceStorage(ctx context.Context, name, endpoit, bucket, subdir, accessKeyID, secretAccessKey, token string, readonly bool) error {
+func (m *MarketNodeImpl) AddS3PieceStorage(ctx context.Context, name, endpoit, bucket, subdir, accessKeyID, secretAccessKey, token string, readonly bool) error {
 	ifs := &config.S3PieceStorage{
 		ReadOnly:  readonly,
 		EndPoint:  endpoit,
@@ -905,11 +895,11 @@ func (m MarketNodeImpl) AddS3PieceStorage(ctx context.Context, name, endpoit, bu
 	return m.Config.AddS3PieceStorage(ifs)
 }
 
-func (m MarketNodeImpl) GetPieceStorages(ctx context.Context) types.PieceStorageInfos {
+func (m *MarketNodeImpl) ListPieceStorageInfos(ctx context.Context) types.PieceStorageInfos {
 	return m.PieceStorageMgr.ListStorageInfos()
 }
 
-func (m MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) error {
+func (m *MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) error {
 	err := m.PieceStorageMgr.RemovePieceStorage(name)
 	if err != nil {
 		return err
@@ -918,10 +908,26 @@ func (m MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) err
 	return m.Config.RemovePieceStorage(name)
 }
 
-func (m MarketNodeImpl) OfflineDealImport(ctx context.Context, deal types.MinerDeal) error {
+func (m *MarketNodeImpl) OfflineDealImport(ctx context.Context, deal types.MinerDeal) error {
 	return m.StorageProvider.ImportOfflineDeal(ctx, deal)
 }
 
-func (m MarketNodeImpl) Version(ctx context.Context) (vTypes.Version, error) {
+func (m *MarketNodeImpl) Version(ctx context.Context) (vTypes.Version, error) {
 	return vTypes.Version{Version: version.UserVersion()}, nil
+}
+
+func (m *MarketNodeImpl) GetStorageDealStatistic(ctx context.Context, miner address.Address) (*types.StorageDealStatistic, error) {
+	statistic, err := m.Repo.StorageDealRepo().GroupStorageDealNumberByStatus(ctx, miner)
+	if err != nil {
+		return nil, err
+	}
+	return &types.StorageDealStatistic{DealsStatus: statistic}, nil
+}
+
+func (m *MarketNodeImpl) GetRetrievalDealStatistic(ctx context.Context, miner address.Address) (*types.RetrievalDealStatistic, error) {
+	statistic, err := m.Repo.RetrievalDealRepo().GroupRetrievalDealNumberByStatus(ctx, miner)
+	if err != nil {
+		return nil, err
+	}
+	return &types.RetrievalDealStatistic{DealsStatus: statistic}, nil
 }

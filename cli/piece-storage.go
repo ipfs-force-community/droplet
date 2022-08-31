@@ -172,7 +172,7 @@ var pieceStorageListCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		storagelist := nodeApi.GetPieceStorages(ctx)
+		storagelist := nodeApi.ListPieceStorageInfos(ctx)
 
 		w := tablewriter.New(
 			tablewriter.Col("name"),

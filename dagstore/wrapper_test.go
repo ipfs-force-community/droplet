@@ -200,7 +200,7 @@ func (m mockLotusMount) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m mockLotusMount) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
+func (m mockLotusMount) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
 	panic("implement me")
 }
 

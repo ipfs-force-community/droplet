@@ -20,9 +20,9 @@ import (
 	"github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/utils"
 
+	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 )
