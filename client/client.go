@@ -152,7 +152,7 @@ func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, is
 		return nil, fmt.Errorf("failed resolving params.Wallet addr (%s): %w", params.Wallet, err)
 	}
 
-	exist, err := a.Full.WalletHas(ctx, walletKey)
+	exist, err := a.Signer.WalletHas(ctx, walletKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting addr from signer (%s): %w", params.Wallet, err)
 	}

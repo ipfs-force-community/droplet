@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/venus-market/v2/api/clients"
+	"github.com/filecoin-project/venus-market/v2/api/clients/signer"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/fundmgr"
 	"github.com/filecoin-project/venus-market/v2/utils"
@@ -48,13 +49,15 @@ type ClientNodeAdapter struct {
 	dsMatcher *dealStateMatcher
 	scMgr     *SectorCommittedManager
 	cfg       *config.MarketClientConfig
+
+	signer signer.ISigner
 }
 
 type clientAPI struct {
 	full v1api.FullNode
 }
 
-func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode v1api.FullNode, msgClient clients.IMixMessage, fundmgr *fundmgr.FundManager, cfg *config.MarketClientConfig) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode v1api.FullNode, msgClient clients.IMixMessage, fundmgr *fundmgr.FundManager, cfg *config.MarketClientConfig, signer signer.ISigner) storagemarket.StorageClientNode {
 	capi := &clientAPI{fullNode}
 	ctx := metrics.LifecycleCtx(mctx, lc)
 
@@ -71,6 +74,7 @@ func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode v1a
 		ev:        ev,
 		cfg:       cfg,
 		dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(capi.full))),
+		signer:    signer,
 	}
 
 	a.scMgr = NewSectorCommittedManager(ev, struct {
@@ -385,12 +389,12 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	signer, err = c.full.StateAccountKey(ctx, signer, types.EmptyTSK)
+	signerAddr, err := c.full.StateAccountKey(ctx, signer, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	sig, err := c.full.WalletSign(ctx, signer, buf, types.MsgMeta{
+	sig, err := c.signer.WalletSign(ctx, signerAddr, buf, types.MsgMeta{
 		Type: types.MTDealProposal,
 	})
 	if err != nil {
@@ -439,12 +443,12 @@ func (c *ClientNodeAdapter) GetMinerInfo(ctx context.Context, addr address.Addre
 }
 
 func (c *ClientNodeAdapter) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
-	signer, err := c.full.StateAccountKey(ctx, signer, types.EmptyTSK)
+	signerAddr, err := c.full.StateAccountKey(ctx, signer, types.EmptyTSK)
 	if err != nil {
 		return nil, err
 	}
 
-	localSignature, err := c.full.WalletSign(ctx, signer, b, types.MsgMeta{
+	localSignature, err := c.signer.WalletSign(ctx, signerAddr, b, types.MsgMeta{
 		Type: types.MTUnknown, // TODO: pass type here
 	})
 	if err != nil {
