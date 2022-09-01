@@ -110,6 +110,7 @@ func (cir *channelInfoRepo) CreateChannel(ctx context.Context, from address.Addr
 		Target:        to,
 		CreateMsg:     &createMsgCid,
 		PendingAmount: amt,
+		ChannelID:     uuid.NewString(),
 	}
 
 	// Save the new channel
@@ -202,9 +203,6 @@ func (cir *channelInfoRepo) ListChannel(ctx context.Context) ([]address.Address,
 }
 
 func (cir *channelInfoRepo) SaveChannel(ctx context.Context, ci *types.ChannelInfo) error {
-	if len(ci.ChannelID) == 0 {
-		ci.ChannelID = uuid.NewString()
-	}
 	return cir.WithContext(ctx).Save(fromChannelInfo(ci)).Error
 }
 
@@ -270,9 +268,7 @@ func (mir *msgInfoRepo) GetMessage(ctx context.Context, mcid cid.Cid) (*types.Ms
 }
 
 func (mir *msgInfoRepo) SaveMessage(ctx context.Context, info *types.MsgInfo) error {
-	msgInfo := fromMsgInfo(info)
-	msgInfo.UpdatedAt = uint64(time.Now().Unix())
-	return mir.WithContext(ctx).Save(msgInfo).Error
+	return mir.WithContext(ctx).Save(fromMsgInfo(info)).Error
 }
 
 func (mir *msgInfoRepo) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr error) error {
