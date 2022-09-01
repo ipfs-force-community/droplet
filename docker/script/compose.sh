@@ -13,7 +13,7 @@ echo ${token}
 mkdir -p ~/.venusmarket/
 if [ ! -f ~/.venusmarket/config.toml ]; then
     echo "set default piece storage path: /PieceStorage"
-    cat /docker/config/PieceStorage.toml > ~/.venusmarket/config.toml
+    cat /script/config/PieceStorage.toml > ~/.venusmarket/config.toml
 fi
 
 

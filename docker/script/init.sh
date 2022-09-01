@@ -1,15 +1,13 @@
 #!/bin/sh
 
-echo "Init Begin!"
-
-echo "args:"
-echo $@
-
-
-echo "set default piece storage path: /PieceStorage"
+echo "Init Begin!\n"
 mkdir -p ~/.venusmarket/
-cat /docker/config/PieceStorage.toml > ~/.venusmarket/config.toml
-cat  ~/.venusmarket/config.toml
-echo "Init End!"
+if [ ! -f ~/.venusmarket/config.toml ]; then
+    echo "set default piece storage path: /PieceStorage"
+    cat /script/config/PieceStorage.toml > ~/.venusmarket/config.toml
+fi
+echo "Init End!\n"
 
-/app/venus-market $@
+echo "EXEC: ./venus-market  $@ \n\n"
+
+./venus-market  $@
