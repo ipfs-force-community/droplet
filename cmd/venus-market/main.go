@@ -148,6 +148,7 @@ func main() {
 			cli2.MigrateCmd,
 			cli2.PieceStorageCmd,
 			cli2.MarketCmds,
+			cli2.StatsCmd,
 		},
 	}
 
