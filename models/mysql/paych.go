@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -53,6 +54,7 @@ func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 		PendingAmount: convertBigInt(src.PendingAmount),
 		Settling:      src.Settling,
 		VoucherInfo:   src.Vouchers,
+		TimeStampOrm:  TimeStampOrm{CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
 	}
 	if src.Channel == nil {
 		info.Channel = UndefDBAddress
@@ -87,6 +89,7 @@ func toChannelInfo(src *channelInfo) (*types.ChannelInfo, error) {
 		CreateMsg:     src.CreateMsg.cidPtr(),
 		AddFundsMsg:   src.AddFundsMsg.cidPtr(),
 		Settling:      src.Settling,
+		TimeStamp:     src.Timestamp(),
 	}
 
 	return info, nil
@@ -108,6 +111,7 @@ func (cir *channelInfoRepo) CreateChannel(ctx context.Context, from address.Addr
 		Target:        to,
 		CreateMsg:     &createMsgCid,
 		PendingAmount: amt,
+		ChannelID:     uuid.NewString(),
 	}
 
 	// Save the new channel
@@ -116,9 +120,11 @@ func (cir *channelInfoRepo) CreateChannel(ctx context.Context, from address.Addr
 		return nil, err
 	}
 
+	mInfo := fromMsgInfo(&types.MsgInfo{ChannelID: ci.ChannelID, MsgCid: createMsgCid})
+	mInfo.TimeStampOrm.Refresh()
+
 	// Save a reference to the create message
-	err = cir.WithContext(ctx).Save(fromMsgInfo(&types.MsgInfo{ChannelID: ci.ChannelID, MsgCid: createMsgCid})).Error
-	if err != nil {
+	if err = cir.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(mInfo).Error; err != nil {
 		return nil, err
 	}
 
@@ -200,12 +206,9 @@ func (cir *channelInfoRepo) ListChannel(ctx context.Context) ([]address.Address,
 }
 
 func (cir *channelInfoRepo) SaveChannel(ctx context.Context, ci *types.ChannelInfo) error {
-	if len(ci.ChannelID) == 0 {
-		ci.ChannelID = uuid.NewString()
-	}
 	info := fromChannelInfo(ci)
-	info.UpdatedAt = uint64(time.Now().Unix())
-	return cir.WithContext(ctx).Save(info).Error
+	info.TimeStampOrm.Refresh()
+	return cir.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(info).Error
 }
 
 func (cir *channelInfoRepo) RemoveChannel(ctx context.Context, channelID string) error {
@@ -234,10 +237,11 @@ func (m *msgInfo) TableName() string {
 
 func fromMsgInfo(src *types.MsgInfo) *msgInfo {
 	return &msgInfo{
-		ChannelID: src.ChannelID,
-		MsgCid:    DBCid(src.MsgCid),
-		Received:  src.Received,
-		Err:       src.Err,
+		ChannelID:    src.ChannelID,
+		MsgCid:       DBCid(src.MsgCid),
+		Received:     src.Received,
+		TimeStampOrm: TimeStampOrm{CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
+		Err:          src.Err,
 	}
 }
 
@@ -246,6 +250,7 @@ func toMsgInfo(src *msgInfo) (*types.MsgInfo, error) {
 		ChannelID: src.ChannelID,
 		MsgCid:    src.MsgCid.cid(),
 		Received:  src.Received,
+		TimeStamp: src.Timestamp(),
 		Err:       src.Err,
 	}, nil
 }
@@ -268,9 +273,9 @@ func (mir *msgInfoRepo) GetMessage(ctx context.Context, mcid cid.Cid) (*types.Ms
 }
 
 func (mir *msgInfoRepo) SaveMessage(ctx context.Context, info *types.MsgInfo) error {
-	msgInfo := fromMsgInfo(info)
-	msgInfo.UpdatedAt = uint64(time.Now().Unix())
-	return mir.WithContext(ctx).Save(msgInfo).Error
+	mInfo := fromMsgInfo(info)
+	mInfo.TimeStampOrm.Refresh()
+	return mir.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(mInfo).Error
 }
 
 func (mir *msgInfoRepo) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr error) error {

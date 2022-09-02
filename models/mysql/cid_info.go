@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql/driver"
 	"encoding/json"
-	"time"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -54,14 +53,15 @@ func NewMysqlCidInfoRepo(ds *gorm.DB) repo.ICidInfoRepo {
 func (m *mysqlCidInfoRepo) AddPieceBlockLocations(ctx context.Context, pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
 	mysqlInfos := make([]cidInfo, len(blockLocations))
 	idx := 0
+	/* following point has been confirmed :
+		there is no needs to worry about `create_at`/`updated_at`,
+	 because both of them are 0, the `gorm` framework deal well of them automatically. */
 	for blockCid, location := range blockLocations {
 		mysqlInfos[idx].PieceCid = DBCid(pieceCID)
 		mysqlInfos[idx].PayloadCid = DBCid(blockCid)
 		mysqlInfos[idx].BlockLocation = mysqlBlockLocation(location)
-		mysqlInfos[idx].UpdatedAt = uint64(time.Now().Unix())
 		idx++
 	}
-
 	return m.Table(cidInfoTableName).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "piece_cid"}, {Name: "payload_cid"}},
 		UpdateAll: true,
