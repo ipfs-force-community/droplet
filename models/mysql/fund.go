@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const fundedAddressStateTableName = "funded_address_state"
@@ -28,7 +29,7 @@ func fromFundedAddressState(src *types.FundedAddressState) *fundedAddressState {
 	fds := &fundedAddressState{
 		Addr:         DBAddress(src.Addr),
 		AmtReserved:  convertBigInt(src.AmtReserved),
-		TimeStampOrm: newRefreshedTimestampOrm(&src.TimeStamp),
+		TimeStampOrm: TimeStampOrm{CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
 	}
 	if src.MsgCid == nil {
 		fds.MsgCid = UndefDBCid
@@ -58,7 +59,9 @@ func NewFundedAddressStateRepo(db *gorm.DB) repo.FundRepo {
 }
 
 func (far *fundedAddressStateRepo) SaveFundedAddressState(ctx context.Context, fds *types.FundedAddressState) error {
-	return far.WithContext(ctx).Save(fromFundedAddressState(fds)).Error
+	state := fromFundedAddressState(fds)
+	state.TimeStampOrm.Refresh()
+	return far.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Save(state).Error
 }
 
 func (far *fundedAddressStateRepo) GetFundedAddressState(ctx context.Context, addr address.Address) (*types.FundedAddressState, error) {

@@ -57,14 +57,14 @@ func (rar *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (
 func (rar *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk) error {
 	return rar.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "address"}},
-		UpdateAll: true,
-	}).Save(&retrievalAsk{
+		UpdateAll: true}).Create(&retrievalAsk{
 		Address:                 DBAddress(ask.Miner),
 		PricePerByte:            convertBigInt(ask.PricePerByte),
 		UnsealPrice:             convertBigInt(ask.UnsealPrice),
 		PaymentInterval:         ask.PaymentInterval,
 		PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
-		TimeStampOrm:            newRefreshedTimestampOrm(&ask.TimeStamp)}).Error
+		TimeStampOrm:            *(&TimeStampOrm{CreatedAt: ask.CreatedAt, UpdatedAt: ask.UpdatedAt}).Refresh(),
+	}).Error
 }
 
 func (rar *retrievalAskRepo) ListAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {

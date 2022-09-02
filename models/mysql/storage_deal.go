@@ -167,7 +167,7 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 		Offset:       uint64(src.Offset),
 		Length:       uint64(src.Proposal.PieceSize),
 		PieceStatus:  string(src.PieceStatus),
-		TimeStampOrm: newRefreshedTimestampOrm(&src.TimeStamp),
+		TimeStampOrm: TimeStampOrm{CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
 	}
 
 	if src.AddFundsCid == nil {
@@ -303,9 +303,12 @@ func NewStorageDealRepo(db *gorm.DB) repo.StorageDealRepo {
 }
 
 func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.MinerDeal) error {
+	deal := fromStorageDeal(storageDeal)
+	deal.TimeStampOrm.Refresh()
+
 	return sdr.WithContext(ctx).Clauses(
 		clause.OnConflict{Columns: []clause.Column{{Name: "proposal_cid"}}, UpdateAll: true}).
-		Create(fromStorageDeal(storageDeal)).Error
+		Create(deal).Error
 }
 
 func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error) {

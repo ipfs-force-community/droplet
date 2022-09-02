@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -53,7 +54,7 @@ func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 		PendingAmount: convertBigInt(src.PendingAmount),
 		Settling:      src.Settling,
 		VoucherInfo:   src.Vouchers,
-		TimeStampOrm:  newRefreshedTimestampOrm(&src.TimeStamp),
+		TimeStampOrm:  TimeStampOrm{CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
 	}
 	if src.Channel == nil {
 		info.Channel = UndefDBAddress
@@ -119,9 +120,11 @@ func (cir *channelInfoRepo) CreateChannel(ctx context.Context, from address.Addr
 		return nil, err
 	}
 
+	mInfo := fromMsgInfo(&types.MsgInfo{ChannelID: ci.ChannelID, MsgCid: createMsgCid})
+	mInfo.TimeStampOrm.Refresh()
+
 	// Save a reference to the create message
-	err = cir.WithContext(ctx).Save(fromMsgInfo(&types.MsgInfo{ChannelID: ci.ChannelID, MsgCid: createMsgCid})).Error
-	if err != nil {
+	if err = cir.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(mInfo).Error; err != nil {
 		return nil, err
 	}
 
@@ -203,7 +206,9 @@ func (cir *channelInfoRepo) ListChannel(ctx context.Context) ([]address.Address,
 }
 
 func (cir *channelInfoRepo) SaveChannel(ctx context.Context, ci *types.ChannelInfo) error {
-	return cir.WithContext(ctx).Save(fromChannelInfo(ci)).Error
+	info := fromChannelInfo(ci)
+	info.TimeStampOrm.Refresh()
+	return cir.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(info).Error
 }
 
 func (cir *channelInfoRepo) RemoveChannel(ctx context.Context, channelID string) error {
@@ -235,7 +240,7 @@ func fromMsgInfo(src *types.MsgInfo) *msgInfo {
 		ChannelID:    src.ChannelID,
 		MsgCid:       DBCid(src.MsgCid),
 		Received:     src.Received,
-		TimeStampOrm: newRefreshedTimestampOrm(&src.TimeStamp),
+		TimeStampOrm: TimeStampOrm{CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
 		Err:          src.Err,
 	}
 }
@@ -268,7 +273,9 @@ func (mir *msgInfoRepo) GetMessage(ctx context.Context, mcid cid.Cid) (*types.Ms
 }
 
 func (mir *msgInfoRepo) SaveMessage(ctx context.Context, info *types.MsgInfo) error {
-	return mir.WithContext(ctx).Save(fromMsgInfo(info)).Error
+	mInfo := fromMsgInfo(info)
+	mInfo.TimeStampOrm.Refresh()
+	return mir.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(mInfo).Error
 }
 
 func (mir *msgInfoRepo) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr error) error {

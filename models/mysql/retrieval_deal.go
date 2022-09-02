@@ -69,7 +69,7 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 		Message:               deal.Message,
 		CurrentInterval:       deal.CurrentInterval,
 		LegacyProtocol:        deal.LegacyProtocol,
-		TimeStampOrm:          newRefreshedTimestampOrm(&deal.TimeStamp),
+		TimeStampOrm:          TimeStampOrm{CreatedAt: deal.CreatedAt, UpdatedAt: deal.UpdatedAt},
 	}
 	if deal.Selector != nil {
 		newdeal.Selector = &deal.Selector.Raw
@@ -148,6 +148,7 @@ type retrievalDealRepo struct {
 
 func (rdr *retrievalDealRepo) SaveDeal(ctx context.Context, deal *types.ProviderDealState) error {
 	dbDeal := fromProviderDealState(deal)
+	dbDeal.TimeStampOrm.Refresh()
 	return rdr.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).
 		Create(dbDeal).Error
 }

@@ -260,15 +260,17 @@ type TimeStampOrm struct {
 	UpdatedAt uint64 `gorm:"type:bigint unsigned"`
 }
 
+func (tso *TimeStampOrm) Refresh() *TimeStampOrm {
+	tso.UpdatedAt = uint64(time.Now().Unix())
+	if tso.CreatedAt == 0 {
+		tso.CreatedAt = tso.UpdatedAt
+	}
+	return tso
+}
+
 func (tso *TimeStampOrm) Timestamp() types.TimeStamp {
 	return types.TimeStamp{
 		CreatedAt: tso.CreatedAt,
 		UpdatedAt: tso.UpdatedAt,
 	}
-}
-
-func newRefreshedTimestampOrm(ts *types.TimeStamp) TimeStampOrm {
-	newTs := repo.NewRefreshedTimeStamp(ts)
-	tso := TimeStampOrm{CreatedAt: ts.CreatedAt, UpdatedAt: newTs.UpdatedAt}
-	return tso
 }

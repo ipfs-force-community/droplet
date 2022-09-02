@@ -189,7 +189,7 @@ func (pr *paychRepo) findChans(ctx context.Context, filter func(*types.ChannelIn
 
 // SaveChannel stores the channel info in the datastore
 func (pr *paychRepo) SaveChannel(ctx context.Context, ci *types.ChannelInfo) error {
-	ci.TimeStamp = repo.NewRefreshedTimeStamp(&ci.TimeStamp)
+	ci.TimeStamp = makeRefreshedTimeStamp(&ci.TimeStamp)
 
 	key := dskeyForChannel(ci.ChannelID)
 	b, err := marshallChannelInfo(ci)
@@ -265,7 +265,7 @@ func (pr *paychRepo) GetMessage(ctx context.Context, mcid cid.Cid) (*types.MsgIn
 
 // SaveMessage is called when a message is sent
 func (pr *paychRepo) SaveMessage(ctx context.Context, info *types.MsgInfo) error {
-	info.TimeStamp = repo.NewRefreshedTimeStamp(&info.TimeStamp)
+	info.TimeStamp = makeRefreshedTimeStamp(&info.TimeStamp)
 	k := dskeyForMsg(info.MsgCid)
 	b, err := cborutil.Dump(info)
 	if err != nil {
@@ -287,7 +287,7 @@ func (pr *paychRepo) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr
 	if msgErr != nil {
 		minfo.Err = msgErr.Error()
 	}
-	minfo.TimeStamp = repo.NewRefreshedTimeStamp(&minfo.TimeStamp)
+	minfo.TimeStamp = makeRefreshedTimeStamp(&minfo.TimeStamp)
 
 	b, err := cborutil.Dump(minfo)
 	if err != nil {

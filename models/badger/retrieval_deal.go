@@ -27,7 +27,7 @@ func NewRetrievalDealRepo(ds RetrievalProviderDS) repo.IRetrievalDealRepo {
 }
 
 func (r retrievalDealRepo) SaveDeal(ctx context.Context, deal *types.ProviderDealState) error {
-	deal.TimeStamp = repo.NewRefreshedTimeStamp(&deal.TimeStamp)
+	deal.TimeStamp = makeRefreshedTimeStamp(&deal.TimeStamp)
 	b, err := cborrpc.Dump(deal)
 	if err != nil {
 		return err
