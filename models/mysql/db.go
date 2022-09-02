@@ -160,11 +160,7 @@ var UndefDBCid = DBCid{}
 func (c *DBCid) Scan(value interface{}) error {
 	val, ok := value.([]byte)
 	if !ok {
-		valStr, ok := value.(string)
-		if !ok {
-			return errors.New("cid should be a `[]byte`")
-		}
-		val = []byte(valStr)
+		return errors.New("cid should be a `[]byte`")
 	}
 	if len(val) == 0 {
 		*c = UndefDBCid
@@ -220,11 +216,7 @@ var UndefDBAddress = DBAddress{}
 func (a *DBAddress) Scan(value interface{}) error {
 	val, ok := value.([]byte)
 	if !ok {
-		valStr, ok := value.(string)
-		if !ok {
-			return errors.New("address should be a `[]byte` or `string`")
-		}
-		val = []byte(valStr)
+		return errors.New("address should be a `[]byte` or `string`")
 	}
 	if len(val) == 0 {
 		*a = UndefDBAddress
