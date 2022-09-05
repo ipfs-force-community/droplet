@@ -67,7 +67,7 @@ build: $(BUILD_DEPS)
 .PHONY: docker
 
 TAG:=test
-docker:
+docker: $(BUILD_DEPS)
 	curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/dockerfile
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=venus-market -t venus-market .
 	docker tag venus-market filvenus/venus-market:$(TAG)
