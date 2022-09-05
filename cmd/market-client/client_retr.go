@@ -240,13 +240,13 @@ In case of CAR retrieval, the selector must have one common "sub-root" node.
 Examples:
 
 - Retrieve a file by CID
-	$ lotus client retrieve Qm... my-file.txt
+	# market-client retrieval retrieve --maxPrice 0.1fil bafyk... my-file
 
 - Retrieve a file by CID from f0123
-	$ lotus client retrieve --provider f0123 Qm... my-file.txt
+	# market-client retrieval retrieve --maxPrice 0.1fil --miner f0123 bafyk... my-file
 
 - Retrieve a first file from a specified directory
-	$ lotus client retrieve --data-selector /Links/0/Hash Qm... my-file.txt
+	$ market-client retrieval retrieve --data-selector /Links/0/Hash bafyk... my-file.txt
 `,
 	Flags: append([]cli.Flag{
 		&cli.BoolFlag{
