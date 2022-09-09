@@ -41,9 +41,9 @@ func (ar *storageAskRepo) SetAsk(ctx context.Context, ask *types.SignedStorageAs
 		return fmt.Errorf("param is nil")
 	}
 	// This method is generally called from command tool `storage-deals set-ask`
-	// the input arguments doens't have old `Timestamp`, we try to get the older for updatting
+	// the input arguments doesn't have old `Timestamp`, we try to get the older for updatting
 	oldAsk, err := ar.GetAsk(ctx, ask.Ask.Miner)
-	if err == nil {
+	if err != nil {
 		if !errors.Is(err, repo.ErrNotFound) {
 			return err
 		}

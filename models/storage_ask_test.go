@@ -79,7 +79,6 @@ func testStorageAsk(t *testing.T, askRepo repo.IStorageAskRepo) {
 
 	newPrice := big.Add(ask.Ask.Price, abi.NewTokenAmount(1))
 
-
 	// updating storage-ask timestamp test
 	tmpAsk := *ask
 	tmpAsk.Ask.Price = newPrice
