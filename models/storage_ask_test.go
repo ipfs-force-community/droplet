@@ -91,6 +91,7 @@ func testStorageAsk(t *testing.T, askRepo repo.IStorageAskRepo) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, big.Cmp(res3.Ask.Price, newPrice), 0)
+	assert.Equal(t, ask.CreatedAt, res.CreatedAt)
 	assert.GreaterOrEqual(t, res3.UpdatedAt, res3.CreatedAt)
 	assert.GreaterOrEqual(t, res3.UpdatedAt, res.CreatedAt)
 }
