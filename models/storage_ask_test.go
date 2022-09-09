@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/big"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -28,7 +31,7 @@ func TestStorageAsk(t *testing.T) {
 
 func testStorageAsk(t *testing.T, askRepo repo.IStorageAskRepo) {
 	ctx := context.Background()
-	ask := &storagemarket.SignedStorageAsk{
+	ask := &types.SignedStorageAsk{
 		Ask: &storagemarket.StorageAsk{
 			Price:         abi.NewTokenAmount(10),
 			VerifiedPrice: abi.NewTokenAmount(100),
@@ -42,7 +45,7 @@ func testStorageAsk(t *testing.T, askRepo repo.IStorageAskRepo) {
 		Signature: nil,
 	}
 
-	ask2 := &storagemarket.SignedStorageAsk{
+	ask2 := &types.SignedStorageAsk{
 		Ask: &storagemarket.StorageAsk{
 			Price:         abi.NewTokenAmount(10),
 			VerifiedPrice: abi.NewTokenAmount(100),
@@ -59,13 +62,36 @@ func testStorageAsk(t *testing.T, askRepo repo.IStorageAskRepo) {
 		},
 	}
 
+	assertEqual := func(s1, s2 *types.SignedStorageAsk) {
+		assert.Equal(t, s1.Ask, s2.Ask)
+		assert.Equal(t, s1.Signature, s2.Signature)
+		assert.Equal(t, s1.CreatedAt, s2.CreatedAt)
+	}
+
 	assert.Nil(t, askRepo.SetAsk(ctx, ask))
 	assert.Nil(t, askRepo.SetAsk(ctx, ask2))
 
 	res, err := askRepo.GetAsk(ctx, ask.Ask.Miner)
 	assert.Nil(t, err)
-	assert.Equal(t, res, ask)
+	assertEqual(res, ask)
 	res2, err := askRepo.GetAsk(ctx, ask2.Ask.Miner)
 	assert.Nil(t, err)
-	assert.Equal(t, res2, ask2)
+	assertEqual(res2, ask2)
+
+	newPrice := big.Add(ask.Ask.Price, abi.NewTokenAmount(1))
+
+	// updating storage-ask timestamp test
+	tmpAsk := *ask
+	tmpAsk.Ask.Price = newPrice
+
+	// to simulate updating storage-ask with zero timestamp.
+	tmpAsk.TimeStamp = types.TimeStamp{}
+	assert.Nil(t, askRepo.SetAsk(ctx, &tmpAsk))
+	res3, err := askRepo.GetAsk(ctx, ask.Ask.Miner)
+	assert.Nil(t, err)
+
+	assert.Equal(t, big.Cmp(res3.Ask.Price, newPrice), 0)
+	assert.Equal(t, ask.CreatedAt, res.CreatedAt)
+	assert.GreaterOrEqual(t, res3.UpdatedAt, res3.CreatedAt)
+	assert.GreaterOrEqual(t, res3.UpdatedAt, res.CreatedAt)
 }
