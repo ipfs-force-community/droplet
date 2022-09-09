@@ -65,6 +65,7 @@ func testStorageAsk(t *testing.T, askRepo repo.IStorageAskRepo) {
 	assertEqual := func(s1, s2 *types.SignedStorageAsk) {
 		assert.Equal(t, s1.Ask, s2.Ask)
 		assert.Equal(t, s1.Signature, s2.Signature)
+		assert.Equal(t, s1.CreatedAt, s2.CreatedAt)
 	}
 
 	assert.Nil(t, askRepo.SetAsk(ctx, ask))

@@ -779,7 +779,7 @@ func (m *MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 		return err
 	}
 
-	err = m.Repo.StorageAskRepo().SetAsk(ctx, (&types.SignedStorageAsk{}).FillWithAsk(data.StorageAsk))
+	err = m.Repo.StorageAskRepo().SetAsk(ctx, types.FromChainAsk(data.StorageAsk))
 	if err != nil {
 		return err
 	}
