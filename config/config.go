@@ -7,6 +7,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/ipfs-force-community/metrics"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )

@@ -3,28 +3,21 @@ package main
 import (
 	"fmt"
 
-<<<<<<< HEAD
-	"github.com/filecoin-project/venus-market/v2/metrics"
-
-	"github.com/filecoin-project/venus-auth/jwtclient"
-=======
 	"go.uber.org/fx"
 
 	"github.com/gorilla/mux"
-	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
->>>>>>> feat: refactor signer interface & impl
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/dagstore"
 	"github.com/filecoin-project/venus-market/v2/fundmgr"
+	"github.com/filecoin-project/venus-market/v2/metrics"
 	"github.com/filecoin-project/venus-market/v2/minermgr"
 	"github.com/filecoin-project/venus-market/v2/models"
 	"github.com/filecoin-project/venus-market/v2/network"
@@ -40,14 +33,6 @@ import (
 
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
-<<<<<<< HEAD
-	"github.com/gorilla/mux"
-	"github.com/ipfs-force-community/venus-common-utils/builder"
-	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/urfave/cli/v2"
-	"go.uber.org/fx"
-=======
->>>>>>> feat: refactor signer interface & impl
 )
 
 var soloRunCmd = &cli.Command{

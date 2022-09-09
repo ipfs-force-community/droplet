@@ -15,7 +15,6 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/dagstore v0.5.2
 	github.com/filecoin-project/go-address v1.0.0
-	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-data-transfer v1.15.2
@@ -31,9 +30,9 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/specs-actors/v8 v8.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
-	github.com/filecoin-project/venus v1.6.1-0.20220823095415-660c34f0964d
-	github.com/filecoin-project/venus-auth v1.6.1-0.20220824071529-5592c2f105db
-	github.com/filecoin-project/venus-messager v1.6.2-0.20220824084230-104cac9e1a18
+	github.com/filecoin-project/venus v1.7.1-0.20220909084750-9361a9370b46
+	github.com/filecoin-project/venus-auth v1.7.0
+	github.com/filecoin-project/venus-messager v1.6.2-0.20220909065619-8f5caa703fd9
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
@@ -42,7 +41,7 @@ require (
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
-	github.com/ipfs-force-community/venus-gateway v1.7.0
+	github.com/ipfs-force-community/venus-gateway v1.6.2-0.20220909020053-c7f4edb259e0
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.3.0
 	github.com/ipfs/go-cid v0.2.0
@@ -161,7 +160,6 @@ require (
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
-	github.com/gbrlsnchs/jwt/v3 v3.0.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.8.1 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect

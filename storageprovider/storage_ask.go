@@ -8,19 +8,19 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/venus-market/v2/api/clients/signer"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 
-	"github.com/ipfs-force-community/metrics"
-
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 type IStorageAsk interface {
-	ListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error)
-	GetAsk(ctx context.Context, Addr address.Address) (*storagemarket.SignedStorageAsk, error)
+	ListAsk(ctx context.Context) ([]*types2.SignedStorageAsk, error)
+	GetAsk(ctx context.Context, Addr address.Address) (*types2.SignedStorageAsk, error)
 	SetAsk(ctx context.Context, mAddr address.Address, price abi.TokenAmount, verifiedPrice abi.TokenAmount, duration abi.ChainEpoch, options ...storagemarket.StorageAskOption) error
 }
 
@@ -91,7 +91,7 @@ func (storageAsk *StorageAsk) SetAsk(ctx context.Context, miner address.Address,
 	return storageAsk.repo.SetAsk(ctx, signedAsk)
 }
 
-func (storageAsk *StorageAsk) signAsk(ctx context.Context, ask *storagemarket.StorageAsk) (*storagemarket.SignedStorageAsk, error) {
+func (storageAsk *StorageAsk) signAsk(ctx context.Context, ask *storagemarket.StorageAsk) (*types2.SignedStorageAsk, error) {
 	askBytes, err := cborutil.Dump(ask)
 	if err != nil {
 		return nil, err

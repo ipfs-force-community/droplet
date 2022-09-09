@@ -14,7 +14,6 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 
 	"github.com/ipfs-force-community/metrics"
-	"github.com/ipfs-force-community/venus-common-utils/apiinfo"
 )
 
 func NodeClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, nodeCfg *config.Node) (v1api.FullNode, error) {

@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/config"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
-	v1GatewayAPI "github.com/filecoin-project/venus/venus-shared/api/gateway/v1"
+	v2GatewayAPI "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 )
 
 func newGatewayWalletClient(mCtx metrics.MetricsCtx, nodeCfg *config.Signer) (ISigner, jsonrpc.ClientCloser, error) {
@@ -18,7 +18,7 @@ func newGatewayWalletClient(mCtx metrics.MetricsCtx, nodeCfg *config.Signer) (IS
 		return nil, nil, err
 	}
 
-	gatewayAPI, closer, err := v1GatewayAPI.NewIGatewayRPC(mCtx, dialAddr, info.AuthHeader())
+	gatewayAPI, closer, err := v2GatewayAPI.NewIGatewayRPC(mCtx, dialAddr, info.AuthHeader())
 	if err != nil {
 		return nil, nil, err
 	}

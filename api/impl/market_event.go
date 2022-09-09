@@ -6,14 +6,14 @@ import (
 
 	"go.uber.org/fx"
 
-	v1Gateway "github.com/filecoin-project/venus/venus-shared/api/gateway/v1"
+	v2GatewayAPI "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 	"github.com/filecoin-project/venus/venus-shared/types/gateway"
 )
 
 type MarketEventAPI struct {
 	fx.In
 
-	Event v1Gateway.IMarketEvent `optional:"true"`
+	Event v2GatewayAPI.IMarketEvent `optional:"true"`
 }
 
 var errNotSupportGateWayMode = fmt.Errorf("MarketEvent api supported only when it runs in 'solo' mode")

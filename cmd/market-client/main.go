@@ -13,10 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/ipfs-force-community/venus-common-utils/builder"
-	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
-
 	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
@@ -35,15 +31,13 @@ import (
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
-<<<<<<< HEAD
 
 	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
-=======
+
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
->>>>>>> feat: refactor signer interface & impl
 )
 
 var ExtractApiKey = builder.NextInvoke()

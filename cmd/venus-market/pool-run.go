@@ -3,22 +3,15 @@ package main
 import (
 	"fmt"
 
-<<<<<<< HEAD
-	"github.com/filecoin-project/venus-auth/jwtclient"
-=======
 	"github.com/gorilla/mux"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
-	metrics2 "github.com/ipfs/go-metrics-interface"
-
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
->>>>>>> feat: refactor signer interface & impl
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
@@ -39,14 +32,6 @@ import (
 
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
-<<<<<<< HEAD
-	"github.com/gorilla/mux"
-	"github.com/ipfs-force-community/venus-common-utils/builder"
-	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/urfave/cli/v2"
-	"go.uber.org/fx"
-=======
->>>>>>> feat: refactor signer interface & impl
 )
 
 var poolRunCmd = &cli.Command{
@@ -107,16 +92,9 @@ func poolDaemon(cctx *cli.Context) error {
 			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)
 		}),
 
-<<<<<<< HEAD
 		metrics.MetricsOpts("venus-market", &cfg.Metrics),
 		// override marketconfig
 		builder.Override(new(config.MarketConfig), cfg),
-=======
-		builder.Override(new(metrics.MetricsCtx), func() context.Context {
-			return metrics2.CtxScope(context.Background(), "venus-market")
-		}),
-
->>>>>>> feat: refactor signer interface & impl
 		builder.Override(new(types2.ShutdownChan), shutdownChan),
 
 		//config

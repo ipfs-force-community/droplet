@@ -6,13 +6,14 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
+
 	gwTypes "github.com/ipfs-force-community/venus-gateway/types"
 
 	"github.com/filecoin-project/venus-market/v2/api/clients/signer"
 	"github.com/filecoin-project/venus-market/v2/config"
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	v1Gateway "github.com/filecoin-project/venus/venus-shared/api/gateway/v1"
+	gwAPI "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 )
 
 var log = logging.Logger("clients")
@@ -32,7 +33,7 @@ var log = logging.Logger("clients")
 //	return nil
 //}
 
-func NewMarketEvent(mctx metrics.MetricsCtx) (v1Gateway.IMarketEvent, error) {
+func NewMarketEvent(mctx metrics.MetricsCtx) (gwAPI.IMarketEvent, error) {
 	stream := marketevent.NewMarketEventStream(mctx, &localMinerValidator{}, gwTypes.DefaultConfig())
 	return stream, nil
 }
@@ -56,7 +57,7 @@ var ClientsOpts = func(server bool, mode string, msgCfg *config.Messager, signer
 				func(s *builder.Settings) bool {
 					return mode == "solo"
 				},
-				builder.Override(new(v1Gateway.IMarketEvent), NewMarketEvent),
+				builder.Override(new(gwAPI.IMarketEvent), NewMarketEvent),
 			),
 		)
 	}
