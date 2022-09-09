@@ -206,11 +206,11 @@ func (m *MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address
 	return m.StorageAsk.SetAsk(ctx, mAddr, price, verifiedPrice, duration, options...)
 }
 
-func (m *MarketNodeImpl) MarketListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error) {
+func (m *MarketNodeImpl) MarketListAsk(ctx context.Context) ([]*types.SignedStorageAsk, error) {
 	return m.StorageAsk.ListAsk(ctx)
 }
 
-func (m *MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*storagemarket.SignedStorageAsk, error) {
+func (m *MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*types.SignedStorageAsk, error) {
 	return m.StorageAsk.GetAsk(ctx, mAddr)
 }
 
@@ -779,7 +779,7 @@ func (m *MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 		return err
 	}
 
-	err = m.Repo.StorageAskRepo().SetAsk(ctx, data.StorageAsk)
+	err = m.Repo.StorageAskRepo().SetAsk(ctx, (&types.SignedStorageAsk{}).FillWithAsk(data.StorageAsk))
 	if err != nil {
 		return err
 	}
