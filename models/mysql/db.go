@@ -214,15 +214,22 @@ type DBAddress address.Address
 var UndefDBAddress = DBAddress{}
 
 func (a *DBAddress) Scan(value interface{}) error {
-	val, ok := value.([]byte)
-	if !ok {
+	var val string
+	switch value.(type) {
+	case []byte:
+		temp := value.([]byte)
+		val = string(temp)
+	case string:
+		val = value.(string)
+	default:
 		return errors.New("address should be a `[]byte` or `string`")
 	}
+
 	if len(val) == 0 {
 		*a = UndefDBAddress
 		return nil
 	}
-	addr, err := address.NewFromString(address.MainnetPrefix + string(val))
+	addr, err := address.NewFromString(address.MainnetPrefix + val)
 	if err != nil {
 		return err
 	}
@@ -259,6 +266,8 @@ type TimeStampOrm struct {
 	CreatedAt uint64 `gorm:"type:bigint unsigned"`
 	UpdatedAt uint64 `gorm:"type:bigint unsigned"`
 }
+
+type Uint64Orm uint64
 
 func (tso *TimeStampOrm) Refresh() *TimeStampOrm {
 	tso.UpdatedAt = uint64(time.Now().Unix())
