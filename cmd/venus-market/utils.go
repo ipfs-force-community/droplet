@@ -27,29 +27,6 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		cfg.AuthNode.Url = cctx.String(AuthUrlFlag.Name)
 	}
 
-	if cctx.IsSet(AuthTokeFlag.Name) {
-		cfg.Node.Token = cctx.String(AuthTokeFlag.Name)
-
-		if len(cfg.AuthNode.Url) > 0 {
-			cfg.AuthNode.Token = cctx.String(AuthTokeFlag.Name)
-		}
-
-		if len(cfg.Messager.Url) > 0 {
-			cfg.Messager.Token = cctx.String(AuthTokeFlag.Name)
-		}
-
-		if len(cfg.Signer.Url) > 0 {
-			cfg.Signer.Token = cctx.String(AuthTokeFlag.Name)
-		}
-	}
-
-	if cctx.IsSet(NodeTokenFlag.Name) {
-		cfg.Node.Token = cctx.String(NodeTokenFlag.Name)
-	}
-	if cctx.IsSet(MessagerTokenFlag.Name) {
-		cfg.Messager.Token = cctx.String(MessagerTokenFlag.Name)
-	}
-
 	signerType := cctx.String(SignerTypeFlag.Name)
 	switch signerType {
 	case config.SignerTypeGateway:
@@ -83,6 +60,29 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		return fmt.Errorf("unsupport signer type %s", signerType)
 	}
 	cfg.Signer.SignerType = signerType
+
+	if cctx.IsSet(AuthTokeFlag.Name) {
+		cfg.Node.Token = cctx.String(AuthTokeFlag.Name)
+
+		if len(cfg.AuthNode.Url) > 0 {
+			cfg.AuthNode.Token = cctx.String(AuthTokeFlag.Name)
+		}
+
+		if len(cfg.Messager.Url) > 0 {
+			cfg.Messager.Token = cctx.String(AuthTokeFlag.Name)
+		}
+
+		if len(cfg.Signer.Url) > 0 {
+			cfg.Signer.Token = cctx.String(AuthTokeFlag.Name)
+		}
+	}
+
+	if cctx.IsSet(NodeTokenFlag.Name) {
+		cfg.Node.Token = cctx.String(NodeTokenFlag.Name)
+	}
+	if cctx.IsSet(MessagerTokenFlag.Name) {
+		cfg.Messager.Token = cctx.String(MessagerTokenFlag.Name)
+	}
 
 	if cctx.IsSet(MysqlDsnFlag.Name) {
 		cfg.Mysql.ConnectionString = cctx.String(MysqlDsnFlag.Name)

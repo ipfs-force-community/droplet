@@ -13,7 +13,7 @@ import (
 
 func newGatewayWalletClient(mCtx metrics.MetricsCtx, nodeCfg *config.Signer) (ISigner, jsonrpc.ClientCloser, error) {
 	info := api.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
-	dialAddr, err := info.DialArgs("v1")
+	dialAddr, err := info.DialArgs("v2")
 	if err != nil {
 		return nil, nil, err
 	}
