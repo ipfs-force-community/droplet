@@ -7,7 +7,7 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 
 	"github.com/filecoin-project/go-address"
 

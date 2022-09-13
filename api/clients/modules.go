@@ -3,8 +3,8 @@ package clients
 import (
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
 	"github.com/ipfs-force-community/venus-gateway/marketevent"
 
 	gwTypes "github.com/ipfs-force-community/venus-gateway/types"

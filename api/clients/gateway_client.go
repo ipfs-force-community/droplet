@@ -12,7 +12,7 @@ import (
 	gwAPI "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 	sharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 
-	"github.com/ipfs-force-community/venus-common-utils/metrics"
+	"github.com/ipfs-force-community/metrics"
 )
 
 func newGatewayWalletClient(mctx metrics.MetricsCtx, nodeCfg *config.Signer) (ISinger, jsonrpc.ClientCloser, error) {
