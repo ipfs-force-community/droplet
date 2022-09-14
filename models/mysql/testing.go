@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -18,11 +19,12 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	ptest "github.com/libp2p/go-libp2p-core/test"
 )
+
+var getTestAddress func() address.Address = address.NewForTestGetter()
 
 func setup(t *testing.T) (repo.Repo, sqlmock.Sqlmock, *sql.DB) {
 	sqlDB, mock, err := sqlmock.New()
@@ -33,9 +35,7 @@ func setup(t *testing.T) (repo.Repo, sqlmock.Sqlmock, *sql.DB) {
 
 	gormDB, err := gorm.Open(mysql.New(mysql.Config{
 		Conn: sqlDB,
-	}), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-	})
+	}))
 	assert.NoError(t, err)
 
 	return MysqlRepo{DB: gormDB}, mock, sqlDB
@@ -55,6 +55,9 @@ func closeDB(mock sqlmock.Sqlmock, sqlDB *sql.DB) error {
 func getTestCid() (cid.Cid, error) {
 	temp := make([]byte, 8)
 	_, err := rand.Read(temp)
+	if err != nil {
+		return cid.Undef, err
+	}
 	hash, err := multihash.Sum(temp, multihash.SHA3, -1)
 	if err != nil {
 		return cid.Undef, err
@@ -74,21 +77,58 @@ func getTestPeerId() (peer.ID, error) {
 	return peerId, nil
 }
 
-func getDryrunDB() (*gorm.DB, error) {
+func getSqliteDryrunDB() (*gorm.DB, error) {
 	return gorm.Open(sqlite.Open(":memory:"), &gorm.Config{DryRun: true})
 }
 
-func getFullRows(values []interface{}) (*sqlmock.Rows, error) {
-	if len(values) <= 0 {
-		return nil, fmt.Errorf("values is empty")
-	}
-
-	db, err := getDryrunDB()
+func getMysqlDryrunDB() (*gorm.DB, error) {
+	sqlDB, _, err := sqlmock.New()
 	if err != nil {
 		return nil, err
 	}
 
-	err = db.Statement.Parse(values[0])
+	gormDB, err := gorm.Open(mysql.New(mysql.Config{
+		Conn:                      sqlDB,
+		SkipInitializeWithVersion: true,
+	}), &gorm.Config{
+		DryRun:                 true,
+		SkipDefaultTransaction: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return gormDB, nil
+}
+
+func getFullRows(obj interface{}) (*sqlmock.Rows, error) {
+	tmp := make([]interface{}, 0)
+
+	if reflect.TypeOf(obj).Kind() == reflect.Ptr {
+		obj = reflect.ValueOf(obj).Elem().Interface()
+	}
+
+	objType := reflect.TypeOf(obj)
+	objValue := reflect.ValueOf(obj)
+	objIsSlice := objType.Kind() == reflect.Slice
+
+	if objIsSlice {
+		for i := 0; i < objValue.Len(); i++ {
+			tmp = append(tmp, objValue.Index(i).Interface())
+		}
+	} else {
+		tmp = append(tmp, obj)
+	}
+
+	if len(tmp) <= 0 {
+		return nil, fmt.Errorf("values is empty")
+	}
+
+	db, err := getSqliteDryrunDB()
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.Statement.Parse(tmp[0])
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +137,7 @@ func getFullRows(values []interface{}) (*sqlmock.Rows, error) {
 	rows := sqlmock.NewRows(schema.DBNames)
 	dict := schema.FieldsByDBName
 
-	for _, stru := range values {
+	for _, stru := range tmp {
 		row := make([]driver.Value, 0, len(schema.DBNames))
 		rt := reflect.TypeOf(stru)
 		rv := reflect.ValueOf(stru)
@@ -115,17 +155,16 @@ func getFullRows(values []interface{}) (*sqlmock.Rows, error) {
 			fiel := dict[dbName]
 			temp := rv
 			for _, path := range fiel.BindNames {
-				temp = rv.FieldByName(path)
+				temp = temp.FieldByName(path)
 			}
 
-			tt := temp.Type()
+			tempType := temp.Type()
 
-			if tt == reflect.TypeOf(driver.Valuer(nil)) {
+			if tempType == reflect.TypeOf(driver.Valuer(nil)) {
 				v, err := temp.Interface().(driver.Valuer).Value()
 				if err != nil {
 					return nil, err
 				}
-				// if fiel.DataType ==
 				row = append(row, v.([]byte))
 			} else {
 				row = append(row, temp.Interface())
