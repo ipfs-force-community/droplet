@@ -28,7 +28,8 @@ var fundedAddressStatesCase = []*market_types.FundedAddressState{
 		TimeStamp:   market_types.TimeStamp{CreatedAt: uint64(time.Now().Unix()), UpdatedAt: uint64(time.Now().Unix())},
 	},
 }
-var fundedAddressStateColumns []string = []string{"addr", "amt_reserved", "msg_cid", "created_at", "updated_at"}
+
+var fundedAddressStateColumns = []string{"addr", "amt_reserved", "msg_cid", "created_at", "updated_at"}
 
 func TestFundAddrState(t *testing.T) {
 	r, mock, sqlDB := setup(t)

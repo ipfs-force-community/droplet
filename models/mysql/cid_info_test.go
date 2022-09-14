@@ -12,15 +12,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var cidInfoCase []cidInfo
+var cidInfoCases []cidInfo
 
 func init() {
 	cid1, err := getTestCid()
+	if err != nil {
+		panic(err)
+	}
 	cid2, err := getTestCid()
 	if err != nil {
 		panic(err)
 	}
-	cidInfoCase = []cidInfo{
+	cidInfoCases = []cidInfo{
 		{
 			PieceCid:   DBCid(cid1),
 			PayloadCid: DBCid(cid1),
@@ -51,54 +54,70 @@ func TestCidInfo(t *testing.T) {
 }
 
 func testGetCIDInfo(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
-	cidInfo := cidInfoCase[0]
+	cidInfoCase := cidInfoCases[0]
 
 	pCidinfo := piecestore.CIDInfo{
-		CID: cidInfo.PayloadCid.cid(),
+		CID: cidInfoCase.PayloadCid.cid(),
 		PieceBlockLocations: []piecestore.PieceBlockLocation{
-			{BlockLocation: piecestore.BlockLocation(cidInfo.BlockLocation),
-				PieceCID: cid.Cid(cidInfo.PieceCid),
+			{BlockLocation: piecestore.BlockLocation(cidInfoCase.BlockLocation),
+				PieceCID: cid.Cid(cidInfoCase.PieceCid),
 			},
-		}}
+		},
+	}
 
-	location, err := cidInfo.BlockLocation.Value()
+	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `cid_infos` WHERE payload_cid = ?")).WithArgs(cidInfo.PayloadCid.String()).WillReturnRows(sqlmock.NewRows([]string{"piece_cid", "payload_cid", "block_location", "created_at", "updated_at"}).AddRow([]byte(cidInfo.PieceCid.String()), []byte(cidInfo.PayloadCid.String()), location, cidInfo.CreatedAt, cidInfo.UpdatedAt))
+	rows, err := getFullRows(cidInfoCase)
+	assert.NoError(t, err)
 
-	res, err := r.CidInfoRepo().GetCIDInfo(context.Background(), cidInfo.PayloadCid.cid())
+	sql, vars, err := getSQL(db.Model(&cidInfo{}).Find(&cidInfo{}, "payload_cid = ?", DBCid(cidInfoCase.PayloadCid.cid()).String()))
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+
+	res, err := r.CidInfoRepo().GetCIDInfo(context.Background(), cidInfoCase.PayloadCid.cid())
 	assert.NoError(t, err)
 	assert.Equal(t, pCidinfo, res)
 }
 
 func testListCidInfoKeys(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT payload_cid FROM `cid_infos`")).WillReturnRows(sqlmock.NewRows([]string{"payload_cid"}).AddRow([]byte(cidInfoCase[0].PayloadCid.String())).AddRow([]byte(cidInfoCase[1].PayloadCid.String())))
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	rows := sqlmock.NewRows([]string{"payload_cid"}).AddRow([]byte(cidInfoCases[0].PayloadCid.String())).AddRow([]byte(cidInfoCases[1].PayloadCid.String()))
+
+	sql, vars, err := getSQL(db.Table(cidInfoTableName).Select("payload_cid"))
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
 
 	res, err := r.CidInfoRepo().ListCidInfoKeys(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, []cid.Cid{cidInfoCase[0].PayloadCid.cid(), cidInfoCase[1].PayloadCid.cid()}, res)
+	assert.Equal(t, []cid.Cid{cidInfoCases[0].PayloadCid.cid(), cidInfoCases[1].PayloadCid.cid()}, res)
 }
 
 func testAddPieceBlockLocations(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	cid1, err := getTestCid()
+	assert.NoError(t, err)
 	cid2, err := getTestCid()
+	assert.NoError(t, err)
 	cid3, err := getTestCid()
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
 
 	blockLocationCase := map[cid.Cid]piecestore.BlockLocation{
-		cid1: piecestore.BlockLocation{
+		cid1: {
 			RelOffset: 0,
 			BlockSize: 0,
 		},
-		cid2: piecestore.BlockLocation{
+		cid2: {
 			RelOffset: 2,
 			BlockSize: 0,
 		},
 	}
 
 	v1, err := mysqlBlockLocation(blockLocationCase[cid1]).Value()
+	assert.NoError(t, err)
 	v2, err := mysqlBlockLocation(blockLocationCase[cid2]).Value()
 	assert.NoError(t, err)
 

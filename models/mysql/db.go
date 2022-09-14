@@ -158,15 +158,21 @@ type DBCid cid.Cid
 var UndefDBCid = DBCid{}
 
 func (c *DBCid) Scan(value interface{}) error {
-	val, ok := value.([]byte)
-	if !ok {
-		return errors.New("cid should be a `[]byte`")
+	var val string
+	switch value := value.(type) {
+	case []byte:
+		val = string(value)
+	case string:
+		val = value
+	default:
+		return errors.New("address should be a `[]byte` or `string`")
 	}
+
 	if len(val) == 0 {
 		*c = UndefDBCid
 		return nil
 	}
-	cid, err := cid.Decode(string(val))
+	cid, err := cid.Decode(val)
 	if err != nil {
 		return err
 	}
@@ -215,12 +221,11 @@ var UndefDBAddress = DBAddress{}
 
 func (a *DBAddress) Scan(value interface{}) error {
 	var val string
-	switch value.(type) {
+	switch value := value.(type) {
 	case []byte:
-		temp := value.([]byte)
-		val = string(temp)
+		val = string(value)
 	case string:
-		val = value.(string)
+		val = value
 	default:
 		return errors.New("address should be a `[]byte` or `string`")
 	}
@@ -266,8 +271,6 @@ type TimeStampOrm struct {
 	CreatedAt uint64 `gorm:"type:bigint unsigned"`
 	UpdatedAt uint64 `gorm:"type:bigint unsigned"`
 }
-
-type Uint64Orm uint64
 
 func (tso *TimeStampOrm) Refresh() *TimeStampOrm {
 	tso.UpdatedAt = uint64(time.Now().Unix())

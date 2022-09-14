@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	market_types "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -16,11 +15,8 @@ import (
 var retrievalAskCase *market_types.RetrievalAsk
 
 func init() {
-	var err error
-	addr, err := address.NewIDAddress(10)
-	if err != nil {
-		panic(err)
-	}
+	addr := getTestAddress()
+
 	retrievalAskCase = &market_types.RetrievalAsk{
 		Miner:                   addr,
 		PricePerByte:            types.NewInt(1),

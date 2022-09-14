@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -15,10 +14,11 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm/clause"
 )
 
-var dbDealCase *retrievalDeal
-var dealStateCase *types.ProviderDealState
+var dbRetrievalDealCase *retrievalDeal
+var RetrievaldealStateCase *types.ProviderDealState
 
 func init() {
 	peerId, err := getTestPeerId()
@@ -26,7 +26,7 @@ func init() {
 		panic(err)
 	}
 
-	dbDealCase = &retrievalDeal{
+	dbRetrievalDealCase = &retrievalDeal{
 		DealProposal: DealProposal{
 			ID:           1,
 			PricePerByte: mtypes.NewInt(1),
@@ -44,68 +44,82 @@ func init() {
 		TimeStampOrm:    TimeStampOrm{CreatedAt: uint64(time.Now().Unix()), UpdatedAt: uint64(time.Now().Unix())},
 	}
 
-	dealStateCase, err = toProviderDealState(dbDealCase)
+	RetrievaldealStateCase, err = toProviderDealState(dbRetrievalDealCase)
 	if err != nil {
 		panic(err)
 	}
-	dealStateCase.ChannelID = &datatransfer.ChannelID{
-		ID: datatransfer.TransferID(dbDealCase.ChannelID.ID),
+	RetrievaldealStateCase.ChannelID = &datatransfer.ChannelID{
+		ID: datatransfer.TransferID(dbRetrievalDealCase.ChannelID.ID),
 	}
 }
 
 func TestRetrievalDealRepo(t *testing.T) {
 	r, mock, sqlDB := setup(t)
-	t.Run("mysql test SaveDeal", wrapper(testSaveDeal, r, mock))
-	t.Run("mysql test GetDeal", wrapper(testGetDeal, r, mock))
-	t.Run("mysql test GetDealByTransferId", wrapper(testGetDealByTransferId, r, mock))
-	t.Run("mysql test HasDeal", wrapper(testHasDeal, r, mock))
-	t.Run("mysql test ListDeals", wrapper(testListDeals, r, mock))
+	t.Run("mysql test SaveDeal", wrapper(testSaveRetrievalDeal, r, mock))
+	t.Run("mysql test GetDeal", wrapper(testRetrievalGetDeal, r, mock))
+	t.Run("mysql test GetDealByTransferId", wrapper(testGetRetrievalDealByTransferId, r, mock))
+	t.Run("mysql test HasDeal", wrapper(testHasRetrievalDeal, r, mock))
+	t.Run("mysql test ListDeals", wrapper(testListRetrievalDeals, r, mock))
 	t.Run("mysql test GroupRetrievalDealNumberByStatus", wrapper(testGroupRetrievalDealNumberByStatus, r, mock))
 
 	assert.NoError(t, closeDB(mock, sqlDB))
 }
 
-func testSaveDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func testSaveRetrievalDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	ctx := context.Background()
+	dbDeal := fromProviderDealState(RetrievaldealStateCase)
+
+	db, err := getMysqlDryrunDB()
+	assert.Nil(t, err)
+	sql, vars, err := getSQL(db.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).
+		Create(dbDeal))
+	assert.NoError(t, err)
+	vars[20] = sqlmock.AnyArg()
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `retrieval_deals` (`cdp_payload_cid`,`cdp_selector`,`cdp_piece_cid`,`cdp_price_perbyte`,`cdp_payment_interval`,`cdp_payment_interval_increase`,`cdp_unseal_price`,`store_id`,`ci_initiator`,`ci_responder`,`ci_channel_id`,`sel_proposal_cid`,`status`,`receiver`,`total_sent`,`funds_received`,`message`,`current_interval`,`legacy_protocol`,`created_at`,`updated_at`,`cdp_proposal_id`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE `cdp_payload_cid`=VALUES(`cdp_payload_cid`),`cdp_selector`=VALUES(`cdp_selector`),`cdp_piece_cid`=VALUES(`cdp_piece_cid`),`cdp_price_perbyte`=VALUES(`cdp_price_perbyte`),`cdp_payment_interval`=VALUES(`cdp_payment_interval`),`cdp_payment_interval_increase`=VALUES(`cdp_payment_interval_increase`),`cdp_unseal_price`=VALUES(`cdp_unseal_price`),`store_id`=VALUES(`store_id`),`ci_initiator`=VALUES(`ci_initiator`),`ci_responder`=VALUES(`ci_responder`),`ci_channel_id`=VALUES(`ci_channel_id`),`sel_proposal_cid`=VALUES(`sel_proposal_cid`),`status`=VALUES(`status`),`total_sent`=VALUES(`total_sent`),`funds_received`=VALUES(`funds_received`),`message`=VALUES(`message`),`current_interval`=VALUES(`current_interval`),`legacy_protocol`=VALUES(`legacy_protocol`),`updated_at`=VALUES(`updated_at`)")).WithArgs(dbDealCase.DealProposal.PayloadCID, dbDealCase.DealProposal.Selector, dbDealCase.DealProposal.PieceCID, dbDealCase.DealProposal.PricePerByte, dbDealCase.DealProposal.PaymentInterval, dbDealCase.DealProposal.PaymentIntervalIncrease, dbDealCase.DealProposal.UnsealPrice, dbDealCase.StoreID, dbDealCase.ChannelID.Initiator, dbDealCase.ChannelID.Responder, dbDealCase.ChannelID.ID, dbDealCase.SelStorageProposalCid, dbDealCase.Status, dbDealCase.Receiver, dbDealCase.TotalSent, dbDealCase.FundsReceived, dbDealCase.Message, dbDealCase.CurrentInterval, dbDealCase.LegacyProtocol, sqlmock.AnyArg(), sqlmock.AnyArg(), dbDealCase.DealProposal.ID).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	err := r.RetrievalDealRepo().SaveDeal(ctx, dealStateCase)
+	err = r.RetrievalDealRepo().SaveDeal(ctx, RetrievaldealStateCase)
 	assert.Nil(t, err)
 }
 
-func testGetDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func testRetrievalGetDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	ctx := context.Background()
 
-	peerid, err := peer.Decode(dbDealCase.Receiver)
+	peerid, err := peer.Decode(dbRetrievalDealCase.Receiver)
 	assert.Nil(t, err)
 
-	rows := mock.NewRows([]string{"cdp_proposal_id", "cdp_payload_cid", "cdp_selector", "cdp_piece_cid", "cdp_price_perbyte", "cdp_payment_interval", "cdp_payment_interval_increase", "cdp_unseal_price", "store_id", "ci_initiator", "ci_responder", "ci_channel_id", "sel_proposal_cid", "status", "receiver", "total_sent", "funds_received", "message", "current_interval", "legacy_protocol", "created_at", "updated_at"}).AddRow(dbDealCase.ID, []byte(dbDealCase.DealProposal.PayloadCID.String()), dbDealCase.DealProposal.Selector, []byte(dbDealCase.DealProposal.PieceCID.String()), dbDealCase.DealProposal.PricePerByte, dbDealCase.DealProposal.PaymentInterval, dbDealCase.DealProposal.PaymentIntervalIncrease, dbDealCase.DealProposal.UnsealPrice, dbDealCase.StoreID, dbDealCase.ChannelID.Initiator, dbDealCase.ChannelID.Responder, dbDealCase.ChannelID.ID, []byte(dbDealCase.SelStorageProposalCid.String()), dbDealCase.Status, dbDealCase.Receiver, dbDealCase.TotalSent, dbDealCase.FundsReceived, dbDealCase.Message, dbDealCase.CurrentInterval, dbDealCase.LegacyProtocol, dbDealCase.CreatedAt, dbDealCase.UpdatedAt)
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE cdp_proposal_id=? AND receiver=? LIMIT 1")).WithArgs(retrievalmarket.DealID(dbDealCase.DealProposal.ID), peerid.String()).WillReturnRows(rows)
+	rows, err := getFullRows(dbRetrievalDealCase)
+	assert.NoError(t, err)
 
-	res, err := r.RetrievalDealRepo().GetDeal(ctx, peerid, retrievalmarket.DealID(dbDealCase.DealProposal.ID))
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE cdp_proposal_id=? AND receiver=? LIMIT 1")).WithArgs(retrievalmarket.DealID(dbRetrievalDealCase.DealProposal.ID), peerid.String()).WillReturnRows(rows)
+
+	res, err := r.RetrievalDealRepo().GetDeal(ctx, peerid, retrievalmarket.DealID(dbRetrievalDealCase.DealProposal.ID))
 	assert.Nil(t, err)
-	dealState, err := toProviderDealState(dbDealCase)
+	dealState, err := toProviderDealState(dbRetrievalDealCase)
+	assert.NoError(t, err)
 	assert.Equal(t, res, dealState)
 }
 
-func testGetDealByTransferId(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func testGetRetrievalDealByTransferId(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	ctx := context.Background()
 
-	rows := mock.NewRows([]string{"cdp_proposal_id", "cdp_payload_cid", "cdp_selector", "cdp_piece_cid", "cdp_price_perbyte", "cdp_payment_interval", "cdp_payment_interval_increase", "cdp_unseal_price", "store_id", "ci_initiator", "ci_responder", "ci_channel_id", "sel_proposal_cid", "status", "receiver", "total_sent", "funds_received", "message", "current_interval", "legacy_protocol", "created_at", "updated_at"}).AddRow(dbDealCase.ID, []byte(dbDealCase.DealProposal.PayloadCID.String()), dbDealCase.DealProposal.Selector, []byte(dbDealCase.DealProposal.PieceCID.String()), dbDealCase.DealProposal.PricePerByte, dbDealCase.DealProposal.PaymentInterval, dbDealCase.DealProposal.PaymentIntervalIncrease, dbDealCase.DealProposal.UnsealPrice, dbDealCase.StoreID, dbDealCase.ChannelID.Initiator, dbDealCase.ChannelID.Responder, dbDealCase.ChannelID.ID, []byte(dbDealCase.SelStorageProposalCid.String()), dbDealCase.Status, dbDealCase.Receiver, dbDealCase.TotalSent, dbDealCase.FundsReceived, dbDealCase.Message, dbDealCase.CurrentInterval, dbDealCase.LegacyProtocol, dbDealCase.CreatedAt, dbDealCase.UpdatedAt)
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ? LIMIT 1")).WithArgs(dbDealCase.ChannelID.Initiator, dbDealCase.ChannelID.Responder, dbDealCase.ChannelID.ID).WillReturnRows(rows)
+	rows, err := getFullRows(dbRetrievalDealCase)
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ? LIMIT 1")).WithArgs(dbRetrievalDealCase.ChannelID.Initiator, dbRetrievalDealCase.ChannelID.Responder, dbRetrievalDealCase.ChannelID.ID).WillReturnRows(rows)
 
 	res, err := r.RetrievalDealRepo().GetDealByTransferId(ctx, datatransfer.ChannelID{
-		ID: datatransfer.TransferID(dbDealCase.ChannelID.ID),
+		ID: datatransfer.TransferID(dbRetrievalDealCase.ChannelID.ID),
 	})
 	assert.Nil(t, err)
-	dealState, err := toProviderDealState(dbDealCase)
+	dealState, err := toProviderDealState(dbRetrievalDealCase)
+	assert.NoError(t, err)
 	assert.Equal(t, res, dealState)
 }
 
-func testHasDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func testHasRetrievalDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	ctx := context.Background()
 	did := retrievalmarket.DealID(1)
 	peerId, err := getTestPeerId()
@@ -122,7 +136,7 @@ func testHasDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.True(t, has)
 }
 
-func testListDeals(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func testListRetrievalDeals(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	ctx := context.Background()
 
 	rows := mock.NewRows([]string{"cdp_proposal_id", "cdp_payload_cid", "cdp_selector", "cdp_piece_cid", "cdp_price_perbyte", "cdp_payment_interval", "cdp_payment_interval_increase", "cdp_unseal_price", "store_id", "ci_initiator", "ci_responder", "ci_channel_id", "sel_proposal_cid", "status", "receiver", "total_sent", "funds_received", "message", "current_interval", "legacy_protocol", "created_at", "updated_at"})
@@ -131,12 +145,15 @@ func testListDeals(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(res))
 
-	rows = mock.NewRows([]string{"cdp_proposal_id", "cdp_payload_cid", "cdp_selector", "cdp_piece_cid", "cdp_price_perbyte", "cdp_payment_interval", "cdp_payment_interval_increase", "cdp_unseal_price", "store_id", "ci_initiator", "ci_responder", "ci_channel_id", "sel_proposal_cid", "status", "receiver", "total_sent", "funds_received", "message", "current_interval", "legacy_protocol", "created_at", "updated_at"}).AddRow(dbDealCase.ID, []byte(dbDealCase.DealProposal.PayloadCID.String()), dbDealCase.DealProposal.Selector, []byte(dbDealCase.DealProposal.PieceCID.String()), dbDealCase.DealProposal.PricePerByte, dbDealCase.DealProposal.PaymentInterval, dbDealCase.DealProposal.PaymentIntervalIncrease, dbDealCase.DealProposal.UnsealPrice, dbDealCase.StoreID, dbDealCase.ChannelID.Initiator, dbDealCase.ChannelID.Responder, dbDealCase.ChannelID.ID, []byte(dbDealCase.SelStorageProposalCid.String()), dbDealCase.Status, dbDealCase.Receiver, dbDealCase.TotalSent, dbDealCase.FundsReceived, dbDealCase.Message, dbDealCase.CurrentInterval, dbDealCase.LegacyProtocol, dbDealCase.CreatedAt, dbDealCase.UpdatedAt)
+	rows, err = getFullRows(dbRetrievalDealCase)
+	assert.NoError(t, err)
+
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` LIMIT 10")).WillReturnRows(rows)
 	res2, err := r.RetrievalDealRepo().ListDeals(ctx, 1, 10)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res2))
-	dealState, err := toProviderDealState(dbDealCase)
+	dealState, err := toProviderDealState(dbRetrievalDealCase)
+	assert.NoError(t, err)
 	assert.Equal(t, res2[0], dealState)
 }
 
@@ -153,8 +170,7 @@ func testGroupRetrievalDealNumberByStatus(t *testing.T, r repo.Repo, mock sqlmoc
 		rows.AddRow(status, count)
 	}
 
-	addr, err := address.NewIDAddress(10)
-	assert.Nil(t, err)
+	addr := getTestAddress()
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT state, count(1) as count FROM `retrieval_deals` GROUP BY `state`")).WillReturnRows(rows)
 	result, err := r.RetrievalDealRepo().GroupRetrievalDealNumberByStatus(ctx, addr)
 	assert.Nil(t, err)

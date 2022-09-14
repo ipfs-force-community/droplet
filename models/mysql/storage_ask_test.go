@@ -6,23 +6,21 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm/clause"
 )
 
-var storageAskCase []storagemarket.SignedStorageAsk
+var storageAskCases []types.SignedStorageAsk
 
 func init() {
-	addr1, err := address.NewIDAddress(10)
-	addr2, err := address.NewIDAddress(20)
-	if err != nil {
-		panic(err)
-	}
+	addr1 := getTestAddress()
+	addr2 := getTestAddress()
 
-	storageAskCase = []storagemarket.SignedStorageAsk{
+	storageAskCases = []types.SignedStorageAsk{
 		{
 			Ask: &storagemarket.StorageAsk{
 				Miner:         addr1,
@@ -40,20 +38,28 @@ func init() {
 	}
 }
 
+func TestStorageAsk(t *testing.T) {
+	r, mock, sqlDB := setup(t)
+
+	t.Run("mysql test GetAsk", wrapper(testGetStorageAsk, r, mock))
+	t.Run("mysql test SetAsk", wrapper(testSetStorageAsk, r, mock))
+	t.Run("mysql test ListAsk", wrapper(testListStorageAsk, r, mock))
+
+	assert.NoError(t, closeDB(mock, sqlDB))
+}
+
 func testGetStorageAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
-	ask := storageAskCase[0]
+	ask := storageAskCases[0]
 	dbAsk := fromStorageAsk(&ask)
 
-	tmp := make([]interface{}, 0)
-	tmp = append(tmp, dbAsk)
-
-	db, err := getDryrunDB()
+	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(tmp)
+	rows, err := getFullRows(dbAsk)
 	assert.NoError(t, err)
 
 	sql, vars, err := getSQL(db.WithContext(context.Background()).Take(&dbAsk, "miner = ?", dbAsk.Miner.String()))
+	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
 
@@ -62,12 +68,50 @@ func testGetStorageAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, ask, *ask2)
 }
 
-func TestStorageAsk(t *testing.T) {
-	r, mock, sqlDB := setup(t)
+func testSetStorageAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
 
-	t.Run("mysql test GetAsk", wrapper(testGetStorageAsk, r, mock))
-	// t.Run("mysql test SetAsk", wrapper(testSetStorageAsk, r, mock))
-	// t.Run("mysql test ListAsk", wrapper(testListStorageAsk, r, mock))
+	ask := storageAskCases[0]
+	dbAsk := fromStorageAsk(&ask)
 
-	assert.NoError(t, closeDB(mock, sqlDB))
+	sql, vars, err := getSQL(db.WithContext(context.Background()).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "miner"}},
+		UpdateAll: true,
+	}).Save(dbAsk))
+	assert.NoError(t, err)
+
+	// set updateTime as any
+	vars[len(vars)-1] = sqlmock.AnyArg()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err = r.StorageAskRepo().SetAsk(context.Background(), &ask)
+	assert.NoError(t, err)
+}
+
+func testListStorageAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	var dbAsks []*storageAsk
+	var expectRes []*types.SignedStorageAsk
+	for i := 0; i < len(storageAskCases); i++ {
+		dbAsks = append(dbAsks, fromStorageAsk(&storageAskCases[i]))
+		expectRes = append(expectRes, &storageAskCases[i])
+	}
+
+	rows, err := getFullRows(dbAsks)
+	assert.NoError(t, err)
+
+	sql, vars, err := getSQL(db.Table("storage_asks").Find(&dbAsks))
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+
+	asks, err := r.StorageAskRepo().ListAsk(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, expectRes, asks)
 }

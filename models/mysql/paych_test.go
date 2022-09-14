@@ -5,33 +5,31 @@ import (
 	"database/sql/driver"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
-	market_types "github.com/filecoin-project/venus/venus-shared/types/market"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm/clause"
 )
 
-var channelInfosCase []*market_types.ChannelInfo
-var msgInfosCase []*market_types.MsgInfo
+var channelInfosCases []*types.ChannelInfo
+var msgInfosCase []*types.MsgInfo
 
 func init() {
-	addr, err := address.NewIDAddress(10)
-	if err != nil {
-		panic(err)
-	}
+	addr := getTestAddress()
 
 	cid, err := getTestCid()
 	if err != nil {
 		panic(err)
 	}
 
-	channelInfosCase = []*market_types.ChannelInfo{
+	channelInfosCases = []*types.ChannelInfo{
 		{
 			ChannelID:     uuid.NewString(),
 			Channel:       &addr,
@@ -41,6 +39,10 @@ func init() {
 			AddFundsMsg:   &cid,
 			Amount:        big.NewInt(0),
 			PendingAmount: big.NewInt(0),
+			TimeStamp: types.TimeStamp{
+				CreatedAt: uint64(time.Now().Unix()),
+				UpdatedAt: uint64(time.Now().Unix()),
+			},
 		},
 		{
 			ChannelID:     uuid.NewString(),
@@ -51,16 +53,20 @@ func init() {
 			AddFundsMsg:   &cid,
 			Amount:        big.NewInt(0),
 			PendingAmount: big.NewInt(0),
+			TimeStamp: types.TimeStamp{
+				CreatedAt: uint64(time.Now().Unix()),
+				UpdatedAt: uint64(time.Now().Unix()),
+			},
 		},
 	}
 
-	msgInfosCase = []*market_types.MsgInfo{
+	msgInfosCase = []*types.MsgInfo{
 		{
-			ChannelID: channelInfosCase[0].ChannelID,
+			ChannelID: channelInfosCases[0].ChannelID,
 			MsgCid:    cid,
 		},
 		{
-			ChannelID: channelInfosCase[0].ChannelID,
+			ChannelID: channelInfosCases[0].ChannelID,
 			MsgCid:    cid,
 		},
 	}
@@ -91,96 +97,121 @@ func TestMegInfo(t *testing.T) {
 }
 
 func testSaveChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
-	channelInfo := channelInfosCase[0]
+	channelInfo := channelInfosCases[0]
 	dbChannelInfo := fromChannelInfo(channelInfo)
+
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	sql, vars, err := getSQL(db.WithContext(context.Background()).Clauses(clause.OnConflict{UpdateAll: true}).Create(dbChannelInfo))
+	assert.NoError(t, err)
+
+	// set updated_at field as any
+	vars[len(vars)-1] = sqlmock.AnyArg()
+
 	mock.ExpectBegin()
-	// mock.ExpectExec("INSERT INTO `channel_infos`").
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `channel_infos` (`channel_id`,`channel`,`control`,`target`,`direction`,`next_lane`,`amount`,`pending_amount`,`create_msg`,`add_funds_msg`,`settling`,`voucher_info`,`is_deleted`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")).
-		WithArgs(dbChannelInfo.ChannelID, dbChannelInfo.Channel, dbChannelInfo.Control, dbChannelInfo.Target, dbChannelInfo.Direction, dbChannelInfo.NextLane, dbChannelInfo.Amount, dbChannelInfo.PendingAmount, dbChannelInfo.CreateMsg, dbChannelInfo.AddFundsMsg, dbChannelInfo.Settling, dbChannelInfo.VoucherInfo, dbChannelInfo.IsDeleted, sqlmock.AnyArg(), sqlmock.AnyArg()).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	err := r.PaychChannelInfoRepo().SaveChannel(context.Background(), channelInfo)
+	err = r.PaychChannelInfoRepo().SaveChannel(context.Background(), channelInfo)
 	assert.NoError(t, err)
 }
 
 func testGetChannelByAddress(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
-	channelInfo := channelInfosCase[0]
-	dbChannelInfo := fromChannelInfo(channelInfo)
+	channelInfoCase := channelInfosCases[0]
+	dbChannelInfo := fromChannelInfo(channelInfoCase)
 
-	voucherInfo, err := dbChannelInfo.VoucherInfo.Value()
+	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows := sqlmock.NewRows([]string{"channel_id", "channel", "control", "target", "direction", "next_lane", "amount", "pending_amount", "create_msg", "add_funds_msg", "settling", "voucher_info", "is_deleted", "created_at", "updated_at"}).AddRow(dbChannelInfo.ChannelID, []byte(dbChannelInfo.Channel.String()), []byte(dbChannelInfo.Control.String()), []byte(dbChannelInfo.Target.String()), dbChannelInfo.Direction, dbChannelInfo.NextLane, dbChannelInfo.Amount, dbChannelInfo.PendingAmount, []byte(dbChannelInfo.CreateMsg.String()), []byte(dbChannelInfo.AddFundsMsg.String()), dbChannelInfo.Settling, voucherInfo, dbChannelInfo.IsDeleted, dbChannelInfo.CreatedAt, dbChannelInfo.UpdatedAt)
-
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `channel_infos` WHERE channel = ? and is_deleted = 0 LIMIT 1")).
-		WithArgs(dbChannelInfo.Channel).WillReturnRows(rows)
-
-	res, err := r.PaychChannelInfoRepo().GetChannelByAddress(context.Background(), *channelInfo.Channel)
+	rows, err := getFullRows(dbChannelInfo)
 	assert.NoError(t, err)
-	assert.Equal(t, channelInfo, res)
+
+	var nullInfo channelInfo
+	sql, vars, err := getSQL(db.Take(&nullInfo, "channel = ? and is_deleted = 0", DBAddress(*channelInfoCase.Channel).String()))
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+
+	res, err := r.PaychChannelInfoRepo().GetChannelByAddress(context.Background(), *channelInfoCase.Channel)
+	assert.NoError(t, err)
+	assert.Equal(t, channelInfoCase, res)
 }
 
 func testGetChannelByChannelID(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
-	channelInfo := channelInfosCase[0]
-	dbChannelInfo := fromChannelInfo(channelInfo)
-	voucherInfo, err := dbChannelInfo.VoucherInfo.Value()
+	channelInfoCase := channelInfosCases[0]
+	dbChannelInfo := fromChannelInfo(channelInfoCase)
+
+	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows := sqlmock.NewRows([]string{"channel_id", "channel", "control", "target", "direction", "next_lane", "amount", "pending_amount", "create_msg", "add_funds_msg", "settling", "voucher_info", "is_deleted", "created_at", "updated_at"}).AddRow(dbChannelInfo.ChannelID, []byte(dbChannelInfo.Channel.String()), []byte(dbChannelInfo.Control.String()), []byte(dbChannelInfo.Target.String()), dbChannelInfo.Direction, dbChannelInfo.NextLane, dbChannelInfo.Amount, dbChannelInfo.PendingAmount, []byte(dbChannelInfo.CreateMsg.String()), []byte(dbChannelInfo.AddFundsMsg.String()), dbChannelInfo.Settling, voucherInfo, dbChannelInfo.IsDeleted, dbChannelInfo.CreatedAt, dbChannelInfo.UpdatedAt)
-
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `channel_infos` WHERE channel_id = ? and is_deleted = 0 LIMIT 1")).WithArgs(dbChannelInfo.ChannelID).WillReturnRows(rows)
-
-	res, err := r.PaychChannelInfoRepo().GetChannelByChannelID(context.Background(), channelInfo.ChannelID)
+	rows, err := getFullRows(dbChannelInfo)
 	assert.NoError(t, err)
-	assert.Equal(t, channelInfo, res)
+
+	var nullInfo channelInfo
+	sql, vars, err := getSQL(db.Take(&nullInfo, "channel_id = ? and is_deleted = 0", channelInfoCase.ChannelID))
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+
+	res, err := r.PaychChannelInfoRepo().GetChannelByChannelID(context.Background(), channelInfoCase.ChannelID)
+	assert.NoError(t, err)
+	assert.Equal(t, channelInfoCase, res)
 }
 
 func testOutboundActiveByFromTo(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
-	channelInfo := channelInfosCase[0]
-	channelInfo.Direction = market_types.DirOutbound
-	channelInfo.Settling = false
+	channelInfoCase := channelInfosCases[0]
+	channelInfoCase.Direction = types.DirOutbound
+	channelInfoCase.Settling = false
 
-	dbChannelInfo := fromChannelInfo(channelInfo)
-	voucherInfo, err := dbChannelInfo.VoucherInfo.Value()
+	dbChannelInfo := fromChannelInfo(channelInfoCase)
+
+	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows := sqlmock.NewRows([]string{"channel_id", "channel", "control", "target", "direction", "next_lane", "amount", "pending_amount", "create_msg", "add_funds_msg", "settling", "voucher_info", "is_deleted", "created_at", "updated_at"}).AddRow(dbChannelInfo.ChannelID, []byte(dbChannelInfo.Channel.String()), []byte(dbChannelInfo.Control.String()), []byte(dbChannelInfo.Target.String()), dbChannelInfo.Direction, dbChannelInfo.NextLane, dbChannelInfo.Amount, dbChannelInfo.PendingAmount, []byte(dbChannelInfo.CreateMsg.String()), []byte(dbChannelInfo.AddFundsMsg.String()), dbChannelInfo.Settling, voucherInfo, dbChannelInfo.IsDeleted, dbChannelInfo.CreatedAt, dbChannelInfo.UpdatedAt)
-
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `channel_infos` WHERE direction = ? and settling = ? and control = ? and target = ? and is_deleted = 0 LIMIT 1")).WithArgs(types.DirOutbound, false, dbChannelInfo.Control.String(), dbChannelInfo.Target.String()).WillReturnRows(rows)
-
-	res, err := r.PaychChannelInfoRepo().OutboundActiveByFromTo(context.Background(), channelInfo.Control, channelInfo.Target)
+	rows, err := getFullRows(dbChannelInfo)
 	assert.NoError(t, err)
-	assert.Equal(t, channelInfo, res)
+
+	var nullInfo channelInfo
+	sql, vars, err := getSQL(db.Take(&nullInfo, "direction = ? and settling = ? and control = ? and target = ? and is_deleted = 0",
+		types.DirOutbound, false, DBAddress(channelInfoCase.Control).String(), DBAddress(channelInfoCase.Target).String()))
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+
+	res, err := r.PaychChannelInfoRepo().OutboundActiveByFromTo(context.Background(), channelInfoCase.Control, channelInfoCase.Target)
+	assert.NoError(t, err)
+	assert.Equal(t, channelInfoCase, res)
 }
 
 func testWithPendingAddFunds(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
-	dbChannelInfos := make([]*channelInfo, len(channelInfosCase))
-	for i, channelInfo := range channelInfosCase {
+	dbChannelInfos := make([]*channelInfo, len(channelInfosCases))
+	for i, channelInfo := range channelInfosCases {
 		tempChannelInfo := channelInfo
-		tempChannelInfo.Direction = market_types.DirOutbound
-
+		tempChannelInfo.Direction = types.DirOutbound
 		dbChannelInfos[i] = fromChannelInfo(tempChannelInfo)
 	}
 
-	voucherInfos := make([]driver.Value, len(dbChannelInfos))
-	for i, dbChannelInfo := range dbChannelInfos {
-		voucherInfo, err := dbChannelInfo.VoucherInfo.Value()
-		assert.NoError(t, err)
-		voucherInfos[i] = voucherInfo
-	}
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
 
-	rows := sqlmock.NewRows([]string{"channel_id", "channel", "control", "target", "direction", "next_lane", "amount", "pending_amount", "create_msg", "add_funds_msg", "settling", "voucher_info", "is_deleted", "created_at", "updated_at"}).AddRow(dbChannelInfos[0].ChannelID, []byte(dbChannelInfos[0].Channel.String()), []byte(dbChannelInfos[0].Control.String()), []byte(dbChannelInfos[0].Target.String()), dbChannelInfos[0].Direction, dbChannelInfos[0].NextLane, dbChannelInfos[0].Amount, dbChannelInfos[0].PendingAmount, []byte(dbChannelInfos[0].CreateMsg.String()), []byte(dbChannelInfos[0].AddFundsMsg.String()), dbChannelInfos[0].Settling, voucherInfos[0], dbChannelInfos[0].IsDeleted, dbChannelInfos[0].CreatedAt, dbChannelInfos[0].UpdatedAt).AddRow(dbChannelInfos[1].ChannelID, []byte(dbChannelInfos[1].Channel.String()), []byte(dbChannelInfos[1].Control.String()), []byte(dbChannelInfos[1].Target.String()), dbChannelInfos[1].Direction, dbChannelInfos[1].NextLane, dbChannelInfos[1].Amount, dbChannelInfos[1].PendingAmount, []byte(dbChannelInfos[1].CreateMsg.String()), []byte(dbChannelInfos[1].AddFundsMsg.String()), dbChannelInfos[1].Settling, voucherInfos[1], dbChannelInfos[1].IsDeleted, dbChannelInfos[1].CreatedAt, dbChannelInfos[1].UpdatedAt)
+	rows, err := getFullRows(dbChannelInfos)
+	assert.NoError(t, err)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `channel_infos` WHERE direction = ? and is_deleted = 0")).WithArgs(types.DirOutbound).WillReturnRows(rows)
+	var nullInfo channelInfo
+	sql, vars, err := getSQL(db.Find(&nullInfo, "direction = ? and is_deleted = 0", types.DirOutbound))
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
 
 	res, err := r.PaychChannelInfoRepo().WithPendingAddFunds(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, channelInfosCase, res)
+	assert.Equal(t, channelInfosCases, res)
 }
 
 func testListChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
-	dbChannelInfos := make([]*channelInfo, len(channelInfosCase))
-	for i, channelInfo := range channelInfosCase {
+	dbChannelInfos := make([]*channelInfo, len(channelInfosCases))
+	for i, channelInfo := range channelInfosCases {
 		dbChannelInfos[i] = fromChannelInfo(channelInfo)
 	}
 
@@ -191,9 +222,10 @@ func testListChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 		voucherInfos[i] = voucherInfo
 	}
 
-	addrs := []address.Address{*channelInfosCase[0].Channel, *channelInfosCase[1].Channel}
+	addrs := []address.Address{*channelInfosCases[0].Channel, *channelInfosCases[1].Channel}
 
-	rows := sqlmock.NewRows([]string{"channel_id", "channel", "control", "target", "direction", "next_lane", "amount", "pending_amount", "create_msg", "add_funds_msg", "settling", "voucher_info", "is_deleted", "created_at", "updated_at"}).AddRow(dbChannelInfos[0].ChannelID, []byte(dbChannelInfos[0].Channel.String()), []byte(dbChannelInfos[0].Control.String()), []byte(dbChannelInfos[0].Target.String()), dbChannelInfos[0].Direction, dbChannelInfos[0].NextLane, dbChannelInfos[0].Amount, dbChannelInfos[0].PendingAmount, []byte(dbChannelInfos[0].CreateMsg.String()), []byte(dbChannelInfos[0].AddFundsMsg.String()), dbChannelInfos[0].Settling, voucherInfos[0], dbChannelInfos[0].IsDeleted, dbChannelInfos[0].CreatedAt, dbChannelInfos[0].UpdatedAt).AddRow(dbChannelInfos[1].ChannelID, []byte(dbChannelInfos[1].Channel.String()), []byte(dbChannelInfos[1].Control.String()), []byte(dbChannelInfos[1].Target.String()), dbChannelInfos[1].Direction, dbChannelInfos[1].NextLane, dbChannelInfos[1].Amount, dbChannelInfos[1].PendingAmount, []byte(dbChannelInfos[1].CreateMsg.String()), []byte(dbChannelInfos[1].AddFundsMsg.String()), dbChannelInfos[1].Settling, voucherInfos[1], dbChannelInfos[1].IsDeleted, dbChannelInfos[1].CreatedAt, dbChannelInfos[1].UpdatedAt)
+	rows, err := getFullRows(dbChannelInfos)
+	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `channel_infos` WHERE channel != ? and is_deleted = 0")).WithArgs(UndefDBAddress.String()).WillReturnRows(rows)
 
@@ -203,18 +235,19 @@ func testListChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 }
 
 func testRemoveChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
-	channelInfo := channelInfosCase[0]
+	channelInfo := channelInfosCases[0]
 	dbChannelInfo := fromChannelInfo(channelInfo)
-	voucherInfo, err := dbChannelInfo.VoucherInfo.Value()
+
+	rows, err := getFullRows(dbChannelInfo)
 	assert.NoError(t, err)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `channel_infos` WHERE channel_id = ? and is_deleted = 0 LIMIT 1")).WithArgs(channelInfosCase[0].ChannelID).WillReturnRows(sqlmock.NewRows([]string{"channel_id", "channel", "control", "target", "direction", "next_lane", "amount", "pending_amount", "create_msg", "add_funds_msg", "settling", "voucher_info", "is_deleted", "created_at", "updated_at"}).AddRow(dbChannelInfo.ChannelID, []byte(dbChannelInfo.Channel.String()), []byte(dbChannelInfo.Control.String()), []byte(dbChannelInfo.Target.String()), dbChannelInfo.Direction, dbChannelInfo.NextLane, dbChannelInfo.Amount, dbChannelInfo.PendingAmount, []byte(dbChannelInfo.CreateMsg.String()), []byte(dbChannelInfo.AddFundsMsg.String()), dbChannelInfo.Settling, voucherInfo, dbChannelInfo.IsDeleted, dbChannelInfo.CreatedAt, dbChannelInfo.UpdatedAt))
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `channel_infos` WHERE channel_id = ? and is_deleted = 0 LIMIT 1")).WithArgs(channelInfosCases[0].ChannelID).WillReturnRows(rows)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta("UPDATE `channel_infos` SET `is_deleted`=?,`updated_at`=? WHERE channel_id = ?")).WithArgs(1, sqlmock.AnyArg(), channelInfosCase[0].ChannelID).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE `channel_infos` SET `is_deleted`=?,`updated_at`=? WHERE channel_id = ?")).WithArgs(1, sqlmock.AnyArg(), channelInfosCases[0].ChannelID).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	err = r.PaychChannelInfoRepo().RemoveChannel(context.Background(), channelInfosCase[0].ChannelID)
+	err = r.PaychChannelInfoRepo().RemoveChannel(context.Background(), channelInfosCases[0].ChannelID)
 	assert.NoError(t, err)
 }
 
