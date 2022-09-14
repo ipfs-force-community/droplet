@@ -112,7 +112,8 @@ func (m *MinerMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit in
 	}
 
 	usersWithMiners, err := m.authClient.ListUsersWithMiners(&auth.ListUsersRequest{
-		Page: &core.Page{Skip: skip, Limit: limit},
+		Page:  &core.Page{Skip: skip, Limit: limit},
+		State: int(core.UserStateEnabled),
 	})
 	if err != nil {
 		return err
@@ -122,11 +123,6 @@ func (m *MinerMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit in
 	m.miners = make(map[address.Address]*market.User)
 
 	for _, u := range usersWithMiners {
-		if u.State != core.UserStateEnabled {
-			log.Warnf("%s state is: %s, won't list its miners", u.Name, u.State.String())
-			continue
-		}
-
 		for _, miner := range u.Miners {
 			addr, err := address.NewFromString(miner.Miner)
 			if err != nil {
