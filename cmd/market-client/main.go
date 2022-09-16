@@ -140,6 +140,7 @@ func main() {
 func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 	if cctx.IsSet(NodeUrlFlag.Name) {
 		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
+		cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
 	}
 
 	if cctx.IsSet(MessagerUrlFlag.Name) {
@@ -157,6 +158,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 
 	if cctx.IsSet(NodeTokenFlag.Name) {
 		cfg.Node.Token = cctx.String(NodeTokenFlag.Name)
+		cfg.Signer.Token = cctx.String(NodeTokenFlag.Name)
 	}
 
 	if cctx.IsSet(MessagerTokenFlag.Name) {
@@ -165,7 +167,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 
 	signerType := cctx.String(SignerTypeFlag.Name)
 	switch signerType {
-	case config.SignerTypeWallet, config.SignerTypeGateway:
+	case config.SignerTypeWallet:
 		{
 			if cctx.IsSet(SignerUrlFlag.Name) {
 				cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
