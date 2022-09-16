@@ -14,7 +14,9 @@ import (
 
 var retrievalAskCase *market_types.RetrievalAsk
 
-func init() {
+func TestRetrievalAsk(t *testing.T) {
+	r, mock, sqlDB := setup(t)
+
 	addr := getTestAddress()
 
 	retrievalAskCase = &market_types.RetrievalAsk{
@@ -24,10 +26,6 @@ func init() {
 		PaymentIntervalIncrease: 3,
 		UnsealPrice:             types.NewInt(4),
 	}
-}
-
-func TestRetrievalAsk(t *testing.T) {
-	r, mock, sqlDB := setup(t)
 
 	t.Run("mysql test GetAsk", wrapper(testRetrievalGetAsk, r, mock))
 	t.Run("mysql test SetAsk", wrapper(testSetRetrievalAsk, r, mock))

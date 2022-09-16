@@ -5,14 +5,12 @@ import (
 	"database/sql/driver"
 	"regexp"
 	"testing"
-	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/filecoin-project/venus/venus-shared/testutil"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm/clause"
@@ -21,59 +19,14 @@ import (
 var channelInfosCases []*types.ChannelInfo
 var msgInfosCase []*types.MsgInfo
 
-func init() {
-	addr := getTestAddress()
-
-	cid, err := getTestCid()
-	if err != nil {
-		panic(err)
-	}
-
-	channelInfosCases = []*types.ChannelInfo{
-		{
-			ChannelID:     uuid.NewString(),
-			Channel:       &addr,
-			Control:       addr,
-			Target:        addr,
-			CreateMsg:     &cid,
-			AddFundsMsg:   &cid,
-			Amount:        big.NewInt(0),
-			PendingAmount: big.NewInt(0),
-			TimeStamp: types.TimeStamp{
-				CreatedAt: uint64(time.Now().Unix()),
-				UpdatedAt: uint64(time.Now().Unix()),
-			},
-		},
-		{
-			ChannelID:     uuid.NewString(),
-			Channel:       &addr,
-			Control:       addr,
-			Target:        addr,
-			CreateMsg:     &cid,
-			AddFundsMsg:   &cid,
-			Amount:        big.NewInt(0),
-			PendingAmount: big.NewInt(0),
-			TimeStamp: types.TimeStamp{
-				CreatedAt: uint64(time.Now().Unix()),
-				UpdatedAt: uint64(time.Now().Unix()),
-			},
-		},
-	}
-
-	msgInfosCase = []*types.MsgInfo{
-		{
-			ChannelID: channelInfosCases[0].ChannelID,
-			MsgCid:    cid,
-		},
-		{
-			ChannelID: channelInfosCases[0].ChannelID,
-			MsgCid:    cid,
-		},
-	}
-}
-
 func TestChannelInfo(t *testing.T) {
 	r, mock, sqlDB := setup(t)
+
+	channelInfosCases = make([]*types.ChannelInfo, 10)
+	testutil.Provide(t, &channelInfosCases)
+
+	msgInfosCase = make([]*types.MsgInfo, 10)
+	testutil.Provide(t, &msgInfosCase)
 
 	t.Run("mysql test SaveChannel", wrapper(testSaveChannel, r, mock))
 	t.Run("mysql test GetChannelByAddress", wrapper(testGetChannelByAddress, r, mock))
@@ -222,7 +175,10 @@ func testListChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 		voucherInfos[i] = voucherInfo
 	}
 
-	addrs := []address.Address{*channelInfosCases[0].Channel, *channelInfosCases[1].Channel}
+	addrs := []address.Address{}
+	for _, c := range channelInfosCases {
+		addrs = append(addrs, *c.Channel)
+	}
 
 	rows, err := getFullRows(dbChannelInfos)
 	assert.NoError(t, err)

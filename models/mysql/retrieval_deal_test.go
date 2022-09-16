@@ -20,7 +20,7 @@ import (
 var dbRetrievalDealCase *retrievalDeal
 var RetrievaldealStateCase *types.ProviderDealState
 
-func init() {
+func TestRetrievalDealRepo(t *testing.T) {
 	peerId, err := getTestPeerId()
 	if err != nil {
 		panic(err)
@@ -51,9 +51,7 @@ func init() {
 	RetrievaldealStateCase.ChannelID = &datatransfer.ChannelID{
 		ID: datatransfer.TransferID(dbRetrievalDealCase.ChannelID.ID),
 	}
-}
 
-func TestRetrievalDealRepo(t *testing.T) {
 	r, mock, sqlDB := setup(t)
 	t.Run("mysql test SaveDeal", wrapper(testSaveRetrievalDeal, r, mock))
 	t.Run("mysql test GetDeal", wrapper(testRetrievalGetDeal, r, mock))

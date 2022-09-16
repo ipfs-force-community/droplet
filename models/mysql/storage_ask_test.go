@@ -16,7 +16,7 @@ import (
 
 var storageAskCases []types.SignedStorageAsk
 
-func init() {
+func TestStorageAsk(t *testing.T) {
 	addr1 := getTestAddress()
 	addr2 := getTestAddress()
 
@@ -36,9 +36,7 @@ func init() {
 			},
 		},
 	}
-}
 
-func TestStorageAsk(t *testing.T) {
 	r, mock, sqlDB := setup(t)
 
 	t.Run("mysql test GetAsk", wrapper(testGetStorageAsk, r, mock))

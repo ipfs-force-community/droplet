@@ -24,7 +24,7 @@ import (
 var dbStorageDealCases []*storageDeal
 var storageDealCases []*types.MinerDeal
 
-func init() {
+func testSaveDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	cid1, err := getTestCid()
 	if err != nil {
 		panic(err)
@@ -96,9 +96,6 @@ func init() {
 		storageDealCases = append(storageDealCases, deal)
 	}
 
-}
-
-func testSaveDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
 
