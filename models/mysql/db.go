@@ -17,6 +17,8 @@ import (
 
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
+
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 //nolint
@@ -148,7 +150,7 @@ func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 
 	r := &MysqlRepo{DB: db}
 
-	return r, r.AutoMigrate(retrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{})
+	return r, r.AutoMigrate(retrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{}, retrievalDeal{})
 }
 
 type DBCid cid.Cid
@@ -214,7 +216,7 @@ var UndefDBAddress = DBAddress{}
 func (a *DBAddress) Scan(value interface{}) error {
 	val, ok := value.([]byte)
 	if !ok {
-		return errors.New("address should be a `[]byte`")
+		return errors.New("address should be a `[]byte` or `string`")
 	}
 	if len(val) == 0 {
 		*a = UndefDBAddress
@@ -256,4 +258,19 @@ func (a DBAddress) addrPtr() *address.Address {
 type TimeStampOrm struct {
 	CreatedAt uint64 `gorm:"type:bigint unsigned"`
 	UpdatedAt uint64 `gorm:"type:bigint unsigned"`
+}
+
+func (tso *TimeStampOrm) Refresh() *TimeStampOrm {
+	tso.UpdatedAt = uint64(time.Now().Unix())
+	if tso.CreatedAt == 0 {
+		tso.CreatedAt = tso.UpdatedAt
+	}
+	return tso
+}
+
+func (tso *TimeStampOrm) Timestamp() types.TimeStamp {
+	return types.TimeStamp{
+		CreatedAt: tso.CreatedAt,
+		UpdatedAt: tso.UpdatedAt,
+	}
 }

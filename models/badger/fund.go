@@ -26,8 +26,8 @@ func NewFundRepo(ds FundMgrDS) repo.FundRepo {
 
 // SaveFundedAddressState save the state to the datastore
 func (fr *fundRepo) SaveFundedAddressState(ctx context.Context, state *types.FundedAddressState) error {
+	state.TimeStamp = makeRefreshedTimeStamp(&state.TimeStamp)
 	k := dskeyForAddr(state.Addr)
-
 	b, err := cborrpc.Dump(state)
 	if err != nil {
 		return err

@@ -8,22 +8,21 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-
-	"github.com/filecoin-project/go-fil-markets/piecestore"
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
-
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	typegen "github.com/whyrusleeping/cbor-gen"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const storageDealTableName = "storage_deals"
@@ -165,9 +164,10 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 		SectorNumber:          uint64(src.SectorNumber),
 		InboundCAR:            src.InboundCAR,
 
-		Offset:      uint64(src.Offset),
-		Length:      uint64(src.Proposal.PieceSize),
-		PieceStatus: string(src.PieceStatus),
+		Offset:       uint64(src.Offset),
+		Length:       uint64(src.Proposal.PieceSize),
+		PieceStatus:  string(src.PieceStatus),
+		TimeStampOrm: TimeStampOrm{CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
 	}
 
 	if src.AddFundsCid == nil {
@@ -262,6 +262,7 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		SectorNumber:          abi.SectorNumber(src.SectorNumber),
 		InboundCAR:            src.InboundCAR,
 		Offset:                abi.PaddedPieceSize(src.Offset),
+		TimeStamp:             src.Timestamp(),
 	}
 
 	if len(src.TransferChannelId.Initiator) > 0 {
@@ -302,9 +303,12 @@ func NewStorageDealRepo(db *gorm.DB) repo.StorageDealRepo {
 }
 
 func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.MinerDeal) error {
-	dbDeal := fromStorageDeal(storageDeal)
-	dbDeal.UpdatedAt = uint64(time.Now().Unix())
-	return sdr.WithContext(ctx).Save(dbDeal).Error
+	deal := fromStorageDeal(storageDeal)
+	deal.TimeStampOrm.Refresh()
+
+	return sdr.WithContext(ctx).Clauses(
+		clause.OnConflict{Columns: []clause.Column{{Name: "proposal_cid"}}, UpdateAll: true}).
+		Create(deal).Error
 }
 
 func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error) {
@@ -404,6 +408,10 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, mAddr ad
 	err := query.Find(&md).Error
 	if err != nil {
 		return nil, err
+	}
+
+	if len(md) == 0 {
+		return nil, repo.ErrNotFound
 	}
 
 	var deals = make([]*types.MinerDeal, len(md))

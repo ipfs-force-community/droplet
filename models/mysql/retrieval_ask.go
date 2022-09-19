@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"context"
-	"time"
 
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
@@ -51,20 +50,20 @@ func (rar *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (
 		UnsealPrice:             fbig.Int{Int: mAsk.UnsealPrice.Int},
 		PaymentInterval:         mAsk.PaymentInterval,
 		PaymentIntervalIncrease: mAsk.PaymentIntervalIncrease,
+		TimeStamp:               mAsk.Timestamp(),
 	}, nil
 }
 
 func (rar *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk) error {
 	return rar.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "address"}},
-		UpdateAll: true,
-	}).Save(&retrievalAsk{
+		UpdateAll: true}).Create(&retrievalAsk{
 		Address:                 DBAddress(ask.Miner),
 		PricePerByte:            convertBigInt(ask.PricePerByte),
 		UnsealPrice:             convertBigInt(ask.UnsealPrice),
 		PaymentInterval:         ask.PaymentInterval,
 		PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
-		TimeStampOrm:            TimeStampOrm{UpdatedAt: uint64(time.Now().Unix())},
+		TimeStampOrm:            *(&TimeStampOrm{CreatedAt: ask.CreatedAt, UpdatedAt: ask.UpdatedAt}).Refresh(),
 	}).Error
 }
 
@@ -82,6 +81,7 @@ func (rar *retrievalAskRepo) ListAsk(ctx context.Context) ([]*types.RetrievalAsk
 			UnsealPrice:             fbig.Int{Int: ask.UnsealPrice.Int},
 			PaymentInterval:         ask.PaymentInterval,
 			PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
+			TimeStamp:               ask.Timestamp(),
 		}
 	}
 	return results, nil

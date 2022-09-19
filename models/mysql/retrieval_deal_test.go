@@ -5,9 +5,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/stretchr/testify/assert"
 )
 

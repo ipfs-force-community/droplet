@@ -79,9 +79,9 @@ type PaychChannelInfoRepo interface {
 }
 
 type IStorageAskRepo interface {
-	ListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error)
-	GetAsk(ctx context.Context, miner address.Address) (*storagemarket.SignedStorageAsk, error)
-	SetAsk(ctx context.Context, ask *storagemarket.SignedStorageAsk) error
+	ListAsk(ctx context.Context) ([]*types.SignedStorageAsk, error)
+	GetAsk(ctx context.Context, miner address.Address) (*types.SignedStorageAsk, error)
+	SetAsk(ctx context.Context, ask *types.SignedStorageAsk) error
 }
 
 type IRetrievalAskRepo interface {

@@ -89,7 +89,7 @@ func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAsk
 	}
 
 	resp := network.AskResponse{
-		Ask: ask,
+		Ask: ask.ToChainAsk(),
 	}
 
 	if err := s.WriteAskResponse(resp, storageDealStream.spn.SignWithGivenMiner(ar.Miner)); err != nil {

@@ -122,8 +122,20 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	assert.Nil(t, dealRepo.SaveDeal(ctx, deal))
 	deal2, err := dealRepo.GetDeal(ctx, deal.ProposalCid)
 	require.NoError(t, err)
+
 	compareDeal(t, deal, deal2)
+
+	deal = deal2
+
+	// the deal would be updated.
 	assert.Nil(t, dealRepo.SaveDeal(ctx, deal2))
+	// check `CreatedAt` and `UpdatedAt` after an `Update`
+	deal2, err = dealRepo.GetDeal(ctx, deal.ProposalCid)
+	require.NoError(t, err)
+	require.Greater(t, deal2.CreatedAt, uint64(0))
+	require.Greater(t, deal2.UpdatedAt, uint64(0))
+	require.Equal(t, deal2.CreatedAt, deal.CreatedAt)
+	require.GreaterOrEqual(t, deal2.UpdatedAt, deal.UpdatedAt)
 
 	// test update
 	deal.Offset = 90000

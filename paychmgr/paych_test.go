@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 
 	"github.com/ipfs/go-cid"
@@ -745,6 +747,7 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 		Control:   fromAcct,
 		Target:    toAcct,
 		Direction: types.DirOutbound,
+		ChannelID: uuid.NewString(),
 	}
 	err = mgr.channelInfoRepo.SaveChannel(ctx, ci)
 	require.NoError(t, err)

@@ -5,8 +5,10 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -70,4 +72,16 @@ func travelDeals(ctx context.Context, ds datastore.Batching, callback interface{
 		}
 	}
 	return nil
+}
+
+func makeRefreshedTimeStamp(ts *types.TimeStamp) types.TimeStamp {
+	var newTs types.TimeStamp
+	if ts != nil {
+		newTs = *ts
+	}
+	newTs.UpdatedAt = uint64(time.Now().Unix())
+	if newTs.CreatedAt == 0 {
+		newTs.CreatedAt = newTs.UpdatedAt
+	}
+	return newTs
 }

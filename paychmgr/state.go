@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/google/uuid"
 )
 
 type stateAccessor struct {
@@ -50,6 +51,7 @@ func (ca *stateAccessor) loadStateChannelInfo(ctx context.Context, ch address.Ad
 		Channel:   &ch,
 		Direction: dir,
 		NextLane:  nextLane,
+		ChannelID: uuid.NewString(),
 	}
 
 	if dir == types.DirOutbound {

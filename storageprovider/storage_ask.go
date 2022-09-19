@@ -4,24 +4,21 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/venus/venus-shared/types"
-
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
-
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
-	"github.com/ipfs-force-community/metrics"
-
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs-force-community/metrics"
 )
 
 type IStorageAsk interface {
-	ListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error)
-	GetAsk(mctx context.Context, Addr address.Address) (*storagemarket.SignedStorageAsk, error)
+	ListAsk(ctx context.Context) ([]*types2.SignedStorageAsk, error)
+	GetAsk(mctx context.Context, Addr address.Address) (*types2.SignedStorageAsk, error)
 	SetAsk(ctx context.Context, mAddr address.Address, price abi.TokenAmount, verifiedPrice abi.TokenAmount, duration abi.ChainEpoch, options ...storagemarket.StorageAskOption) error
 }
 
@@ -38,11 +35,11 @@ type StorageAsk struct {
 	fullNode v1api.FullNode
 }
 
-func (storageAsk *StorageAsk) ListAsk(ctx context.Context) ([]*storagemarket.SignedStorageAsk, error) {
+func (storageAsk *StorageAsk) ListAsk(ctx context.Context) ([]*types2.SignedStorageAsk, error) {
 	return storageAsk.repo.ListAsk(ctx)
 }
 
-func (storageAsk *StorageAsk) GetAsk(ctx context.Context, miner address.Address) (*storagemarket.SignedStorageAsk, error) {
+func (storageAsk *StorageAsk) GetAsk(ctx context.Context, miner address.Address) (*types2.SignedStorageAsk, error) {
 	return storageAsk.repo.GetAsk(ctx, miner)
 }
 
@@ -78,7 +75,7 @@ func (storageAsk *StorageAsk) SetAsk(ctx context.Context, miner address.Address,
 		option(ask)
 	}
 
-	var signedAsk *storagemarket.SignedStorageAsk
+	var signedAsk *types2.SignedStorageAsk
 
 	if signedAsk, err = storageAsk.signAsk(ask); err != nil {
 		return fmt.Errorf("miner %s sign data failed: %v", miner.String(), err)
@@ -87,7 +84,7 @@ func (storageAsk *StorageAsk) SetAsk(ctx context.Context, miner address.Address,
 	return storageAsk.repo.SetAsk(ctx, signedAsk)
 }
 
-func (storageAsk *StorageAsk) signAsk(ask *storagemarket.StorageAsk) (*storagemarket.SignedStorageAsk, error) {
+func (storageAsk *StorageAsk) signAsk(ask *storagemarket.StorageAsk) (*types2.SignedStorageAsk, error) {
 	askBytes, err := cborutil.Dump(ask)
 	if err != nil {
 		return nil, err
@@ -117,5 +114,5 @@ func (storageAsk *StorageAsk) signAsk(ask *storagemarket.StorageAsk) (*storagema
 		return nil, err
 	}
 
-	return &storagemarket.SignedStorageAsk{Ask: ask, Signature: sig}, nil
+	return &types2.SignedStorageAsk{Ask: ask, Signature: sig}, nil
 }

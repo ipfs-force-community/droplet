@@ -3,6 +3,7 @@ package badger
 import (
 	"bytes"
 	"context"
+	"errors"
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
@@ -38,6 +39,18 @@ func (r *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (*t
 }
 
 func (r *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk) error {
+	// This method is generally called from command tool `storage-deals set-ask`
+	// the input arguments doesn't have old `Timestamp`, we try to get the older for updatting
+	oldAsk, err := r.GetAsk(ctx, ask.Miner)
+	if err != nil {
+		if !errors.Is(err, repo.ErrNotFound) {
+			return err
+		}
+	} else {
+		ask.TimeStamp = oldAsk.TimeStamp
+	}
+	ask.TimeStamp = makeRefreshedTimeStamp(&ask.TimeStamp)
+
 	data, err := cborrpc.Dump(ask)
 	if err != nil {
 		return err
