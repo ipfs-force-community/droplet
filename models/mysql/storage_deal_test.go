@@ -26,22 +26,14 @@ var storageDealCases []*types.MinerDeal
 
 func testSaveDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	cid1, err := getTestCid()
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
 	cid2, err := getTestCid()
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
 
 	peer1, err := getTestPeerId()
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
 	peer2, err := getTestPeerId()
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
 
 	temp := []*types.MinerDeal{
 		{
@@ -89,9 +81,7 @@ func testSaveDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	for _, v := range temp {
 		dbDeal := fromStorageDeal(v)
 		deal, err := toStorageDeal(dbDeal)
-		if err != nil {
-			panic(err)
-		}
+		assert.NoError(t, err)
 		dbStorageDealCases = append(dbStorageDealCases, dbDeal)
 		storageDealCases = append(storageDealCases, deal)
 	}

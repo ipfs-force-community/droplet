@@ -22,9 +22,7 @@ var RetrievaldealStateCase *types.ProviderDealState
 
 func TestRetrievalDealRepo(t *testing.T) {
 	peerId, err := getTestPeerId()
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
 
 	dbRetrievalDealCase = &retrievalDeal{
 		DealProposal: DealProposal{
@@ -45,9 +43,7 @@ func TestRetrievalDealRepo(t *testing.T) {
 	}
 
 	RetrievaldealStateCase, err = toProviderDealState(dbRetrievalDealCase)
-	if err != nil {
-		panic(err)
-	}
+	assert.NoError(t, err)
 	RetrievaldealStateCase.ChannelID = &datatransfer.ChannelID{
 		ID: datatransfer.TransferID(dbRetrievalDealCase.ChannelID.ID),
 	}
