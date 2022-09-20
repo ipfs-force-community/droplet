@@ -4,65 +4,87 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/venus/venus-shared/types/market"
-
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	cbg "github.com/whyrusleeping/cbor-gen"
+
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_retrievalDealRepo_GroupRetrievalDealNumberByStatus(t *testing.T) {
-	ctx := context.Background()
-	repo := setup(t)
-	r := repo.RetrievalDealRepo()
-
-	deals := make([]market.ProviderDealState, 10)
-	testutil.Provide(t, &deals)
-
-	result := map[retrievalmarket.DealStatus]int64{}
-	for index, deal := range deals {
-		deals[index].Params.Selector = nil
-		result[deal.Status]++
-	}
-
-	for _, deal := range deals {
-		err := r.SaveDeal(ctx, &deal)
-		assert.Nil(t, err)
-	}
-
-	result2, err := r.GroupRetrievalDealNumberByStatus(ctx, address.Undef)
-	assert.Nil(t, err)
-	assert.Equal(t, result, result2)
+func init() {
+	testutil.MustRegisterDefaultValueProvier(func(t *testing.T) *cbg.Deferred {
+		return &cbg.Deferred{
+			Raw: make([]byte, 1),
+		}
+	})
 }
 
-func Test_retrievalDealRepo_ListDeals(t *testing.T) {
+func TestRetrievalDeal(t *testing.T) {
 	ctx := context.Background()
 	repo := setup(t)
 	r := repo.RetrievalDealRepo()
 
-	deals := make([]*market.ProviderDealState, 10)
-	testutil.Provide(t, &deals)
+	dealCases := make([]types.ProviderDealState, 10)
+	testutil.Provide(t, &dealCases)
 
-	for index := range deals {
-		deals[index].Params.Selector = nil
+	t.Run("SaveDeal", func(t *testing.T) {
+		for _, deal := range dealCases {
+			err := r.SaveDeal(ctx, &deal)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("GetDeal", func(t *testing.T) {
+		res, err := r.GetDeal(ctx, dealCases[0].Receiver, dealCases[0].ID)
+		assert.NoError(t, err)
+		dealCases[0].UpdatedAt = res.UpdatedAt
+		assert.Equal(t, dealCases[0], *res)
+	})
+
+	t.Run("GetDealByTransferId", func(t *testing.T) {
+		res, err := r.GetDealByTransferId(ctx, *dealCases[0].ChannelID)
+		assert.NoError(t, err)
+		dealCases[0].UpdatedAt = res.UpdatedAt
+		assert.Equal(t, dealCases[0], *res)
+	})
+
+	t.Run("HasDeal", func(t *testing.T) {
+		dealCase_not_exist := types.ProviderDealState{}
+		testutil.Provide(t, &dealCase_not_exist)
+		res, err := r.HasDeal(ctx, dealCase_not_exist.Receiver, dealCase_not_exist.ID)
+		assert.NoError(t, err)
+		assert.False(t, res)
+
+		res, err = r.HasDeal(ctx, dealCases[0].Receiver, dealCases[0].ID)
+		assert.NoError(t, err)
+		assert.True(t, res)
+	})
+
+	// refresh UpdatedAt
+	for i := 0; i < len(dealCases); i++ {
+		res, err := r.GetDeal(ctx, dealCases[i].Receiver, dealCases[i].ID)
+		assert.NoError(t, err)
+		dealCases[i].UpdatedAt = res.UpdatedAt
 	}
 
-	for _, deal := range deals {
-		err := r.SaveDeal(ctx, deal)
-		assert.Nil(t, err)
-	}
+	t.Run("ListDeals", func(t *testing.T) {
+		res, err := r.ListDeals(ctx, 1, 10)
+		assert.NoError(t, err)
+		assert.Equal(t, len(dealCases), len(res))
+		for _, res := range res {
+			assert.Contains(t, dealCases, *res)
+		}
+	})
 
-	dealInDb, err := r.ListDeals(ctx, 1, 10)
-	assert.Nil(t, err)
-	assert.Len(t, dealInDb, 10)
-
-	result2, err := r.ListDeals(ctx, 1, 2)
-	assert.Nil(t, err)
-	assert.Equal(t, dealInDb[:2], result2)
-
-	result2, err = r.ListDeals(ctx, 2, 2)
-	assert.Nil(t, err)
-	assert.Equal(t, dealInDb[2:4], result2)
+	t.Run("GroupRetrievalDealNumberByStatus", func(t *testing.T) {
+		expect := map[retrievalmarket.DealStatus]int64{}
+		for _, deal := range dealCases {
+			expect[deal.Status]++
+		}
+		res, err := r.GroupRetrievalDealNumberByStatus(ctx, address.Undef)
+		assert.NoError(t, err)
+		assert.Equal(t, expect, res)
+	})
 }
