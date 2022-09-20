@@ -116,6 +116,25 @@ VerifiedDealsFreeTransfer = true
 [RetrievalPricing.External]
 Path = ""
 
+
+
+# ****** Metric 配置 ********
+[Metrics]
+  Enabled = false
+  [Metrics.Exporter]
+    Type = "prometheus"
+    [Metrics.Exporter.Prometheus]
+      RegistryType = "define"
+      Namespace = ""
+      EndPoint = "/ip4/0.0.0.0/tcp/4568"
+      Path = "/debug/metrics"
+      ReportingPeriod = "10s"
+    [Metrics.Exporter.Graphite]
+      Namespace = ""
+      Host = "127.0.0.1"
+      Port = 4568
+      ReportingPeriod = "10s"
+
 ```
 
 接下来，将这个配置分成基础参数，网络配置，Venus组件配置等多个部分进行讲解
@@ -403,7 +422,7 @@ Path = "/piecestorage/"
 
 ```
 [PieceStorage]
-[PieceStorage.S3]
+[[PieceStorage.S3]]
 # 存储空间的名称，它在market的所有的存储空间中，必须是唯一的
 # 字符串类型 必选
 Name = "s3"
@@ -549,4 +568,69 @@ VerifiedDealsFreeTransfer = true
 # 定义外部策略的脚本的路径
 # 字符串类型 如果选择external策略时，必选
 Path = ""
+```
+
+
+## Metric 配置
+
+配置 Metric 相关的参数
+
+
+```toml
+[Metrics]
+
+# 是否启用 Metric
+# 布尔值 默认为 false
+Enabled = false
+
+# Metric 导出设置
+[Metrics.Exporter]
+
+# Metric 导出的类型
+# 字符串类型 可选值为 "prometheus" 和 "graphite" 默认为 "prometheus"
+Type = "prometheus"
+
+# Prometheus 导出设置
+[Metrics.Exporter.Prometheus]
+
+# 注册器的类型
+# 字符串类型 可选值为 "define" 和 "default" 默认为 "define"
+# define: 空白全新的注册器; default:Prometheus 提供的默认注册器
+RegistryType = "define"
+
+# 命名空间
+# 字符串类型 默认为 ""
+Namespace = ""
+
+# 监听地址
+# 字符串类型 默认为 "/ip4/0.0.0.0/tcp/4568"
+EndPoint = "/ip4/0.0.0.0/tcp/4568"
+
+# Metrics 指标的访问路径
+# 字符串类型 默认为 "/debug/metrics"
+Path = "/debug/metrics"
+
+# Metric 指标聚合的周期
+# 时间字符串 默认为 "10s"
+ReportingPeriod = "10s"
+
+
+# Graphite 导出设置
+[Metrics.Exporter.Graphite]
+
+# 命名空间
+# 字符串类型 默认为 ""
+Namespace = ""
+
+# 监听地址
+# 字符串类型 默认为 "127.0.0.1"
+Host = "127.0.0.1"
+
+# 监听端口
+# 整数类型 默认为 2003
+Port = 4568
+
+# Metric 指标聚合的周期
+# 时间字符串 默认为 "10s"
+ReportingPeriod = "10s"
 ```
