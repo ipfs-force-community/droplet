@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
@@ -197,7 +198,7 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 
 	// TODO: is this concurrent safe?
 	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
-		mds, err := txRepo.StorageDealRepo().GetDealsByPieceStatus(ctx, maddr, types.Undefine)
+		mds, err := txRepo.StorageDealRepo().GetDealsByPieceStatusAndDealStatus(ctx, maddr, types.Undefine, storagemarket.StorageDealAwaitingPreCommit)
 		if err != nil {
 			return err
 		}
@@ -205,11 +206,6 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 		var deals []*types.DealInfoIncludePath
 
 		for _, md := range mds {
-			// TODO: 要排除不可密封状态的订单?
-			if md.DealID == 0 || isTerminateState(md) {
-				continue
-			}
-
 			// 订单筛选和组合的逻辑完全由 pickAndAlign 完成
 			deals = append(deals, &types.DealInfoIncludePath{
 				DealProposal:    md.Proposal,
