@@ -146,7 +146,7 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 		spec.MaxPiece = defaultMaxPiece
 	}
 
-	mds, err := ps.repo.StorageDealRepo().GetDealsByPieceStatus(ctx, miner, types.Undefine)
+	mds, err := ps.repo.StorageDealRepo().GetDealsByPieceStatusAndDealStatus(ctx, miner, types.Undefine, storagemarket.StorageDealAwaitingPreCommit)
 	if err != nil {
 		return nil, err
 	}
@@ -206,6 +206,7 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 		var deals []*types.DealInfoIncludePath
 
 		for _, md := range mds {
+
 			// 订单筛选和组合的逻辑完全由 pickAndAlign 完成
 			deals = append(deals, &types.DealInfoIncludePath{
 				DealProposal:    md.Proposal,

@@ -179,12 +179,12 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	assert.Len(t, deals, 1)
 	compareDeal(t, deals[0], deal2)
 
-	deals, err = dealRepo.GetDealsByPieceStatus(ctx, deal2.ClientDealProposal.Proposal.Provider, types.Proving)
+	deals, err = dealRepo.GetDealsByPieceStatusAndDealStatus(ctx, deal2.ClientDealProposal.Proposal.Provider, types.Proving)
 	assert.Nil(t, err)
 	assert.Len(t, deals, 1)
 	compareDeal(t, deals[0], deal2)
 
-	deals, err = dealRepo.GetDealsByPieceStatus(ctx, address.Undef, types.Proving)
+	deals, err = dealRepo.GetDealsByPieceStatusAndDealStatus(ctx, address.Undef, types.Proving)
 	assert.Nil(t, err)
 	assert.Len(t, deals, 2)
 

@@ -88,22 +88,6 @@ func TestStorageDeal(t *testing.T) {
 		assert.Equal(t, dealCases[0], *res[0])
 	})
 
-	t.Run("GetDealsByPieceStatus", func(t *testing.T) {
-		t.Run("With Provider", func(t *testing.T) {
-			res, err := r.GetDealsByPieceStatus(ctx, dealCases[0].Proposal.Provider, dealCases[0].PieceStatus)
-			assert.NoError(t, err)
-			assert.Equal(t, 1, len(res))
-			assert.Equal(t, dealCases[0], *res[0])
-		})
-
-		t.Run("Without Provider", func(t *testing.T) {
-			res, err := r.GetDealsByPieceStatus(ctx, address.Undef, dealCases[0].PieceStatus)
-			assert.NoError(t, err)
-			assert.Equal(t, 1, len(res))
-			assert.Equal(t, dealCases[0], *res[0])
-		})
-	})
-
 	t.Run("GetDealsByPieceStatusAndDealStatus", func(t *testing.T) {
 		t.Run("With DealStatus", func(t *testing.T) {
 			res, err := r.GetDealsByPieceStatusAndDealStatus(ctx, dealCases[0].Proposal.Provider, dealCases[0].PieceStatus, dealCases[0].State)
