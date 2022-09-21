@@ -239,6 +239,47 @@ func testGetDealsByPieceStatus(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) 
 	assert.Equal(t, deal, res[0])
 }
 
+func testGetDealsByPieceStatusAndDealStatus(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+	deal := storageDealCases[0]
+	dbDeal := dbStorageDealCases[0]
+
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	t.Run("with deal status", func(t *testing.T) {
+		rows, err := getFullRows(dbDeal)
+		assert.NoError(t, err)
+		var md []storageDeal
+		sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Where("piece_status = ?", deal.PieceStatus).Where("state in ?", []storagemarket.StorageDealStatus{dbDeal.State}).Where("cdp_provider=?", DBAddress(deal.Proposal.Provider).String()).Find(&md))
+		assert.NoError(t, err)
+		assert.NotEqual(t, "", sql)
+
+		mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+
+		res, err := r.StorageDealRepo().GetDealsByPieceStatusAndDealStatus(context.Background(), deal.Proposal.Provider, deal.PieceStatus, deal.State)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(res))
+		assert.Equal(t, deal, res[0])
+	})
+
+	t.Run("without deal status", func(t *testing.T) {
+		rows, err := getFullRows(dbDeal)
+		assert.NoError(t, err)
+		var md []storageDeal
+		sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Where("piece_status = ?", deal.PieceStatus).Where("cdp_provider=?", DBAddress(deal.Proposal.Provider).String()).Find(&md))
+		assert.NoError(t, err)
+		assert.NotEqual(t, "", sql)
+
+		mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+
+		res, err := r.StorageDealRepo().GetDealsByPieceStatusAndDealStatus(context.Background(), deal.Proposal.Provider, deal.PieceStatus)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(res))
+		assert.Equal(t, deal, res[0])
+	})
+
+}
+
 func testUpdateDealStatus(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	deal := storageDealCases[0]
 
@@ -429,6 +470,7 @@ func TestStorageDealRepo(t *testing.T) {
 	t.Run("mysql test GetDealByAddrAndStatus", wrapper(testGetDealByAddrAndStatus, r, mock))
 	t.Run("mysql test GetDealByDealID", wrapper(testGetGetDealByDealID, r, mock))
 	t.Run("mysql test GetDealsByPieceStatus", wrapper(testGetDealsByPieceStatus, r, mock))
+	t.Run("mysql test GetDealsByPieceStatus", wrapper(testGetDealsByPieceStatusAndDealStatus, r, mock))
 
 	t.Run("mysql test UpdateDealStatus", wrapper(testUpdateDealStatus, r, mock))
 	t.Run("mysql test ListDeal", wrapper(testListDeal, r, mock))

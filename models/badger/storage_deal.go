@@ -292,6 +292,29 @@ func (sdr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr add
 	})
 }
 
+func (sdr *storageDealRepo) GetDealsByPieceStatusAndDealStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus, dealStatus ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+	var deals []*types.MinerDeal
+	dict := map[storagemarket.StorageDealStatus]struct{}{}
+	for _, status := range dealStatus {
+		dict[status] = struct{}{}
+	}
+
+	return deals, travelDeals(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+		if inDeal.PieceStatus != pieceStatus {
+			return
+		}
+		if _, ok := dict[inDeal.State]; !ok && len(dealStatus) != 0 {
+			return
+		}
+		if mAddr != address.Undef && inDeal.ClientDealProposal.Proposal.Provider != mAddr {
+			return
+		}
+
+		deals = append(deals, inDeal)
+		return false, nil
+	})
+}
+
 func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error) {
 	var deal *types.MinerDeal
 

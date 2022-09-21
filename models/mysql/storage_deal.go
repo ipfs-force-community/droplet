@@ -530,6 +530,23 @@ func (sdr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr add
 	return fromDbDeals(dbDeals)
 }
 
+func (sdr *storageDealRepo) GetDealsByPieceStatusAndDealStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus, dealStatus ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
+	query := sdr.WithContext(ctx).Table(storageDealTableName).Where("piece_status = ?", pieceStatus)
+	if len(dealStatus) > 0 {
+		query.Where("state in ?", dealStatus)
+	}
+	if mAddr != address.Undef {
+		query.Where("cdp_provider=?", DBAddress(mAddr).String())
+	}
+
+	var dbDeals []*storageDeal
+	if err := query.Find(&dbDeals).Error; err != nil {
+		return nil, err
+	}
+
+	return fromDbDeals(dbDeals)
+}
+
 func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error) {
 	var deal *storageDeal
 	if err := sdr.WithContext(ctx).Table(storageDealTableName).Take(&deal, "cdp_piece_cid = ? ", DBCid(pieceCID).String()).Error; err != nil {
