@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"encoding/json"
+	"sort"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -62,6 +63,12 @@ func (m *mysqlCidInfoRepo) AddPieceBlockLocations(ctx context.Context, pieceCID 
 		mysqlInfos[idx].BlockLocation = mysqlBlockLocation(location)
 		idx++
 	}
+
+	// make the order of sql predictable
+	sort.Slice(mysqlInfos, func(i, j int) bool {
+		return mysqlInfos[i].PayloadCid.String() < mysqlInfos[j].PayloadCid.String()
+	})
+
 	return m.Table(cidInfoTableName).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "piece_cid"}, {Name: "payload_cid"}},
 		UpdateAll: true,

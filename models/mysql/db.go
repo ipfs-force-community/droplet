@@ -158,15 +158,21 @@ type DBCid cid.Cid
 var UndefDBCid = DBCid{}
 
 func (c *DBCid) Scan(value interface{}) error {
-	val, ok := value.([]byte)
-	if !ok {
-		return errors.New("cid should be a `[]byte`")
+	var val string
+	switch value := value.(type) {
+	case []byte:
+		val = string(value)
+	case string:
+		val = value
+	default:
+		return errors.New("address should be a `[]byte` or `string`")
 	}
+
 	if len(val) == 0 {
 		*c = UndefDBCid
 		return nil
 	}
-	cid, err := cid.Decode(string(val))
+	cid, err := cid.Decode(val)
 	if err != nil {
 		return err
 	}
@@ -214,15 +220,21 @@ type DBAddress address.Address
 var UndefDBAddress = DBAddress{}
 
 func (a *DBAddress) Scan(value interface{}) error {
-	val, ok := value.([]byte)
-	if !ok {
+	var val string
+	switch value := value.(type) {
+	case []byte:
+		val = string(value)
+	case string:
+		val = value
+	default:
 		return errors.New("address should be a `[]byte` or `string`")
 	}
+
 	if len(val) == 0 {
 		*a = UndefDBAddress
 		return nil
 	}
-	addr, err := address.NewFromString(address.MainnetPrefix + string(val))
+	addr, err := address.NewFromString(address.MainnetPrefix + val)
 	if err != nil {
 		return err
 	}
