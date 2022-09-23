@@ -133,8 +133,8 @@ Type = "wallet"
 # 字符串类型 必选（也可以直接通过命令行的 --signer-url flag 进行配置）
 Url = "/ip4/192.168.200.128/tcp/5678/"
 
-# venus 系列组件的鉴权token
-# 字符串类型 必选（也可以直接通过命令行的 --auth-token flag 进行配置）
+# wallet 用于鉴权的token
+# 字符串类型 必选
 Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
 ```
 
