@@ -88,21 +88,33 @@ func TestStorageDeal(t *testing.T) {
 		assert.Equal(t, dealCases[0], *res[0])
 	})
 
-	t.Run("GetDealsByPieceStatus", func(t *testing.T) {
-		t.Run("With Provider", func(t *testing.T) {
-			res, err := r.GetDealsByPieceStatus(ctx, dealCases[0].Proposal.Provider, dealCases[0].PieceStatus)
+	t.Run("GetDealsByPieceStatusAndDealStatus", func(t *testing.T) {
+		t.Run("With DealStatus", func(t *testing.T) {
+			res, err := r.GetDealsByPieceStatusAndDealStatus(ctx, dealCases[0].Proposal.Provider, dealCases[0].PieceStatus, dealCases[0].State)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, len(res))
 			assert.Equal(t, dealCases[0], *res[0])
 		})
 
-		t.Run("With Provider", func(t *testing.T) {
-			res, err := r.GetDealsByPieceStatus(ctx, address.Undef, dealCases[0].PieceStatus)
+		t.Run("Without DealStatus", func(t *testing.T) {
+			res, err := r.GetDealsByPieceStatusAndDealStatus(ctx, dealCases[0].Proposal.Provider, dealCases[0].PieceStatus)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, len(res))
 			assert.Equal(t, dealCases[0], *res[0])
 		})
 
+		t.Run("Without Provider", func(t *testing.T) {
+			res, err := r.GetDealsByPieceStatusAndDealStatus(ctx, address.Undef, dealCases[0].PieceStatus, dealCases[0].State)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, len(res))
+			assert.Equal(t, dealCases[0], *res[0])
+		})
+
+		t.Run("Will Return None", func(t *testing.T) {
+			res, err := r.GetDealsByPieceStatusAndDealStatus(ctx, address.Undef, dealCases[0].PieceStatus, 0)
+			assert.NoError(t, err)
+			assert.Equal(t, 0, len(res))
+		})
 	})
 
 	t.Run("GetDealsByDataCidAndDealStatus", func(t *testing.T) {
@@ -123,14 +135,14 @@ func TestStorageDeal(t *testing.T) {
 
 	t.Run("GetDealByAddrAndStatus", func(t *testing.T) {
 		t.Run("With Provider", func(t *testing.T) {
-			res, err := r.GetDealByAddrAndStatus(ctx, dealCases[0].Proposal.Provider, dealCases[0].State, 0, 10)
+			res, err := r.GetDealByAddrAndStatus(ctx, dealCases[0].Proposal.Provider, dealCases[0].State)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, len(res))
 			assert.Equal(t, dealCases[0], *res[0])
 		})
 
 		t.Run("Without Provider", func(t *testing.T) {
-			res, err := r.GetDealByAddrAndStatus(ctx, address.Undef, dealCases[0].State, 0, 10)
+			res, err := r.GetDealByAddrAndStatus(ctx, address.Undef, dealCases[0].State)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, len(res))
 			assert.Equal(t, dealCases[0], *res[0])

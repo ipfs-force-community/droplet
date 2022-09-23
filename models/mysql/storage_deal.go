@@ -516,8 +516,11 @@ func (sdr *storageDealRepo) GetDealByDealID(ctx context.Context, mAddr address.A
 	return toStorageDeal(dbDeal)
 }
 
-func (sdr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) GetDealsByPieceStatusAndDealStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus, dealStatus ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error) {
 	query := sdr.WithContext(ctx).Table(storageDealTableName).Where("piece_status = ?", pieceStatus)
+	if len(dealStatus) > 0 {
+		query.Where("state in ?", dealStatus)
+	}
 	if mAddr != address.Undef {
 		query.Where("cdp_provider=?", DBAddress(mAddr).String())
 	}
