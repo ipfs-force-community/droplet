@@ -18,8 +18,17 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var StatsCmd = &cli.Command{
-	Name:        "stats",
+var StatsCmds = &cli.Command{
+	Name:  "stats",
+	Usage: "Stats about deals, sectors, and other things",
+	Subcommands: []*cli.Command{
+		StatsPowerCmd,
+		StatsDealskCmd,
+	},
+}
+
+var StatsPowerCmd = &cli.Command{
+	Name:        "power",
 	Description: "Statistics on how many SPs are running Venus",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -168,6 +177,41 @@ var StatsCmd = &cli.Command{
 		fmt.Println("Total venus raw power:", types.DeciStr(RawBytePower))
 		fmt.Println("Total venus quality adj power:", types.DeciStr(QualityAdjPower))
 		fmt.Println("Total SPs with minimum power: ", len(withMinPower))
+
+		return nil
+	},
+}
+
+var StatsDealskCmd = &cli.Command{
+	Name:        "deals",
+	Description: "Statistics on active market deals",
+	Action: func(cctx *cli.Context) error {
+		ctx := ReqContext(cctx)
+		api, closer, err := NewFullNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		deals, err := api.StateMarketDeals(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		var totalDealSize = big.Zero()
+		var count = 0
+
+		for _, deal := range deals {
+			state := deal.State
+			if state.SectorStartEpoch > -1 && state.SlashEpoch == -1 {
+				dealSize := big.NewIntUnsigned(uint64(deal.Proposal.PieceSize))
+				totalDealSize = big.Add(totalDealSize, dealSize)
+				count++
+			}
+		}
+
+		fmt.Println("Total deals: ", count)
+		fmt.Println("Total deal size: ", types.SizeStr(totalDealSize))
 
 		return nil
 	},
