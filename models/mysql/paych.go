@@ -21,17 +21,19 @@ const (
 )
 
 type channelInfo struct {
-	ChannelID     string     `gorm:"column:channel_id;type:varchar(128);primary_key;"`
-	Channel       DBAddress  `gorm:"column:channel;type:varchar(256);index"`
-	Control       DBAddress  `gorm:"column:control;type:varchar(256);"`
-	Target        DBAddress  `gorm:"column:target;type:varchar(256);"`
-	Direction     uint64     `gorm:"column:direction;type:bigint unsigned;"`
-	NextLane      uint64     `gorm:"column:next_lane;type:bigint unsigned;"`
-	Amount        mtypes.Int `gorm:"column:amount;type:varchar(256);"`
-	PendingAmount mtypes.Int `gorm:"column:pending_amount;type:varchar(256);"`
-	CreateMsg     DBCid      `gorm:"column:create_msg;type:varchar(256);"`
-	AddFundsMsg   DBCid      `gorm:"column:add_funds_msg;type:varchar(256);"`
-	Settling      bool       `gorm:"column:settling;"`
+	ChannelID              string     `gorm:"column:channel_id;type:varchar(128);primary_key;"`
+	Channel                DBAddress  `gorm:"column:channel;type:varchar(256);index"`
+	Control                DBAddress  `gorm:"column:control;type:varchar(256);"`
+	Target                 DBAddress  `gorm:"column:target;type:varchar(256);"`
+	Direction              uint64     `gorm:"column:direction;type:bigint unsigned;"`
+	NextLane               uint64     `gorm:"column:next_lane;type:bigint unsigned;"`
+	Amount                 mtypes.Int `gorm:"column:amount;type:varchar(256);"`
+	AvailableAmount        mtypes.Int `gorm:"column:available_amount;type:varchar(256);"`
+	PendingAvailableAmount mtypes.Int `gorm:"column:pending_available_amount;type:varchar(256);"`
+	PendingAmount          mtypes.Int `gorm:"column:pending_amount;type:varchar(256);"`
+	CreateMsg              DBCid      `gorm:"column:create_msg;type:varchar(256);"`
+	AddFundsMsg            DBCid      `gorm:"column:add_funds_msg;type:varchar(256);"`
+	Settling               bool       `gorm:"column:settling;"`
 
 	VoucherInfo types.VoucherInfos `gorm:"column:voucher_info;type:blob;"`
 
@@ -45,16 +47,18 @@ func (c *channelInfo) TableName() string {
 
 func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 	info := &channelInfo{
-		ChannelID:     src.ChannelID,
-		Control:       DBAddress(src.Control),
-		Target:        DBAddress(src.Target),
-		Direction:     src.Direction,
-		NextLane:      src.NextLane,
-		Amount:        convertBigInt(src.Amount),
-		PendingAmount: convertBigInt(src.PendingAmount),
-		Settling:      src.Settling,
-		VoucherInfo:   src.Vouchers,
-		TimeStampOrm:  TimeStampOrm{CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
+		ChannelID:              src.ChannelID,
+		Control:                DBAddress(src.Control),
+		Target:                 DBAddress(src.Target),
+		Direction:              src.Direction,
+		NextLane:               src.NextLane,
+		Amount:                 convertBigInt(src.Amount),
+		AvailableAmount:        convertBigInt(src.AvailableAmount),
+		PendingAvailableAmount: convertBigInt(src.PendingAvailableAmount),
+		PendingAmount:          convertBigInt(src.PendingAmount),
+		Settling:               src.Settling,
+		VoucherInfo:            src.Vouchers,
+		TimeStampOrm:           TimeStampOrm{CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
 	}
 	if src.Channel == nil {
 		info.Channel = UndefDBAddress
@@ -77,19 +81,21 @@ func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 
 func toChannelInfo(src *channelInfo) (*types.ChannelInfo, error) {
 	info := &types.ChannelInfo{
-		ChannelID:     src.ChannelID,
-		Channel:       src.Channel.addrPtr(),
-		Control:       src.Control.addr(),
-		Target:        src.Target.addr(),
-		Direction:     src.Direction,
-		Vouchers:      src.VoucherInfo,
-		NextLane:      src.NextLane,
-		Amount:        fbig.Int{Int: src.Amount.Int},
-		PendingAmount: fbig.Int{Int: src.PendingAmount.Int},
-		CreateMsg:     src.CreateMsg.cidPtr(),
-		AddFundsMsg:   src.AddFundsMsg.cidPtr(),
-		Settling:      src.Settling,
-		TimeStamp:     src.Timestamp(),
+		ChannelID:              src.ChannelID,
+		Channel:                src.Channel.addrPtr(),
+		Control:                src.Control.addr(),
+		Target:                 src.Target.addr(),
+		Direction:              src.Direction,
+		Vouchers:               src.VoucherInfo,
+		NextLane:               src.NextLane,
+		Amount:                 fbig.Int{Int: src.Amount.Int},
+		AvailableAmount:        fbig.Int{Int: src.AvailableAmount.Int},
+		PendingAvailableAmount: fbig.Int{Int: src.PendingAvailableAmount.Int},
+		PendingAmount:          fbig.Int{Int: src.PendingAmount.Int},
+		CreateMsg:              src.CreateMsg.cidPtr(),
+		AddFundsMsg:            src.AddFundsMsg.cidPtr(),
+		Settling:               src.Settling,
+		TimeStamp:              src.Timestamp(),
 	}
 
 	return info, nil
