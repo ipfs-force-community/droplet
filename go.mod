@@ -10,7 +10,6 @@ require (
 	github.com/aws/aws-sdk-go v1.43.10
 	github.com/buger/goterm v0.0.0-20200322175922-2f3e71b85129
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
-	github.com/dgraph-io/badger/v2 v2.2007.3
 	github.com/docker/go-units v0.4.0
 	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/dagstore v0.5.2
@@ -56,7 +55,6 @@ require (
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-exchange-offline v0.3.0
 	github.com/ipfs/go-ipfs-files v0.1.1
-	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-log/v2 v2.5.1
@@ -68,11 +66,9 @@ require (
 	github.com/ipld/go-codec-dagpb v1.3.2
 	github.com/ipld/go-ipld-prime v0.17.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
-	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/libp2p/go-libp2p v0.22.0
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/multiformats/go-base32 v0.0.4
 	github.com/multiformats/go-multiaddr v0.6.0
 	github.com/multiformats/go-multibase v0.1.1
 	github.com/multiformats/go-multihash v0.2.1
@@ -88,7 +84,6 @@ require (
 	go.opencensus.io v0.23.0
 	go.uber.org/fx v1.15.0
 	go.uber.org/multierr v1.8.0
-	go.uber.org/zap v1.22.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f
 	gorm.io/driver/mysql v1.1.1
@@ -122,6 +117,7 @@ require (
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/deepmap/oapi-codegen v1.3.13 // indirect
+	github.com/dgraph-io/badger/v2 v2.2007.3 // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
@@ -188,6 +184,7 @@ require (
 	github.com/ipfs/go-ipfs-exchange-interface v0.2.0 // indirect
 	github.com/ipfs/go-ipfs-posinfo v0.0.1 // indirect
 	github.com/ipfs/go-ipfs-pq v0.0.2 // indirect
+	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
 	github.com/ipfs/go-ipld-legacy v0.1.1 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-peertaskqueue v0.7.1 // indirect
@@ -207,6 +204,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.1.0 // indirect
 	github.com/koron/go-ssdp v0.0.3 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
+	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
 	github.com/libp2p/go-flow-metrics v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-asn-util v0.2.0 // indirect
@@ -241,6 +239,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
+	github.com/multiformats/go-base32 v0.0.4 // indirect
 	github.com/multiformats/go-base36 v0.1.0 // indirect
 	github.com/multiformats/go-multiaddr-dns v0.3.1 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
@@ -291,6 +290,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.7.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/dig v1.12.0 // indirect
+	go.uber.org/zap v1.22.0 // indirect
 	go4.org v0.0.0-20200411211856-f5505b9728dd // indirect
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect

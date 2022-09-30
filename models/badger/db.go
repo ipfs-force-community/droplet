@@ -6,9 +6,9 @@ import (
 
 	"github.com/filecoin-project/venus-market/v2/models/badger/migrate"
 
-	"github.com/filecoin-project/venus-market/v2/blockstore"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
