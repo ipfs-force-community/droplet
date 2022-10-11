@@ -63,18 +63,16 @@ func poolDaemon(cctx *cli.Context) error {
 	}
 
 	// Configuration sanity check
-	{
-		if len(cfg.AuthNode.Url) == 0 {
-			return fmt.Errorf("pool mode have to configure auth node")
-		}
+	if len(cfg.AuthNode.Url) == 0 {
+		return fmt.Errorf("pool mode have to configure auth node")
+	}
 
-		if len(cfg.StorageMiners) > 0 {
-			return fmt.Errorf("pool mode does not need to configure StorageMiners")
-		}
+	if len(cfg.StorageMiners) > 0 {
+		return fmt.Errorf("pool mode does not need to configure StorageMiners")
+	}
 
-		if len(cfg.Signer.Url) == 0 {
-			return fmt.Errorf("the signer node must be configured")
-		}
+	if len(cfg.Signer.Url) == 0 {
+		return fmt.Errorf("the signer node must be configured")
 	}
 
 	ctx := cctx.Context

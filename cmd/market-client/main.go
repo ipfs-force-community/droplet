@@ -247,10 +247,8 @@ func marketClient(cctx *cli.Context) error {
 	}
 
 	// Configuration sanity check
-	{
-		if len(cfg.Signer.Url) == 0 {
-			return fmt.Errorf("the signer node must be configured")
-		}
+	if len(cfg.Signer.Url) == 0 {
+		return fmt.Errorf("the signer node must be configured")
 	}
 
 	if err := cmd.FetchAndLoadBundles(cctx.Context, cfg.Node); err != nil {

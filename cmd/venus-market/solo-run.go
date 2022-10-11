@@ -60,14 +60,12 @@ func soloDaemon(cctx *cli.Context) error {
 	}
 
 	// Configuration sanity check
-	{
-		if len(cfg.AuthNode.Url) > 0 {
-			return fmt.Errorf("solo mode does not need to configure auth node")
-		}
+	if len(cfg.AuthNode.Url) > 0 {
+		return fmt.Errorf("solo mode does not need to configure auth node")
+	}
 
-		if len(cfg.Signer.Url) == 0 {
-			return fmt.Errorf("the signer node must be configured")
-		}
+	if len(cfg.Signer.Url) == 0 {
+		return fmt.Errorf("the signer node must be configured")
 	}
 
 	ctx := cctx.Context
