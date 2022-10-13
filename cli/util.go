@@ -182,6 +182,10 @@ func ShowHelp(cctx *cli.Context, err error) error {
 	return &PrintHelpErr{Err: err, Ctx: cctx}
 }
 
+func IncorrectNumArgs(cctx *cli.Context) error {
+	return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments, got %d", cctx.NArg()))
+}
+
 // OutputDataTransferChannels generates table output for a list of channels
 func OutputDataTransferChannels(out io.Writer, channels []types.DataTransferChannel, verbose, completed, color, showFailed bool) {
 	sort.Slice(channels, func(i, j int) bool {

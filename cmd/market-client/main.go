@@ -96,6 +96,7 @@ func main() {
 		cli2.WithCategory("data", dataCmd),
 		cli2.WithCategory("transfer", transferCmd),
 		cli2.WithCategory("actor-funds", actorFundsCmd),
+		cli2.WithCategory("paych", paychCmd),
 	}
 
 	app := &cli.App{
