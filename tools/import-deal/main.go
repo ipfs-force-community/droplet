@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"sync"
 	"time"
 
 	"gorm.io/driver/mysql"
@@ -11,7 +12,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/tools/import-deal/types"
 )
 
-func ImportDealsToMysql(srcConn, conn string, bDebug bool) error {
+func ImportDealsToMysql(srcConn, conn string, nums int) error {
 	var (
 		maxOpenConn = 10
 		maxIdleConn = 10
@@ -23,9 +24,7 @@ func ImportDealsToMysql(srcConn, conn string, bDebug bool) error {
 	}
 
 	db.Set("gorm:table_options", "CHARSET=utf8mb4")
-	if bDebug {
-		db = db.Debug()
-	}
+	db = db.Debug()
 
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -74,9 +73,9 @@ func ImportDealsToMysql(srcConn, conn string, bDebug bool) error {
 		return err
 	}
 
-	nums := 80
 	idx := 0
 	fmt.Printf("has deals: %v.\n", len(deals))
+	wg := sync.WaitGroup{}
 	for {
 		if idx >= len(deals) {
 			break
@@ -86,15 +85,22 @@ func ImportDealsToMysql(srcConn, conn string, bDebug bool) error {
 			end = len(deals)
 		}
 
-		err := dstDb.Create(deals[idx:end]).Error
-		if err != nil {
-			fmt.Printf("import [%d, %d) records error: %s\n", idx, end, err.Error())
-		} else {
-			fmt.Printf("import [%d, %d) records success\n", idx, end)
-		}
+		wg.Add(1)
+		go func(start, end int) {
+			defer wg.Done()
+
+			err := dstDb.Create(deals[start:end]).Error
+			if err != nil {
+				fmt.Printf("import [%d, %d) records error: %s\n", start, end, err.Error())
+			} else {
+				fmt.Printf("import [%d, %d) records success\n", start, end)
+			}
+		}(idx, end)
 
 		idx += nums
 	}
+	wg.Wait()
+	fmt.Println("import records end")
 
 	return nil
 }
@@ -103,16 +109,16 @@ func main() {
 	// mysql: user:password@tcp(localhost:3308)/db-name?loc=Local&parseTime=true&innodb_lock_wait_timeout=10
 	var (
 		srcConn, conn string
-		bDebug        bool
+		nums          int
 	)
 
 	flag.StringVar(&srcConn, "src-conn", "", "mysql conn for src")
 	flag.StringVar(&conn, "conn", "", "mysql conn for market")
-	flag.BoolVar(&bDebug, "debug", false, "print log")
+	flag.IntVar(&nums, "nums", 50, "The number of imports each time")
 
 	flag.Parse()
 
-	if err := ImportDealsToMysql(srcConn, conn, bDebug); err != nil {
+	if err := ImportDealsToMysql(srcConn, conn, nums); err != nil {
 		fmt.Println("import err: ", err.Error())
 	}
 
