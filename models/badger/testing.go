@@ -9,18 +9,25 @@ import (
 )
 
 func setup(t *testing.T) repo.Repo {
+	repo, err := NewMemRepo()
+	assert.Nil(t, err)
+	return repo
+}
+
+func NewMemRepo() (repo.Repo, error) {
 	opts := &badger.DefaultOptions
 	opts.InMemory = true
 	db, err := badger.NewDatastore("", opts)
-	assert.Nil(t, err)
-
+	if err != nil {
+		return nil, err
+	}
 	return NewBadgerRepo(BadgerDSParams{
 		FundDS:           NewFundMgrDS(db),
-		StorageDealsDS:   NewStorageDealsDS(db),
+		StorageDealsDS:   NewStorageDealsDS(NewStorageProviderDS(db)),
 		PaychDS:          NewPayChanDS(db),
-		AskDS:            NewStorageAskDS(db),
-		RetrAskDs:        NewRetrievalAskDS(db),
-		CidInfoDs:        NewCidInfoDs(db),
-		RetrievalDealsDs: NewRetrievalDealsDS(db),
-	})
+		AskDS:            NewStorageAskDS(NewStorageProviderDS(db)),
+		RetrAskDs:        NewRetrievalAskDS(NewRetrievalProviderDS(db)),
+		CidInfoDs:        NewCidInfoDs(NewPieceMetaDs(db)),
+		RetrievalDealsDs: NewRetrievalDealsDS(NewRetrievalProviderDS(db)),
+	}), nil
 }
