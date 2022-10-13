@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"sync"
 	"time"
 
 	"gorm.io/driver/mysql"
@@ -11,7 +12,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/tools/import-deal/types"
 )
 
-func ImportDealsToMysql(srcConn, conn string) error {
+func ImportDealsToMysql(srcConn, conn string, nums int) error {
 	var (
 		maxOpenConn = 10
 		maxIdleConn = 10
@@ -72,23 +73,53 @@ func ImportDealsToMysql(srcConn, conn string) error {
 		return err
 	}
 
-	return dstDb.Create(&deals).Error
+	idx := 0
+	fmt.Printf("has deals: %v.\n", len(deals))
+	wg := sync.WaitGroup{}
+	for {
+		if idx >= len(deals) {
+			break
+		}
+		end := idx + nums
+		if end > len(deals) {
+			end = len(deals)
+		}
+
+		wg.Add(1)
+		go func(start, end int) {
+			defer wg.Done()
+
+			err := dstDb.Create(deals[start:end]).Error
+			if err != nil {
+				fmt.Printf("import [%d, %d) records error: %s\n", start, end, err.Error())
+			} else {
+				fmt.Printf("import [%d, %d) records success\n", start, end)
+			}
+		}(idx, end)
+
+		idx += nums
+	}
+	wg.Wait()
+	fmt.Println("import records end")
+
+	return nil
 }
 
 func main() {
 	// mysql: user:password@tcp(localhost:3308)/db-name?loc=Local&parseTime=true&innodb_lock_wait_timeout=10
 	var (
 		srcConn, conn string
+		nums          int
 	)
 
 	flag.StringVar(&srcConn, "src-conn", "", "mysql conn for src")
 	flag.StringVar(&conn, "conn", "", "mysql conn for market")
+	flag.IntVar(&nums, "nums", 50, "The number of imports each time")
 
 	flag.Parse()
 
-	if err := ImportDealsToMysql(srcConn, conn); err != nil {
-		fmt.Printf("import deals to mysql err: %s\n", err.Error())
-		return
+	if err := ImportDealsToMysql(srcConn, conn, nums); err != nil {
+		fmt.Println("import err: ", err.Error())
 	}
 
 	fmt.Println("import success.")

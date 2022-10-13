@@ -3,6 +3,8 @@ package types
 import (
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/ipfs/go-cid"
@@ -51,6 +53,7 @@ func (fd *ForceDeal) ToDeal() *Deal {
 	client, _ := address.NewFromString(fd.Client)
 	provider, _ := address.NewFromString(fd.Provider)
 	proposalCid, _ := cid.Decode(fd.Proposalcid)
+	pieceSize := abi.UnpaddedPieceSize(fd.Unpadsize).Padded()
 
 	md := &Deal{
 		ClientDealProposal: mysql.ClientDealProposal{
@@ -62,12 +65,18 @@ func (fd *ForceDeal) ToDeal() *Deal {
 			EndEpoch:             int64(fd.End),
 			StoragePricePerEpoch: convertBigInt(fd.Price),
 			ClientCollateral:     convertBigInt(fd.ClientCollateral),
+			PieceSize:            uint64(pieceSize),
+
+			//没有值
+			//Label string `gorm:"column:label;type:varchar(256);"`
+			//ProviderCollateral mtypes.Int `gorm:"column:provider_collateral;type:varchar(256);"`
+			//ClientSignature Signature `gorm:"column:client_signature;type:blob;"`
 		},
 		ProposalCid: mysql.DBCid(proposalCid),
 		Miner:       DefaultPeerID, // todo 反序列化时需要能解析
 		Client:      fd.Peerid,
 		State:       storagemarket.StorageDealActive,
-		PayloadSize: int64(fd.Filesize),
+		PayloadSize: int64(pieceSize),
 		Ref: mysql.DataRef{
 			TransferType: TTFromForce,
 			Root:         mysql.DBCid(rootCid),
@@ -77,9 +86,22 @@ func (fd *ForceDeal) ToDeal() *Deal {
 		DealID:       fd.Dealid,
 		CreationTime: fd.Createtime.UnixNano(),
 		SectorNumber: fd.Sectorid,
+		Offset:       fd.Offset,
+		PieceStatus:  "Proving",
 
-		Offset:      fd.Offset,
-		PieceStatus: "Proving",
+		Length:                uint64(pieceSize),
+		FastRetrieval:         true,
+		AvailableForRetrieval: true,
+
+		//没有值
+		//AddFundsCid mysql.DBCid `gorm:"column:add_funds_cid;type:varchar(256);"`
+		//PublishCid  mysql.DBCid `gorm:"column:publish_cid;type:varchar(256);"`
+		//MetadataPath          string        `gorm:"column:metadata_path;type:varchar(256);"`
+		//SlashEpoch            int64         `gorm:"column:slash_epoch;type:bigint;"`
+		//Message               string        `gorm:"column:message;type:varchar(512);"`
+		//FundsReserved         mtypes.Int    `gorm:"column:funds_reserved;type:varchar(256);"`
+		//TransferChannelId mysql.ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
+		//InboundCAR string `gorm:"column:addr;type:varchar(256);"`
 	}
 
 	return md
