@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/tools/import-deal/types"
 )
 
-func ImportDealsToMysql(srcConn, conn string) error {
+func ImportDealsToMysql(srcConn, conn string, bDebug bool) error {
 	var (
 		maxOpenConn = 10
 		maxIdleConn = 10
@@ -23,7 +23,9 @@ func ImportDealsToMysql(srcConn, conn string) error {
 	}
 
 	db.Set("gorm:table_options", "CHARSET=utf8mb4")
-	db = db.Debug()
+	if bDebug {
+		db = db.Debug()
+	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -72,23 +74,46 @@ func ImportDealsToMysql(srcConn, conn string) error {
 		return err
 	}
 
-	return dstDb.Create(&deals).Error
+	nums := 80
+	idx := 0
+	fmt.Printf("has deals: %v.\n", len(deals))
+	for {
+		if idx >= len(deals) {
+			break
+		}
+		end := idx + nums
+		if end > len(deals) {
+			end = len(deals)
+		}
+
+		err := dstDb.Create(deals[idx:end]).Error
+		if err != nil {
+			fmt.Printf("import [%d, %d) records error: %s\n", idx, end, err.Error())
+		} else {
+			fmt.Printf("import [%d, %d) records success\n", idx, end)
+		}
+
+		idx += nums
+	}
+
+	return nil
 }
 
 func main() {
 	// mysql: user:password@tcp(localhost:3308)/db-name?loc=Local&parseTime=true&innodb_lock_wait_timeout=10
 	var (
 		srcConn, conn string
+		bDebug        bool
 	)
 
 	flag.StringVar(&srcConn, "src-conn", "", "mysql conn for src")
 	flag.StringVar(&conn, "conn", "", "mysql conn for market")
+	flag.BoolVar(&bDebug, "debug", false, "print log")
 
 	flag.Parse()
 
-	if err := ImportDealsToMysql(srcConn, conn); err != nil {
-		fmt.Printf("import deals to mysql err: %s\n", err.Error())
-		return
+	if err := ImportDealsToMysql(srcConn, conn, bDebug); err != nil {
+		fmt.Println("import err: ", err.Error())
 	}
 
 	fmt.Println("import success.")
