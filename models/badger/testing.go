@@ -1,6 +1,7 @@
 package badger
 
 import (
+	"github.com/ipfs/go-datastore"
 	"testing"
 
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -15,12 +16,14 @@ func setup(t *testing.T) repo.Repo {
 }
 
 func NewMemRepo() (repo.Repo, error) {
-	opts := &badger.DefaultOptions
-	opts.InMemory = true
-	db, err := badger.NewDatastore("", opts)
+	db, err := NewMemDb()
 	if err != nil {
 		return nil, err
 	}
+	return WrapDbToRepo(db), nil
+}
+
+func WrapDbToRepo(db datastore.Batching) repo.Repo {
 	payChDs := NewPayChanDS(db)
 	return NewBadgerRepo(BadgerDSParams{
 		FundDS:           NewFundMgrDS(db),
@@ -31,5 +34,15 @@ func NewMemRepo() (repo.Repo, error) {
 		RetrAskDs:        NewRetrievalAskDS(NewRetrievalProviderDS(db)),
 		CidInfoDs:        NewCidInfoDs(NewPieceMetaDs(db)),
 		RetrievalDealsDs: NewRetrievalDealsDS(NewRetrievalProviderDS(db)),
-	}), nil
+	})
+}
+
+func NewMemDb() (datastore.Batching, error) {
+	opts := &badger.DefaultOptions
+	opts.InMemory = true
+	ds, err := badger.NewDatastore("", opts)
+	if err != nil {
+		return nil, err
+	}
+	return ds, nil
 }

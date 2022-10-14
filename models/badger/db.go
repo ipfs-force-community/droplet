@@ -4,6 +4,8 @@ import (
 	"context"
 	"path"
 
+	"github.com/filecoin-project/venus-market/v2/models/badger/migrate"
+
 	"github.com/filecoin-project/venus-market/v2/blockstore"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -238,6 +240,34 @@ func (r *BadgerRepo) Close() error {
 }
 
 func (r *BadgerRepo) Migrate() error {
+	ctx := context.TODO()
+
+	var migrateDss = map[string]datastore.Batching{
+		migrate.DsNameFundedAddrState:  r.dsParams.FundDS,
+		migrate.DsNameStorageDeal:      r.dsParams.StorageDealsDS,
+		migrate.DsNamePaychInfoDs:      r.dsParams.PaychInfoDS,
+		migrate.DsNamePaychMsgDs:       r.dsParams.PaychMsgDS,
+		migrate.DsNameStorageAskDs:     r.dsParams.AskDS,
+		migrate.DsNameRetrievalAskDs:   r.dsParams.RetrAskDs,
+		migrate.DsNameCidInfoDs:        r.dsParams.CidInfoDs,
+		migrate.DsNameRetrievalDealsDs: r.dsParams.RetrievalDealsDs,
+	}
+
+	// the returned 'newDss' would be wrapped with current version namespace.
+	// so, must set all 'ds' back later.
+	newDss, err := migrate.Migrate(ctx, migrateDss)
+	if err != nil {
+		return err
+	}
+
+	r.dsParams.FundDS = newDss[migrate.DsNameFundedAddrState]
+	r.dsParams.StorageDealsDS = newDss[migrate.DsNameStorageDeal]
+	r.dsParams.PaychMsgDS = newDss[migrate.DsNamePaychMsgDs]
+	r.dsParams.PaychInfoDS = newDss[migrate.DsNamePaychInfoDs]
+	r.dsParams.AskDS = newDss[migrate.DsNameStorageAskDs]
+	r.dsParams.RetrAskDs = newDss[migrate.DsNameRetrievalAskDs]
+	r.dsParams.CidInfoDs = newDss[migrate.DsNameCidInfoDs]
+	r.dsParams.RetrievalDealsDs = newDss[migrate.DsNameRetrievalDealsDs]
 	return nil
 }
 

@@ -123,7 +123,7 @@ func setup(t *testing.T) StorageProvider {
 		spn.addDeal(ctx, did, c)
 	}
 
-	r := models.NewInMemoryRepo()
+	r := models.NewInMemoryRepo(t)
 	ask, _ := NewStorageAsk(ctx, r, spn)
 	h, err := network2.MockHost(ctx)
 	if err != nil {
