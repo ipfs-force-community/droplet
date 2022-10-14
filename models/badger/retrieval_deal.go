@@ -55,7 +55,7 @@ func (r retrievalDealRepo) GetDeal(ctx context.Context, id peer.ID, id2 retrieva
 
 func (r retrievalDealRepo) GetDealByTransferId(ctx context.Context, chid datatransfer.ChannelID) (*types.ProviderDealState, error) {
 	var result *types.ProviderDealState
-	err := travelDeals(ctx, r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
+	err := travelCborAbleDS(ctx, r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
 		if deal.ChannelID != nil && deal.ChannelID.Initiator == chid.Initiator && deal.ChannelID.Responder == chid.Responder && deal.ChannelID.ID == chid.ID {
 			result = deal
 			return true, nil
@@ -114,7 +114,7 @@ func (r retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize in
 
 func (r retrievalDealRepo) GroupRetrievalDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[retrievalmarket.DealStatus]int64, error) {
 	result := map[retrievalmarket.DealStatus]int64{}
-	return result, travelDeals(ctx, r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
+	return result, travelCborAbleDS(ctx, r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
 		result[deal.Status]++
 		return false, nil
 	})

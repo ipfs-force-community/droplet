@@ -38,37 +38,49 @@ func checkCallbackAndGetParamType(i interface{}) (reflect.Type, error) {
 	return in.Elem(), nil
 }
 
-func travelDeals(ctx context.Context, ds datastore.Batching, callback interface{}) error {
+func travelCborAbleDS(ctx context.Context, ds datastore.Batching, callback interface{}) error {
 	instanceType, err := checkCallbackAndGetParamType(callback)
 	if err != nil {
 		return err
 	}
+	return TravelBatching(ctx, ds, func(k string, v []byte) (bool, error) {
+		i := reflect.New(instanceType).Interface()
+		unmarshaler := i.(cbg.CBORUnmarshaler)
+		if err = cborrpc.ReadCborRPC(bytes.NewReader(v), unmarshaler); err != nil {
+			return true, err
+		}
+		rets := reflect.ValueOf(callback).Call([]reflect.Value{
+			reflect.ValueOf(unmarshaler)})
 
+		if rets[0].Interface().(bool) {
+			return true, nil
+		}
+
+		if !rets[1].IsNil() {
+			return true, rets[0].Interface().(error)
+		}
+
+		return false, nil
+	})
+}
+
+func TravelBatching(ctx context.Context, ds datastore.Batching, callback func(k string, v []byte) (bool, error)) error {
 	result, err := ds.Query(ctx, query.Query{})
 	if err != nil {
 		return err
 	}
 
 	defer result.Close() //nolint:errcheck
-
 	for res := range result.Next() {
 		if res.Error != nil {
 			return err
 		}
-		i := reflect.New(instanceType).Interface()
-		unmarshaler := i.(cbg.CBORUnmarshaler)
-		if err = cborrpc.ReadCborRPC(bytes.NewReader(res.Value), unmarshaler); err != nil {
+		stop, err := callback(res.Key, res.Value)
+		if err != nil {
 			return err
 		}
-		rets := reflect.ValueOf(callback).Call([]reflect.Value{
-			reflect.ValueOf(unmarshaler)})
-
-		if rets[0].Interface().(bool) {
+		if stop {
 			return nil
-		}
-
-		if !rets[1].IsNil() {
-			return rets[0].Interface().(error)
 		}
 	}
 	return nil

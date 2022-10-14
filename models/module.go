@@ -9,13 +9,10 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 )
 
-var invokeDataMigrate = builder.NextInvoke()
-
 // TODO: 这里没有考虑client和server的数据表是不一样的
 var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 	return builder.Options(
 		builder.Override(new(badger2.MetadataDS), badger2.NewMetadataDS),
-		builder.Override(invokeDataMigrate, func(r repo.Repo) error { return r.Migrate() }),
 		builder.ApplyIfElse(func(s *builder.Settings) bool {
 			return server
 		}, builder.Options(
@@ -45,8 +42,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 					builder.Override(new(badger2.PayChanMsgDs), badger2.NewPayChanMsgDs),
 					builder.Override(new(badger2.FundMgrDS), badger2.NewFundMgrDS),
 					builder.Override(new(badger2.RetrievalDealsDS), badger2.NewRetrievalDealsDS),
-
-					builder.Override(new(repo.Repo), badger2.NewBadgerRepo),
+					builder.Override(new(repo.Repo), badger2.NewMigratedBadgerRepo),
 				),
 			),
 		),
@@ -62,8 +58,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 				builder.Override(new(badger2.RetrievalClientDS), badger2.NewRetrievalClientDS),
 				builder.Override(new(badger2.ImportClientDS), badger2.NewImportClientDS),
 				builder.Override(new(badger2.ClientTransferDS), badger2.NewClientTransferDS),
-
-				builder.Override(new(repo.Repo), badger2.NewBadgerRepo),
+				builder.Override(new(repo.Repo), badger2.NewMigratedBadgerRepo),
 			),
 		),
 	)

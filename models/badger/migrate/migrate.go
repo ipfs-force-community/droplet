@@ -172,7 +172,10 @@ var migrateDs = map[string][]migrateFunc{
 	},
 	DsNameCidInfoDs: {
 		{version: "1", mf: func(old *v220.CIDInfo) (*piecestore.CIDInfo, error) {
-			return old, nil
+			return &piecestore.CIDInfo{
+				CID:                 old.CID,
+				PieceBlockLocations: old.PieceBlockLocations,
+			}, nil
 		}},
 	},
 	DsNameRetrievalDealsDs: {
@@ -211,11 +214,11 @@ func migrateOne(ctx context.Context, name string, mfs migrateFuncSchedule, ds da
 	if len(oldVersion) == 0 {
 		dsWithOldVersion = ds
 	} else {
+		dsWithOldVersion = namespace.Wrap(ds, datastore.NewKey(oldVersion))
+
 		if oldVersion == string(targetVersion) {
 			log.Infof("doesn't need migration for %s, current version is:%s", name, oldVersion)
-			return namespace.Wrap(ds, datastore.NewKey(oldVersion)), nil
-		} else {
-			dsWithOldVersion = namespace.Wrap(ds, datastore.NewKey(oldVersion))
+			return dsWithOldVersion, nil
 		}
 	}
 
@@ -252,7 +255,9 @@ func Migrate(ctx context.Context, dss map[string]datastore.Batching) (map[string
 		mfs, exist := migrateDs[name]
 
 		if !exist {
-			return nil, fmt.Errorf("migration function for %s not found", name)
+			dss[name] = ds
+			log.Warnf("no migration sechedules for : %s", name)
+			continue
 		}
 
 		var versionedDs datastore.Batching
@@ -263,8 +268,7 @@ func Migrate(ctx context.Context, dss map[string]datastore.Batching) (map[string
 		//  后续的版本升级中如果出错, 应该直接返回.
 		if err != nil {
 			dss[name] = ds
-
-			log.Warnf("migrate:%s failed:%w", name, err)
+			log.Warnf("migrate:%s failed:%s", name, err.Error())
 			continue
 		}
 		dss[name] = versionedDs

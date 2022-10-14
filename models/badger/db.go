@@ -202,6 +202,11 @@ func NewBadgerRepo(params BadgerDSParams) repo.Repo {
 	}
 }
 
+func NewMigratedBadgerRepo(params BadgerDSParams) (repo.Repo, error) {
+	repo := NewBadgerRepo(params)
+	return repo, repo.Migrate()
+}
+
 func (r *BadgerRepo) FundRepo() repo.FundRepo {
 	return NewFundRepo(r.dsParams.FundDS)
 }

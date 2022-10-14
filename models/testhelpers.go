@@ -1,10 +1,11 @@
 package models
 
 import (
+	"testing"
+
 	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 // NewInMemoryRepo makes a new instance of MemRepo

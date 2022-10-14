@@ -1,7 +1,8 @@
+// nolint
 package v220
 
 /*
-所有的类型都来源于老版本(venus-shared/v1.6.0)的拷贝. 用于badger持久化的类型的自动化迁移.
+   所有的类型都来源于老版本(venus-shared/v1.6.0)的拷贝. 用于badger持久化的类型的自动化迁移.
 */
 
 import (
@@ -20,15 +21,35 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/filecoin-project/venus-market/v2/models/badger/statestore"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 )
 
-type SignedStorageAsk = storagemarket.SignedStorageAsk
-type BlockLocation = piecestore.BlockLocation
-type CIDInfo = piecestore.CIDInfo
+type SignedStorageAsk struct {
+	storagemarket.SignedStorageAsk
+}
+
+type BlockLocation piecestore.BlockLocation
+
+type CIDInfo struct {
+	piecestore.CIDInfo
+}
+
+func (ask *SignedStorageAsk) KeyWithNamespace() datastore.Key {
+	return datastore.KeyWithNamespaces([]string{
+		"/storage/provider/storage-ask",
+		ask.Ask.Miner.String()})
+}
+
+func (cif *CIDInfo) KeyWithNamespace() datastore.Key {
+	return datastore.KeyWithNamespaces([]string{
+		"/storagemarket/cid-infos/",
+		cif.CID.String()})
+}
 
 // FundedAddressState keeps track of the state of an address with funds in the
 // datastore
@@ -39,6 +60,13 @@ type FundedAddressState struct {
 	AmtReserved abi.TokenAmount
 	// MsgCid is the cid of an in-progress on-chain message
 	MsgCid *cid.Cid
+}
+
+func (t *FundedAddressState) KeyWithNamespace() datastore.Key {
+	return datastore.KeyWithNamespaces([]string{
+		"/fundmgr/Addr",
+		t.Addr.String(),
+	})
 }
 
 type PieceStatus string
@@ -73,6 +101,13 @@ type MinerDeal struct {
 	InboundCAR string
 }
 
+func (t *MinerDeal) KeyWithNamespace() datastore.Key {
+	return datastore.KeyWithNamespaces([]string{
+		"/storage/provider/deals",
+		statestore.ToKey(t.ProposalCid).String(),
+	})
+}
+
 // MsgInfo stores information about a create channel / add funds message
 // that has been sent
 type MsgInfo struct {
@@ -84,6 +119,13 @@ type MsgInfo struct {
 	Received bool
 	// Err is the error received in the response
 	Err string
+}
+
+func (t *MsgInfo) KeyWithNamespace() datastore.Key {
+	return datastore.KeyWithNamespaces([]string{
+		"/paych/MsgCid",
+		t.MsgCid.String(),
+	})
 }
 
 type VoucherInfo struct {
@@ -125,12 +167,26 @@ type ChannelInfo struct {
 	Settling bool
 }
 
+func (t *ChannelInfo) KeyWithNamespace() datastore.Key {
+	return datastore.KeyWithNamespaces([]string{
+		"/paych/ChannelInfo",
+		t.ChannelID,
+	})
+}
+
 type RetrievalAsk struct {
 	Miner                   address.Address
 	PricePerByte            abi.TokenAmount
 	UnsealPrice             abi.TokenAmount
 	PaymentInterval         uint64
 	PaymentIntervalIncrease uint64
+}
+
+func (t *RetrievalAsk) KeyWithNamespace() datastore.Key {
+	return datastore.KeyWithNamespaces([]string{
+		"/retrievals/provider/retrieval-ask",
+		t.Miner.String(),
+	})
 }
 
 type ProviderDealState struct {
@@ -147,7 +203,19 @@ type ProviderDealState struct {
 	LegacyProtocol        bool
 }
 
-var _ = xerrors.Errorf
+// Identifier provides a unique id for this provider deal
+func (t *ProviderDealState) Identifier() retrievalmarket.ProviderDealIdentifier {
+	return retrievalmarket.ProviderDealIdentifier{Receiver: t.Receiver, DealID: t.ID}
+}
+
+func (t *ProviderDealState) KeyWithNamespace() datastore.Key {
+	return datastore.KeyWithNamespaces([]string{
+		"/retrievals/provider/deals",
+		statestore.ToKey(t.Identifier()).String(),
+	})
+}
+
+var _ = xerrors.Errorf // nolint
 var _ = cid.Undef
 var _ = math.E
 var _ = sort.Sort
@@ -184,7 +252,7 @@ func (t *FundedAddressState) MarshalCBOR(w io.Writer) error {
 		}
 	} else {
 		if err := cbg.WriteCid(cw, *t.MsgCid); err != nil {
-			return xerrors.Errorf("failed to write cid field t.MsgCid: %w", err)
+			return fmt.Errorf("failed to write cid field t.MsgCid: %w", err)
 		}
 	}
 
@@ -339,7 +407,7 @@ func (t *MsgInfo) UnmarshalCBOR(r io.Reader) (err error) {
 			return err
 		}
 
-		t.ChannelID = string(sval)
+		t.ChannelID = sval
 	}
 	// t.MsgCid (cid.Cid) (struct)
 
@@ -426,7 +494,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 
 	// t.Direction (uint64) (uint64)
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.Direction)); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, t.Direction); err != nil {
 		return err
 	}
 
@@ -572,7 +640,7 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.Direction = uint64(extra)
+		t.Direction = extra
 
 	}
 	// t.Vouchers ([]*market.VoucherInfo) (slice)
@@ -897,7 +965,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 
 	// t.State (uint64) (uint64)
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.State)); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, t.State); err != nil {
 		return err
 	}
 
@@ -955,7 +1023,7 @@ func (t *MinerDeal) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Message))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Message)); err != nil {
+	if _, err := io.WriteString(w, t.Message); err != nil {
 		return err
 	}
 
@@ -1572,13 +1640,13 @@ func (t *ProviderDealState) MarshalCBOR(w io.Writer) error {
 	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Message))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string(t.Message)); err != nil {
+	if _, err := io.WriteString(w, t.Message); err != nil {
 		return err
 	}
 
 	// t.CurrentInterval (uint64) (uint64)
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.CurrentInterval)); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, t.CurrentInterval); err != nil {
 		return err
 	}
 
@@ -1701,7 +1769,7 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.TotalSent = uint64(extra)
+		t.TotalSent = extra
 
 	}
 	// t.FundsReceived (big.Int) (struct)
@@ -1721,7 +1789,7 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 			return err
 		}
 
-		t.Message = string(sval)
+		t.Message = sval
 	}
 	// t.CurrentInterval (uint64) (uint64)
 
@@ -1734,7 +1802,7 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 		if maj != cbg.MajUnsignedInt {
 			return fmt.Errorf("wrong type for uint64 field")
 		}
-		t.CurrentInterval = uint64(extra)
+		t.CurrentInterval = extra
 
 	}
 	// t.LegacyProtocol (bool) (bool)
