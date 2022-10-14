@@ -74,6 +74,12 @@ type StorageAskDS datastore.Batching //key = latest
 // /metadata/paych/
 type PayChanDS datastore.Batching
 
+// /metadata/paych/ChannelInfo
+type PayChanInfoDS datastore.Batching
+
+// /metadata/paych/MsgCid
+type PayChanMsgDs datastore.Batching
+
 // *********************************client
 // /metadata/deals/client
 type ClientDatastore datastore.Batching
@@ -144,6 +150,14 @@ func NewPayChanDS(ds MetadataDS) PayChanDS {
 	return namespace.Wrap(ds, datastore.NewKey(paych))
 }
 
+func NewPayChanInfoDs(ds PayChanDS) PayChanInfoDS {
+	return namespace.Wrap(ds, datastore.NewKey(dsKeyChannelInfo))
+}
+
+func NewPayChanMsgDs(ds PayChanDS) PayChanMsgDs {
+	return namespace.Wrap(ds, datastore.NewKey(dsKeyMsgCid))
+}
+
 // NewClientDatastore creates a datastore for the client to store its deals
 func NewClientDatastore(ds MetadataDS) ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey(dealClient))
@@ -172,7 +186,8 @@ type BadgerDSParams struct {
 	fx.In
 	FundDS           FundMgrDS        `optional:"true"`
 	StorageDealsDS   StorageDealsDS   `optional:"true"`
-	PaychDS          PayChanDS        `optional:"true"`
+	PaychInfoDS      PayChanInfoDS    `optional:"true"`
+	PaychMsgDS       PayChanMsgDs     `optional:"true"`
 	AskDS            StorageAskDS     `optional:"true"`
 	RetrAskDs        RetrievalAskDS   `optional:"true"`
 	CidInfoDs        CIDInfoDS        `optional:"true"`
@@ -194,11 +209,11 @@ func (r *BadgerRepo) StorageDealRepo() repo.StorageDealRepo {
 }
 
 func (r *BadgerRepo) PaychMsgInfoRepo() repo.PaychMsgInfoRepo {
-	return NewPayMsgRepo(r.dsParams.PaychDS)
+	return NewPayMsgRepo(r.dsParams.PaychMsgDS)
 }
 
 func (r *BadgerRepo) PaychChannelInfoRepo() repo.PaychChannelInfoRepo {
-	return NewPaychRepo(r.dsParams.PaychDS)
+	return NewPaychRepo(r.dsParams.PaychInfoDS, r.PaychMsgInfoRepo())
 }
 
 func (r *BadgerRepo) StorageAskRepo() repo.IStorageAskRepo {

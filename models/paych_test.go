@@ -23,8 +23,8 @@ func TestPaych(t *testing.T) {
 
 	t.Run("badger", func(t *testing.T) {
 		db := BadgerDB(t)
-		ps := badger.NewPaychRepo(db)
-		msgPaych := badger.NewPayMsgRepo(db)
+		msgPaych := badger.NewPayMsgRepo(badger.NewPayChanMsgDs(db))
+		ps := badger.NewPaychRepo(badger.NewPayChanInfoDs(db), msgPaych)
 		testChannelInfo(t, ps, msgPaych)
 		testMsgInfo(t, msgPaych)
 	})
