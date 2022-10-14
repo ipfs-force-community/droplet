@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
 )
 
@@ -23,7 +22,7 @@ const (
 
 type paychInfoRepo struct {
 	ds      datastore.Batching
-	msgRepo *payMsgRepo
+	msgRepo repo.PaychMsgInfoRepo
 }
 
 type payMsgRepo struct {
@@ -33,15 +32,12 @@ type payMsgRepo struct {
 var _ repo.PaychChannelInfoRepo = (*paychInfoRepo)(nil)
 var _ repo.PaychMsgInfoRepo = (*payMsgRepo)(nil)
 
-func NewPaychRepo(ds PayChanDS) repo.PaychChannelInfoRepo {
-	return &paychInfoRepo{
-		ds:      namespace.Wrap(ds, datastore.NewKey(dsKeyChannelInfo)),
-		msgRepo: &payMsgRepo{namespace.Wrap(ds, datastore.NewKey(dsKeyMsgCid))},
-	}
+func NewPaychRepo(ds PayChanInfoDS, msgRepo repo.PaychMsgInfoRepo) repo.PaychChannelInfoRepo {
+	return &paychInfoRepo{ds: ds, msgRepo: msgRepo}
 }
 
-func NewPayMsgRepo(ds PayChanDS) repo.PaychMsgInfoRepo {
-	return &payMsgRepo{namespace.Wrap(ds, datastore.NewKey(dsKeyMsgCid))}
+func NewPayMsgRepo(ds PayChanMsgDs) repo.PaychMsgInfoRepo {
+	return &payMsgRepo{ds: ds}
 }
 
 // CreateChannel creates an outbound channel for the given from / to

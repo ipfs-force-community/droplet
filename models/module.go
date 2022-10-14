@@ -41,6 +41,8 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 					builder.Override(new(badger2.StorageDealsDS), badger2.NewStorageDealsDS),
 					builder.Override(new(badger2.StorageAskDS), badger2.NewStorageAskDS),
 					builder.Override(new(badger2.PayChanDS), badger2.NewPayChanDS),
+					builder.Override(new(badger2.PayChanInfoDS), badger2.NewPayChanInfoDs),
+					builder.Override(new(badger2.PayChanMsgDs), badger2.NewPayChanMsgDs),
 					builder.Override(new(badger2.FundMgrDS), badger2.NewFundMgrDS),
 					builder.Override(new(badger2.RetrievalDealsDS), badger2.NewRetrievalDealsDS),
 
@@ -54,6 +56,8 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 				builder.Override(new(badger2.ClientBlockstore), badger2.NewClientBlockstore),
 				builder.Override(new(badger2.FundMgrDS), badger2.NewFundMgrDS),
 				builder.Override(new(badger2.PayChanDS), badger2.NewPayChanDS),
+				builder.Override(new(badger2.PayChanInfoDS), badger2.NewPayChanInfoDs),
+				builder.Override(new(badger2.PayChanMsgDs), badger2.NewPayChanMsgDs),
 				builder.Override(new(badger2.ClientDealsDS), badger2.NewClientDealsDS),
 				builder.Override(new(badger2.RetrievalClientDS), badger2.NewRetrievalClientDS),
 				builder.Override(new(badger2.ImportClientDS), badger2.NewImportClientDS),

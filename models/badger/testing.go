@@ -21,10 +21,12 @@ func NewMemRepo() (repo.Repo, error) {
 	if err != nil {
 		return nil, err
 	}
+	payChDs := NewPayChanDS(db)
 	return NewBadgerRepo(BadgerDSParams{
 		FundDS:           NewFundMgrDS(db),
 		StorageDealsDS:   NewStorageDealsDS(NewStorageProviderDS(db)),
-		PaychDS:          NewPayChanDS(db),
+		PaychInfoDS:      NewPayChanInfoDs(payChDs),
+		PaychMsgDS:       NewPayChanMsgDs(payChDs),
 		AskDS:            NewStorageAskDS(NewStorageProviderDS(db)),
 		RetrAskDs:        NewRetrievalAskDS(NewRetrievalProviderDS(db)),
 		CidInfoDs:        NewCidInfoDs(NewPieceMetaDs(db)),
