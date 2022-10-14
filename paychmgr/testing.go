@@ -8,8 +8,10 @@ import (
 )
 
 func newRepo() repo.Repo {
+	paychDs := ds_sync.MutexWrap(ds.NewMapDatastore())
 	params := badger.BadgerDSParams{
-		PaychDS: ds_sync.MutexWrap(ds.NewMapDatastore()),
+		PaychInfoDS: badger.NewPayChanDS(paychDs),
+		PaychMsgDS:  badger.NewPayChanMsgDs(paychDs),
 	}
 	return badger.NewBadgerRepo(params)
 }
