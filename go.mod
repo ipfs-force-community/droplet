@@ -1,6 +1,6 @@
 module github.com/filecoin-project/venus-market/v2
 
-go 1.18
+go 1.17
 
 require (
 	github.com/BurntSushi/toml v1.2.0
@@ -69,7 +69,6 @@ require (
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/libp2p/go-libp2p v0.22.0
-	github.com/libp2p/go-libp2p-peerstore v0.8.0
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.4
