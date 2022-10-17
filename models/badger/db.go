@@ -257,14 +257,12 @@ func (r *BadgerRepo) Migrate() error {
 		migrate.DsNameCidInfoDs:        r.dsParams.CidInfoDs,
 		migrate.DsNameRetrievalDealsDs: r.dsParams.RetrievalDealsDs,
 	}
-
 	// the returned 'newDss' would be wrapped with current version namespace.
 	// so, must set all 'ds' back later.
 	newDss, err := migrate.Migrate(ctx, migrateDss)
 	if err != nil {
 		return err
 	}
-
 	r.dsParams.FundDS = newDss[migrate.DsNameFundedAddrState]
 	r.dsParams.StorageDealsDS = newDss[migrate.DsNameStorageDeal]
 	r.dsParams.PaychMsgDS = newDss[migrate.DsNamePaychMsgDs]

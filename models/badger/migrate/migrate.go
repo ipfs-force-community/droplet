@@ -206,52 +206,39 @@ func migrateOne(ctx context.Context, name string, mfs migrateFuncSchedule, ds da
 	} else {
 		oldVersion = string(v)
 	}
-
 	var targetVersion = mfs.targetVersion()
-
 	var dsWithOldVersion datastore.Batching
-
 	if len(oldVersion) == 0 {
 		dsWithOldVersion = ds
 	} else {
 		dsWithOldVersion = namespace.Wrap(ds, datastore.NewKey(oldVersion))
-
 		if oldVersion == string(targetVersion) {
 			log.Infof("doesn't need migration for %s, current version is:%s", name, oldVersion)
 			return dsWithOldVersion, nil
 		}
 	}
-
 	log.Infof("migrate: %s from %s to %s", name, oldVersion, string(targetVersion))
-
 	mfs = mfs.subScheduleFrom(oldVersion)
-
 	if len(mfs) == 0 {
 		return nil, fmt.Errorf("migrate:%s failed, can't find schedule from:%s", name, oldVersion)
 	}
-
 	var migrationBuilders versioned.BuilderList = make([]versioned.Builder, len(mfs))
-
 	for idx, mf := range mfs {
 		migrationBuilders[idx] = versioned.NewVersionedBuilder(mf.mf, mf.version)
 	}
-
 	migrations, err := migrationBuilders.Build()
 	if err != nil {
 		return nil, err
 	}
-
 	_, doMigrate := statestore.NewVersionedStateStore(dsWithOldVersion, migrations, targetVersion)
 	if err := doMigrate(ctx); err != nil {
 		var rollbackErr error
-
 		// if error happens, just rollback the version number
 		if len(oldVersion) == 0 {
 			rollbackErr = ds.Delete(ctx, versioningKey)
 		} else {
 			rollbackErr = ds.Put(ctx, versioningKey, []byte(oldVersion))
 		}
-
 		// there are nothing we can do to get back the data.
 		if rollbackErr != nil {
 			log.Errorf("migrate: %s failed, rollback version failed:%v\n", name, rollbackErr)
@@ -272,11 +259,8 @@ func Migrate(ctx context.Context, dss map[string]datastore.Batching) (map[string
 			log.Warnf("no migration sechedules for : %s", name)
 			continue
 		}
-
 		var versionedDs datastore.Batching
-
 		versionedDs, err = migrateOne(ctx, name, mfs, ds)
-
 		// todo: version为空同时, 有同时存在两个版本的类型的可能性, 为了兼容, 这里暂时不返回错误.
 		//  后续的版本升级中如果出错, 应该直接返回.
 		if err != nil {

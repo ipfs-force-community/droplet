@@ -51,16 +51,10 @@ func travelCborAbleDS(ctx context.Context, ds datastore.Batching, callback inter
 		}
 		rets := reflect.ValueOf(callback).Call([]reflect.Value{
 			reflect.ValueOf(unmarshaler)})
-
-		if rets[0].Interface().(bool) {
-			return true, nil
-		}
-
 		if !rets[1].IsNil() {
 			return true, rets[0].Interface().(error)
 		}
-
-		return false, nil
+		return rets[0].Interface().(bool), nil
 	})
 }
 
