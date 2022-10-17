@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus-messager/models/mtypes"
@@ -21,7 +21,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
-//nolint
+// nolint
 type MysqlRepo struct {
 	*gorm.DB
 }

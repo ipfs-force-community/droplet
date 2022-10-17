@@ -5,10 +5,11 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/filecoin-project/venus/pkg/constants"
+
 	crypto2 "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -254,5 +255,5 @@ func (pchapi *mockPaychAPI) addSigningKey(key []byte) {
 }
 
 func (pchapi *mockPaychAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
-	return constants.NewestNetworkVersion, nil
+	return constants.TestNetworkVersion, nil
 }

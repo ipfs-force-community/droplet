@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"text/tabwriter"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
-	"github.com/filecoin-project/specs-actors/v8/actors/builtin"
+	"github.com/filecoin-project/go-state-types/builtin"
+	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -133,7 +133,7 @@ var actorSetAddrsCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner7.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
+		params, err := actors.SerializeParams(&miner9.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
 		if err != nil {
 			return err
 		}
@@ -206,7 +206,7 @@ var actorSetPeeridCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner7.ChangePeerIDParams{NewID: abi.PeerID(pid)})
+		params, err := actors.SerializeParams(&miner9.ChangePeerIDParams{NewID: abi.PeerID(pid)})
 		if err != nil {
 			return err
 		}

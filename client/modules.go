@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/ipfs-force-community/metrics"
 
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"

@@ -4,7 +4,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	peer "github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-address"
