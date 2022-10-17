@@ -64,7 +64,7 @@ func (ar *storageAskRepo) SetAsk(ctx context.Context, ask *types.SignedStorageAs
 
 func (ar *storageAskRepo) ListAsk(ctx context.Context) ([]*types.SignedStorageAsk, error) {
 	var results []*types.SignedStorageAsk
-	err := travelDeals(ctx, ar.ds, func(ask *types.SignedStorageAsk) (bool, error) {
+	err := travelCborAbleDS(ctx, ar.ds, func(ask *types.SignedStorageAsk) (bool, error) {
 		results = append(results, ask)
 		return false, nil
 	})

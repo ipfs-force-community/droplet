@@ -60,7 +60,7 @@ func (r *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk) 
 
 func (r *retrievalAskRepo) ListAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {
 	var results []*types.RetrievalAsk
-	err := travelDeals(ctx, r.ds, func(ask *types.RetrievalAsk) (bool, error) {
+	err := travelCborAbleDS(ctx, r.ds, func(ask *types.RetrievalAsk) (bool, error) {
 		results = append(results, ask)
 		return false, nil
 	})

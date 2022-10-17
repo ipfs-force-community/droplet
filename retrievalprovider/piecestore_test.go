@@ -30,7 +30,7 @@ import (
 
 func TestPieceInfo_GetPieceInfoByPieceCid(t *testing.T) {
 	ctx := context.Background()
-	storageDealRepo := models.NewInMemoryRepo().StorageDealRepo()
+	storageDealRepo := models.NewInMemoryRepo(t).StorageDealRepo()
 	dagStore := dagstore.NewMockDagStoreWrapper()
 	pieceStore := PieceInfo{
 		dagstore: dagStore,
@@ -46,9 +46,9 @@ func TestPieceInfo_GetPieceInfoByPieceCid(t *testing.T) {
 	assert.Len(t, deals, 1)
 }
 
-func TestPieceInfo_GetPieceInfoWithUnkownPieceCid(t *testing.T) {
+func TestPieceInfo_GetPieceInfoWithUnknownPieceCid(t *testing.T) {
 	ctx := context.Background()
-	storageDealRepo := models.NewInMemoryRepo().StorageDealRepo()
+	storageDealRepo := models.NewInMemoryRepo(t).StorageDealRepo()
 	dagStore := dagstore.NewMockDagStoreWrapper()
 	pieceStore := PieceInfo{
 		dagstore: dagStore,
@@ -63,7 +63,7 @@ func TestPieceInfo_GetPieceInfoWithUnkownPieceCid(t *testing.T) {
 
 func TestPieceInfo_GetPieceInfoWithUnko(t *testing.T) {
 	ctx := context.Background()
-	storageDealRepo := models.NewInMemoryRepo().StorageDealRepo()
+	storageDealRepo := models.NewInMemoryRepo(t).StorageDealRepo()
 	dagStore := dagstore.NewMockDagStoreWrapper()
 	pieceStore := PieceInfo{
 		dagstore: dagStore,
@@ -84,7 +84,7 @@ func TestPieceInfo_GetPieceInfoWithUnko(t *testing.T) {
 
 func TestPieceInfo_DistinctDeals(t *testing.T) {
 	ctx := context.Background()
-	storageDealRepo := models.NewInMemoryRepo().StorageDealRepo()
+	storageDealRepo := models.NewInMemoryRepo(t).StorageDealRepo()
 	dagStore := dagstore.NewMockDagStoreWrapper()
 	pieceStore := PieceInfo{
 		dagstore: dagStore,

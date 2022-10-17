@@ -52,7 +52,7 @@ func (sdr *storageDealRepo) GetDeals(ctx context.Context, miner address.Address,
 	var startIdx, idx = pageIndex * pageSize, 0
 	var storageDeals []*types.MinerDeal
 	var err error
-	if err = travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
+	if err = travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
 		if deal.ClientDealProposal.Proposal.Provider != miner {
 			return
 		}
@@ -84,7 +84,7 @@ func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(ctx context.Context, pie
 
 	var storageDeals []*types.MinerDeal
 	var err error
-	if err = travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
+	if err = travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
 		if deal.ClientDealProposal.Proposal.PieceCID != piececid {
 			return
 		}
@@ -114,7 +114,7 @@ func (sdr *storageDealRepo) GetDealsByDataCidAndDealStatus(ctx context.Context, 
 
 	var storageDeals []*types.MinerDeal
 	var err error
-	if err = travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
+	if err = travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
 		if mAddr != address.Undef && deal.ClientDealProposal.Proposal.Provider != mAddr {
 			return
 		}
@@ -147,7 +147,7 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, addr add
 
 	var storageDeals []*types.MinerDeal
 	var err error
-	if err = travelDeals(ctx, sdr.ds,
+	if err = travelCborAbleDS(ctx, sdr.ds,
 		func(deal *types.MinerDeal) (stop bool, err error) {
 			if addr == address.Undef || deal.ClientDealProposal.Proposal.Provider == addr {
 				if _, ok := filter[deal.State]; !ok {
@@ -189,7 +189,7 @@ func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid ci
 
 func (sdr *storageDealRepo) ListDealByAddr(ctx context.Context, miner address.Address) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
-	if err := travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
+	if err := travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
 		if deal.ClientDealProposal.Proposal.Provider == miner {
 			storageDeals = append(storageDeals, deal)
 		}
@@ -203,7 +203,7 @@ func (sdr *storageDealRepo) ListDealByAddr(ctx context.Context, miner address.Ad
 
 func (sdr *storageDealRepo) ListDeal(ctx context.Context) ([]*types.MinerDeal, error) {
 	storageDeals := make([]*types.MinerDeal, 0)
-	if err := travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (bool, error) {
+	if err := travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (bool, error) {
 		storageDeals = append(storageDeals, deal)
 		return false, nil
 	}); err != nil {
@@ -218,7 +218,7 @@ func (sdr *storageDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) 
 		Deals:    nil,
 	}
 	var err error
-	if err = travelDeals(ctx, sdr.ds, func(deal *types.MinerDeal) (bool, error) {
+	if err = travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (bool, error) {
 		if deal.ClientDealProposal.Proposal.PieceCID.Equals(pieceCID) {
 			pieceInfo.Deals = append(pieceInfo.Deals, piecestore.DealInfo{
 				DealID:   deal.DealID,
@@ -241,7 +241,7 @@ func (sdr *storageDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) 
 
 func (sdr *storageDealRepo) ListPieceInfoKeys(ctx context.Context) ([]cid.Cid, error) {
 	var cidsMap = make(map[cid.Cid]interface{})
-	err := travelDeals(ctx, sdr.ds,
+	err := travelCborAbleDS(ctx, sdr.ds,
 		func(deal *types.MinerDeal) (bool, error) {
 			cidsMap[deal.ClientDealProposal.Proposal.PieceCID] = nil
 			return false, nil
@@ -262,7 +262,7 @@ func (sdr *storageDealRepo) ListPieceInfoKeys(ctx context.Context) ([]cid.Cid, e
 func (sdr *storageDealRepo) GetDealByDealID(ctx context.Context, mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error) {
 	var deal *types.MinerDeal
 	var err error
-	if err = travelDeals(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+	if err = travelCborAbleDS(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
 		if stop = inDeal.ClientDealProposal.Proposal.Provider == mAddr && inDeal.DealID == dealID; stop {
 			deal = inDeal
 		}
@@ -279,7 +279,7 @@ func (sdr *storageDealRepo) GetDealByDealID(ctx context.Context, mAddr address.A
 func (sdr *storageDealRepo) GetDealsByPieceStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus) ([]*types.MinerDeal, error) {
 	var deals []*types.MinerDeal
 
-	return deals, travelDeals(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+	return deals, travelCborAbleDS(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
 		if inDeal.PieceStatus != pieceStatus {
 			return
 		}
@@ -299,7 +299,7 @@ func (sdr *storageDealRepo) GetDealsByPieceStatusAndDealStatus(ctx context.Conte
 		dict[status] = struct{}{}
 	}
 
-	return deals, travelDeals(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+	return deals, travelCborAbleDS(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
 		if inDeal.PieceStatus != pieceStatus {
 			return
 		}
@@ -318,7 +318,7 @@ func (sdr *storageDealRepo) GetDealsByPieceStatusAndDealStatus(ctx context.Conte
 func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error) {
 	var deal *types.MinerDeal
 
-	err := travelDeals(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+	err := travelCborAbleDS(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
 		if inDeal.ClientDealProposal.Proposal.PieceCID == pieceCID {
 			deal = inDeal
 			return true, nil
@@ -336,7 +336,7 @@ func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) 
 
 func (sdr *storageDealRepo) GroupStorageDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[storagemarket.StorageDealStatus]int64, error) {
 	result := map[storagemarket.StorageDealStatus]int64{}
-	return result, travelDeals(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+	return result, travelCborAbleDS(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
 		if mAddr != address.Undef && mAddr != inDeal.Proposal.Provider {
 			return false, nil
 		}

@@ -73,41 +73,7 @@ func (r MysqlRepo) Close() error {
 }
 
 func (r MysqlRepo) Migrate() error {
-	err := r.GetDb().AutoMigrate(cidInfo{})
-	if err != nil {
-		return err
-	}
-
-	err = r.GetDb().AutoMigrate(fundedAddressState{})
-	if err != nil {
-		return err
-	}
-
-	err = r.GetDb().AutoMigrate(channelInfo{})
-	if err != nil {
-		return err
-	}
-
-	err = r.GetDb().AutoMigrate(retrievalAsk{})
-	if err != nil {
-		return err
-	}
-
-	err = r.GetDb().AutoMigrate(retrievalDeal{})
-	if err != nil {
-		return err
-	}
-
-	err = r.GetDb().AutoMigrate(storageDeal{})
-	if err != nil {
-		return err
-	}
-
-	err = r.GetDb().AutoMigrate(storageAsk{})
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.AutoMigrate(retrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{}, retrievalDeal{})
 }
 
 func (r MysqlRepo) Transaction(cb func(txRepo repo.TxRepo) error) error {
@@ -150,7 +116,7 @@ func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 
 	r := &MysqlRepo{DB: db}
 
-	return r, r.AutoMigrate(retrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{}, retrievalDeal{})
+	return r, r.Migrate()
 }
 
 type DBCid cid.Cid
