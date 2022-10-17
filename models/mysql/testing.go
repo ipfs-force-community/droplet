@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multihash"
 
 	"github.com/stretchr/testify/assert"
@@ -20,8 +20,8 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	ptest "github.com/libp2p/go-libp2p-core/test"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	ptest "github.com/libp2p/go-libp2p/core/test"
 )
 
 var getTestAddress func() address.Address = address.NewForTestGetter()

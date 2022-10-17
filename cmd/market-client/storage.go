@@ -24,7 +24,7 @@ import (
 	"github.com/fatih/color"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
@@ -58,7 +58,7 @@ var storageCmd = &cli.Command{
 // TODO ???
 // Actor consts
 // TODO: pieceSize unused from actors
-//nolint
+// nolint
 var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
 
 const BlockDelaySecs = uint64(builtin7.EpochDurationSeconds)

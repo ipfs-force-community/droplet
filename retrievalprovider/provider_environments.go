@@ -10,7 +10,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/dagstore"
 	datatransfer "github.com/filecoin-project/go-data-transfer"

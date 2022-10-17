@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"

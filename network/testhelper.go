@@ -14,9 +14,9 @@ import (
 	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 )
 
@@ -26,7 +26,8 @@ func MockHost(ctx context.Context) (host.Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	pid, err := peer.IDFromString("12D3KooWN1zfzGrxXxTa6ezM3VWxb7Tvqo1R1KXEcxQYV8LC3Em8")
+
+	pid, err := peer.Decode("12D3KooWN1zfzGrxXxTa6ezM3VWxb7Tvqo1R1KXEcxQYV8LC3Em8")
 	if err != nil {
 		return nil, err
 	}

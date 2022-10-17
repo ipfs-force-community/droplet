@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/mitchellh/go-homedir"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -39,7 +39,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"github.com/filecoin-project/venus-market/v2/utils"
 
-	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
