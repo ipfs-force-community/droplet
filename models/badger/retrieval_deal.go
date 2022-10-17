@@ -13,7 +13,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 const RetrievalDealTableName = "retrieval_deals"

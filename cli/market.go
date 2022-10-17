@@ -24,7 +24,7 @@ import (
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"

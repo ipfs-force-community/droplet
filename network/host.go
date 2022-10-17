@@ -7,9 +7,9 @@ import (
 	"github.com/filecoin-project/venus-market/v2/version"
 	"github.com/ipfs-force-community/metrics"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"go.uber.org/fx"
 )
 

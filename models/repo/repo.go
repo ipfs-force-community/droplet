@@ -17,7 +17,7 @@ import (
 	fbig "github.com/filecoin-project/go-state-types/big"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type FundRepo interface {
