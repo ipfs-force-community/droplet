@@ -243,6 +243,19 @@ func migrateOne(ctx context.Context, name string, mfs migrateFuncSchedule, ds da
 
 	_, doMigrate := statestore.NewVersionedStateStore(dsWithOldVersion, migrations, targetVersion)
 	if err := doMigrate(ctx); err != nil {
+		var rollbackErr error
+
+		// if error happens, just rollback the version number
+		if len(oldVersion) == 0 {
+			rollbackErr = ds.Delete(ctx, versioningKey)
+		} else {
+			rollbackErr = ds.Put(ctx, versioningKey, []byte(oldVersion))
+		}
+
+		// there are nothing we can do to get back the data.
+		if rollbackErr != nil {
+			log.Errorf("migrate: %s failed, rollback version failed:%v\n", name, rollbackErr)
+		}
 		return nil, err
 	}
 

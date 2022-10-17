@@ -2,8 +2,9 @@ package testing
 
 import (
 	"context"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"testing"
+
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/venus-market/v2/models/badger/migrate"
 
