@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -241,6 +241,7 @@ func (a *fundedAddress) requestAndWait(ctx context.Context, wallet address.Addre
 }
 
 // Used by the tests
+//
 //lint:ignore U1000 ingore this for now
 func (a *fundedAddress) onProcessStart(fn func() bool) {
 	a.lk.Lock()

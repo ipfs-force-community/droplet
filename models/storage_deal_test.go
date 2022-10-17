@@ -11,12 +11,12 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/stretchr/testify/require"
 
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/filecoin-project/venus-market/v2/models/repo"

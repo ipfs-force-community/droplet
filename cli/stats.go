@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/power"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 )

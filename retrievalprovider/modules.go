@@ -6,7 +6,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/venus-market/v2/config"

@@ -28,7 +28,7 @@ import (
 	"github.com/ipfs-force-community/metrics"
 
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/venus/pkg/constants"
 	vcrypto "github.com/filecoin-project/venus/pkg/crypto"
 	"github.com/filecoin-project/venus/pkg/events"

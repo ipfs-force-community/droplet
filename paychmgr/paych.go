@@ -11,9 +11,9 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus/pkg/crypto"
-	"github.com/filecoin-project/venus/venus-shared/actors"
 	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 

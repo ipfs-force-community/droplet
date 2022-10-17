@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"

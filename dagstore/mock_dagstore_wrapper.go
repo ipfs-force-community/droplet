@@ -101,6 +101,15 @@ func (m *MockDagStoreWrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (
 	return getBlockstoreFromReader(fileR, pieceCid)
 }
 
+func (m *MockDagStoreWrapper) DestroyShard(ctx context.Context, pieceCid cid.Cid, resch chan dagstore.ShardResult) error {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+	delete(m.registrations, pieceCid)
+	delete(m.piecesWithBlock, pieceCid)
+	resch <- dagstore.ShardResult{}
+	return nil
+}
+
 func getBlockstoreFromReader(r io.ReadCloser, pieceCid cid.Cid) (stores.ClosableBlockstore, error) {
 	// Write the piece to a file
 	tmpFile, err := os.CreateTemp("", "dagstoretmp")

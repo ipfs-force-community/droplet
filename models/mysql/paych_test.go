@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -24,6 +26,10 @@ func TestChannelInfo(t *testing.T) {
 
 	channelInfosCases = make([]*types.ChannelInfo, 10)
 	testutil.Provide(t, &channelInfosCases)
+	for _, ch := range channelInfosCases {
+		ch.PendingAvailableAmount = big.NewInt(0)
+		ch.AvailableAmount = big.NewInt(0)
+	}
 
 	msgInfosCase = make([]*types.MsgInfo, 10)
 	testutil.Provide(t, &msgInfosCase)

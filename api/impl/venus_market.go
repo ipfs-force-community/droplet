@@ -13,8 +13,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 	"go.uber.org/fx"
 
