@@ -252,19 +252,20 @@ func migrateOne(ctx context.Context, name string, mfs migrateFuncSchedule, ds da
 func Migrate(ctx context.Context, dss map[string]datastore.Batching) (map[string]datastore.Batching, error) {
 	var err error
 	for name, ds := range dss {
+		if ds == nil {
+			continue
+		}
 		mfs, exist := migrateDs[name]
-
 		if !exist {
-			dss[name] = ds
 			log.Warnf("no migration sechedules for : %s", name)
 			continue
 		}
 		var versionedDs datastore.Batching
 		versionedDs, err = migrateOne(ctx, name, mfs, ds)
+
 		// todo: version为空同时, 有同时存在两个版本的类型的可能性, 为了兼容, 这里暂时不返回错误.
 		//  后续的版本升级中如果出错, 应该直接返回.
 		if err != nil {
-			dss[name] = ds
 			log.Warnf("migrate:%s failed:%s", name, err.Error())
 			continue
 		}
