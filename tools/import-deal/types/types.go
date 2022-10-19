@@ -76,7 +76,7 @@ func (fd *ForceDeal) ToDeal() *Deal {
 		Miner:       DefaultPeerID, // todo 反序列化时需要能解析
 		Client:      fd.Peerid,
 		State:       storagemarket.StorageDealActive,
-		PayloadSize: int64(pieceSize),
+		PayloadSize: int64(pieceSize.Unpadded()),
 		Ref: mysql.DataRef{
 			TransferType: TTFromForce,
 			Root:         mysql.DBCid(rootCid),
