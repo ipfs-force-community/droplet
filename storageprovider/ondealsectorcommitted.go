@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
@@ -72,7 +73,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 			// Note: the error returned from here will end up being returned
 			// from OnDealSectorPreCommitted so no need to call the callback
 			// with the error
-			return false, false, err
+			return false, false, fmt.Errorf("failed to check deal activity: %w", err)
 		}
 
 		if isActive {
@@ -89,7 +90,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 
 		diff, err := mgr.dpc.diffPreCommits(ctx, provider, dealInfo.PublishMsgTipSet, ts.Key())
 		if err != nil {
-			return false, false, err
+			return false, false, fmt.Errorf("failed to diff precommits: %w", err)
 		}
 
 		for _, info := range diff.Added {
@@ -139,13 +140,27 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 		// current deal ID from the publish message CID
 		res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key(), &proposal, publishCid)
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to get dealinfo: %w", err)
+		}
+
+		// If this is a replica update method that succeeded the deal is active
+		if msg.Method == builtin.MethodsMiner.ProveReplicaUpdates {
+			sn, err := dealSectorInReplicaUpdateSuccess(msg, rec, res)
+			if err != nil {
+				return false, err
+			}
+			if sn != nil {
+				cb(*sn, true, nil)
+				return false, nil
+			}
+			// Didn't find the deal ID in this message, so keep looking
+			return true, nil
 		}
 
 		// Extract the message parameters
 		sn, err := dealSectorInPreCommitMsg(msg, res)
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("failed to extract message params: %w", err)
 		}
 
 		if sn != nil {
@@ -259,6 +274,42 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 	}
 
 	return nil
+}
+
+func dealSectorInReplicaUpdateSuccess(msg *types.Message, rec *types.MessageReceipt, res CurrentDealInfo) (*abi.SectorNumber, error) {
+	var params miner.ProveReplicaUpdatesParams
+	if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+		return nil, fmt.Errorf("unmarshal prove replica update: %w", err)
+	}
+
+	var seekUpdate miner.ReplicaUpdate
+	var found bool
+	for _, update := range params.Updates {
+		for _, did := range update.Deals {
+			if did == res.DealID {
+				seekUpdate = update
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		return nil, nil
+	}
+
+	// check that this update passed validation steps
+	var successBf bitfield.BitField
+	if err := successBf.UnmarshalCBOR(bytes.NewReader(rec.Return)); err != nil {
+		return nil, fmt.Errorf("unmarshal return value: %w", err)
+	}
+	success, err := successBf.IsSet(uint64(seekUpdate.SectorID))
+	if err != nil {
+		return nil, fmt.Errorf("failed to check success of replica update: %w", err)
+	}
+	if !success {
+		return nil, fmt.Errorf("replica update %d failed", seekUpdate.SectorID)
+	}
+	return &seekUpdate.SectorID, nil
 }
 
 // dealSectorInPreCommitMsg tries to find a sector containing the specified deal
