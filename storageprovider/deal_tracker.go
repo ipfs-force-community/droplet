@@ -79,6 +79,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 	}
 
 	for _, deal := range deals {
+		//not check market piece status , maybe skip Packing and update to proving status directly
 		dealProposal, err := dealTracker.fullNode.StateMarketStorageDeal(ctx, deal.DealID, tsk)
 		if err != nil {
 			//todo if deal not found maybe need to market storage deal as error
@@ -93,13 +94,17 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 			continue
 		}
 
-		if deal.State == storagemarket.StorageDealAwaitingPreCommit {
+		if deal.State == storagemarket.StorageDealAwaitingPreCommit && deal.PieceStatus == market.Assigned {
 			preInfo, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
 			if err != nil {
-				if strings.Contains(err.Error(), "not found") {
+				if strings.Contains(err.Error(), "not found") { //todo remove this check after nv17 update
 					continue
 				}
 				log.Debugf("get precommit info for sector %d of miner %s: %s", deal.SectorNumber, addr, err)
+				continue
+			}
+
+			if preInfo == nil { //precommit maybe not submitted
 				continue
 			}
 
