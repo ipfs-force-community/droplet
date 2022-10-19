@@ -270,7 +270,6 @@ func (pr *ProviderRevalidator) OnComplete(chid datatransfer.ChannelID) (bool, da
 	// Calculate how much payment is owed
 	paymentOwed := big.Mul(abi.NewTokenAmount(int64(totalSent-totalPaidFor)), deal.PricePerByte)
 	if paymentOwed.Equals(big.Zero()) {
-		log.Infof("OnComplete  xxxx")
 		return true, finalResponse(&retrievalmarket.DealResponse{
 			ID:     deal.DealProposal.ID,
 			Status: retrievalmarket.DealStatusCompleted,

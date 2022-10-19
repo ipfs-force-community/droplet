@@ -505,7 +505,6 @@ func (m *MarketNodeImpl) DagstoreInitializeShard(ctx context.Context, key string
 }
 
 func (m *MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types.DagstoreInitializeAllParams) (<-chan types.DagstoreInitializeAllEvent, error) {
-
 	deals, err := m.Repo.StorageDealRepo().GetDealByAddrAndStatus(ctx, address.Undef, storageprovider.ReadyRetrievalDealStatus...)
 	if err != nil {
 		return nil, err
@@ -530,7 +529,7 @@ func (m *MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types
 		if onlyUnsealed {
 			_, err = m.PieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 			if err != nil {
-				//todounseal
+				//todo unseal
 				log.Warnw("DagstoreInitializeAll: failed to get unsealed status; skipping deal", "piece cid", pieceCid, "error", err)
 				continue
 			}
