@@ -197,7 +197,7 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 	)
 
 	rLog := log.With("Idxxxx", uuid.New().String()).With("miner", maddr)
-	rLog.Info("spec", "MaxPiece", spec.MaxPiece, "MaxPieceSize", spec.MaxPieceSize, "MaxPiece", spec.MaxPiece, "EndEpoch", spec.EndEpoch, "MinPiece", spec.MinPiece, "MinUsedSpace", spec.MinUsedSpace)
+	rLog.Info("spec", sid, ssize, *spec)
 	// TODO: is this concurrent safe?
 	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
 		mds, err := txRepo.StorageDealRepo().GetDealsByPieceStatus(ctx, maddr, types.Undefine)
