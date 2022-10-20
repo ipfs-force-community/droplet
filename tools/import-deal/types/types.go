@@ -3,10 +3,10 @@ package types
 import (
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus-messager/models/mtypes"
@@ -102,6 +102,12 @@ func (fd *ForceDeal) ToDeal() *Deal {
 		//FundsReserved         mtypes.Int    `gorm:"column:funds_reserved;type:varchar(256);"`
 		//TransferChannelId mysql.ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
 		//InboundCAR string `gorm:"column:addr;type:varchar(256);"`
+	}
+
+	// 未分配的扇区处理, 让其可以被分配封装
+	if fd.Sectorid == 0 && !fd.Fetch {
+		md.PieceStatus = "Undefine"
+		md.State = storagemarket.StorageDealAwaitingPreCommit
 	}
 
 	return md
