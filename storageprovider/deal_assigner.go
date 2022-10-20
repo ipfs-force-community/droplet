@@ -3,6 +3,7 @@ package storageprovider
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"sort"
 
 	"go.uber.org/fx"
@@ -195,6 +196,8 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 		pieces []*types.DealInfoIncludePath
 	)
 
+	rLog := log.With("Idxxxx", uuid.New().String()).With("miner", maddr)
+	rLog.Info("spec", "MaxPiece", spec.MaxPiece, "MaxPieceSize", spec.MaxPieceSize, "MaxPiece", spec.MaxPiece, "EndEpoch", spec.EndEpoch, "MinPiece", spec.MinPiece, "MinUsedSpace", spec.MinUsedSpace)
 	// TODO: is this concurrent safe?
 	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
 		mds, err := txRepo.StorageDealRepo().GetDealsByPieceStatus(ctx, maddr, types.Undefine)
@@ -271,6 +274,7 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 		return nil, err
 	}
 
+	rLog.Info("complete deal", len(pieces))
 	return pieces, nil
 }
 
