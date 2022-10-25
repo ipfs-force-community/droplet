@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	miner9 "github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
 )
@@ -133,7 +132,7 @@ var actorSetAddrsCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner9.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
+		params, err := actors.SerializeParams(&types.ChangeMultiaddrsParams{NewMultiaddrs: addrs})
 		if err != nil {
 			return err
 		}
@@ -205,7 +204,7 @@ var actorSetPeeridCmd = &cli.Command{
 			return err
 		}
 
-		params, err := actors.SerializeParams(&miner9.ChangePeerIDParams{NewID: abi.PeerID(pid)})
+		params, err := actors.SerializeParams(&types.ChangePeerIDParams{NewID: abi.PeerID(pid)})
 		if err != nil {
 			return err
 		}

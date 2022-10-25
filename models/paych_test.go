@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 
 	"github.com/filecoin-project/go-state-types/big"
-	paychTypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -43,11 +43,11 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 	msgCid := randCid(t)
 	vouchers := []*types.VoucherInfo{
 		{
-			Voucher: &paychTypes.SignedVoucher{
+			Voucher: &vTypes.SignedVoucher{
 				ChannelAddr: addr,
 				Nonce:       10,
 				Amount:      big.NewInt(100),
-				Extra: &paychTypes.ModVerifyParams{
+				Extra: &vTypes.ModVerifyParams{
 					Actor:  addr,
 					Method: 1,
 					Data:   nil,

@@ -39,8 +39,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"github.com/filecoin-project/venus-market/v2/utils"
 
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
-
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
@@ -382,7 +380,7 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 		return fmt.Errorf("get account for %s err: %w", onlineDeal.Proposal.Client, err)
 	}
 	// change DealProposal the same as type in spec-actors
-	onlineProposal := market.DealProposal{
+	onlineProposal := types2.DealProposal{
 		PieceCID:             onlineDeal.Proposal.PieceCID,
 		PieceSize:            onlineDeal.Proposal.PieceSize,
 		VerifiedDeal:         onlineDeal.Proposal.VerifiedDeal,

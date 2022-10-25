@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 
 	"github.com/ipfs/go-cid"
@@ -263,7 +262,7 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
-func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
+func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal types.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
 	// Wait for deal to be published (plus additional time for confidence)
 	receipt, err := n.msgClient.WaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {
@@ -343,7 +342,7 @@ type StorageProviderNode interface {
 	PublishDeals(ctx context.Context, deal types2.MinerDeal) (cid.Cid, error)
 
 	// WaitForPublishDeals waits for a deal publish message to land on chain.
-	WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market.DealProposal) (*storagemarket.PublishDealsWaitResult, error)
+	WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal types.DealProposal) (*storagemarket.PublishDealsWaitResult, error)
 
 	// GetMinerWorkerAddress returns the worker address associated with a miner
 	GetMinerWorkerAddress(ctx context.Context, addr address.Address, tok shared.TipSetToken) (address.Address, error)

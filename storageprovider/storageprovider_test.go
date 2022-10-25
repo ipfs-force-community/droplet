@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/venus-market/v2/config"
@@ -268,8 +267,8 @@ func (m *mockProviderNode) PublishDeals(ctx context.Context, deal marketypes.Min
 	panic("implement me")
 }
 
-func (m *mockProviderNode) WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
-	// TODO implement me
+func (m *mockProviderNode) WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal types.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
+	//TODO implement me
 	panic("implement me")
 }
 

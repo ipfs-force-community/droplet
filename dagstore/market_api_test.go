@@ -8,11 +8,11 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	markettypes "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -33,8 +33,8 @@ func TestMarket(t *testing.T) {
 
 	r := models.NewInMemoryRepo(t)
 	err = r.StorageDealRepo().SaveDeal(ctx, &markettypes.MinerDeal{
-		ClientDealProposal: market.ClientDealProposal{
-			Proposal: market.DealProposal{
+		ClientDealProposal: types.ClientDealProposal{
+			Proposal: types.DealProposal{
 				Provider:  address.TestAddress,
 				Client:    address.TestAddress,
 				PieceCID:  testResourceId,

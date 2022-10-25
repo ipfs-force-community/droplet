@@ -7,34 +7,34 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/stretchr/testify/assert"
 
-	m_types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	markettypes "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 )
 
 func init() {
-	testutil.MustRegisterDefaultValueProvier(func(t *testing.T) market8.DealLabel {
-		l, err := market8.NewLabelFromBytes([]byte{})
+	testutil.MustRegisterDefaultValueProvier(func(t *testing.T) types.DealLabel {
+		l, err := types.NewLabelFromBytes([]byte{})
 		assert.NoError(t, err)
 		return l
 	})
 }
 
-func prepareStorageDealTest(t *testing.T) (context.Context, repo.StorageDealRepo, []m_types.MinerDeal) {
+func prepareStorageDealTest(t *testing.T) (context.Context, repo.StorageDealRepo, []markettypes.MinerDeal) {
 	ctx := context.Background()
 	repo := setup(t)
 	r := repo.StorageDealRepo()
 
-	dealCases := make([]m_types.MinerDeal, 10)
+	dealCases := make([]markettypes.MinerDeal, 10)
 	testutil.Provide(t, &dealCases)
-	dealCases[0].PieceStatus = m_types.Assigned
+	dealCases[0].PieceStatus = markettypes.Assigned
 	return ctx, r, dealCases
 }
 
@@ -211,14 +211,14 @@ func TestGetStorageDealsByDataCidAndDealStatus(t *testing.T) {
 	}
 
 	t.Run("With Provider", func(t *testing.T) {
-		res, err := r.GetDealsByDataCidAndDealStatus(ctx, dealCases[0].Proposal.Provider, dealCases[0].Ref.Root, []m_types.PieceStatus{dealCases[0].PieceStatus})
+		res, err := r.GetDealsByDataCidAndDealStatus(ctx, dealCases[0].Proposal.Provider, dealCases[0].Ref.Root, []markettypes.PieceStatus{dealCases[0].PieceStatus})
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(res))
 		assert.Equal(t, dealCases[0], *res[0])
 	})
 
 	t.Run("Without Provider", func(t *testing.T) {
-		res, err := r.GetDealsByDataCidAndDealStatus(ctx, address.Undef, dealCases[0].Ref.Root, []m_types.PieceStatus{dealCases[0].PieceStatus})
+		res, err := r.GetDealsByDataCidAndDealStatus(ctx, address.Undef, dealCases[0].Ref.Root, []markettypes.PieceStatus{dealCases[0].PieceStatus})
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(res))
 		assert.Equal(t, dealCases[0], *res[0])
@@ -375,12 +375,12 @@ func TestUpdateStorageDealStatus(t *testing.T) {
 		dealCases[i].CreationTime = res.CreationTime
 	}
 
-	err := r.UpdateDealStatus(ctx, dealCases[0].ProposalCid, storagemarket.StorageDealActive, m_types.Proving)
+	err := r.UpdateDealStatus(ctx, dealCases[0].ProposalCid, storagemarket.StorageDealActive, markettypes.Proving)
 	assert.NoError(t, err)
 	res, err := r.GetDeal(ctx, dealCases[0].ProposalCid)
 	assert.NoError(t, err)
 	assert.Equal(t, storagemarket.StorageDealActive, res.State)
-	assert.Equal(t, m_types.Proving, res.PieceStatus)
+	assert.Equal(t, markettypes.Proving, res.PieceStatus)
 }
 
 func TestGroupStorageDealNumberByStatus(t *testing.T) {
@@ -403,7 +403,7 @@ func TestGroupStorageDealNumberByStatus(t *testing.T) {
 		repo := setup(t)
 		r := repo.StorageDealRepo()
 
-		deals := make([]m_types.MinerDeal, 100)
+		deals := make([]markettypes.MinerDeal, 100)
 		testutil.Provide(t, &deals)
 
 		var addrs []address.Address
@@ -438,7 +438,7 @@ func TestGroupStorageDealNumberByStatus(t *testing.T) {
 		repo := setup(t)
 		r := repo.StorageDealRepo()
 
-		deals := make([]m_types.MinerDeal, 10)
+		deals := make([]markettypes.MinerDeal, 10)
 		testutil.Provide(t, &deals)
 
 		result := map[storagemarket.StorageDealStatus]int64{}

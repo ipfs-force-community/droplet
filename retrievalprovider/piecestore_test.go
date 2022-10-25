@@ -18,13 +18,13 @@ import (
 	typegen "github.com/whyrusleeping/cbor-gen"
 
 	builtinMarket "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus-market/v2/dagstore"
 
-	market2 "github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/venus-market/v2/models"
 )
 
@@ -108,14 +108,14 @@ func getTestMinerDeal(t *testing.T, datacid, pieceCid cid.Cid) *market.MinerDeal
 	assert.Nil(t, err)
 
 	return &market.MinerDeal{
-		ClientDealProposal: market2.ClientDealProposal{
+		ClientDealProposal: types.ClientDealProposal{
 			Proposal: builtinMarket.DealProposal{
 				PieceCID:             pieceCid,
 				PieceSize:            1024,
 				VerifiedDeal:         false,
 				Client:               randAddress(t),
 				Provider:             randAddress(t),
-				Label:                market2.DealLabel{},
+				Label:                types.DealLabel{},
 				StartEpoch:           10,
 				EndEpoch:             10,
 				StoragePricePerEpoch: abi.NewTokenAmount(10),

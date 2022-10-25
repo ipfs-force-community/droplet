@@ -2,7 +2,7 @@
 package v220
 
 /*
-   所有的类型都来源于老版本(venus-shared/v1.6.0)的拷贝. 用于badger持久化的类型的自动化迁移.
+   所有的类型都来源于老版本(github.com/filecoin-project/venus/venus-shared@v1.6.0)的拷贝，用于badger持久化的类型的自动化迁移。
 */
 
 import (
@@ -20,8 +20,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/venus-market/v2/models/badger/statestore"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -74,7 +74,7 @@ func (t *FundedAddressState) KeyWithNamespace() datastore.Key {
 type PieceStatus string
 
 type MinerDeal struct {
-	market.ClientDealProposal
+	types.ClientDealProposal
 	ProposalCid           cid.Cid
 	AddFundsCid           *cid.Cid
 	PublishCid            *cid.Cid

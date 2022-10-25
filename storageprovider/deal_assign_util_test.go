@@ -3,9 +3,8 @@ package storageprovider
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
-
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	mtypes "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +17,7 @@ const (
 func generateTestingDeals(sizes []abi.PaddedPieceSize, lifetimes [][2]abi.ChainEpoch) []*mtypes.DealInfoIncludePath {
 	deals := make([]*mtypes.DealInfoIncludePath, len(sizes))
 	for si, size := range sizes {
-		proposal := market.DealProposal{
+		proposal := types.DealProposal{
 			PieceSize: size,
 		}
 
