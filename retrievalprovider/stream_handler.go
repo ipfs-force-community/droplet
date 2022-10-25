@@ -96,12 +96,12 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	}
 
 	answer.Status = retrievalmarket.QueryResponseAvailable
-	//todo payload size maybe different with real piece size.
+	// todo payload size maybe different with real piece size.
 	answer.Size = uint64(minerDeals[0].Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
 	answer.PieceCIDFound = retrievalmarket.QueryItemAvailable
 	answer.PaymentAddress = p.paymentAddr
 
-	//todo use market ask maybe need miner ask list for future
+	// todo use market ask maybe need miner ask list for future
 	ask, err := p.askRepo.GetAsk(ctx, p.paymentAddr)
 	if err != nil {
 		log.Errorf("Retrieval query: GetAsk: %s", err)

@@ -19,7 +19,6 @@ func TestCidInfo(t *testing.T) {
 	testutil.Provide(t, &cidInfoCases)
 
 	t.Run("AddPieceBlockLocations", func(t *testing.T) {
-
 		pieceCid2cidInfo := make(map[cid.Cid][]piecestore.CIDInfo)
 		for _, info := range cidInfoCases {
 			for _, location := range info.PieceBlockLocations {

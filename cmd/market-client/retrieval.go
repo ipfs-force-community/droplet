@@ -110,12 +110,13 @@ func retrievalStatusString(status retrievalmarket.DealStatus) string {
 		return s
 	}
 }
+
 func isTerminalError(status retrievalmarket.DealStatus) bool {
 	// should patch this in go-fil-markets but to solve the problem immediate and not have buggy output
 	return retrievalmarket.IsTerminalError(status) || status == retrievalmarket.DealStatusErrored || status == retrievalmarket.DealStatusCancelled
 }
-func toRetrievalOutput(d client.RetrievalInfo, verbose bool) map[string]interface{} {
 
+func toRetrievalOutput(d client.RetrievalInfo, verbose bool) map[string]interface{} {
 	payloadCID := d.PayloadCID.String()
 	provider := d.Provider.String()
 	if !verbose {
@@ -156,6 +157,7 @@ func toRetrievalOutput(d client.RetrievalInfo, verbose bool) map[string]interfac
 	}
 	return retrievalOutput
 }
+
 func outputRetrievalDeals(ctx context.Context, out io.Writer, localDeals []client.RetrievalInfo, verbose bool, showFailed bool, completed bool) error {
 	var deals []client.RetrievalInfo
 	for _, deal := range localDeals {

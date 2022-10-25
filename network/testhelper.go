@@ -41,14 +41,14 @@ func MockDataTransfer(ctx context.Context, h host.Host) (datatransfer.Manager, e
 	gs := graphsyncimpl.New(ctx, graphsyncNetwork, lsys,
 		graphsyncimpl.RejectAllRequestsByDefault(),
 		graphsyncimpl.MaxInProgressIncomingRequests(10),
-		//graphsyncimpl.MaxInProgressIncomingRequestsPerPeer(simultaneousTransfersForStoragePerClient),
+		// graphsyncimpl.MaxInProgressIncomingRequestsPerPeer(simultaneousTransfersForStoragePerClient),
 		graphsyncimpl.MaxInProgressOutgoingRequests(10),
 		graphsyncimpl.MaxLinksPerIncomingRequests(MaxTraversalLinks),
 		graphsyncimpl.MaxLinksPerOutgoingRequests(MaxTraversalLinks),
 	)
 
 	transport := dtgstransport.NewTransport(h.ID(), gs)
-	err := os.MkdirAll(filepath.Join("./", "data-transfer"), 0755) // nolint: gosec
+	err := os.MkdirAll(filepath.Join("./", "data-transfer"), 0o755) // nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}

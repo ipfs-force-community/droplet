@@ -12,7 +12,7 @@ import (
 
 // EventReceiver is any thing that can receive FSM events
 type IDatatransferHandler interface {
-	//have many receiver function
+	// have many receiver function
 	HandleCompleteFor(ctx context.Context, proposalid cid.Cid) error
 	HandleCancelForDeal(ctx context.Context, proposalid cid.Cid) error
 	HandleRestartForDeal(ctx context.Context, proposalid cid.Cid, channelID datatransfer.ChannelID) error
@@ -41,7 +41,7 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 			channelState.ChannelID(), "channelState", datatransfer.Statuses[channelState.Status()])
 
 		if channelState.Status() == datatransfer.Completed {
-			//on complete
+			// on complete
 			err := deals.HandleCompleteFor(ctx, voucher.Proposal)
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)

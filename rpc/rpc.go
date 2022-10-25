@@ -20,7 +20,8 @@ import (
 var log = logging.Logger("modules")
 
 func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.Router, maxRequestSize int64,
-	namespace string, authClient *jwtclient.AuthClient, api interface{}, shutdownCh <-chan struct{}) error {
+	namespace string, authClient *jwtclient.AuthClient, api interface{}, shutdownCh <-chan struct{},
+) error {
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
@@ -81,7 +82,7 @@ func saveAPIInfo(home config.IHome, apiCfg *config.API, token []byte) error {
 	if err != nil {
 		return fmt.Errorf("unable to home path to save api/token")
 	}
-	_ = ioutil.WriteFile(path.Join(string(homePath), "api"), []byte(apiCfg.ListenAddress), 0644)
-	_ = ioutil.WriteFile(path.Join(string(homePath), "token"), token, 0644)
+	_ = ioutil.WriteFile(path.Join(string(homePath), "api"), []byte(apiCfg.ListenAddress), 0o644)
+	_ = ioutil.WriteFile(path.Join(string(homePath), "token"), token, 0o644)
 	return nil
 }

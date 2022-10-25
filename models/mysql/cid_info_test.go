@@ -35,8 +35,9 @@ func testGetCIDInfo(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	pCidinfo := piecestore.CIDInfo{
 		CID: cidInfoCase.PayloadCid.cid(),
 		PieceBlockLocations: []piecestore.PieceBlockLocation{
-			{BlockLocation: piecestore.BlockLocation(cidInfoCase.BlockLocation),
-				PieceCID: cid.Cid(cidInfoCase.PieceCid),
+			{
+				BlockLocation: piecestore.BlockLocation(cidInfoCase.BlockLocation),
+				PieceCID:      cid.Cid(cidInfoCase.PieceCid),
 			},
 		},
 	}

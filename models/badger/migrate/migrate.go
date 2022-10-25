@@ -76,67 +76,69 @@ var migrateDs = map[string][]migrateFunc{
 		}},
 	},
 	DsNameStorageDeal: {
-		{version: "1", mf: func(old *v220.MinerDeal) (*market.MinerDeal, error) {
-			return &market.MinerDeal{
-				ClientDealProposal:    old.ClientDealProposal,
-				ProposalCid:           old.ProposalCid,
-				AddFundsCid:           old.AddFundsCid,
-				PublishCid:            old.PublishCid,
-				Miner:                 old.Miner,
-				Client:                old.Client,
-				State:                 old.State,
-				PiecePath:             old.PiecePath,
-				PayloadSize:           old.PayloadSize,
-				MetadataPath:          old.MetadataPath,
-				SlashEpoch:            old.SlashEpoch,
-				FastRetrieval:         old.FastRetrieval,
-				Message:               old.Message,
-				FundsReserved:         old.FundsReserved,
-				Ref:                   old.Ref,
-				AvailableForRetrieval: old.AvailableForRetrieval,
-				DealID:                old.DealID,
-				CreationTime:          old.CreationTime,
-				TransferChannelID:     old.TransferChannelID,
-				SectorNumber:          old.SectorNumber,
-				Offset:                old.Offset,
-				PieceStatus:           market.PieceStatus(old.PieceStatus),
-				InboundCAR:            old.InboundCAR,
-				TimeStamp:             timeStampNow(),
-			}, nil
-		},
+		{
+			version: "1", mf: func(old *v220.MinerDeal) (*market.MinerDeal, error) {
+				return &market.MinerDeal{
+					ClientDealProposal:    old.ClientDealProposal,
+					ProposalCid:           old.ProposalCid,
+					AddFundsCid:           old.AddFundsCid,
+					PublishCid:            old.PublishCid,
+					Miner:                 old.Miner,
+					Client:                old.Client,
+					State:                 old.State,
+					PiecePath:             old.PiecePath,
+					PayloadSize:           old.PayloadSize,
+					MetadataPath:          old.MetadataPath,
+					SlashEpoch:            old.SlashEpoch,
+					FastRetrieval:         old.FastRetrieval,
+					Message:               old.Message,
+					FundsReserved:         old.FundsReserved,
+					Ref:                   old.Ref,
+					AvailableForRetrieval: old.AvailableForRetrieval,
+					DealID:                old.DealID,
+					CreationTime:          old.CreationTime,
+					TransferChannelID:     old.TransferChannelID,
+					SectorNumber:          old.SectorNumber,
+					Offset:                old.Offset,
+					PieceStatus:           market.PieceStatus(old.PieceStatus),
+					InboundCAR:            old.InboundCAR,
+					TimeStamp:             timeStampNow(),
+				}, nil
+			},
 		},
 	},
 	DsNamePaychInfoDs: {
-		{version: "1", mf: func(old *v220.ChannelInfo) (*market.ChannelInfo, error) {
-			info := &market.ChannelInfo{
-				ChannelID: old.ChannelID,
-				Channel:   old.Channel,
-				Control:   old.Control,
-				Target:    old.Target,
-				Direction: old.Direction,
-				//Vouchers:      old.Vouchers,
-				NextLane:      old.NextLane,
-				Amount:        old.Amount,
-				PendingAmount: old.PendingAmount,
-				CreateMsg:     old.CreateMsg,
-				AddFundsMsg:   old.AddFundsMsg,
-				Settling:      old.Settling,
-				TimeStamp:     timeStampNow(),
-			}
-			if len(old.Vouchers) == 0 {
-				return info, nil
-			}
-
-			info.Vouchers = make([]*market.VoucherInfo, len(old.Vouchers))
-			for idx, vch := range old.Vouchers {
-				info.Vouchers[idx] = &market.VoucherInfo{
-					Voucher:   vch.Voucher,
-					Proof:     vch.Proof,
-					Submitted: vch.Submitted,
+		{
+			version: "1", mf: func(old *v220.ChannelInfo) (*market.ChannelInfo, error) {
+				info := &market.ChannelInfo{
+					ChannelID: old.ChannelID,
+					Channel:   old.Channel,
+					Control:   old.Control,
+					Target:    old.Target,
+					Direction: old.Direction,
+					// Vouchers:      old.Vouchers,
+					NextLane:      old.NextLane,
+					Amount:        old.Amount,
+					PendingAmount: old.PendingAmount,
+					CreateMsg:     old.CreateMsg,
+					AddFundsMsg:   old.AddFundsMsg,
+					Settling:      old.Settling,
+					TimeStamp:     timeStampNow(),
 				}
-			}
-			return info, nil
-		},
+				if len(old.Vouchers) == 0 {
+					return info, nil
+				}
+
+				info.Vouchers = make([]*market.VoucherInfo, len(old.Vouchers))
+				for idx, vch := range old.Vouchers {
+					info.Vouchers[idx] = &market.VoucherInfo{
+						Voucher:   vch.Voucher,
+						Proof:     vch.Proof,
+						Submitted: vch.Submitted,
+					}
+				}
+				return info, nil
+			},
 		},
 	},
 	DsNamePaychMsgDs: {
@@ -167,7 +169,8 @@ var migrateDs = map[string][]migrateFunc{
 				UnsealPrice:             old.UnsealPrice,
 				PaymentInterval:         old.PaymentInterval,
 				PaymentIntervalIncrease: old.PaymentIntervalIncrease,
-				TimeStamp:               timeStampNow()}, nil
+				TimeStamp:               timeStampNow(),
+			}, nil
 		}},
 	},
 	DsNameCidInfoDs: {
@@ -192,7 +195,8 @@ var migrateDs = map[string][]migrateFunc{
 				Message:               old.Message,
 				CurrentInterval:       old.CurrentInterval,
 				LegacyProtocol:        old.LegacyProtocol,
-				TimeStamp:             timeStampNow()}, nil
+				TimeStamp:             timeStampNow(),
+			}, nil
 		}},
 	},
 }
@@ -206,7 +210,7 @@ func migrateOne(ctx context.Context, name string, mfs migrateFuncSchedule, ds da
 	} else {
 		oldVersion = string(v)
 	}
-	var targetVersion = mfs.targetVersion()
+	targetVersion := mfs.targetVersion()
 	var dsWithOldVersion datastore.Batching
 	if len(oldVersion) == 0 {
 		dsWithOldVersion = ds

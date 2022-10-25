@@ -29,7 +29,7 @@ var (
 var NetworkOpts = func(server bool, simultaneousTransfersForRetrieval, simultaneousTransfersForStoragePerClient, simultaneousTransfersForStorage uint64) builder.Option {
 	opts := builder.Options(
 		builder.Override(new(host.Host), Host),
-		//libp2p
+		// libp2p
 		builder.Override(new(crypto.PrivKey), PrivKey),
 		builder.Override(new(crypto.PubKey), crypto.PrivKey.GetPublic),
 		builder.Override(new(peer.ID), peer.IDFromPublicKey),

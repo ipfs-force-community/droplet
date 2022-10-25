@@ -171,7 +171,7 @@ func prepare(cctx *cli.Context, defSignerType config.SignerType) (*config.Market
 	}
 	mainLog.Info("load config from path ", cfgPath)
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
-		//create
+		// create
 		err = flagData(cctx, cfg)
 		if err != nil {
 			return nil, fmt.Errorf("parser data from flag %w", err)
@@ -182,7 +182,7 @@ func prepare(cctx *cli.Context, defSignerType config.SignerType) (*config.Market
 			return nil, fmt.Errorf("save config to %s %w", cfgPath, err)
 		}
 	} else if err == nil {
-		//loadConfig
+		// loadConfig
 		err = config.LoadConfig(cfgPath, cfg)
 		if err != nil {
 			return nil, err

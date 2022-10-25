@@ -11,7 +11,7 @@ import (
 
 // EventReceiver is any thing that can receive FSM events
 type IDatatransferHandler interface {
-	//have many receiver function
+	// have many receiver function
 	HandleCompleteFor(context.Context, rm.ProviderDealIdentifier) error
 	HandleAcceptFor(context.Context, rm.ProviderDealIdentifier, datatransfer.ChannelID) error
 	HandleDisconnectFor(context.Context, rm.ProviderDealIdentifier, error) error

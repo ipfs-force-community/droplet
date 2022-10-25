@@ -21,8 +21,10 @@ import (
 	"github.com/filecoin-project/go-address"
 )
 
-var dbStorageDealCases []*storageDeal
-var storageDealCases []*types.MinerDeal
+var (
+	dbStorageDealCases []*storageDeal
+	storageDealCases   []*types.MinerDeal
+)
 
 func testSaveDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	cid1, err := getTestCid()
@@ -126,7 +128,6 @@ func testGetDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(res))
 	assert.Equal(t, storageDealCases[0], res[0])
-
 }
 
 func testGetDealsByPieceCidAndStatus(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
@@ -255,7 +256,6 @@ func testGetDealsByPieceStatusAndDealStatus(t *testing.T, r repo.Repo, mock sqlm
 		assert.Equal(t, 1, len(res))
 		assert.Equal(t, deal, res[0])
 	})
-
 }
 
 func testUpdateDealStatus(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
@@ -398,7 +398,6 @@ func testGetPieceSize(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.NoError(t, err)
 	assert.Equal(t, dbDeal.PayloadSize, playLoadSize)
 	assert.Equal(t, abi.PaddedPieceSize(dbDeal.PieceSize), paddedPieceSize)
-
 }
 
 func test_storageDealRepo_GroupDealsByStatus(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
@@ -434,7 +433,6 @@ func test_storageDealRepo_GroupDealsByStatus(t *testing.T, r repo.Repo, mock sql
 		assert.Nil(t, err)
 		assert.Equal(t, expectResult, result)
 	})
-
 }
 
 func TestStorageDealRepo(t *testing.T) {

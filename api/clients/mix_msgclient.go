@@ -49,6 +49,7 @@ func NewMixMsgClient(params MPoolReplaceParams) IMixMessage {
 		nonceAssign: newNonceAssign(params.FullNode),
 	}
 }
+
 func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Message, p2 *types.MessageSendSpec) (cid.Cid, error) {
 	if msgClient.messager == nil {
 		var sendSpec *types.MessageSendSpec
@@ -63,7 +64,7 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Messag
 		if err != nil {
 			return cid.Undef, err
 		}
-		//estiamte -> sign -> push
+		// estiamte -> sign -> push
 		estimatedMsg, err := msgClient.full.GasEstimateMessageGas(ctx, p1, sendSpec, types.EmptyTSK)
 		if err != nil {
 			return cid.Undef, err
@@ -111,7 +112,7 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Messag
 			return cid.Undef, err
 		}
 	} else {
-		//for client account has in token
+		// for client account has in token
 		_, err = msgClient.messager.PushMessageWithId(ctx, msgid.String(), p1, nil)
 		if err != nil {
 			return cid.Undef, err
@@ -143,14 +144,14 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 			}
 
 			switch msg.State {
-			//OffChain
+			// OffChain
 			case types2.FillMsg:
 				fallthrough
 			case types2.UnFillMsg:
 				fallthrough
 			case types2.UnKnown:
 				continue
-			//OnChain
+			// OnChain
 			case types2.ReplacedMsg:
 				fallthrough
 			case types2.OnChainMsg:
@@ -167,7 +168,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 					}, nil
 				}
 				continue
-			//Error
+			// Error
 			case types2.FailedMsg:
 				var reason string
 				if msg.Receipt != nil {
@@ -196,14 +197,14 @@ func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetK
 	}
 
 	switch msg.State {
-	//OffChain
+	// OffChain
 	case types2.FillMsg:
 		fallthrough
 	case types2.UnFillMsg:
 		fallthrough
 	case types2.UnKnown:
 		return nil, nil
-	//OnChain
+	// OnChain
 	case types2.ReplacedMsg:
 		fallthrough
 	case types2.OnChainMsg:
@@ -217,7 +218,7 @@ func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetK
 			TipSet: msg.TipSetKey,
 			Height: abi.ChainEpoch(msg.Height),
 		}, nil
-	//Error
+	// Error
 	case types2.FailedMsg:
 		var reason string
 		if msg.Receipt != nil {

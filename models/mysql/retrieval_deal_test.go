@@ -17,8 +17,10 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var dbRetrievalDealCase *retrievalDeal
-var RetrievaldealStateCase *types.ProviderDealState
+var (
+	dbRetrievalDealCase    *retrievalDeal
+	RetrievaldealStateCase *types.ProviderDealState
+)
 
 func TestRetrievalDealRepo(t *testing.T) {
 	peerId, err := getTestPeerId()

@@ -112,7 +112,6 @@ func (ps *dealAssigner) GetDeals(ctx context.Context, mAddr address.Address, pag
 		// TODO: 要排除不可密封状态的订单?
 		if md.DealID > 0 && !isTerminateState(md) {
 			dis = append(dis, &types.DealInfo{
-
 				DealInfo: piecestore.DealInfo{
 					DealID:   md.DealID,
 					SectorID: md.SectorNumber,
@@ -132,11 +131,13 @@ func (ps *dealAssigner) GetDeals(ctx context.Context, mAddr address.Address, pag
 	return dis, nil
 }
 
-var defaultMaxPiece = 10
-var defaultGetDealSpec = &types.GetDealSpec{
-	MaxPiece:     defaultMaxPiece,
-	MaxPieceSize: 0,
-}
+var (
+	defaultMaxPiece    = 10
+	defaultGetDealSpec = &types.GetDealSpec{
+		MaxPiece:     defaultMaxPiece,
+		MaxPieceSize: 0,
+	}
+)
 
 func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
 	if spec == nil {
@@ -192,9 +193,7 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 		spec = defaultGetDealSpec
 	}
 
-	var (
-		pieces []*types.DealInfoIncludePath
-	)
+	var pieces []*types.DealInfoIncludePath
 
 	// TODO: is this concurrent safe?
 	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
@@ -206,7 +205,6 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 		var deals []*types.DealInfoIncludePath
 
 		for _, md := range mds {
-
 			// 订单筛选和组合的逻辑完全由 pickAndAlign 完成
 			deals = append(deals, &types.DealInfoIncludePath{
 				DealProposal:    md.Proposal,

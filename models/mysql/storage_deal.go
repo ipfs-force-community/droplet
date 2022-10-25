@@ -110,7 +110,7 @@ type DataRef struct {
 	TransferType string `gorm:"column:transfer_type;type:varchar(128);"`
 	Root         DBCid  `gorm:"column:root;type:varchar(256);"`
 
-	//todo remove filed below
+	// todo remove filed below
 	PieceCid     DBCid                 `gorm:"column:piece_cid;type:varchar(256);"`
 	PieceSize    abi.UnpaddedPieceSize `gorm:"column:piece_size;type:bigint unsigned;"`
 	RawBlockSize uint64                `gorm:"column:raw_block_size;type:bigint unsigned;"`
@@ -327,12 +327,11 @@ func (sdr *storageDealRepo) GetDeals(ctx context.Context, miner address.Address,
 	err := sdr.WithContext(ctx).Table((&storageDeal{}).TableName()).
 		Find(&md, "cdp_provider = ?", DBAddress(miner).String()).
 		Offset(pageIndex * pageSize).Limit(pageSize).Error
-
 	if err != nil {
 		return nil, err
 	}
 
-	var deals = make([]*types.MinerDeal, len(md))
+	deals := make([]*types.MinerDeal, len(md))
 
 	for idx, deal := range md {
 		if deals[idx], err = toStorageDeal(&deal); err != nil {
@@ -349,12 +348,11 @@ func (sdr *storageDealRepo) GetDealsByPieceCidAndStatus(ctx context.Context, pie
 
 	err := sdr.WithContext(ctx).Table((&storageDeal{}).TableName()).
 		Find(&md, "cdp_piece_cid = ? AND state in ?", DBCid(piececid).String(), statues).Error
-
 	if err != nil {
 		return nil, err
 	}
 
-	var deals = make([]*types.MinerDeal, len(md))
+	deals := make([]*types.MinerDeal, len(md))
 
 	for idx, deal := range md {
 		if deals[idx], err = toStorageDeal(&deal); err != nil {
@@ -377,12 +375,11 @@ func (sdr *storageDealRepo) GetDealsByDataCidAndDealStatus(ctx context.Context, 
 		query.Where("piece_status in ?", pieceStatuss)
 	}
 	err := query.Find(&md).Error
-
 	if err != nil {
 		return nil, err
 	}
 
-	var deals = make([]*types.MinerDeal, len(md))
+	deals := make([]*types.MinerDeal, len(md))
 
 	for idx, deal := range md {
 		if deals[idx], err = toStorageDeal(&deal); err != nil {
@@ -414,7 +411,7 @@ func (sdr *storageDealRepo) GetDealByAddrAndStatus(ctx context.Context, mAddr ad
 		return nil, repo.ErrNotFound
 	}
 
-	var deals = make([]*types.MinerDeal, len(md))
+	deals := make([]*types.MinerDeal, len(md))
 
 	for idx, deal := range md {
 		if deals[idx], err = toStorageDeal(&deal); err != nil {
@@ -469,7 +466,7 @@ func (sdr *storageDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) 
 		return nil, err
 	}
 
-	var pieceInfo = piecestore.PieceInfo{
+	pieceInfo := piecestore.PieceInfo{
 		PieceCID: pieceCID,
 		Deals:    nil,
 	}
@@ -483,7 +480,8 @@ func (sdr *storageDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) 
 			DealID:   deal.DealID,
 			SectorID: deal.SectorNumber,
 			Offset:   deal.Offset,
-			Length:   deal.Proposal.PieceSize},
+			Length:   deal.Proposal.PieceSize,
+		},
 		)
 	}
 	return &pieceInfo, nil

@@ -19,7 +19,7 @@ const cidInfoTableName = "cid_infos"
 type mysqlBlockLocation piecestore.BlockLocation
 
 func (mbl *mysqlBlockLocation) Scan(value interface{}) error {
-	var a, ok = value.([]byte)
+	a, ok := value.([]byte)
 	if !ok {
 		return errors.New("address should be a string")
 	}
@@ -73,7 +73,6 @@ func (m *mysqlCidInfoRepo) AddPieceBlockLocations(ctx context.Context, pieceCID 
 		Columns:   []clause.Column{{Name: "piece_cid"}, {Name: "payload_cid"}},
 		UpdateAll: true,
 	}).Save(mysqlInfos).Error
-
 }
 
 func (m *mysqlCidInfoRepo) GetCIDInfo(ctx context.Context, payloadCID cid.Cid) (piecestore.CIDInfo, error) {
@@ -84,10 +83,12 @@ func (m *mysqlCidInfoRepo) GetCIDInfo(ctx context.Context, payloadCID cid.Cid) (
 	return piecestore.CIDInfo{
 		CID: payloadCID,
 		PieceBlockLocations: []piecestore.PieceBlockLocation{
-			{BlockLocation: piecestore.BlockLocation(cidInfo.BlockLocation),
-				PieceCID: cid.Cid(cidInfo.PieceCid),
+			{
+				BlockLocation: piecestore.BlockLocation(cidInfo.BlockLocation),
+				PieceCID:      cid.Cid(cidInfo.PieceCid),
 			},
-		}}, nil
+		},
+	}, nil
 }
 
 func (m *mysqlCidInfoRepo) ListCidInfoKeys(ctx context.Context) ([]cid.Cid, error) {
@@ -105,7 +106,6 @@ func (m *mysqlCidInfoRepo) ListCidInfoKeys(ctx context.Context) ([]cid.Cid, erro
 	}
 
 	return cids, nil
-
 }
 
 var _ repo.ICidInfoRepo = (*mysqlCidInfoRepo)(nil)

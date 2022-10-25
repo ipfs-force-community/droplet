@@ -34,7 +34,7 @@ func (pinfo *PieceInfo) GetPieceInfoFromCid(ctx context.Context, payloadCID cid.
 
 	filter := make(map[cid.Cid]struct{})
 	var allMinerDeals []*types.MinerDeal
-	//First get pieces from miner storage deals
+	// First get pieces from miner storage deals
 	deals, err := pinfo.dealRepo.GetDealsByDataCidAndDealStatus(ctx, address.Undef, payloadCID, []types.PieceStatus{types.Proving})
 	if err != nil && !errors.Is(err, repo.ErrNotFound) {
 		return nil, fmt.Errorf("failed to get ready(Proving) deals for retrieval %s", payloadCID)

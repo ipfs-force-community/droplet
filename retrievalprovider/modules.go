@@ -16,14 +16,13 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/journal"
 )
 
-var (
-	HandleRetrievalKey = builder.NextInvoke()
-)
+var HandleRetrievalKey = builder.NextInvoke()
 
 func RetrievalDealFilter(userFilter config.RetrievalDealFilter) func(onlineOk config.ConsiderOnlineRetrievalDealsConfigFunc,
 	offlineOk config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalDealFilter {
 	return func(onlineOk config.ConsiderOnlineRetrievalDealsConfigFunc,
-		offlineOk config.ConsiderOfflineRetrievalDealsConfigFunc) config.RetrievalDealFilter {
+		offlineOk config.ConsiderOfflineRetrievalDealsConfigFunc,
+	) config.RetrievalDealFilter {
 		return func(ctx context.Context, state types.ProviderDealState) (bool, string, error) {
 			b, err := onlineOk()
 			if err != nil {

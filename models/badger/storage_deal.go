@@ -49,7 +49,7 @@ func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*
 }
 
 func (sdr *storageDealRepo) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {
-	var startIdx, idx = pageIndex * pageSize, 0
+	startIdx, idx := pageIndex*pageSize, 0
 	var storageDeals []*types.MinerDeal
 	var err error
 	if err = travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
@@ -172,7 +172,7 @@ func (sdr *storageDealRepo) UpdateDealStatus(ctx context.Context, proposalCid ci
 	if err != nil {
 		return err
 	}
-	var updateColumns = 0
+	updateColumns := 0
 	if status != storagemarket.StorageDealUnknown {
 		deal.State = status
 		updateColumns++
@@ -213,7 +213,7 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context) ([]*types.MinerDeal, e
 }
 
 func (sdr *storageDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
-	var pieceInfo = piecestore.PieceInfo{
+	pieceInfo := piecestore.PieceInfo{
 		PieceCID: pieceCID,
 		Deals:    nil,
 	}
@@ -240,7 +240,7 @@ func (sdr *storageDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) 
 }
 
 func (sdr *storageDealRepo) ListPieceInfoKeys(ctx context.Context) ([]cid.Cid, error) {
-	var cidsMap = make(map[cid.Cid]interface{})
+	cidsMap := make(map[cid.Cid]interface{})
 	err := travelCborAbleDS(ctx, sdr.ds,
 		func(deal *types.MinerDeal) (bool, error) {
 			cidsMap[deal.ClientDealProposal.Proposal.PieceCID] = nil

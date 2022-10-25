@@ -421,7 +421,6 @@ func (p *singleDealPublisher) publishDealProposals(deals []market.ClientDealProp
 	params, err := actors.SerializeParams(&market.PublishStorageDealsParams{
 		Deals: deals,
 	})
-
 	if err != nil {
 		return cid.Undef, fmt.Errorf("serializing PublishStorageDeals params failed: %w", err)
 	}
@@ -438,7 +437,6 @@ func (p *singleDealPublisher) publishDealProposals(deals []market.ClientDealProp
 		Method: builtin.MethodsMarket.PublishStorageDeals,
 		Params: params,
 	}, p.publishSpec)
-
 	if err != nil {
 		return cid.Undef, err
 	}

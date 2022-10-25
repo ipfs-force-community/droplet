@@ -38,8 +38,10 @@ import (
 	"github.com/ipfs-force-community/metrics"
 )
 
-var defaultMaxProviderCollateralMultiplier = uint64(2)
-var log = logging.Logger("storageadapter")
+var (
+	defaultMaxProviderCollateralMultiplier = uint64(2)
+	log                                    = logging.Logger("storageadapter")
+)
 
 type ProviderNodeAdapter struct {
 	v1api.FullNode

@@ -29,7 +29,6 @@ func TestFsAddPieceStorage(t *testing.T) {
 
 	info := psm.ListStorageInfos()
 	assert.Equal(t, 1, len(info.FsStorage))
-
 }
 
 func TestListStorageInfos(t *testing.T) {
@@ -149,5 +148,4 @@ func TestEachStorage(t *testing.T) {
 	})
 	assert.NotNil(t, err)
 	assert.Equal(t, 2, count)
-
 }

@@ -172,7 +172,7 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 	ctx, cancel := context.WithTimeout(ctx, askTimeout)
 	defer cancel()
 
-	//todo how to select deal
+	// todo how to select deal
 	deal.SelStorageProposalCid = minerdeals[0].ProposalCid
 	ask, err := rv.retrievalAsk.GetAsk(ctx, rv.paymentAddr)
 	if err != nil {

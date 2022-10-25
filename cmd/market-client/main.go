@@ -40,8 +40,10 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/journal"
 )
 
-var ExtractApiKey = builder.NextInvoke()
-var log = logging.Logger("main")
+var (
+	ExtractApiKey = builder.NextInvoke()
+	log           = logging.Logger("main")
+)
 
 var (
 	RepoFlag = &cli.StringFlag{

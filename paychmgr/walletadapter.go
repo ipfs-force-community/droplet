@@ -8,14 +8,12 @@ import (
 	"github.com/filecoin-project/venus/pkg/wallet"
 )
 
-type WalletAdapter struct {
-}
+type WalletAdapter struct{}
 
 func (w WalletAdapter) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
 	panic("implement me")
 }
 
 func (w WalletAdapter) WalletSign(ctx context.Context, k address.Address, msg []byte, meta wallet.MsgMeta) (*crypto.Signature, error) {
-
 	panic("implement me")
 }

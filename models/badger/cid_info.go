@@ -63,7 +63,6 @@ func (ps *badgerCidInfoRepo) GetCIDInfo(ctx context.Context, payloadCID cid.Cid)
 
 func (ps *badgerCidInfoRepo) ensureCIDInfo(ctx context.Context, c cid.Cid) error {
 	has, err := ps.cidInfos.Has(ctx, c)
-
 	if err != nil {
 		return err
 	}

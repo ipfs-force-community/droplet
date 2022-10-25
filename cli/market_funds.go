@@ -24,6 +24,7 @@ var MarketCmds = &cli.Command{
 		walletMarketWithdraw,
 	},
 }
+
 var marketBalancesCmd = &cli.Command{
 	Name:  "balances",
 	Usage: "Print storage market client balances",
@@ -145,7 +146,6 @@ var walletMarketAdd = &cli.Command{
 			Method:  market.Methods.AddBalance,
 			Params:  params,
 		}, nil)
-
 		if err != nil {
 			return err
 		}

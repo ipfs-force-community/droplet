@@ -19,7 +19,7 @@ type MemPieceStore struct {
 	Name              string
 	data              map[string][]byte
 	dataLk            *sync.RWMutex
-	status            *market.StorageStatus //status for testing
+	status            *market.StorageStatus // status for testing
 	RedirectResources map[string]bool
 }
 
@@ -32,6 +32,7 @@ func NewMemPieceStore(name string, status *market.StorageStatus) *MemPieceStore 
 		RedirectResources: make(map[string]bool),
 	}
 }
+
 func (m *MemPieceStore) Type() Protocol {
 	return MemStore
 }
@@ -82,7 +83,6 @@ func (m *MemPieceStore) GetMountReader(ctx context.Context, resourceId string) (
 		return wraperCloser{r, r}, nil
 	}
 	return nil, fmt.Errorf("unable to find resource %s", resourceId)
-
 }
 
 func (m *MemPieceStore) Has(ctx context.Context, resourceId string) (bool, error) {

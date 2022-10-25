@@ -25,7 +25,6 @@ func NewMId() (cid.Cid, error) {
 }
 
 func NewMIdFromBytes(seed []byte) (cid.Cid, error) {
-
 	// And then feed it some data
 	c, err := MidPrefix.Sum(seed)
 	if err != nil {

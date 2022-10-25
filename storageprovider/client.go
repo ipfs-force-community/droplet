@@ -59,7 +59,7 @@ func NewClientNodeAdapter(mctx metrics.MetricsCtx, lc fx.Lifecycle, fullNode v1a
 
 	ev, err := events.NewEvents(ctx, capi.full)
 	if err != nil {
-		//todo add error return?
+		// todo add error return?
 		log.Fatal(err)
 	}
 	a := &ClientNodeAdapter{

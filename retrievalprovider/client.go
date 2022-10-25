@@ -35,7 +35,7 @@ func NewRetrievalClientNode(payAPI *paychmgr.PaychAPI, fullnode v1api.FullNode) 
 func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount, tok shared.TipSetToken) (address.Address, cid.Cid, error) {
 	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
 	// queryi
-	//ng the chain
+	// ng the chain
 	ci, err := rcn.payAPI.PaychGet(ctx, clientAddress, minerAddress, clientFundsAvailable)
 	if err != nil {
 		return address.Undef, cid.Undef, err

@@ -104,7 +104,7 @@ func (f *fsPieceStorage) Validate(resourceId string) error {
 	st, err := os.Stat(f.baseUrl)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return os.MkdirAll(f.baseUrl, 0755)
+			return os.MkdirAll(f.baseUrl, 0o755)
 		}
 		return err
 	}

@@ -118,8 +118,10 @@ func (a *API) createUnixFSFilestore(ctx context.Context, srcPath string, dstPath
 }
 
 // TODO ???
-const UnixfsChunkSize uint64 = 1 << 20
-const UnixfsLinksPerLevel = 1024
+const (
+	UnixfsChunkSize     uint64 = 1 << 20
+	UnixfsLinksPerLevel        = 1024
+)
 
 // buildUnixFS builds a UnixFS DAG out of the supplied reader,
 // and imports the DAG into the supplied service.

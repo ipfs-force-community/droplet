@@ -27,7 +27,6 @@ func TraverseDag(
 	optionalSelector ipld.Node,
 	visitCallback traversal.AdvVisitFn,
 ) error {
-
 	if optionalSelector == nil {
 		optionalSelector = selectorparse.CommonSelector_MatchAllRecursively
 	}

@@ -72,7 +72,7 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 		AvailableAmount:        big.NewInt(0),
 		PendingAvailableAmount: big.NewInt(0),
 		CreateMsg:              &msgCid,
-		//AddFundsMsg:   &msgCid,
+		// AddFundsMsg:   &msgCid,
 		Settling: false,
 	}
 
@@ -145,7 +145,7 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 	res5, err := channelRepo.WithPendingAddFunds(ctx)
 	assert.Nil(t, err)
 	assert.GreaterOrEqual(t, len(res5), 1)
-	//assert.Equal(t, res5[0].ChannelID, ci.ChannelID)
+	// assert.Equal(t, res5[0].ChannelID, ci.ChannelID)
 
 	res6, err := channelRepo.OutboundActiveByFromTo(ctx, ci.Control, ci.Target)
 	assert.Nil(t, err)

@@ -134,7 +134,7 @@ func NewDAGStore(ctx context.Context, cfg *config.DAGStoreConfig, marketApi Mark
 // for dagstore metadata.
 func newDatastore(dir string) (ds.Batching, error) {
 	// Create the datastore directory if it doesn't exist yet.
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create directory %s for DAG store datastore: %w", dir, err)
 	}
 
@@ -334,7 +334,7 @@ func (w *Wrapper) MigrateDeals(ctx context.Context, deals []storagemarket.MinerD
 	go func() {
 		defer close(doneCh)
 
-		var total = math.MaxInt64
+		total := math.MaxInt64
 		var res dagstore.ShardResult
 		for rcvd := 0; rcvd < total; {
 			select {
