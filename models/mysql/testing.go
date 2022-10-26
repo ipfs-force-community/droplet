@@ -41,12 +41,6 @@ func setup(t *testing.T) (repo.Repo, sqlmock.Sqlmock, *sql.DB) {
 	return MysqlRepo{DB: gormDB}, mock, sqlDB
 }
 
-func wrapper(f func(*testing.T, repo.Repo, sqlmock.Sqlmock), repo repo.Repo, mock sqlmock.Sqlmock) func(t *testing.T) {
-	return func(t *testing.T) {
-		f(t, repo, mock)
-	}
-}
-
 func closeDB(mock sqlmock.Sqlmock, sqlDB *sql.DB) error {
 	mock.ExpectClose()
 	return sqlDB.Close()

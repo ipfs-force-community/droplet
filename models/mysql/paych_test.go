@@ -18,46 +18,39 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var (
-	channelInfosCases []*types.ChannelInfo
-	msgInfosCase      []*types.MsgInfo
-)
-
-func TestChannelInfo(t *testing.T) {
+func prepareChannelInfoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []*types.ChannelInfo, func()) {
 	r, mock, sqlDB := setup(t)
 
-	channelInfosCases = make([]*types.ChannelInfo, 10)
+	channelInfosCases := make([]*types.ChannelInfo, 10)
 	testutil.Provide(t, &channelInfosCases)
 	for _, ch := range channelInfosCases {
 		ch.PendingAvailableAmount = big.NewInt(0)
 		ch.AvailableAmount = big.NewInt(0)
 	}
 
-	msgInfosCase = make([]*types.MsgInfo, 10)
-	testutil.Provide(t, &msgInfosCase)
+	// msgInfosCase := make([]*types.MsgInfo, 10)
+	// testutil.Provide(t, &msgInfosCase)
 
-	t.Run("mysql test SaveChannel", wrapper(testSaveChannel, r, mock))
-	t.Run("mysql test GetChannelByAddress", wrapper(testGetChannelByAddress, r, mock))
-	t.Run("mysql test GetChannelByChannelID", wrapper(testGetChannelByChannelID, r, mock))
-	t.Run("mysql test OutboundActiveByFromTo", wrapper(testOutboundActiveByFromTo, r, mock))
-	t.Run("mysql test WithPendingAddFunds", wrapper(testWithPendingAddFunds, r, mock))
-	t.Run("mysql test ListChannel", wrapper(testListChannel, r, mock))
-	t.Run("mysql test RemoveChannel", wrapper(testRemoveChannel, r, mock))
-
-	assert.NoError(t, closeDB(mock, sqlDB))
+	return r, mock, channelInfosCases, func() {
+		assert.NoError(t, closeDB(mock, sqlDB))
+	}
 }
 
-func TestMegInfo(t *testing.T) {
+func prepareMegInfoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []*types.MsgInfo, func()) {
 	r, mock, sqlDB := setup(t)
 
-	t.Run("mysql test GetMessage", wrapper(testGetMessage, r, mock))
-	t.Run("mysql test SaveMessage", wrapper(testSaveMessage, r, mock))
-	t.Run("mysql test SaveMessageResult", wrapper(testSaveMessageResult, r, mock))
+	msgInfosCase := make([]*types.MsgInfo, 10)
+	testutil.Provide(t, &msgInfosCase)
 
-	assert.NoError(t, closeDB(mock, sqlDB))
+	return r, mock, msgInfosCase, func() {
+		assert.NoError(t, closeDB(mock, sqlDB))
+	}
 }
 
-func testSaveChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestSaveChannel(t *testing.T) {
+	r, mock, channelInfosCases, done := prepareChannelInfoTest(t)
+	defer done()
+
 	channelInfo := channelInfosCases[0]
 	dbChannelInfo := fromChannelInfo(channelInfo)
 
@@ -78,7 +71,10 @@ func testSaveChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.NoError(t, err)
 }
 
-func testGetChannelByAddress(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestGetChannelByAddress(t *testing.T) {
+	r, mock, channelInfosCases, done := prepareChannelInfoTest(t)
+	defer done()
+
 	channelInfoCase := channelInfosCases[0]
 	dbChannelInfo := fromChannelInfo(channelInfoCase)
 
@@ -99,7 +95,10 @@ func testGetChannelByAddress(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, channelInfoCase, res)
 }
 
-func testGetChannelByChannelID(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestGetChannelByChannelID(t *testing.T) {
+	r, mock, channelInfosCases, done := prepareChannelInfoTest(t)
+	defer done()
+
 	channelInfoCase := channelInfosCases[0]
 	dbChannelInfo := fromChannelInfo(channelInfoCase)
 
@@ -120,7 +119,10 @@ func testGetChannelByChannelID(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) 
 	assert.Equal(t, channelInfoCase, res)
 }
 
-func testOutboundActiveByFromTo(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestOutboundActiveByFromTo(t *testing.T) {
+	r, mock, channelInfosCases, done := prepareChannelInfoTest(t)
+	defer done()
+
 	channelInfoCase := channelInfosCases[0]
 	channelInfoCase.Direction = types.DirOutbound
 	channelInfoCase.Settling = false
@@ -145,7 +147,10 @@ func testOutboundActiveByFromTo(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock)
 	assert.Equal(t, channelInfoCase, res)
 }
 
-func testWithPendingAddFunds(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestWithPendingAddFunds(t *testing.T) {
+	r, mock, channelInfosCases, done := prepareChannelInfoTest(t)
+	defer done()
+
 	dbChannelInfos := make([]*channelInfo, len(channelInfosCases))
 	for i, channelInfo := range channelInfosCases {
 		tempChannelInfo := channelInfo
@@ -170,7 +175,10 @@ func testWithPendingAddFunds(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, channelInfosCases, res)
 }
 
-func testListChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestListChannel(t *testing.T) {
+	r, mock, channelInfosCases, done := prepareChannelInfoTest(t)
+	defer done()
+
 	dbChannelInfos := make([]*channelInfo, len(channelInfosCases))
 	for i, channelInfo := range channelInfosCases {
 		dbChannelInfos[i] = fromChannelInfo(channelInfo)
@@ -198,7 +206,10 @@ func testListChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, addrs, res)
 }
 
-func testRemoveChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestRemoveChannel(t *testing.T) {
+	r, mock, channelInfosCases, done := prepareChannelInfoTest(t)
+	defer done()
+
 	channelInfo := channelInfosCases[0]
 	dbChannelInfo := fromChannelInfo(channelInfo)
 
@@ -215,7 +226,10 @@ func testRemoveChannel(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.NoError(t, err)
 }
 
-func testGetMessage(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestGetMessage(t *testing.T) {
+	r, mock, msgInfosCase, done := prepareMegInfoTest(t)
+	defer done()
+
 	msgInfo := msgInfosCase[0]
 	dbMsgInfo := fromMsgInfo(msgInfo)
 
@@ -228,7 +242,10 @@ func testGetMessage(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, msgInfo, res)
 }
 
-func testSaveMessage(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestSaveMessage(t *testing.T) {
+	r, mock, msgInfosCase, done := prepareMegInfoTest(t)
+	defer done()
+
 	msgInfo := msgInfosCase[0]
 	dbMsgInfo := fromMsgInfo(msgInfo)
 
@@ -240,7 +257,10 @@ func testSaveMessage(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.NoError(t, err)
 }
 
-func testSaveMessageResult(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestSaveMessageResult(t *testing.T) {
+	r, mock, msgInfosCase, done := prepareMegInfoTest(t)
+	defer done()
+
 	msgInfo := msgInfosCase[0]
 	dbMsgInfo := fromMsgInfo(msgInfo)
 

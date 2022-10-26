@@ -14,22 +14,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var cidInfoCases []cidInfo
-
-func TestCidInfo(t *testing.T) {
+func prepareCIDInfoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []cidInfo, func()) {
 	r, mock, sqlDB := setup(t)
-
-	cidInfoCases = make([]cidInfo, 10)
+	cidInfoCases := make([]cidInfo, 10)
 	testutil.Provide(t, &cidInfoCases)
-
-	t.Run("mysql test GetCIDInfo", wrapper(testGetCIDInfo, r, mock))
-	t.Run("mysql test ListCidInfoKeys", wrapper(testListCidInfoKeys, r, mock))
-	t.Run("mysql test AddPieceBlockLocations", wrapper(testAddPieceBlockLocations, r, mock))
-
-	assert.NoError(t, closeDB(mock, sqlDB))
+	return r, mock, cidInfoCases, func() {
+		assert.NoError(t, closeDB(mock, sqlDB))
+	}
 }
 
-func testGetCIDInfo(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestGetCIDInfo(t *testing.T) {
+	r, mock, cidInfoCases, done := prepareCIDInfoTest(t)
+	defer done()
+
 	cidInfoCase := cidInfoCases[0]
 
 	pCidinfo := piecestore.CIDInfo{
@@ -58,7 +55,10 @@ func testGetCIDInfo(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, pCidinfo, res)
 }
 
-func testListCidInfoKeys(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestListCidInfoKeys(t *testing.T) {
+	r, mock, cidInfoCases, done := prepareCIDInfoTest(t)
+	defer done()
+
 	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
 
@@ -74,7 +74,10 @@ func testListCidInfoKeys(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, []cid.Cid{cidInfoCases[0].PayloadCid.cid(), cidInfoCases[1].PayloadCid.cid()}, res)
 }
 
-func testAddPieceBlockLocations(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestAddPieceBlockLocations(t *testing.T) {
+	r, mock, _, done := prepareCIDInfoTest(t)
+	defer done()
+
 	cid1, err := getTestCid()
 	assert.NoError(t, err)
 	cid2, err := getTestCid()

@@ -12,14 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var retrievalAskCase *market_types.RetrievalAsk
-
-func TestRetrievalAsk(t *testing.T) {
+func prepareRetrievalAskTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, *market_types.RetrievalAsk, func()) {
 	r, mock, sqlDB := setup(t)
 
 	addr := getTestAddress()
 
-	retrievalAskCase = &market_types.RetrievalAsk{
+	retrievalAskCase := &market_types.RetrievalAsk{
 		Miner:                   addr,
 		PricePerByte:            types.NewInt(1),
 		PaymentInterval:         2,
@@ -27,14 +25,15 @@ func TestRetrievalAsk(t *testing.T) {
 		UnsealPrice:             types.NewInt(4),
 	}
 
-	t.Run("mysql test GetAsk", wrapper(testRetrievalGetAsk, r, mock))
-	t.Run("mysql test SetAsk", wrapper(testSetRetrievalAsk, r, mock))
-	t.Run("mysql test ListAsk", wrapper(testListRetrievalAsk, r, mock))
-
-	assert.NoError(t, closeDB(mock, sqlDB))
+	return r, mock, retrievalAskCase, func() {
+		assert.NoError(t, closeDB(mock, sqlDB))
+	}
 }
 
-func testRetrievalGetAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestRetrievalGetAsk(t *testing.T) {
+	r, mock, retrievalAskCase, done := prepareRetrievalAskTest(t)
+	defer done()
+
 	ctx := context.Background()
 
 	rows := mock.NewRows([]string{"price_per_byte", "payment_interval", "payment_interval_increase", "unseal_price"})
@@ -45,7 +44,10 @@ func testRetrievalGetAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, retrievalAskCase, result)
 }
 
-func testSetRetrievalAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestSetRetrievalAsk(t *testing.T) {
+	r, mock, retrievalAskCase, done := prepareRetrievalAskTest(t)
+	defer done()
+
 	ctx := context.Background()
 
 	mock.ExpectBegin()
@@ -56,7 +58,10 @@ func testSetRetrievalAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Nil(t, err)
 }
 
-func testListRetrievalAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestListRetrievalAsk(t *testing.T) {
+	r, mock, retrievalAskCase, done := prepareRetrievalAskTest(t)
+	defer done()
+
 	ctx := context.Background()
 
 	rows := mock.NewRows([]string{"address", "price_per_byte", "unseal_price", "payment_interval", "payment_interval_increase", "created_at", "updated_at"})

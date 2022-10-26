@@ -14,13 +14,11 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var storageAskCases []types.SignedStorageAsk
-
-func TestStorageAsk(t *testing.T) {
+func prepareStorageAskTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []types.SignedStorageAsk, func()) {
 	addr1 := getTestAddress()
 	addr2 := getTestAddress()
 
-	storageAskCases = []types.SignedStorageAsk{
+	storageAskCases := []types.SignedStorageAsk{
 		{
 			Ask: &storagemarket.StorageAsk{
 				Miner:         addr1,
@@ -39,14 +37,15 @@ func TestStorageAsk(t *testing.T) {
 
 	r, mock, sqlDB := setup(t)
 
-	t.Run("mysql test GetAsk", wrapper(testGetStorageAsk, r, mock))
-	t.Run("mysql test SetAsk", wrapper(testSetStorageAsk, r, mock))
-	t.Run("mysql test ListAsk", wrapper(testListStorageAsk, r, mock))
-
-	assert.NoError(t, closeDB(mock, sqlDB))
+	return r, mock, storageAskCases, func() {
+		assert.NoError(t, closeDB(mock, sqlDB))
+	}
 }
 
-func testGetStorageAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestGetStorageAsk(t *testing.T) {
+	r, mock, storageAskCases, done := prepareStorageAskTest(t)
+	defer done()
+
 	ask := storageAskCases[0]
 	dbAsk := fromStorageAsk(&ask)
 
@@ -66,7 +65,10 @@ func testGetStorageAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, ask, *ask2)
 }
 
-func testSetStorageAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestSetStorageAsk(t *testing.T) {
+	r, mock, storageAskCases, done := prepareStorageAskTest(t)
+	defer done()
+
 	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
 
@@ -90,7 +92,10 @@ func testSetStorageAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.NoError(t, err)
 }
 
-func testListStorageAsk(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestListStorageAsk(t *testing.T) {
+	r, mock, storageAskCases, done := prepareStorageAskTest(t)
+	defer done()
+
 	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
 

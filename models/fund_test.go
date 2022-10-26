@@ -11,15 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFund(t *testing.T) {
-	t.Run("mysql", func(t *testing.T) {
-		testFund(t, MysqlDB(t).FundRepo())
-	})
+func TestFundMysql(t *testing.T) {
+	testFund(t, MysqlDB(t).FundRepo())
+}
 
-	t.Run("badger", func(t *testing.T) {
-		db := BadgerDB(t)
-		testFund(t, badger.NewFundRepo(db))
-	})
+func TestFundBadger(t *testing.T) {
+	db := BadgerDB(t)
+	testFund(t, badger.NewFundRepo(db))
 }
 
 func testFund(t *testing.T, fundRepo repo.FundRepo) {

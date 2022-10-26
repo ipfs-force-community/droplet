@@ -14,34 +14,33 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var fundedAddressStatesCase = []*market_types.FundedAddressState{
-	{
-		Addr:        address.TestAddress,
-		AmtReserved: abi.NewTokenAmount(100),
-		MsgCid:      nil,
-		TimeStamp:   market_types.TimeStamp{CreatedAt: uint64(time.Now().Unix()), UpdatedAt: uint64(time.Now().Unix())},
-	},
-	{
-		Addr:        address.TestAddress2,
-		AmtReserved: abi.NewTokenAmount(100),
-		MsgCid:      nil,
-		TimeStamp:   market_types.TimeStamp{CreatedAt: uint64(time.Now().Unix()), UpdatedAt: uint64(time.Now().Unix())},
-	},
-}
-
 var fundedAddressStateColumns = []string{"addr", "amt_reserved", "msg_cid", "created_at", "updated_at"}
 
-func TestFundAddrState(t *testing.T) {
+var prepareFundAddrStateTest = func(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []*market_types.FundedAddressState, func()) {
 	r, mock, sqlDB := setup(t)
-
-	t.Run("mysql test SaveFundedAddressState", wrapper(testSaveFundedAddressState, r, mock))
-	t.Run("mysql test GetFundedAddressState", wrapper(testGetFundedAddressState, r, mock))
-	t.Run("mysql test ListFundedAddressState", wrapper(testListFundedAddressState, r, mock))
-
-	assert.NoError(t, closeDB(mock, sqlDB))
+	fundedAddressStatesCase := []*market_types.FundedAddressState{
+		{
+			Addr:        address.TestAddress,
+			AmtReserved: abi.NewTokenAmount(100),
+			MsgCid:      nil,
+			TimeStamp:   market_types.TimeStamp{CreatedAt: uint64(time.Now().Unix()), UpdatedAt: uint64(time.Now().Unix())},
+		},
+		{
+			Addr:        address.TestAddress2,
+			AmtReserved: abi.NewTokenAmount(100),
+			MsgCid:      nil,
+			TimeStamp:   market_types.TimeStamp{CreatedAt: uint64(time.Now().Unix()), UpdatedAt: uint64(time.Now().Unix())},
+		},
+	}
+	return r, mock, fundedAddressStatesCase, func() {
+		assert.NoError(t, closeDB(mock, sqlDB))
+	}
 }
 
-func testSaveFundedAddressState(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestSaveFundedAddressState(t *testing.T) {
+	r, mock, fundedAddressStatesCase, done := prepareFundAddrStateTest(t)
+	defer done()
+
 	ctx := context.Background()
 
 	fas := fromFundedAddressState(fundedAddressStatesCase[0])
@@ -52,7 +51,10 @@ func testSaveFundedAddressState(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock)
 	assert.NoError(t, err)
 }
 
-func testGetFundedAddressState(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestGetFundedAddressState(t *testing.T) {
+	r, mock, fundedAddressStatesCase, done := prepareFundAddrStateTest(t)
+	defer done()
+
 	fas := fromFundedAddressState(fundedAddressStatesCase[0])
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `funded_address_state` WHERE addr = ? LIMIT 1")).WithArgs(fas.Addr).WillReturnRows(sqlmock.NewRows(fundedAddressStateColumns).AddRow([]byte(fas.Addr.String()), fas.AmtReserved, []byte(fas.MsgCid.String()), fas.CreatedAt, fas.UpdatedAt))
 	res, err := r.FundRepo().GetFundedAddressState(context.Background(), fundedAddressStatesCase[0].Addr)
@@ -60,7 +62,10 @@ func testGetFundedAddressState(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) 
 	assert.Equal(t, fundedAddressStatesCase[0], res)
 }
 
-func testListFundedAddressState(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestListFundedAddressState(t *testing.T) {
+	r, mock, fundedAddressStatesCase, done := prepareFundAddrStateTest(t)
+	defer done()
+
 	rows := sqlmock.NewRows(fundedAddressStateColumns)
 	for _, fas := range fundedAddressStatesCase {
 		fas_ := fromFundedAddressState(fas)

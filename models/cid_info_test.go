@@ -13,18 +13,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCIDInfo(t *testing.T) {
-	t.Run("badger", func(t *testing.T) {
-		db := BadgerDB(t)
-		doTestCidinfo(t, badger.NewBadgerCidInfoRepo(db))
-	})
+func TestCIDInfoBadger(t *testing.T) {
+	db := BadgerDB(t)
+	doTestCidinfo(t, badger.NewBadgerCidInfoRepo(db))
+}
 
-	t.Run("mysql", func(t *testing.T) {
-		repo := MysqlDB(t)
-		cidInfoRepo := repo.CidInfoRepo()
-		defer func() { require.NoError(t, repo.Close()) }()
-		doTestCidinfo(t, cidInfoRepo)
-	})
+func TestCIDInfoMysql(t *testing.T) {
+	repo := MysqlDB(t)
+	cidInfoRepo := repo.CidInfoRepo()
+	defer func() { require.NoError(t, repo.Close()) }()
+	doTestCidinfo(t, cidInfoRepo)
 }
 
 func doTestCidinfo(t *testing.T, repo repo.ICidInfoRepo) {
