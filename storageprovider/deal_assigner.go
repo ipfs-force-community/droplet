@@ -66,7 +66,6 @@ func (ps *dealAssigner) MarkDealsAsPacking(ctx context.Context, miner address.Ad
 	return nil
 }
 
-//
 func (ps *dealAssigner) UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorID abi.SectorNumber, offset abi.PaddedPieceSize) error {
 	md, err := ps.repo.StorageDealRepo().GetDealByDealID(ctx, miner, dealID)
 	if err != nil {
