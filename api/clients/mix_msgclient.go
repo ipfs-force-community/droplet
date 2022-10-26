@@ -64,7 +64,7 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, p1 *types.Messag
 		if err != nil {
 			return cid.Undef, err
 		}
-		// estiamte -> sign -> push
+		// estimate -> sign -> push
 		estimatedMsg, err := msgClient.full.GasEstimateMessageGas(ctx, p1, sendSpec, types.EmptyTSK)
 		if err != nil {
 			return cid.Undef, err
