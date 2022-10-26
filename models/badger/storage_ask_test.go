@@ -4,34 +4,53 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestStorageAsk(t *testing.T) {
-	ctx := context.Background()
+func prepareStorageAskTest(t *testing.T) (ctx context.Context, r repo.IStorageAskRepo, askCases []types.SignedStorageAsk) {
+	ctx = context.Background()
 	repo := setup(t)
-	r := repo.StorageAskRepo()
+	r = repo.StorageAskRepo()
 
-	askCases := make([]types.SignedStorageAsk, 10)
+	askCases = make([]types.SignedStorageAsk, 10)
 	testutil.Provide(t, &askCases)
+	return ctx, r, askCases
+}
 
-	t.Run("SetAsk", func(t *testing.T) {
-		for _, ask := range askCases {
-			err := r.SetAsk(ctx, &ask)
-			assert.NoError(t, err)
-		}
-	})
+func TestSetStorageAsk(t *testing.T) {
+	ctx, r, askCases := prepareStorageAskTest(t)
 
-	t.Run("GetAsk", func(t *testing.T) {
-		res, err := r.GetAsk(ctx, askCases[0].Ask.Miner)
+	for _, ask := range askCases {
+		err := r.SetAsk(ctx, &ask)
 		assert.NoError(t, err)
-		askCases[0].UpdatedAt = res.UpdatedAt
-		assert.Equal(t, askCases[0], *res)
-	})
+	}
+}
 
-	// refresh UpdatedAt field
+func TestGetStorageAsk(t *testing.T) {
+	ctx, r, askCases := prepareStorageAskTest(t)
+
+	for _, ask := range askCases {
+		err := r.SetAsk(ctx, &ask)
+		assert.NoError(t, err)
+	}
+
+	res, err := r.GetAsk(ctx, askCases[0].Ask.Miner)
+	assert.NoError(t, err)
+	askCases[0].UpdatedAt = res.UpdatedAt
+	assert.Equal(t, askCases[0], *res)
+}
+
+// refresh UpdatedAt field
+func TestListStorageAsk(t *testing.T) {
+	ctx, r, askCases := prepareStorageAskTest(t)
+
+	for _, ask := range askCases {
+		err := r.SetAsk(ctx, &ask)
+		assert.NoError(t, err)
+	}
 
 	for i := 0; i < len(askCases); i++ {
 		res, err := r.GetAsk(ctx, askCases[i].Ask.Miner)
@@ -39,12 +58,10 @@ func TestStorageAsk(t *testing.T) {
 		askCases[i].UpdatedAt = res.UpdatedAt
 	}
 
-	t.Run("ListAsk", func(t *testing.T) {
-		res, err := r.ListAsk(ctx)
-		assert.NoError(t, err)
-		assert.Equal(t, len(askCases), len(res))
-		for _, ask := range res {
-			assert.Contains(t, askCases, *ask)
-		}
-	})
+	res, err := r.ListAsk(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, len(askCases), len(res))
+	for _, ask := range res {
+		assert.Contains(t, askCases, *ask)
+	}
 }

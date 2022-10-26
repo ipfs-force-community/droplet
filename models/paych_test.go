@@ -15,19 +15,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPaych(t *testing.T) {
-	t.Run("mysql", func(t *testing.T) {
-		testChannelInfo(t, MysqlDB(t).PaychChannelInfoRepo(), MysqlDB(t).PaychMsgInfoRepo())
-		testMsgInfo(t, MysqlDB(t).PaychMsgInfoRepo())
-	})
+func TestPaychMysql(t *testing.T) {
+	testChannelInfo(t, MysqlDB(t).PaychChannelInfoRepo(), MysqlDB(t).PaychMsgInfoRepo())
+	testMsgInfo(t, MysqlDB(t).PaychMsgInfoRepo())
+}
 
-	t.Run("badger", func(t *testing.T) {
-		db := BadgerDB(t)
-		msgPaych := badger.NewPayMsgRepo(badger.NewPayChanMsgDs(db))
-		ps := badger.NewPaychRepo(badger.NewPayChanInfoDs(db), msgPaych)
-		testChannelInfo(t, ps, msgPaych)
-		testMsgInfo(t, msgPaych)
-	})
+func TestPaychBadger(t *testing.T) {
+	db := BadgerDB(t)
+	msgPaych := badger.NewPayMsgRepo(badger.NewPayChanMsgDs(db))
+	ps := badger.NewPaychRepo(badger.NewPayChanInfoDs(db), msgPaych)
+	testChannelInfo(t, ps, msgPaych)
+	testMsgInfo(t, msgPaych)
 }
 
 func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRepo repo.PaychMsgInfoRepo) {
