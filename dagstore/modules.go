@@ -20,9 +20,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
 )
 
-var (
-	DAGStoreKey = builder.Special{ID: 1}
-)
+var DAGStoreKey = builder.Special{ID: 1}
 
 const (
 	EnvDAGStoreCopyConcurrency = "LOTUS_DAGSTORE_COPY_CONCURRENCY"

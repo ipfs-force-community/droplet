@@ -22,7 +22,7 @@ type MarketClientNodeImpl struct {
 }
 
 func (m *MarketClientNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error) {
-	//WaitMsg method has been replace in messager mode
+	// WaitMsg method has been replace in messager mode
 	return m.Messager.WaitMsg(ctx, mid, constants.MessageConfidence, constants.LookbackNoLimit, false)
 }
 
@@ -38,7 +38,7 @@ func (m *MarketClientNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTy
 }
 
 func (m *MarketClientNodeImpl) MessagerGetMessage(ctx context.Context, mid cid.Cid) (*vTypes.Message, error) {
-	//ChainGetMessage method has been replace in messager mode
+	// ChainGetMessage method has been replace in messager mode
 	return m.Messager.GetMessage(ctx, mid)
 }
 

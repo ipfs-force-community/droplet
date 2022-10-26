@@ -15,7 +15,7 @@ import (
 func TestBadgerMigrate(t *testing.T) {
 	var ds datastore.Batching
 	var err error
-	var count = 3
+	count := 3
 
 	var paychMsgCIDs []cid.Cid
 

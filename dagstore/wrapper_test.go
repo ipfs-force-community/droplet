@@ -219,8 +219,7 @@ func (m *mockDagStore) Close() error {
 	return nil
 }
 
-type mockLotusMount struct {
-}
+type mockLotusMount struct{}
 
 func (m mockLotusMount) Start(ctx context.Context) error {
 	return nil

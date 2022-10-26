@@ -297,6 +297,5 @@ var retrievalGetAskCmd = &cli.Command{
 			units.BytesSize(float64(ask.PaymentIntervalIncrease)),
 		)
 		return w.Flush()
-
 	},
 }

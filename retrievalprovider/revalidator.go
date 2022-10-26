@@ -63,7 +63,6 @@ func (pr *ProviderRevalidator) Revalidate(channelID datatransfer.ChannelID, vouc
 
 	response, err := pr.processPayment(ctx, deal, payment)
 	return finalResponse(response, legacyProtocol), err
-
 }
 
 func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.ProviderDealState, payment *retrievalmarket.DealPayment) (*retrievalmarket.DealResponse, error) {
@@ -88,8 +87,8 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 		deal.FundsReceived = big.Add(deal.FundsReceived, received)
 		err := pr.deals.SaveDeal(ctx, deal)
 		if err != nil {
-			//todo  receive voucher save success, but track deal status failed
-			//give error here may client send more funds than fact
+			// todo  receive voucher save success, but track deal status failed
+			// give error here may client send more funds than fact
 			log.Infof("unable to save paychanel funds %v", err)
 			_ = pr.retrievalDealHandler.CancelDeal(ctx, deal)
 			return errorDealResponse(deal.Identifier(), err), err
@@ -120,9 +119,9 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 			ID:     deal.ID,
 			Status: retrievalmarket.DealStatusCompleted,
 		}
-	//not start transfer data is unsealing
+	// not start transfer data is unsealing
 	case retrievalmarket.DealStatusFundsNeededUnseal:
-		//pay for unseal goto unseal
+		// pay for unseal goto unseal
 		deal.Status = retrievalmarket.DealStatusUnsealing
 		defer func() {
 			go pr.retrievalDealHandler.UnsealData(ctx, deal) //nolint
@@ -218,7 +217,7 @@ func (pr *ProviderRevalidator) OnPullDataSent(chid datatransfer.ChannelID, addit
 	case retrievalmarket.DealStatusOngoing, retrievalmarket.DealStatusUnsealed:
 		deal.Status = retrievalmarket.DealStatusFundsNeeded
 	case retrievalmarket.DealStatusFundsNeeded:
-		//doing nothing
+		// doing nothing
 	case retrievalmarket.DealStatusBlocksComplete:
 		deal.Status = retrievalmarket.DealStatusFundsNeededLastPayment
 	case retrievalmarket.DealStatusNew:

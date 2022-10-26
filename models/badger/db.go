@@ -59,7 +59,7 @@ type RetrievalProviderDS datastore.Batching
 type RetrievalDealsDS datastore.Batching
 
 // /metadata/retrievals/provider/retrieval-ask
-type RetrievalAskDS datastore.Batching //key = latest
+type RetrievalAskDS datastore.Batching // key = latest
 
 // /metadata/datatransfer/provider/transfers
 type DagTransferDS datastore.Batching
@@ -71,7 +71,7 @@ type StorageProviderDS datastore.Batching
 type StorageDealsDS datastore.Batching
 
 // /metadata/storage/provider/storage-ask
-type StorageAskDS datastore.Batching //key = latest
+type StorageAskDS datastore.Batching // key = latest
 
 // /metadata/paych/
 type PayChanDS datastore.Batching
@@ -247,7 +247,7 @@ func (r *BadgerRepo) Close() error {
 func (r *BadgerRepo) Migrate() error {
 	ctx := context.TODO()
 
-	var migrateDss = map[string]datastore.Batching{
+	migrateDss := map[string]datastore.Batching{
 		migrate.DsNameFundedAddrState:  r.dsParams.FundDS,
 		migrate.DsNameStorageDeal:      r.dsParams.StorageDealsDS,
 		migrate.DsNamePaychInfoDs:      r.dsParams.PaychInfoDS,
@@ -287,7 +287,7 @@ func (r txRepo) StorageDealRepo() repo.StorageDealRepo {
 	return NewStorageDealRepo(r.dsParams.StorageDealsDS)
 }
 
-//not metadata, just raw data between file transfer
+// not metadata, just raw data between file transfer
 
 const (
 	staging  = "staging"
@@ -314,6 +314,7 @@ func NewStagingDS(mctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.Home
 	})
 	return db, nil
 }
+
 func NewStagingBlockStore(lc fx.Lifecycle, stagingDs StagingDS) (StagingBlockstore, error) {
 	return blockstore.FromDatastore(stagingDs), nil
 }

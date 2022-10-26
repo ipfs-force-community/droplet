@@ -55,7 +55,7 @@ func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, err
 		return false, fmt.Errorf("unable to find storage for piece %s %w", pieceCid, err)
 	}
 	return true, nil
-	//todo check isunseal from miner
+	// todo check isunseal from miner
 }
 
 func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
@@ -73,11 +73,11 @@ func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid)
 	if err != nil {
 		return nil, err
 	}
-	//assume reader always success, wrapper reader for metrics was expensive
+	// assume reader always success, wrapper reader for metrics was expensive
 	stats.Record(m.metricsCtx, marketMetrics.DagStorePRBytesRequested.M(size))
 	_ = stats.RecordWithTags(m.metricsCtx, []tag.Mutator{tag.Upsert(marketMetrics.StorageNameTag, storageName)}, marketMetrics.StorageRetrievalHitCount.M(1))
 	if m.useTransient {
-		//only need reader stream
+		// only need reader stream
 		r, err := pieceStorage.GetReaderCloser(ctx, pieceCid.String())
 		if err != nil {
 			return nil, err
@@ -90,7 +90,7 @@ func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid)
 		stats.Record(m.metricsCtx, marketMetrics.DagStorePRInitCount.M(1))
 		return &mountWrapper{r, padR}, nil
 	}
-	//must support Seek/ReadAt
+	// must support Seek/ReadAt
 	r, err := pieceStorage.GetMountReader(ctx, pieceCid.String())
 	if err != nil {
 		return nil, err
@@ -129,6 +129,7 @@ func (r *mountWrapper) ReadAt(p []byte, off int64) (n int, err error) {
 func (r *mountWrapper) Seek(offset int64, whence int) (int64, error) {
 	return 0, fmt.Errorf("Seek called but not implemented")
 }
+
 func (r *mountWrapper) Read(p []byte) (n int, err error) {
 	n, err = r.readR.Read(p)
 	return

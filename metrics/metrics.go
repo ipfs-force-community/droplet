@@ -84,7 +84,7 @@ var (
 		Aggregation: view.LastValue(),
 	}
 
-	//dagstore
+	// dagstore
 	DagStorePRInitCountView = &view.View{
 		Measure:     DagStorePRInitCount,
 		Aggregation: view.Count(),
@@ -94,7 +94,7 @@ var (
 		Aggregation: view.Sum(),
 	}
 
-	//piece storage
+	// piece storage
 	StorageRetrievalHitCountView = &view.View{
 		Measure:     StorageRetrievalHitCount,
 		Aggregation: view.Count(),

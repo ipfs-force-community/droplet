@@ -3,12 +3,11 @@ package rpc
 import (
 	"fmt"
 	"io"
+	"net/http"
+	"strconv"
 
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	logging "github.com/ipfs/go-log/v2"
-
-	"net/http"
-	"strconv"
 )
 
 var resourceLog = logging.Logger("resource")
@@ -36,7 +35,7 @@ func (p *PieceStorageServer) ServeHTTP(res http.ResponseWriter, req *http.Reques
 	}
 	ctx := req.Context()
 
-	//todo consider priority strategy, priority oss, priority market transfer directly
+	// todo consider priority strategy, priority oss, priority market transfer directly
 	pieceStorage, err := p.pieceStorageMgr.FindStorageForRead(ctx, resourceID)
 	if err != nil {
 		logErrorAndResonse(res, fmt.Sprintf("resource %s not found", resourceID), http.StatusNotFound)

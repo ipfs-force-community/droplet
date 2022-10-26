@@ -42,10 +42,12 @@ type ConnectConfig struct {
 	Token string
 }
 
-type Node ConnectConfig
-type Messager ConnectConfig
-type Market ConnectConfig
-type AuthNode ConnectConfig
+type (
+	Node     ConnectConfig
+	Messager ConnectConfig
+	Market   ConnectConfig
+	AuthNode ConnectConfig
+)
 
 type Common struct {
 	API    API
@@ -157,16 +159,16 @@ type DAGStoreConfig struct {
 	// Default value: 1 minute.
 	GCInterval Duration
 
-	//MongoTopIndex used to config whether to save top index data to mongo
+	// MongoTopIndex used to config whether to save top index data to mongo
 	MongoTopIndex *MongoTopIndex
 
-	//Transient path used to store temp file for retrieval
+	// Transient path used to store temp file for retrieval
 	Transient string
 
-	//Index path to store index of piece
+	// Index path to store index of piece
 	Index string
 
-	//ReadDiretly enable to read piece storage directly skip transient file
+	// ReadDiretly enable to read piece storage directly skip transient file
 	UseTransient bool
 }
 
@@ -322,8 +324,10 @@ type MarketClientConfig struct {
 	DefaultMarketAddress              Address
 }
 
-var _ encoding.TextMarshaler = (*Duration)(nil)
-var _ encoding.TextUnmarshaler = (*Duration)(nil)
+var (
+	_ encoding.TextMarshaler   = (*Duration)(nil)
+	_ encoding.TextUnmarshaler = (*Duration)(nil)
+)
 
 // Duration is a wrapper type for Duration
 // for decoding and encoding from/to TOML

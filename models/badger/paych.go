@@ -29,8 +29,10 @@ type payMsgRepo struct {
 	ds datastore.Batching
 }
 
-var _ repo.PaychChannelInfoRepo = (*paychInfoRepo)(nil)
-var _ repo.PaychMsgInfoRepo = (*payMsgRepo)(nil)
+var (
+	_ repo.PaychChannelInfoRepo = (*paychInfoRepo)(nil)
+	_ repo.PaychMsgInfoRepo     = (*payMsgRepo)(nil)
+)
 
 func NewPaychRepo(ds PayChanInfoDS, msgRepo repo.PaychMsgInfoRepo) repo.PaychChannelInfoRepo {
 	return &paychInfoRepo{ds: ds, msgRepo: msgRepo}

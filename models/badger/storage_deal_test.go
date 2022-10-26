@@ -258,7 +258,5 @@ func TestStorageDeal(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, result, result2)
 		})
-
 	})
-
 }

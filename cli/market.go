@@ -364,7 +364,6 @@ var dealsImportDataCmd = &cli.Command{
 		fpath := cctx.Args().Get(1)
 
 		return api.DealsImportData(ctx, propCid, fpath)
-
 	},
 }
 
@@ -455,7 +454,7 @@ var dealsListCmd = &cli.Command{
 			return err
 		}
 		defer closer()
-		var maddr = address.Undef
+		maddr := address.Undef
 		if cctx.IsSet("miner") {
 			maddr, err = address.NewFromString(cctx.String("miner"))
 			if err != nil {

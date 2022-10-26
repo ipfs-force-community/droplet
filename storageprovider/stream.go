@@ -46,7 +46,6 @@ func NewStorageDealStream(
 	dealProcess StorageDealHandler,
 	mixMsgClient clients.IMixMessage,
 ) (network.StorageReceiver, error) {
-
 	return &StorageDealStream{
 		conns:        conns,
 		storedAsk:    storedAsk,

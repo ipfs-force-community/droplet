@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -64,5 +63,4 @@ func TestResouceDownload(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, "mock resource2 content", string(result))
 	})
-
 }

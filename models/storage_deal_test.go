@@ -199,7 +199,6 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	assert.Nil(t, err)
 	assert.Len(t, deals, 1)
 	compareDeal(t, deals[0], deal)
-
 }
 
 func compareDeal(t *testing.T, actual, excepted *types.MinerDeal) {

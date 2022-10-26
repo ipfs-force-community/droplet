@@ -18,9 +18,7 @@ import (
 
 var log = logging.Logger("clients")
 
-var (
-	ReplaceWalletMethod = builder.NextInvoke()
-)
+var ReplaceWalletMethod = builder.NextInvoke()
 
 func ConvertWalletToISinge(fullNode v1api.FullNode, signer ISinger) error {
 	fullNodeStruct := fullNode.(*v1api.FullNodeStruct)

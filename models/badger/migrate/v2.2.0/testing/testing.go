@@ -26,7 +26,7 @@ func dsPutObj(ctx context.Context, t *testing.T, v migrate.DsKeyAble, ds datasto
 }
 
 func WriteTestcasesToDS(ctx context.Context, t *testing.T, ds datastore.Batching, count int) (payChMsgCIDs []cid.Cid) {
-	var peerIDProvider = func(t *testing.T) peer.ID {
+	peerIDProvider := func(t *testing.T) peer.ID {
 		peerId, err := peer.Decode("12D3KooWMjDC9AtFegcGJPJNvwV5fdiehTmx7awvUTXbktqboKbi")
 		assert.NoError(t, err)
 		return peerId

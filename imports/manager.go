@@ -25,8 +25,10 @@ type Manager struct {
 	counter *shared.TimeCounter
 }
 
-type LabelKey = string
-type LabelValue = string
+type (
+	LabelKey   = string
+	LabelValue = string
+)
 
 const (
 	CAROwnerImportMgr = "importmgr"

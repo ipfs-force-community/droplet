@@ -42,13 +42,15 @@ type CIDInfo struct {
 func (ask *SignedStorageAsk) KeyWithNamespace() datastore.Key {
 	return datastore.KeyWithNamespaces([]string{
 		"/storage/provider/storage-ask",
-		ask.Ask.Miner.String()})
+		ask.Ask.Miner.String(),
+	})
 }
 
 func (cif *CIDInfo) KeyWithNamespace() datastore.Key {
 	return datastore.KeyWithNamespaces([]string{
 		"/storagemarket/cid-infos/",
-		cif.CID.String()})
+		cif.CID.String(),
+	})
 }
 
 // FundedAddressState keeps track of the state of an address with funds in the
@@ -215,10 +217,12 @@ func (t *ProviderDealState) KeyWithNamespace() datastore.Key {
 	})
 }
 
-var _ = xerrors.Errorf // nolint
-var _ = cid.Undef
-var _ = math.E
-var _ = sort.Sort
+var (
+	_ = xerrors.Errorf // nolint
+	_ = cid.Undef
+	_ = math.E
+	_ = sort.Sort
+)
 
 var lengthBufFundedAddressState = []byte{131}
 
@@ -285,20 +289,16 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Addr (address.Address) (struct)
 
 	{
-
 		if err := t.Addr.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Addr: %w", err)
 		}
-
 	}
 	// t.AmtReserved (big.Int) (struct)
 
 	{
-
 		if err := t.AmtReserved.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.AmtReserved: %w", err)
 		}
-
 	}
 	// t.MsgCid (cid.Cid) (struct)
 
@@ -614,20 +614,16 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Control (address.Address) (struct)
 
 	{
-
 		if err := t.Control.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Control: %w", err)
 		}
-
 	}
 	// t.Target (address.Address) (struct)
 
 	{
-
 		if err := t.Target.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Target: %w", err)
 		}
-
 	}
 	// t.Direction (uint64) (uint64)
 
@@ -689,20 +685,16 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Amount (big.Int) (struct)
 
 	{
-
 		if err := t.Amount.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Amount: %w", err)
 		}
-
 	}
 	// t.PendingAmount (big.Int) (struct)
 
 	{
-
 		if err := t.PendingAmount.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.PendingAmount: %w", err)
 		}
-
 	}
 	// t.CreateMsg (cid.Cid) (struct)
 
@@ -1122,11 +1114,9 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.ClientDealProposal (market.ClientDealProposal) (struct)
 
 	{
-
 		if err := t.ClientDealProposal.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.ClientDealProposal: %w", err)
 		}
-
 	}
 	// t.ProposalCid (cid.Cid) (struct)
 
@@ -1307,11 +1297,9 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.FundsReserved (big.Int) (struct)
 
 	{
-
 		if err := t.FundsReserved.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.FundsReserved: %w", err)
 		}
-
 	}
 	// t.Ref (storagemarket.DataRef) (struct)
 
@@ -1366,11 +1354,9 @@ func (t *MinerDeal) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.CreationTime (typegen.CborTime) (struct)
 
 	{
-
 		if err := t.CreationTime.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.CreationTime: %w", err)
 		}
-
 	}
 	// t.TransferChannelID (datatransfer.ChannelID) (struct)
 
@@ -1512,29 +1498,23 @@ func (t *RetrievalAsk) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.Miner (address.Address) (struct)
 
 	{
-
 		if err := t.Miner.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Miner: %w", err)
 		}
-
 	}
 	// t.PricePerByte (big.Int) (struct)
 
 	{
-
 		if err := t.PricePerByte.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.PricePerByte: %w", err)
 		}
-
 	}
 	// t.UnsealPrice (big.Int) (struct)
 
 	{
-
 		if err := t.UnsealPrice.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.UnsealPrice: %w", err)
 		}
-
 	}
 	// t.PaymentInterval (uint64) (uint64)
 
@@ -1683,11 +1663,9 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.DealProposal (retrievalmarket.DealProposal) (struct)
 
 	{
-
 		if err := t.DealProposal.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.DealProposal: %w", err)
 		}
-
 	}
 	// t.StoreID (uint64) (uint64)
 
@@ -1775,11 +1753,9 @@ func (t *ProviderDealState) UnmarshalCBOR(r io.Reader) (err error) {
 	// t.FundsReceived (big.Int) (struct)
 
 	{
-
 		if err := t.FundsReceived.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.FundsReceived: %w", err)
 		}
-
 	}
 	// t.Message (string) (string)
 

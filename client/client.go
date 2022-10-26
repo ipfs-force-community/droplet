@@ -209,7 +209,6 @@ func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, is
 			FastRetrieval: params.FastRetrieval,
 			VerifiedDeal:  params.VerifiedDeal,
 		})
-
 		if err != nil {
 			return nil, fmt.Errorf("failed to start deal: %w", err)
 		}
@@ -688,7 +687,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	}
 
 	// open the file again, seek to the header position, and write.
-	f, err := os.OpenFile(path, os.O_WRONLY, 0755)
+	f, err := os.OpenFile(path, os.O_WRONLY, 0o755)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("failed to open car: %w", err)
 	}
@@ -886,7 +885,7 @@ func (ed *ExportDest) doWrite(cb func(io.Writer) error) error {
 		return cb(ed.Writer)
 	}
 
-	f, err := os.OpenFile(ed.Path, os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(ed.Path, os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
@@ -963,7 +962,6 @@ func (a *API) outputCAR(ctx context.Context, ds format.DAGService, bs bstore.Blo
 	}
 
 	return dest.doWrite(func(w io.Writer) error {
-
 		if err := car.WriteHeader(&car.CarHeader{
 			Roots:   roots,
 			Version: 1,
@@ -1088,7 +1086,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []types.DagSpec, ds for
 		}
 
 		var newRoot cid.Cid
-		var errHalt = errors.New("halt walk")
+		errHalt := errors.New("halt walk")
 		if err := utils.TraverseDag(
 			ctx,
 			ds,
@@ -1134,7 +1132,6 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []types.DagSpec, ds for
 func getDataSelector(dps *types.DataSelector, matchPath bool) (datamodel.Node, error) {
 	sel := selectorparse.CommonSelector_ExploreAllRecursively
 	if dps != nil {
-
 		if strings.HasPrefix(string(*dps), "{") {
 			var err error
 			sel, err = selectorparse.ParseJSONSelector(string(*dps))
@@ -1261,7 +1258,6 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 }
 
 func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*types.CommPRet, error) {
-
 	// Hard-code the sector type to 32GiBV1_1, because:
 	// - ffiwrapper.GeneratePieceCIDFromFile requires a RegisteredSealProof
 	// - commP itself is sector-size independent, with rather low probability of that changing
@@ -1295,7 +1291,6 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*types.CommPR
 
 	pieceReader, pieceSize := padreader.New(rdr, uint64(stat.Size()))
 	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
-
 	if err != nil {
 		return nil, fmt.Errorf("computing commP failed: %w", err)
 	}

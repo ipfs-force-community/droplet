@@ -182,7 +182,6 @@ var pieceStorageListCmd = &cli.Command{
 		)
 
 		for _, storage := range storagelist.FsStorage {
-
 			w.Write(map[string]interface{}{
 				"Name":                storage.Name,
 				"Readonly":            storage.ReadOnly,

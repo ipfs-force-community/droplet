@@ -18,8 +18,10 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var channelInfosCases []*types.ChannelInfo
-var msgInfosCase []*types.MsgInfo
+var (
+	channelInfosCases []*types.ChannelInfo
+	msgInfosCase      []*types.MsgInfo
+)
 
 func TestChannelInfo(t *testing.T) {
 	r, mock, sqlDB := setup(t)

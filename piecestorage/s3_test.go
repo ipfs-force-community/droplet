@@ -36,7 +36,6 @@ func TestParseS3Endpoint(t *testing.T) {
 		assert.Equal(t, "", endpoint)
 		assert.Equal(t, "", region)
 	}
-
 }
 
 func TestS3PieceStorage(t *testing.T) {
@@ -60,7 +59,6 @@ func TestS3PieceStorage(t *testing.T) {
 	testS3PieceStorage(t, s3Cfg)
 	s3Cfg.SubDir = "test"
 	testS3PieceStorage(t, s3Cfg)
-
 }
 
 func testS3PieceStorage(t *testing.T, s3Cfg *config.S3PieceStorage) {
@@ -116,26 +114,24 @@ func testS3PieceStorage(t *testing.T, s3Cfg *config.S3PieceStorage) {
 		Endpoint:         aws.String(endpoint),
 		S3ForcePathStyle: aws.Bool(false),
 		Region:           aws.String(region),
-		//LogLevel:         aws.LogLevel(aws.LogDebug),
+		// LogLevel:         aws.LogLevel(aws.LogDebug),
 	}))
 
 	svc := s3.New(sess)
 	delKey := testkey
 	if s3Cfg.SubDir != "" {
 		delKey = s3Cfg.SubDir + testkey
-
 	}
 	_, err = svc.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(s3Cfg.Bucket),
 		Key:    aws.String(delKey),
 	})
 	assert.NoError(t, err)
-
 }
 
 func randomString(n int) string {
 	rand.Seed(time.Now().UnixNano())
-	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+	letter := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 	b := make([]rune, n)
 	for i := range b {

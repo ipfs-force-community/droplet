@@ -37,7 +37,7 @@ func ResourceManager(lc fx.Lifecycle, homeDir *config.HomeDir) (network.Resource
 		defaultLimitConfig.System.Memory = 4 << 30
 	}
 
-	maxconns := int(200) //make config
+	maxconns := int(200) // make config
 	if 2*maxconns > defaultLimitConfig.System.ConnsInbound {
 		// adjust conns to 2x to allow for two conns per peer (TCP+QUIC)
 		defaultLimitConfig.System.ConnsInbound = logScale(2 * maxconns)
@@ -87,7 +87,7 @@ func ResourceManager(lc fx.Lifecycle, homeDir *config.HomeDir) (network.Resource
 
 	if os.Getenv("MARKET_DEBUG_RCMGR") != "" {
 		debugPath := filepath.Join(repoPath, "debug")
-		if err := os.MkdirAll(debugPath, 0755); err != nil {
+		if err := os.MkdirAll(debugPath, 0o755); err != nil {
 			return nil, fmt.Errorf("error creating debug directory: %w", err)
 		}
 		traceFile := filepath.Join(debugPath, "rcmgr.json.gz")
@@ -102,7 +102,8 @@ func ResourceManager(lc fx.Lifecycle, homeDir *config.HomeDir) (network.Resource
 	lc.Append(fx.Hook{
 		OnStop: func(_ context.Context) error {
 			return mgr.Close()
-		}})
+		},
+	})
 
 	return mgr, nil
 }

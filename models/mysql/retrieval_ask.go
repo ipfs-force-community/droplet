@@ -57,7 +57,8 @@ func (rar *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (
 func (rar *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk) error {
 	return rar.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "address"}},
-		UpdateAll: true}).Create(&retrievalAsk{
+		UpdateAll: true,
+	}).Create(&retrievalAsk{
 		Address:                 DBAddress(ask.Miner),
 		PricePerByte:            convertBigInt(ask.PricePerByte),
 		UnsealPrice:             convertBigInt(ask.UnsealPrice),

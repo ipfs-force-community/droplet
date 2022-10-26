@@ -16,7 +16,7 @@ type PieceStorageManager struct {
 }
 
 func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, error) {
-	var storages = make(map[string]IPieceStorage)
+	storages := make(map[string]IPieceStorage)
 
 	// todo: extract name check logic to a function and check blank in name
 
@@ -100,7 +100,7 @@ func (p *PieceStorageManager) FindStorageForWrite(size int64) (IPieceStorage, er
 	if len(storages) == 0 {
 		return nil, fmt.Errorf("unable to select a piece storage that have enough space for piece(%d)", size)
 	}
-	//todo better to use argorithems base on stroage capacity and usage
+	// todo better to use argorithems base on stroage capacity and usage
 	return randStorageSelector(storages)
 }
 
