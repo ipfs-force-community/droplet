@@ -21,8 +21,8 @@ const storageAskTableName = "storage_asks"
 type storageAsk struct {
 	ID            uint       `gorm:"primary_key"`
 	Miner         DBAddress  `gorm:"column:miner;type:varchar(256);uniqueIndex"`
-	Price         mtypes.Int `gorm:"column:price;type:varchar(256);"`
-	VerifiedPrice mtypes.Int `gorm:"column:verified_price;type:varchar(256);"`
+	Price         mtypes.Int `gorm:"column:price;type:varchar(256);default:0"`
+	VerifiedPrice mtypes.Int `gorm:"column:verified_price;type:varchar(256);default:0"`
 	MinPieceSize  int64      `gorm:"column:min_piece_size;type:bigint;"`
 	MaxPieceSize  int64      `gorm:"column:max_piece_size;type:bigint;"`
 	Timestamp     int64      `gorm:"column:timestamp;type:bigint;"`
@@ -40,8 +40,8 @@ func fromStorageAsk(src *types.SignedStorageAsk) *storageAsk {
 	ask := &storageAsk{}
 	if src.Ask != nil {
 		ask.Miner = DBAddress(src.Ask.Miner)
-		ask.Price = convertBigInt(src.Ask.Price)
-		ask.VerifiedPrice = convertBigInt(src.Ask.VerifiedPrice)
+		ask.Price = mtypes.SafeFromGo(src.Ask.Price.Int)
+		ask.VerifiedPrice = mtypes.SafeFromGo(src.Ask.VerifiedPrice.Int)
 		ask.MinPieceSize = int64(src.Ask.MinPieceSize)
 		ask.MaxPieceSize = int64(src.Ask.MaxPieceSize)
 		ask.Timestamp = int64(src.Ask.Timestamp)
@@ -62,8 +62,8 @@ func toStorageAsk(src *storageAsk) (*types.SignedStorageAsk, error) {
 	ask := &types.SignedStorageAsk{
 		Ask: &storagemarket.StorageAsk{
 			Miner:         src.Miner.addr(),
-			Price:         abi.TokenAmount{Int: src.Price.Int},
-			VerifiedPrice: abi.TokenAmount{Int: src.VerifiedPrice.Int},
+			Price:         abi.TokenAmount(mtypes.SafeFromGo(src.Price.Int)),
+			VerifiedPrice: abi.TokenAmount(mtypes.SafeFromGo(src.VerifiedPrice.Int)),
 			MinPieceSize:  abi.PaddedPieceSize(src.MinPieceSize),
 			MaxPieceSize:  abi.PaddedPieceSize(src.MaxPieceSize),
 			Timestamp:     abi.ChainEpoch(src.Timestamp),

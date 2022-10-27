@@ -43,7 +43,7 @@ type storageDeal struct {
 	SlashEpoch            int64      `gorm:"column:slash_epoch;type:bigint;"`
 	FastRetrieval         bool       `gorm:"column:fast_retrieval;"`
 	Message               string     `gorm:"column:message;type:varchar(512);"`
-	FundsReserved         mtypes.Int `gorm:"column:funds_reserved;type:varchar(256);"`
+	FundsReserved         mtypes.Int `gorm:"column:funds_reserved;type:varchar(256);default:0"`
 	Ref                   DataRef    `gorm:"embedded;embeddedPrefix:ref_"`
 	AvailableForRetrieval bool       `gorm:"column:available_for_retrieval;"`
 
@@ -78,10 +78,10 @@ type ClientDealProposal struct {
 	// otherwise it is invalid.
 	StartEpoch           int64      `gorm:"column:start_epoch;type:bigint;"`
 	EndEpoch             int64      `gorm:"column:end_epoch;type:bigint;"`
-	StoragePricePerEpoch mtypes.Int `gorm:"column:storage_price_per_epoch;type:varchar(256);"`
+	StoragePricePerEpoch mtypes.Int `gorm:"column:storage_price_per_epoch;type:varchar(256);default:0"`
 
-	ProviderCollateral mtypes.Int `gorm:"column:provider_collateral;type:varchar(256);"`
-	ClientCollateral   mtypes.Int `gorm:"column:client_collateral;type:varchar(256);"`
+	ProviderCollateral mtypes.Int `gorm:"column:provider_collateral;type:varchar(256);default:0"`
+	ClientCollateral   mtypes.Int `gorm:"column:client_collateral;type:varchar(256);default:0"`
 
 	ClientSignature Signature `gorm:"column:client_signature;type:blob;"`
 }
@@ -139,9 +139,9 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 			Label:                labelStr,
 			StartEpoch:           int64(src.ClientDealProposal.Proposal.StartEpoch),
 			EndEpoch:             int64(src.ClientDealProposal.Proposal.EndEpoch),
-			StoragePricePerEpoch: convertBigInt(src.ClientDealProposal.Proposal.StoragePricePerEpoch),
-			ProviderCollateral:   convertBigInt(src.ClientDealProposal.Proposal.ProviderCollateral),
-			ClientCollateral:     convertBigInt(src.ClientDealProposal.Proposal.ClientCollateral),
+			StoragePricePerEpoch: mtypes.SafeFromGo(src.ClientDealProposal.Proposal.StoragePricePerEpoch.Int),
+			ProviderCollateral:   mtypes.SafeFromGo(src.ClientDealProposal.Proposal.ProviderCollateral.Int),
+			ClientCollateral:     mtypes.SafeFromGo(src.ClientDealProposal.Proposal.ClientCollateral.Int),
 			ClientSignature: Signature{
 				Type: src.ClientSignature.Type,
 				Data: src.ClientSignature.Data,
@@ -157,7 +157,7 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 		SlashEpoch:            int64(src.SlashEpoch),
 		FastRetrieval:         src.FastRetrieval,
 		Message:               src.Message,
-		FundsReserved:         convertBigInt(src.FundsReserved),
+		FundsReserved:         mtypes.SafeFromGo(src.FundsReserved.Int),
 		AvailableForRetrieval: src.AvailableForRetrieval,
 		DealID:                uint64(src.DealID),
 		CreationTime:          src.CreationTime.Time().UnixNano(),
@@ -228,9 +228,9 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 				Label:                label,
 				StartEpoch:           abi.ChainEpoch(src.StartEpoch),
 				EndEpoch:             abi.ChainEpoch(src.EndEpoch),
-				StoragePricePerEpoch: abi.TokenAmount{Int: src.StoragePricePerEpoch.Int},
-				ProviderCollateral:   abi.TokenAmount{Int: src.ProviderCollateral.Int},
-				ClientCollateral:     abi.TokenAmount{Int: src.ClientCollateral.Int},
+				StoragePricePerEpoch: abi.TokenAmount(mtypes.SafeFromGo(src.StoragePricePerEpoch.Int)),
+				ProviderCollateral:   abi.TokenAmount(mtypes.SafeFromGo(src.ProviderCollateral.Int)),
+				ClientCollateral:     abi.TokenAmount(mtypes.SafeFromGo(src.ClientCollateral.Int)),
 			},
 			ClientSignature: acrypto.Signature{
 				Type: src.ClientSignature.Type,
@@ -248,7 +248,7 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 		SlashEpoch:    abi.ChainEpoch(src.SlashEpoch),
 		FastRetrieval: src.FastRetrieval,
 		Message:       src.Message,
-		FundsReserved: abi.TokenAmount{Int: src.FundsReserved.Int},
+		FundsReserved: abi.TokenAmount(mtypes.SafeFromGo(src.FundsReserved.Int)),
 		Ref: &storagemarket.DataRef{
 			TransferType: src.Ref.TransferType,
 			Root:         src.Ref.Root.cid(),

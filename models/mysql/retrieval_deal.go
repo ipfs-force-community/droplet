@@ -27,7 +27,7 @@ type retrievalDeal struct {
 	Status                uint64     `gorm:"column:status;type:bigint unsigned;"`
 	Receiver              string     `gorm:"column:receiver;type:varchar(256);primary_key"`
 	TotalSent             uint64     `gorm:"column:total_sent;type:bigint unsigned;"`
-	FundsReceived         mtypes.Int `gorm:"column:funds_received;type:varchar(256);"`
+	FundsReceived         mtypes.Int `gorm:"column:funds_received;type:varchar(256);default:0"`
 	Message               string     `gorm:"column:message;type:varchar(2048);"`
 	CurrentInterval       uint64     `gorm:"column:current_interval;type:bigint unsigned;"`
 	LegacyProtocol        bool       `gorm:"column:legacy_protocol;"`
@@ -40,10 +40,10 @@ type DealProposal struct {
 
 	Selector                *[]byte    `gorm:"column:selector;type:blob;"` // V1
 	PieceCID                DBCid      `gorm:"column:piece_cid;type:varchar(256);"`
-	PricePerByte            mtypes.Int `gorm:"column:price_perbyte;type:varchar(256);"`
+	PricePerByte            mtypes.Int `gorm:"column:price_perbyte;type:varchar(256);default:0"`
 	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;"` // when to request payment
 	PaymentIntervalIncrease uint64     `gorm:"column:payment_interval_increase;type:bigint unsigned;"`
-	UnsealPrice             mtypes.Int `gorm:"column:unseal_price;type:varchar(256);"`
+	UnsealPrice             mtypes.Int `gorm:"column:unseal_price;type:varchar(256);default:0"`
 }
 
 func (m *retrievalDeal) TableName() string {
@@ -55,17 +55,17 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 		DealProposal: DealProposal{
 			PayloadCID:              DBCid(deal.PayloadCID),
 			ID:                      uint64(deal.ID),
-			PricePerByte:            mtypes.Int(deal.PricePerByte),
+			PricePerByte:            mtypes.SafeFromGo(deal.PricePerByte.Int),
 			PaymentInterval:         deal.PaymentInterval,
 			PaymentIntervalIncrease: deal.PaymentIntervalIncrease,
-			UnsealPrice:             mtypes.Int(deal.UnsealPrice),
+			UnsealPrice:             mtypes.SafeFromGo(deal.UnsealPrice.Int),
 		},
 		StoreID:               deal.StoreID,
 		Status:                uint64(deal.Status),
 		SelStorageProposalCid: DBCid(deal.SelStorageProposalCid),
 		Receiver:              deal.Receiver.String(),
 		TotalSent:             deal.TotalSent,
-		FundsReceived:         mtypes.Int(deal.FundsReceived),
+		FundsReceived:         mtypes.SafeFromGo(deal.FundsReceived.Int),
 		Message:               deal.Message,
 		CurrentInterval:       deal.CurrentInterval,
 		LegacyProtocol:        deal.LegacyProtocol,
@@ -97,10 +97,10 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 			ID:         rm.DealID(deal.DealProposal.ID),
 			Params: rm.Params{
 				PieceCID:                deal.DealProposal.PieceCID.cidPtr(),
-				PricePerByte:            abi.TokenAmount(deal.PricePerByte),
+				PricePerByte:            abi.TokenAmount(mtypes.SafeFromGo(deal.PricePerByte.Int)),
 				PaymentInterval:         deal.DealProposal.PaymentInterval,
 				PaymentIntervalIncrease: deal.DealProposal.PaymentIntervalIncrease,
-				UnsealPrice:             abi.TokenAmount(deal.UnsealPrice),
+				UnsealPrice:             abi.TokenAmount(mtypes.SafeFromGo(deal.UnsealPrice.Int)),
 			},
 		},
 		StoreID:               deal.StoreID,
@@ -108,7 +108,7 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 		SelStorageProposalCid: deal.SelStorageProposalCid.cid(),
 		Status:                rm.DealStatus(deal.Status),
 		TotalSent:             deal.TotalSent,
-		FundsReceived:         abi.TokenAmount(deal.FundsReceived),
+		FundsReceived:         abi.TokenAmount(mtypes.SafeFromGo(deal.FundsReceived.Int)),
 		Message:               deal.Message,
 		CurrentInterval:       deal.CurrentInterval,
 		LegacyProtocol:        deal.LegacyProtocol,
