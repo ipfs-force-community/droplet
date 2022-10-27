@@ -25,12 +25,12 @@ type channelInfo struct {
 	Channel                DBAddress  `gorm:"column:channel;type:varchar(256);index"`
 	Control                DBAddress  `gorm:"column:control;type:varchar(256);"`
 	Target                 DBAddress  `gorm:"column:target;type:varchar(256);"`
-	Direction              uint64     `gorm:"column:direction;type:bigint unsigned;"`
-	NextLane               uint64     `gorm:"column:next_lane;type:bigint unsigned;"`
-	Amount                 mtypes.Int `gorm:"column:amount;type:varchar(256);default:0"`
-	PendingAmount          mtypes.Int `gorm:"column:pending_amount;type:varchar(256);default:0"`
-	AvailableAmount        mtypes.Int `gorm:"column:available_amount;type:varchar(256);default:0"`
-	PendingAvailableAmount mtypes.Int `gorm:"column:pending_available_amount;type:varchar(256);default:0"`
+	Direction              uint64     `gorm:"column:direction;type:bigint unsigned;NOT NULL;"`
+	NextLane               uint64     `gorm:"column:next_lane;type:bigint unsigned;NOT NULL;"`
+	Amount                 mtypes.Int `gorm:"column:amount;type:varchar(256);default:0;"`
+	PendingAmount          mtypes.Int `gorm:"column:pending_amount;type:varchar(256);default:0;"`
+	AvailableAmount        mtypes.Int `gorm:"column:available_amount;type:varchar(256);default:0;"`
+	PendingAvailableAmount mtypes.Int `gorm:"column:pending_available_amount;type:varchar(256);default:0;"`
 	CreateMsg              DBCid      `gorm:"column:create_msg;type:varchar(256);"`
 	AddFundsMsg            DBCid      `gorm:"column:add_funds_msg;type:varchar(256);"`
 	Settling               bool       `gorm:"column:settling;"`

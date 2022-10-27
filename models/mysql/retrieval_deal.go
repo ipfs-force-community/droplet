@@ -21,28 +21,28 @@ const retrievalDealTableName = "retrieval_deals"
 
 type retrievalDeal struct {
 	DealProposal          `gorm:"embedded;embeddedPrefix:cdp_"`
-	StoreID               uint64     `gorm:"column:store_id;type:bigint unsigned;"`
+	StoreID               uint64     `gorm:"column:store_id;type:bigint unsigned;NOT NULL;"`
 	ChannelID             ChannelID  `gorm:"embedded;embeddedPrefix:ci_"`
 	SelStorageProposalCid DBCid      `gorm:"column:sel_proposal_cid;type:varchar(256);"` // piece info
-	Status                uint64     `gorm:"column:status;type:bigint unsigned;"`
+	Status                uint64     `gorm:"column:status;type:bigint unsigned;NOT NULL;"`
 	Receiver              string     `gorm:"column:receiver;type:varchar(256);primary_key"`
-	TotalSent             uint64     `gorm:"column:total_sent;type:bigint unsigned;"`
+	TotalSent             uint64     `gorm:"column:total_sent;type:bigint unsigned;NOT NULL;"`
 	FundsReceived         mtypes.Int `gorm:"column:funds_received;type:varchar(256);default:0"`
 	Message               string     `gorm:"column:message;type:varchar(2048);"`
-	CurrentInterval       uint64     `gorm:"column:current_interval;type:bigint unsigned;"`
+	CurrentInterval       uint64     `gorm:"column:current_interval;type:bigint unsigned;NOT NULL;"`
 	LegacyProtocol        bool       `gorm:"column:legacy_protocol;"`
 	TimeStampOrm
 }
 
 type DealProposal struct {
 	PayloadCID DBCid  `gorm:"column:payload_cid;type:varchar(256);"`
-	ID         uint64 `gorm:"column:proposal_id;type:bigint unsigned;primary_key"`
+	ID         uint64 `gorm:"column:proposal_id;type:bigint unsigned;primary_key;"`
 
 	Selector                *[]byte    `gorm:"column:selector;type:blob;"` // V1
 	PieceCID                DBCid      `gorm:"column:piece_cid;type:varchar(256);"`
 	PricePerByte            mtypes.Int `gorm:"column:price_perbyte;type:varchar(256);default:0"`
-	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;"` // when to request payment
-	PaymentIntervalIncrease uint64     `gorm:"column:payment_interval_increase;type:bigint unsigned;"`
+	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;NOT NULL;"` // when to request payment
+	PaymentIntervalIncrease uint64     `gorm:"column:payment_interval_increase;type:bigint unsigned;NOT NULL;"`
 	UnsealPrice             mtypes.Int `gorm:"column:unseal_price;type:varchar(256);default:0"`
 }
 

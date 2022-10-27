@@ -30,8 +30,8 @@ type retrievalAsk struct {
 	Address                 DBAddress  `gorm:"column:address;uniqueIndex;type:varchar(256)"`
 	PricePerByte            mtypes.Int `gorm:"column:price_per_byte;type:varchar(256);default:0"`
 	UnsealPrice             mtypes.Int `gorm:"column:unseal_price;type:varchar(256);default:0"`
-	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;"`
-	PaymentIntervalIncrease uint64     `gorm:"column:payment_interval_increase;type:bigint unsigned;"`
+	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;NOT NULL;"`
+	PaymentIntervalIncrease uint64     `gorm:"column:payment_interval_increase;type:bigint unsigned;NOT NULL;"`
 	TimeStampOrm
 }
 

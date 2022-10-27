@@ -23,11 +23,11 @@ type storageAsk struct {
 	Miner         DBAddress  `gorm:"column:miner;type:varchar(256);uniqueIndex"`
 	Price         mtypes.Int `gorm:"column:price;type:varchar(256);default:0"`
 	VerifiedPrice mtypes.Int `gorm:"column:verified_price;type:varchar(256);default:0"`
-	MinPieceSize  int64      `gorm:"column:min_piece_size;type:bigint;"`
-	MaxPieceSize  int64      `gorm:"column:max_piece_size;type:bigint;"`
-	Timestamp     int64      `gorm:"column:timestamp;type:bigint;"`
-	Expiry        int64      `gorm:"column:expiry;type:bigint;"`
-	SeqNo         uint64     `gorm:"column:seq_no;type:bigint unsigned;"`
+	MinPieceSize  int64      `gorm:"column:min_piece_size;type:bigint;NOT NULL;"`
+	MaxPieceSize  int64      `gorm:"column:max_piece_size;type:bigint;NOT NULL;"`
+	Timestamp     int64      `gorm:"column:timestamp;type:bigint;NOT NULL;"`
+	Expiry        int64      `gorm:"column:expiry;type:bigint;NOT NULL;"`
+	SeqNo         uint64     `gorm:"column:seq_no;type:bigint unsigned;NOT NULL;"`
 	Signature     Signature  `gorm:"column:signature;type:blob;"`
 	TimeStampOrm
 }

@@ -35,28 +35,28 @@ type storageDeal struct {
 	PublishCid  DBCid  `gorm:"column:publish_cid;type:varchar(256);"`
 	Miner       string `gorm:"column:miner_peer;type:varchar(128);index:miner_state"`
 	Client      string `gorm:"column:client_peer;type:varchar(128);"`
-	State       uint64 `gorm:"column:state;type:bigint unsigned;index;index:miner_state"`
+	State       uint64 `gorm:"column:state;type:bigint unsigned;index;index:miner_state;NOT NULL;"`
 
-	PayloadSize           uint64     `gorm:"column:payload_size;type:bigint;"`
+	PayloadSize           uint64     `gorm:"column:payload_size;type:bigint;NOT NULL;"`
 	PiecePath             string     `gorm:"column:piece_path;type:varchar(256);"`
 	MetadataPath          string     `gorm:"column:metadata_path;type:varchar(256);"`
-	SlashEpoch            int64      `gorm:"column:slash_epoch;type:bigint;"`
+	SlashEpoch            int64      `gorm:"column:slash_epoch;type:bigint;NOT NULL;"`
 	FastRetrieval         bool       `gorm:"column:fast_retrieval;"`
 	Message               string     `gorm:"column:message;type:varchar(512);"`
 	FundsReserved         mtypes.Int `gorm:"column:funds_reserved;type:varchar(256);default:0"`
 	Ref                   DataRef    `gorm:"embedded;embeddedPrefix:ref_"`
 	AvailableForRetrieval bool       `gorm:"column:available_for_retrieval;"`
 
-	DealID       uint64 `gorm:"column:deal_id;type:bigint unsigned;index"`
-	CreationTime int64  `gorm:"column:creation_time;type:bigint;"`
+	DealID       uint64 `gorm:"column:deal_id;type:bigint unsigned;index;NOT NULL;"`
+	CreationTime int64  `gorm:"column:creation_time;type:bigint;NOT NULL;"`
 
 	TransferChannelId ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
-	SectorNumber      uint64    `gorm:"column:sector_number;type:bigint unsigned;"`
+	SectorNumber      uint64    `gorm:"column:sector_number;type:bigint unsigned;NOT NULL;"`
 
 	InboundCAR string `gorm:"column:addr;type:varchar(256);"`
 
-	Offset      uint64 `gorm:"column:offset;type:bigint"`
-	Length      uint64 `gorm:"column:length;type:bigint"`
+	Offset      uint64 `gorm:"column:offset;type:bigint;NOT NULL;"`
+	Length      uint64 `gorm:"column:length;type:bigint;NOT NULL;"`
 	PieceStatus string `gorm:"column:piece_status;type:varchar(128);index"`
 
 	TimeStampOrm
@@ -64,7 +64,7 @@ type storageDeal struct {
 
 type ClientDealProposal struct {
 	PieceCID     DBCid     `gorm:"column:piece_cid;type:varchar(256);index"`
-	PieceSize    uint64    `gorm:"column:piece_size;type:bigint unsigned;"`
+	PieceSize    uint64    `gorm:"column:piece_size;type:bigint unsigned;NOT NULL;"`
 	VerifiedDeal bool      `gorm:"column:verified_deal;"`
 	Client       DBAddress `gorm:"column:client;type:varchar(256);"`
 	Provider     DBAddress `gorm:"column:provider;type:varchar(256);index"`
@@ -76,8 +76,8 @@ type ClientDealProposal struct {
 	// with total amount StoragePricePerEpoch * (EndEpoch - StartEpoch).
 	// Storage deal must appear in a sealed (proven) sector no later than StartEpoch,
 	// otherwise it is invalid.
-	StartEpoch           int64      `gorm:"column:start_epoch;type:bigint;"`
-	EndEpoch             int64      `gorm:"column:end_epoch;type:bigint;"`
+	StartEpoch           int64      `gorm:"column:start_epoch;type:bigint;NOT NULL;"`
+	EndEpoch             int64      `gorm:"column:end_epoch;type:bigint;NOT NULL;"`
 	StoragePricePerEpoch mtypes.Int `gorm:"column:storage_price_per_epoch;type:varchar(256);default:0"`
 
 	ProviderCollateral mtypes.Int `gorm:"column:provider_collateral;type:varchar(256);default:0"`
@@ -103,7 +103,7 @@ func (s Signature) Value() (driver.Value, error) {
 type ChannelID struct {
 	Initiator string `gorm:"column:initiator;type:varchar(256);"`
 	Responder string `gorm:"column:responder;type:varchar(256);"`
-	ID        uint64 `gorm:"column:channel_id;type:bigint unsigned;"`
+	ID        uint64 `gorm:"column:channel_id;type:bigint unsigned;NOT NULL;"`
 }
 
 type DataRef struct {
@@ -112,8 +112,8 @@ type DataRef struct {
 
 	// todo remove filed below
 	PieceCid     DBCid                 `gorm:"column:piece_cid;type:varchar(256);"`
-	PieceSize    abi.UnpaddedPieceSize `gorm:"column:piece_size;type:bigint unsigned;"`
-	RawBlockSize uint64                `gorm:"column:raw_block_size;type:bigint unsigned;"`
+	PieceSize    abi.UnpaddedPieceSize `gorm:"column:piece_size;type:bigint unsigned;NOT NULL;"`
+	RawBlockSize uint64                `gorm:"column:raw_block_size;type:bigint unsigned;NOT NULL;"`
 }
 
 func (m *storageDeal) TableName() string {
