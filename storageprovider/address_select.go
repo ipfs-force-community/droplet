@@ -14,6 +14,7 @@ import (
 )
 
 type addrSelectAPI interface {
+	// search on the chain
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletHas(context.Context, address.Address) (bool, error)
 

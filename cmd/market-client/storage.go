@@ -32,7 +32,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
@@ -61,7 +60,7 @@ var storageCmd = &cli.Command{
 // nolint
 var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)
 
-const BlockDelaySecs = uint64(builtin7.EpochDurationSeconds)
+const BlockDelaySecs = uint64(builtin.EpochDurationSeconds)
 
 type QueriedAsk struct {
 	Ask  *storagemarket.StorageAsk
