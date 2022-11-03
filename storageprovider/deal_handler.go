@@ -29,14 +29,15 @@ import (
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 
-	minermgr2 "github.com/filecoin-project/venus-market/v2/minermgr"
+	"github.com/filecoin-project/venus-market/v2/minermgr"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	network2 "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
+
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
@@ -64,7 +65,7 @@ type StorageDealProcessImpl struct {
 	stores     *stores.ReadWriteBlockstores
 	dagStore   stores.DAGStoreWrapper // TODO:检查是否遗漏
 
-	minerMgr        minermgr2.IAddrMgr
+	minerMgr        minermgr.IMinerMgr
 	pieceStorageMgr *piecestorage.PieceStorageManager
 }
 
@@ -77,7 +78,7 @@ func NewStorageDealProcessImpl(
 	deals repo.StorageDealRepo,
 	ask IStorageAsk,
 	fs filestore.FileStore,
-	minerMgr minermgr2.IAddrMgr,
+	minerMgr minermgr.IMinerMgr,
 	repo repo.Repo,
 	pieceStorageMgr *piecestorage.PieceStorageManager,
 	dataTransfer network2.ProviderDataTransfer,
@@ -115,7 +116,6 @@ func NewStorageDealProcessImpl(
 // StorageDealUnknown->StorageDealValidating(ValidateDealProposal)->StorageDealAcceptWait(DecideOnProposal)->StorageDealWaitingForData
 func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
 	storageDealPorcess.peerTagger.TagPeer(minerDeal.Client, minerDeal.ProposalCid.String())
-
 	tok, curEpoch, err := storageDealPorcess.spn.GetChainHead(ctx)
 	if err != nil {
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("node error getting most recent state id: %w", err))
@@ -127,7 +127,6 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 
 	proposal := minerDeal.Proposal
 
-	// TODO: 判断 proposal.Provider 在本矿池中
 	if !storageDealPorcess.minerMgr.Has(ctx, proposal.Provider) {
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("incorrect provider for deal"))
 	}

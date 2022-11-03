@@ -3,7 +3,15 @@ package main
 import (
 	"fmt"
 
+	"github.com/gorilla/mux"
+	"github.com/urfave/cli/v2"
+	"go.uber.org/fx"
+
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
+
 	"github.com/filecoin-project/venus-auth/jwtclient"
+
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
@@ -21,19 +29,14 @@ import (
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus-market/v2/utils"
+
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
-	"github.com/gorilla/mux"
-	"github.com/ipfs-force-community/venus-common-utils/builder"
-	"github.com/ipfs-force-community/venus-common-utils/journal"
-	"github.com/urfave/cli/v2"
-	"go.uber.org/fx"
 )
 
 var poolRunCmd = &cli.Command{
-	Name:      "pool-run",
-	Usage:     "Run the market daemon in pool mode",
-	ArgsUsage: "[minerAddress]",
+	Name:  "pool-run",
+	Usage: "Run the market daemon in pool mode",
 	Flags: []cli.Flag{
 		NodeUrlFlag,
 		NodeTokenFlag,
@@ -41,12 +44,13 @@ var poolRunCmd = &cli.Command{
 		AuthTokeFlag,
 		MessagerUrlFlag,
 		MessagerTokenFlag,
-		HidenSignerTypeFlag,
 		GatewayUrlFlag,
 		GatewayTokenFlag,
+		SignerTypeFlag,
+		SignerUrlFlag,
+		SignerTokenFlag,
 		MysqlDsnFlag,
-		MinerListFlag,
-		PaymentAddressFlag,
+		RetrievalPaymentAddress,
 	},
 	Action: poolDaemon,
 }
@@ -58,9 +62,17 @@ func poolDaemon(cctx *cli.Context) error {
 		return fmt.Errorf("prepare pool run failed:%w", err)
 	}
 
-	// venus-auth is must in 'pool' mode
+	// Configuration sanity check
 	if len(cfg.AuthNode.Url) == 0 {
-		return fmt.Errorf("auth-url is required in 'pool' mode")
+		return fmt.Errorf("pool mode have to configure auth node")
+	}
+
+	if len(cfg.StorageMiners) > 0 {
+		return fmt.Errorf("pool mode does not need to configure StorageMiners")
+	}
+
+	if len(cfg.Signer.Url) == 0 {
+		return fmt.Errorf("the signer node must be configured")
 	}
 
 	ctx := cctx.Context
@@ -82,11 +94,12 @@ func poolDaemon(cctx *cli.Context) error {
 		// override marketconfig
 		builder.Override(new(config.MarketConfig), cfg),
 		builder.Override(new(types2.ShutdownChan), shutdownChan),
-		// config
+
+		//config
 		config.ConfigServerOpts(cfg),
 
-		// miner manager
-		minermgr.MinerMgrOpts(cfg),
+		// user manager
+		minermgr.MinerMgrOpts(),
 
 		// clients
 		clients.ClientsOpts(true, "pool", &cfg.Messager, &cfg.Signer),
@@ -114,13 +127,13 @@ func poolDaemon(cctx *cli.Context) error {
 	defer closeFunc(ctx) //nolint
 	finishCh := utils.MonitorShutdown(shutdownChan)
 
-	mux := mux.NewRouter()
-	if err = mux.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorageMgr)).GetError(); err != nil {
+	router := mux.NewRouter()
+	if err = router.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorageMgr)).GetError(); err != nil {
 		return fmt.Errorf("handle 'resource' failed: %w", err)
 	}
 
 	var fullAPI marketapi.IMarketStruct
 	permission.PermissionProxy(marketapi.IMarket(resAPI), &fullAPI)
 
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux, 1000, cli2.API_NAMESPACE_VENUS_MARKET, authClient, &fullAPI, finishCh)
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, router, 1000, cli2.API_NAMESPACE_VENUS_MARKET, authClient, &fullAPI, finishCh)
 }

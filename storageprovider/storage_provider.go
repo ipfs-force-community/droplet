@@ -9,7 +9,6 @@ import (
 
 	"github.com/ipfs-force-community/metrics"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -28,8 +27,11 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerutils"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
+
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/config"
@@ -38,8 +40,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"github.com/filecoin-project/venus-market/v2/utils"
-
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -91,7 +91,7 @@ type StorageProviderImpl struct {
 	dealProcess     StorageDealHandler
 	transferProcess IDatatransferHandler
 	storageReceiver smnet.StorageReceiver
-	minerMgr        minermgr.IAddrMgr
+	minerMgr        minermgr.IMinerMgr
 }
 
 type internalProviderEvent struct {
@@ -124,7 +124,7 @@ func NewStorageProvider(
 	spn StorageProviderNode,
 	dagStore stores.DAGStoreWrapper,
 	repo repo.Repo,
-	minerMgr minermgr.IAddrMgr,
+	minerMgr minermgr.IMinerMgr,
 	mixMsgClient clients.IMixMessage,
 ) (StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
