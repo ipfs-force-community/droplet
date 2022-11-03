@@ -7,16 +7,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-
-	"github.com/ipfs/go-cid"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	init7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/init"
+	init_ "github.com/filecoin-project/go-state-types/builtin/v9/init"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/sync/errgroup"
 )
 
 // paychFundsRes is the response to a create channel or add funds request
@@ -439,7 +437,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID str
 	// TODO: ActorUpgrade abstract over this.
 	// This "works" because it hasn't changed from v0 to v2, but we still
 	// need an abstraction here.
-	var decodedReturn init7.ExecReturn
+	var decodedReturn init_.ExecReturn
 	err = decodedReturn.UnmarshalCBOR(bytes.NewReader(mwait.Receipt.Return))
 	if err != nil {
 		log.Error(err)
