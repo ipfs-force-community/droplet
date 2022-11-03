@@ -12,37 +12,36 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/venus-auth/log"
+	"go.uber.org/fx"
+
+	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	files "github.com/ipfs/go-ipfs-files"
 	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-merkledag"
+	unixfile "github.com/ipfs/go-unixfs/file"
+
+	"github.com/ipld/go-car"
 	"github.com/ipld/go-car/util"
+	carv2 "github.com/ipld/go-car/v2"
+	"github.com/ipld/go-car/v2/blockstore"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/datamodel"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
-	"github.com/ipld/go-ipld-prime/traversal"
-	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
-
-	bstore "github.com/ipfs/go-ipfs-blockstore"
-	unixfile "github.com/ipfs/go-unixfs/file"
-	"github.com/ipld/go-car"
-	carv2 "github.com/ipld/go-car/v2"
-	"github.com/ipld/go-car/v2/blockstore"
-
-	"github.com/filecoin-project/go-padreader"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	files "github.com/ipfs/go-ipfs-files"
-	"github.com/ipfs/go-merkledag"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
+
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+
 	"github.com/multiformats/go-multibase"
 	mh "github.com/multiformats/go-multihash"
-	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -54,21 +53,26 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
-	textselector "github.com/ipld/go-ipld-selector-text-lite"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/dline"
 
+	"github.com/filecoin-project/venus-market/v2/api/clients/signer"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/imports"
+	marketNetwork "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/retrievalprovider"
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
-	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
-
-	marketNetwork "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/utils"
+
+	"github.com/filecoin-project/venus-auth/log"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
 	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 )
 
@@ -94,6 +98,8 @@ type API struct {
 	DataTransfer marketNetwork.ClientDataTransfer
 	Host         host.Host
 	Cfg          *config.MarketClientConfig
+
+	Signer signer.ISigner
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -149,7 +155,7 @@ func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, is
 		return nil, fmt.Errorf("failed resolving params.Wallet addr (%s): %w", params.Wallet, err)
 	}
 
-	exist, err := a.Full.WalletHas(ctx, walletKey)
+	exist, err := a.Signer.WalletHas(ctx, walletKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting addr from signer (%s): %w", params.Wallet, err)
 	}
@@ -251,10 +257,11 @@ func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, is
 		return nil, fmt.Errorf("failed to serialize deal proposal: %w", err)
 	}
 
-	dealProposalSig, err := a.Full.WalletSign(ctx, walletKey, dealProposalSerialized, vTypes.MsgMeta{
-		Type:  vTypes.MTDealProposal,
-		Extra: dealProposalSerialized,
-	})
+	dealProposalSig, err := a.Signer.WalletSign(ctx, walletKey, dealProposalSerialized,
+		vTypes.MsgMeta{
+			Type:  vTypes.MTDealProposal,
+			Extra: dealProposalSerialized,
+		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign proposal : %w", err)
 	}

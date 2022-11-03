@@ -7,20 +7,23 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"go.uber.org/fx"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/config"
 	types2 "github.com/filecoin-project/venus-market/v2/types"
+
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	marketactor "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	marketTypes "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/ipfs/go-cid"
-	"go.uber.org/fx"
 )
 
 type dealPublisherAPI interface {
@@ -429,13 +432,16 @@ func (p *singleDealPublisher) publishDealProposals(deals []types.ClientDealPropo
 		return cid.Undef, fmt.Errorf("selecting address for publishing deals: %w", err)
 	}
 
-	msgId, err := p.api.PushMessage(p.ctx, &types.Message{
-		To:     marketactor.Address,
-		From:   addr,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsMarket.PublishStorageDeals,
-		Params: params,
-	}, p.publishSpec)
+	msgId, err := p.api.PushMessage(
+		p.ctx,
+		&types.Message{
+			To:     marketactor.Address,
+			From:   addr,
+			Value:  types.NewInt(0),
+			Method: builtin.MethodsMarket.PublishStorageDeals,
+			Params: params,
+		}, p.publishSpec)
+
 	if err != nil {
 		return cid.Undef, err
 	}
