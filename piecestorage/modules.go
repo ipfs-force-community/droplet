@@ -6,9 +6,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/config"
 )
 
-var (
-	SetupPieceStorageMetricsKey = builder.NextInvoke()
-)
+var SetupPieceStorageMetricsKey = builder.NextInvoke()
 
 var PieceStorageOpts = func(cfg *config.PieceStorage) builder.Option {
 	return builder.Options(

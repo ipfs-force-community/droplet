@@ -78,7 +78,6 @@ type s3PieceStorage struct {
 
 func NewS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
 	endpoint, region, err := parseS3Endpoint(s3Cfg.EndPoint, s3Cfg.Bucket)
-
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +86,7 @@ func NewS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
 		Endpoint:         aws.String(endpoint),
 		S3ForcePathStyle: aws.Bool(false),
 		Region:           aws.String(region),
-		//LogLevel:         aws.LogLevel(aws.LogDebug),
+		// LogLevel:         aws.LogLevel(aws.LogDebug),
 	}))
 	uploader := s3manager.NewUploader(sess, func(uploader *s3manager.Uploader) {
 		uploader.Concurrency = 8
@@ -159,7 +158,7 @@ func (s *s3PieceStorage) ListResourceIds(ctx context.Context) ([]string, error) 
 	}
 	var pieces []string
 	for _, obj := range result.Contents {
-		var name = *obj.Key
+		name := *obj.Key
 		if name[len(name)-1] != '/' && obj.Size != nil && *obj.Size != 0 {
 			pieces = append(pieces, strings.TrimPrefix(name, s.subdir))
 		}
@@ -207,7 +206,7 @@ func (s s3PieceStorage) GetRedirectUrl(ctx context.Context, resourceId string) (
 func (s *s3PieceStorage) GetStorageStatus() (market.StorageStatus, error) {
 	return market.StorageStatus{
 		Capacity:  0,
-		Available: math.MaxInt64, //The available space for the object storage type is treated as unlimited
+		Available: math.MaxInt64, // The available space for the object storage type is treated as unlimited
 	}, nil
 }
 

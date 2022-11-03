@@ -45,7 +45,7 @@ type StorageProviderEvt struct {
 }
 
 func NewLocalDiscovery(lc fx.Lifecycle, ds badger.ClientDealsDS) (*discoveryimpl.Local, error) {
-	local, err := discoveryimpl.NewLocal(ds) //todo need new discoveryimpl base on sql
+	local, err := discoveryimpl.NewLocal(ds) // todo need new discoveryimpl base on sql
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func RetrievalResolver(l *discoveryimpl.Local) discovery.PeerResolver {
 func NewClientImportMgr(ctx metrics.MetricsCtx, ns badger.ImportClientDS, r *config.HomeDir) (ClientImportMgr, error) {
 	// store the imports under the repo's `imports` subdirectory.
 	dir := filepath.Join(string(*r), "imports")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
@@ -128,14 +128,15 @@ func StorageBlockstoreAccessor(importmgr ClientImportMgr) storagemarket.Blocksto
 // using the subdirectory `retrievals`
 func RetrievalBlockstoreAccessor(r *config.HomeDir) (retrievalmarket.BlockstoreAccessor, error) {
 	dir := filepath.Join(string(*r), "retrievals")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 	return retrievalprovider.NewCARBlockstoreAccessor(dir), nil
 }
 
 func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientDataTransfer, discovery *discoveryimpl.Local,
-	deals badger.ClientDatastore, scn storagemarket.StorageClientNode, accessor storagemarket.BlockstoreAccessor, j journal.Journal) (storagemarket.StorageClient, error) {
+	deals badger.ClientDatastore, scn storagemarket.StorageClientNode, accessor storagemarket.BlockstoreAccessor, j journal.Journal,
+) (storagemarket.StorageClient, error) {
 	// go-fil-markets protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
 	marketsRetryParams := smnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
@@ -164,8 +165,8 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientData
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
 func RetrievalClient(lc fx.Lifecycle, h host.Host, dt network.ClientDataTransfer, payAPI *paychmgr.PaychAPI, resolver discovery.PeerResolver,
-	ds badger.RetrievalClientDS, fullApi v1api.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
-
+	ds badger.RetrievalClientDS, fullApi v1api.FullNode, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal,
+) (retrievalmarket.RetrievalClient, error) {
 	adapter := retrievalprovider.NewRetrievalClientNode(payAPI, fullApi)
 	libP2pHost := rmnet.NewFromLibp2pHost(h)
 	client, err := retrievalimpl.NewClient(libP2pHost, dt, adapter, resolver, ds, accessor)

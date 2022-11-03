@@ -146,7 +146,6 @@ func (m *UserMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int
 	usersWithMiners, err := m.authClient.ListUsersWithMiners(&auth.ListUsersRequest{
 		Page: &core.Page{Skip: skip, Limit: limit},
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +190,7 @@ func (m *UserMgrImpl) addUser(ctx context.Context, usrs ...types.User) error {
 				return err
 			}
 
-			//Notice `multisig` address is not sign-able. we should ignore the `owner`, if it is a `multisig`
+			// Notice `multisig` address is not sign-able. we should ignore the `owner`, if it is a `multisig`
 			if err = m.appendAddress(ctx, usr.Account, minerInfo.Owner); err != nil {
 				return err
 			}

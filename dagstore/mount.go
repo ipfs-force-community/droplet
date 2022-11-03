@@ -34,7 +34,7 @@ func mountTemplate(api MarketAPI, useTransient bool) *PieceMount {
 type PieceMount struct {
 	API          MarketAPI
 	PieceCid     cid.Cid
-	UseTransient bool //must use public, dagstore reflect field and set value from template
+	UseTransient bool // must use public, dagstore reflect field and set value from template
 }
 
 func NewPieceMount(pieceCid cid.Cid, useTransient bool, api MarketAPI) (*PieceMount, error) {
@@ -57,7 +57,7 @@ func (l *PieceMount) Deserialize(u *url.URL) error {
 		return fmt.Errorf("failed to parse PieceCid from host '%s': %w", u.Host, err)
 	}
 	l.PieceCid = pieceCid
-	//l.UseTransient = l.useTransient
+	// l.UseTransient = l.useTransient
 	return nil
 }
 

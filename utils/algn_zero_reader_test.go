@@ -75,7 +75,6 @@ func TestAlignZeroReader(t *testing.T) {
 		}
 		assert.Equal(t, tcase.expectOneNumber, countOne)
 	}
-
 }
 
 func TestReadALl(t *testing.T) {

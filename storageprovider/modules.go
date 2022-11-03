@@ -83,8 +83,8 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 		blocklistFunc config.StorageDealPieceCidBlocklistConfigFunc,
 		expectedSealTimeFunc config.GetExpectedSealDurationFunc,
 		startDelay config.GetMaxDealStartDelayFunc,
-		spn storagemarket.StorageProviderNode) config.StorageDealFilter {
-
+		spn storagemarket.StorageProviderNode,
+	) config.StorageDealFilter {
 		return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
 			b, err := onlineOk()
 			if err != nil {

@@ -110,7 +110,6 @@ var StatsPowerCmd = &cli.Command{
 			default:
 			}
 			err := func() error {
-
 				log.Println("Checking SP: ", maddr)
 
 				minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
@@ -198,8 +197,8 @@ var StatsDealskCmd = &cli.Command{
 			return err
 		}
 
-		var totalDealSize = big.Zero()
-		var count = 0
+		totalDealSize := big.Zero()
+		count := 0
 
 		for _, deal := range deals {
 			state := deal.State

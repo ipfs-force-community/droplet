@@ -140,7 +140,7 @@ func setup(t *testing.T) StorageProvider {
 	psManager.AddMemPieceStorage(piecestorage.NewMemPieceStore("", nil))
 	addrMgr := mockAddrMgr{}
 
-	//todo how to mock dagstore
+	// todo how to mock dagstore
 	provider, err := NewStorageProvider(ctx, ask, h, config.DefaultMarketConfig, &homeDir, psManager, dt, spn, nil, r, addrMgr, nil)
 	if err != nil {
 		t.Error(err)
@@ -148,30 +148,29 @@ func setup(t *testing.T) StorageProvider {
 	return provider
 }
 
-type mockAddrMgr struct {
-}
+type mockAddrMgr struct{}
 
 func (m mockAddrMgr) Has(ctx context.Context, addr address.Address) bool {
 	return addr.String() == "t01043" || addr.String() == "t010938"
 }
 
 func (m mockAddrMgr) ActorAddress(ctx context.Context) ([]address.Address, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m mockAddrMgr) ActorList(ctx context.Context) ([]marketypes.User, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m mockAddrMgr) GetMiners(ctx context.Context) ([]marketypes.User, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m mockAddrMgr) GetAccount(ctx context.Context, addr address.Address) (string, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -225,66 +224,66 @@ func (m *mockProviderNode) ChainHead(ctx context.Context) (*types.TipSet, error)
 }
 
 func (m *mockProviderNode) Sign(ctx context.Context, data interface{}) (*crypto.Signature, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) SignWithGivenMiner(mAddr address.Address) network.ResigningFunc {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) ReserveFunds(ctx context.Context, wallet, addr address.Address, amt abi.TokenAmount) (cid.Cid, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) ReleaseFunds(ctx context.Context, addr address.Address, amt abi.TokenAmount) error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) GetBalance(ctx context.Context, addr address.Address, tok shared.TipSetToken) (storagemarket.Balance, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, cid.Cid, error) error) error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) PublishDeals(ctx context.Context, deal marketypes.MinerDeal) (cid.Cid, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) WaitForPublishDeals(ctx context.Context, mcid cid.Cid, proposal market.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) GetMinerWorkerAddress(ctx context.Context, addr address.Address, tok shared.TipSetToken) (address.Address, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) GetDataCap(ctx context.Context, addr address.Address, tok shared.TipSetToken) (*abi.StoragePower, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (m *mockProviderNode) GetProofType(ctx context.Context, addr address.Address, tok shared.TipSetToken) (abi.RegisteredSealProof, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }

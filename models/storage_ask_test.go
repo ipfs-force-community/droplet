@@ -16,17 +16,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStorageAsk(t *testing.T) {
-	t.Run("mysql", func(t *testing.T) {
-		repo := MysqlDB(t)
-		askRepo := repo.StorageAskRepo()
-		defer func() { require.NoError(t, repo.Close()) }()
-		testStorageAsk(t, askRepo)
-	})
-	t.Run("badger", func(t *testing.T) {
-		db := BadgerDB(t)
-		testStorageAsk(t, badger.NewStorageAskRepo(db))
-	})
+func TestStorageAskMysql(t *testing.T) {
+	repo := MysqlDB(t)
+	askRepo := repo.StorageAskRepo()
+	defer func() { require.NoError(t, repo.Close()) }()
+	testStorageAsk(t, askRepo)
+}
+
+func TestStorageAskBadger(t *testing.T) {
+	db := BadgerDB(t)
+	testStorageAsk(t, badger.NewStorageAskRepo(db))
 }
 
 func testStorageAsk(t *testing.T, askRepo repo.IStorageAskRepo) {

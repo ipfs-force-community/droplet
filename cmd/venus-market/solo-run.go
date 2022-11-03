@@ -60,7 +60,7 @@ func soloDaemon(cctx *cli.Context) error {
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
 	closeFunc, err := builder.New(ctx,
-		//defaults
+		// defaults
 		// 'solo' mode doesn't needs a 'AuthClient' of venus-auth,
 		// provide a nil 'AuthClient', just for making 'NeAddrMgrImpl' happy
 		builder.Override(new(*jwtclient.AuthClient), func() *jwtclient.AuthClient { return nil }),
@@ -75,13 +75,13 @@ func soloDaemon(cctx *cli.Context) error {
 		// override marketconfig
 		builder.Override(new(config.MarketConfig), cfg),
 
-		//config
+		// config
 		config.ConfigServerOpts(cfg),
 
 		// miner manager
 		minermgr.MinerMgrOpts(cfg),
 
-		//clients
+		// clients
 		clients.ClientsOpts(true, "solo", &cfg.Messager, &cfg.Signer),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),

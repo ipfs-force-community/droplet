@@ -25,7 +25,7 @@ func SaveConfig(cfg IHome) error {
 	}
 
 	_ = os.MkdirAll(path.Dir(cfgPath), os.ModePerm)
-	return ioutil.WriteFile(cfgPath, buf.Bytes(), 0644)
+	return ioutil.WriteFile(cfgPath, buf.Bytes(), 0o644)
 }
 
 func LoadConfig(cfgPath string, cfg IHome) error {

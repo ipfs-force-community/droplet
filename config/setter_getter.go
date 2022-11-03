@@ -66,8 +66,10 @@ type ConsiderUnverifiedStorageDealsConfigFunc func() (bool, error)
 // disable or enable unverified piecestorage deal acceptance.
 type SetConsiderUnverifiedStorageDealsConfigFunc func(bool) error
 
-type SetMaxDealStartDelayFunc func(time.Duration) error
-type GetMaxDealStartDelayFunc func() (time.Duration, error)
+type (
+	SetMaxDealStartDelayFunc func(time.Duration) error
+	GetMaxDealStartDelayFunc func() (time.Duration, error)
+)
 
 // SetExpectedSealDurationFunc is a function which is used to set how long sealing is expected to take.
 // Deals that would need to start earlier than this duration will be rejected.
@@ -77,5 +79,7 @@ type SetExpectedSealDurationFunc func(time.Duration) error
 // too determine how long sealing is expected to take
 type GetExpectedSealDurationFunc func() (time.Duration, error)
 
-type StorageDealFilter func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error)
-type RetrievalDealFilter func(ctx context.Context, deal types.ProviderDealState) (bool, string, error)
+type (
+	StorageDealFilter   func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error)
+	RetrievalDealFilter func(ctx context.Context, deal types.ProviderDealState) (bool, string, error)
+)

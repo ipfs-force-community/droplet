@@ -17,14 +17,11 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var dbRetrievalDealCase *retrievalDeal
-var RetrievaldealStateCase *types.ProviderDealState
-
-func TestRetrievalDealRepo(t *testing.T) {
+func prepareRetrievalDealRepoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, *retrievalDeal, *types.ProviderDealState, func()) {
 	peerId, err := getTestPeerId()
 	assert.NoError(t, err)
 
-	dbRetrievalDealCase = &retrievalDeal{
+	dbRetrievalDealCase := &retrievalDeal{
 		DealProposal: DealProposal{
 			ID:           1,
 			PricePerByte: mtypes.NewInt(1),
@@ -42,24 +39,22 @@ func TestRetrievalDealRepo(t *testing.T) {
 		TimeStampOrm:    TimeStampOrm{CreatedAt: uint64(time.Now().Unix()), UpdatedAt: uint64(time.Now().Unix())},
 	}
 
-	RetrievaldealStateCase, err = toProviderDealState(dbRetrievalDealCase)
+	RetrievaldealStateCase, err := toProviderDealState(dbRetrievalDealCase)
 	assert.NoError(t, err)
 	RetrievaldealStateCase.ChannelID = &datatransfer.ChannelID{
 		ID: datatransfer.TransferID(dbRetrievalDealCase.ChannelID.ID),
 	}
 
 	r, mock, sqlDB := setup(t)
-	t.Run("mysql test SaveDeal", wrapper(testSaveRetrievalDeal, r, mock))
-	t.Run("mysql test GetDeal", wrapper(testRetrievalGetDeal, r, mock))
-	t.Run("mysql test GetDealByTransferId", wrapper(testGetRetrievalDealByTransferId, r, mock))
-	t.Run("mysql test HasDeal", wrapper(testHasRetrievalDeal, r, mock))
-	t.Run("mysql test ListDeals", wrapper(testListRetrievalDeals, r, mock))
-	t.Run("mysql test GroupRetrievalDealNumberByStatus", wrapper(testGroupRetrievalDealNumberByStatus, r, mock))
 
-	assert.NoError(t, closeDB(mock, sqlDB))
+	return r, mock, dbRetrievalDealCase, RetrievaldealStateCase, func() {
+		assert.NoError(t, closeDB(mock, sqlDB))
+	}
 }
 
-func testSaveRetrievalDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestSaveRetrievalDeal(t *testing.T) {
+	r, mock, _, RetrievaldealStateCase, close := prepareRetrievalDealRepoTest(t)
+	defer close()
 	ctx := context.Background()
 	dbDeal := fromProviderDealState(RetrievaldealStateCase)
 
@@ -78,7 +73,10 @@ func testSaveRetrievalDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Nil(t, err)
 }
 
-func testRetrievalGetDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestRetrievalGetDeal(t *testing.T) {
+	r, mock, dbRetrievalDealCase, _, close := prepareRetrievalDealRepoTest(t)
+	defer close()
+
 	ctx := context.Background()
 
 	peerid, err := peer.Decode(dbRetrievalDealCase.Receiver)
@@ -96,7 +94,10 @@ func testRetrievalGetDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, res, dealState)
 }
 
-func testGetRetrievalDealByTransferId(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestGetRetrievalDealByTransferId(t *testing.T) {
+	r, mock, dbRetrievalDealCase, _, close := prepareRetrievalDealRepoTest(t)
+	defer close()
+
 	ctx := context.Background()
 
 	rows, err := getFullRows(dbRetrievalDealCase)
@@ -113,8 +114,12 @@ func testGetRetrievalDealByTransferId(t *testing.T, r repo.Repo, mock sqlmock.Sq
 	assert.Equal(t, res, dealState)
 }
 
-func testHasRetrievalDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestHasRetrievalDeal(t *testing.T) {
+	r, mock, _, _, close := prepareRetrievalDealRepoTest(t)
+	defer close()
+
 	ctx := context.Background()
+
 	did := retrievalmarket.DealID(1)
 	peerId, err := getTestPeerId()
 	assert.Nil(t, err)
@@ -130,7 +135,10 @@ func testHasRetrievalDeal(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.True(t, has)
 }
 
-func testListRetrievalDeals(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestListRetrievalDeals(t *testing.T) {
+	r, mock, dbRetrievalDealCase, _, close := prepareRetrievalDealRepoTest(t)
+	defer close()
+
 	ctx := context.Background()
 
 	rows := mock.NewRows([]string{"cdp_proposal_id", "cdp_payload_cid", "cdp_selector", "cdp_piece_cid", "cdp_price_perbyte", "cdp_payment_interval", "cdp_payment_interval_increase", "cdp_unseal_price", "store_id", "ci_initiator", "ci_responder", "ci_channel_id", "sel_proposal_cid", "status", "receiver", "total_sent", "funds_received", "message", "current_interval", "legacy_protocol", "created_at", "updated_at"})
@@ -151,7 +159,10 @@ func testListRetrievalDeals(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
 	assert.Equal(t, res2[0], dealState)
 }
 
-func testGroupRetrievalDealNumberByStatus(t *testing.T, r repo.Repo, mock sqlmock.Sqlmock) {
+func TestGroupRetrievalDealNumberByStatus(t *testing.T) {
+	r, mock, _, _, close := prepareRetrievalDealRepoTest(t)
+	defer close()
+
 	ctx := context.Background()
 	expectResult := map[retrievalmarket.DealStatus]int64{
 		retrievalmarket.DealStatusAccepted:       1,

@@ -139,7 +139,6 @@ func (m *mergedFundsReq) sum() big.Int {
 	for _, r := range m.reqs {
 		if r.isActive() {
 			sum = big.Add(sum, r.amt)
-
 		}
 	}
 	return sum
@@ -539,7 +538,6 @@ func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string
 // Change the state of the channel in the store
 func (ca *channelAccessor) mutateChannelInfo(ctx context.Context, channelID string, mutate func(*types.ChannelInfo)) {
 	channelInfo, err := ca.channelInfoRepo.GetChannelByChannelID(ctx, channelID)
-
 	// If there's an error reading or writing to the store just log an error.
 	// For now we're assuming it's unlikely to happen in practice.
 	// Later we may want to implement a transactional approach, whereby

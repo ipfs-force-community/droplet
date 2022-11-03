@@ -3,10 +3,10 @@ package types
 import (
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus-messager/models/mtypes"
@@ -67,10 +67,10 @@ func (fd *ForceDeal) ToDeal() *Deal {
 			ClientCollateral:     convertBigInt(fd.ClientCollateral),
 			PieceSize:            uint64(pieceSize),
 
-			//没有值
-			//Label string `gorm:"column:label;type:varchar(256);"`
-			//ProviderCollateral mtypes.Int `gorm:"column:provider_collateral;type:varchar(256);"`
-			//ClientSignature Signature `gorm:"column:client_signature;type:blob;"`
+			// 没有值
+			// Label string `gorm:"column:label;type:varchar(256);"`
+			// ProviderCollateral mtypes.Int `gorm:"column:provider_collateral;type:varchar(256);"`
+			// ClientSignature Signature `gorm:"column:client_signature;type:blob;"`
 		},
 		ProposalCid: mysql.DBCid(proposalCid),
 		Miner:       DefaultPeerID, // todo 反序列化时需要能解析
@@ -93,15 +93,21 @@ func (fd *ForceDeal) ToDeal() *Deal {
 		FastRetrieval:         true,
 		AvailableForRetrieval: true,
 
-		//没有值
-		//AddFundsCid mysql.DBCid `gorm:"column:add_funds_cid;type:varchar(256);"`
-		//PublishCid  mysql.DBCid `gorm:"column:publish_cid;type:varchar(256);"`
-		//MetadataPath          string        `gorm:"column:metadata_path;type:varchar(256);"`
-		//SlashEpoch            int64         `gorm:"column:slash_epoch;type:bigint;"`
-		//Message               string        `gorm:"column:message;type:varchar(512);"`
-		//FundsReserved         mtypes.Int    `gorm:"column:funds_reserved;type:varchar(256);"`
-		//TransferChannelId mysql.ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
-		//InboundCAR string `gorm:"column:addr;type:varchar(256);"`
+		// 没有值
+		// AddFundsCid mysql.DBCid `gorm:"column:add_funds_cid;type:varchar(256);"`
+		// PublishCid  mysql.DBCid `gorm:"column:publish_cid;type:varchar(256);"`
+		// MetadataPath          string        `gorm:"column:metadata_path;type:varchar(256);"`
+		// SlashEpoch            int64         `gorm:"column:slash_epoch;type:bigint;"`
+		// Message               string        `gorm:"column:message;type:varchar(512);"`
+		// FundsReserved         mtypes.Int    `gorm:"column:funds_reserved;type:varchar(256);"`
+		// TransferChannelId mysql.ChannelID `gorm:"embedded;embeddedPrefix:tci_"`
+		// InboundCAR string `gorm:"column:addr;type:varchar(256);"`
+	}
+
+	// 未分配的扇区处理, 让其可以被分配封装
+	if fd.Sectorid == 0 && !fd.Fetch {
+		md.PieceStatus = "Undefine"
+		md.State = storagemarket.StorageDealAwaitingPreCommit
 	}
 
 	return md

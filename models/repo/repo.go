@@ -33,11 +33,11 @@ type StorageDealRepo interface {
 	GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error)
 	GetDealByDealID(ctx context.Context, mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error)
 
-	//todo rename Getxxx to Listxxx if return deals list
+	// todo rename Getxxx to Listxxx if return deals list
 	GetDeals(ctx context.Context, mAddr address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error)
-	//GetDealsByPieceStatusAndDealStatus list deals by providor, piece status and deal status, but if addr is Undef, only filter by piece status
+	// GetDealsByPieceStatusAndDealStatus list deals by providor, piece status and deal status, but if addr is Undef, only filter by piece status
 	GetDealsByPieceStatusAndDealStatus(ctx context.Context, mAddr address.Address, pieceStatus types.PieceStatus, dealStatus ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
-	//GetDealsByDataCidAndDealStatus query deals from address data cid and deal status, if mAddr equal undef wont filter by address
+	// GetDealsByDataCidAndDealStatus query deals from address data cid and deal status, if mAddr equal undef wont filter by address
 	GetDealsByDataCidAndDealStatus(ctx context.Context, mAddr address.Address, dataCid cid.Cid, pieceStatuss []types.PieceStatus) ([]*types.MinerDeal, error)
 	GetDealsByPieceCidAndStatus(ctx context.Context, piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
 	GetDealByAddrAndStatus(ctx context.Context, addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
@@ -55,7 +55,7 @@ type IRetrievalDealRepo interface {
 	GetDeal(context.Context, peer.ID, retrievalmarket.DealID) (*types.ProviderDealState, error)
 	GetDealByTransferId(context.Context, datatransfer.ChannelID) (*types.ProviderDealState, error)
 	HasDeal(context.Context, peer.ID, retrievalmarket.DealID) (bool, error)
-	//ListDeals pageIndex index from 1
+	// ListDeals pageIndex index from 1
 	ListDeals(ctx context.Context, pageIndex int, pageSize int) ([]*types.ProviderDealState, error)
 	GroupRetrievalDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[retrievalmarket.DealStatus]int64, error)
 }

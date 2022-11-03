@@ -46,8 +46,10 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
-var _ marketapi.IMarket = (*MarketNodeImpl)(nil)
-var log = logging.Logger("market_api")
+var (
+	_   marketapi.IMarket = (*MarketNodeImpl)(nil)
+	log                   = logging.Logger("market_api")
+)
 
 type MarketNodeImpl struct {
 	FundAPI
@@ -389,7 +391,7 @@ func (m *MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, dura
 }
 
 func (m *MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error) {
-	//WaitMsg method has been replace in messager mode
+	// WaitMsg method has been replace in messager mode
 	return m.Messager.WaitMsg(ctx, mid, constants.MessageConfidence, constants.LookbackNoLimit, false)
 }
 
@@ -476,7 +478,7 @@ func (m *MarketNodeImpl) DagstoreListShards(ctx context.Context) ([]types.Dagsto
 }
 
 func (m *MarketNodeImpl) DagstoreInitializeShard(ctx context.Context, key string) error {
-	//check whether key valid
+	// check whether key valid
 	cidKey, err := cid.Decode(key)
 	if err != nil {
 		return err
@@ -486,7 +488,7 @@ func (m *MarketNodeImpl) DagstoreInitializeShard(ctx context.Context, key string
 		return err
 	}
 
-	//check whether shard info exit
+	// check whether shard info exit
 	k := shard.KeyFromString(key)
 	info, err := m.DAGStore.GetShardInfo(k)
 	if err != nil && err != dagstore.ErrShardUnknown {
@@ -529,12 +531,12 @@ func (m *MarketNodeImpl) DagstoreInitializeAll(ctx context.Context, params types
 		if onlyUnsealed {
 			_, err = m.PieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 			if err != nil {
-				//todo unseal
+				// todo unseal
 				log.Warnw("DagstoreInitializeAll: failed to get unsealed status; skipping deal", "piece cid", pieceCid, "error", err)
 				continue
 			}
 		}
-		//todo trigger unseal
+		// todo trigger unseal
 		// yes, we're initializing this shard.
 		toInitialize = append(toInitialize, pieceCid.String())
 	}
@@ -661,6 +663,7 @@ func (m *MarketNodeImpl) dagstoreLoadShards(ctx context.Context, toInitialize []
 
 	return res, nil
 }
+
 func (m *MarketNodeImpl) DagstoreRecoverShard(ctx context.Context, key string) error {
 	k := shard.KeyFromString(key)
 
@@ -836,7 +839,7 @@ func (m *MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
 		err = m.Repo.RetrievalDealRepo().SaveDeal(ctx, &types.ProviderDealState{
 			DealProposal: retrievalDeal.DealProposal,
 			StoreID:      retrievalDeal.StoreID,
-			//SelStorageProposalCid: retrievalDeal,
+			// SelStorageProposalCid: retrievalDeal,
 			ChannelID:       retrievalDeal.ChannelID,
 			Status:          retrievalDeal.Status,
 			Receiver:        retrievalDeal.Receiver,
@@ -879,7 +882,8 @@ func (m *MarketNodeImpl) AddS3PieceStorage(ctx context.Context, name, endpoit, b
 		SubDir:    subdir,
 		AccessKey: accessKeyID,
 		SecretKey: secretAccessKey,
-		Token:     token}
+		Token:     token,
+	}
 	s3ps, err := piecestorage.NewS3PieceStorage(ifs)
 	if err != nil {
 		return err

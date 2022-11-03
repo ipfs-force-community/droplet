@@ -30,7 +30,7 @@ func NewDataTransferProcess(
 }
 
 func (d *DataTransferHandler) HandleCompleteFor(ctx context.Context, proposalid cid.Cid) error {
-	//should never failed
+	// should never failed
 	deal, err := d.deals.GetDeal(ctx, proposalid)
 	if err != nil {
 		return fmt.Errorf("get deal while transfer completed %w", err)

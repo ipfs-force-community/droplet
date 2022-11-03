@@ -15,19 +15,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPaych(t *testing.T) {
-	t.Run("mysql", func(t *testing.T) {
-		testChannelInfo(t, MysqlDB(t).PaychChannelInfoRepo(), MysqlDB(t).PaychMsgInfoRepo())
-		testMsgInfo(t, MysqlDB(t).PaychMsgInfoRepo())
-	})
+func TestPaychMysql(t *testing.T) {
+	testChannelInfo(t, MysqlDB(t).PaychChannelInfoRepo(), MysqlDB(t).PaychMsgInfoRepo())
+	testMsgInfo(t, MysqlDB(t).PaychMsgInfoRepo())
+}
 
-	t.Run("badger", func(t *testing.T) {
-		db := BadgerDB(t)
-		msgPaych := badger.NewPayMsgRepo(badger.NewPayChanMsgDs(db))
-		ps := badger.NewPaychRepo(badger.NewPayChanInfoDs(db), msgPaych)
-		testChannelInfo(t, ps, msgPaych)
-		testMsgInfo(t, msgPaych)
-	})
+func TestPaychBadger(t *testing.T) {
+	db := BadgerDB(t)
+	msgPaych := badger.NewPayMsgRepo(badger.NewPayChanMsgDs(db))
+	ps := badger.NewPaychRepo(badger.NewPayChanInfoDs(db), msgPaych)
+	testChannelInfo(t, ps, msgPaych)
+	testMsgInfo(t, msgPaych)
 }
 
 func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRepo repo.PaychMsgInfoRepo) {
@@ -72,7 +70,7 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 		AvailableAmount:        big.NewInt(0),
 		PendingAvailableAmount: big.NewInt(0),
 		CreateMsg:              &msgCid,
-		//AddFundsMsg:   &msgCid,
+		// AddFundsMsg:   &msgCid,
 		Settling: false,
 	}
 
@@ -145,7 +143,7 @@ func testChannelInfo(t *testing.T, channelRepo repo.PaychChannelInfoRepo, msgRep
 	res5, err := channelRepo.WithPendingAddFunds(ctx)
 	assert.Nil(t, err)
 	assert.GreaterOrEqual(t, len(res5), 1)
-	//assert.Equal(t, res5[0].ChannelID, ci.ChannelID)
+	// assert.Equal(t, res5[0].ChannelID, ci.ChannelID)
 
 	res6, err := channelRepo.OutboundActiveByFromTo(ctx, ci.Control, ci.Target)
 	assert.Nil(t, err)

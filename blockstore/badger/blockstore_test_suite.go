@@ -293,7 +293,6 @@ func (s *Suite) TestDelete(t *testing.T) {
 	has, err := bs.Has(ctx, blks[1].Cid())
 	require.NoError(t, err)
 	require.False(t, has)
-
 }
 
 func insertBlocks(t *testing.T, bs blockstore.BasicBlockstore, count int) []cid.Cid {

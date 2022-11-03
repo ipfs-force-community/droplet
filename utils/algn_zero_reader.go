@@ -28,7 +28,7 @@ func NewAlgnZeroMountReader(r reader, payload, size int) *AlgnZeroMountReader {
 	}
 }
 
-//todo change better arglerithms
+// todo change better arglerithms
 func (i *AlgnZeroMountReader) ReadAt(p []byte, offset int64) (n int, err error) {
 	wLen := 0
 	if offset < int64(i.l) {

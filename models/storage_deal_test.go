@@ -24,22 +24,22 @@ import (
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
-func TestStorageDeal(t *testing.T) {
-	t.Run("MinerDealMarshal", testCborMarshal)
+func TestStorageDealMinerDealMarshal(t *testing.T) {
+	testCborMarshal(t)
+}
 
-	t.Run("mysql", func(t *testing.T) {
-		repo := MysqlDB(t)
-		dealRepo := repo.StorageDealRepo()
-		defer func() {
-			_ = repo.Close()
-		}()
-		testStorageDeal(t, dealRepo)
-	})
+func TestStorageMysql(t *testing.T) {
+	repo := MysqlDB(t)
+	dealRepo := repo.StorageDealRepo()
+	defer func() {
+		_ = repo.Close()
+	}()
+	testStorageDeal(t, dealRepo)
+}
 
-	t.Run("badger", func(t *testing.T) {
-		db := BadgerDB(t)
-		testStorageDeal(t, badger.NewStorageDealRepo(db))
-	})
+func TestStorageDealBadger(t *testing.T) {
+	db := BadgerDB(t)
+	testStorageDeal(t, badger.NewStorageDealRepo(db))
 }
 
 func getTestMinerDeal(t *testing.T) *types.MinerDeal {
@@ -199,7 +199,6 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	assert.Nil(t, err)
 	assert.Len(t, deals, 1)
 	compareDeal(t, deals[0], deal)
-
 }
 
 func compareDeal(t *testing.T, actual, excepted *types.MinerDeal) {

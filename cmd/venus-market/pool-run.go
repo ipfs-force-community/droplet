@@ -71,7 +71,7 @@ func poolDaemon(cctx *cli.Context) error {
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
 	closeFunc, err := builder.New(ctx,
-		//defaults
+		// defaults
 		builder.Override(new(*jwtclient.AuthClient), authClient),
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
@@ -82,13 +82,13 @@ func poolDaemon(cctx *cli.Context) error {
 		// override marketconfig
 		builder.Override(new(config.MarketConfig), cfg),
 		builder.Override(new(types2.ShutdownChan), shutdownChan),
-		//config
+		// config
 		config.ConfigServerOpts(cfg),
 
 		// miner manager
 		minermgr.MinerMgrOpts(cfg),
 
-		//clients
+		// clients
 		clients.ClientsOpts(true, "pool", &cfg.Messager, &cfg.Signer),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),

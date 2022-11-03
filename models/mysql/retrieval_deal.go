@@ -23,7 +23,7 @@ type retrievalDeal struct {
 	DealProposal          `gorm:"embedded;embeddedPrefix:cdp_"`
 	StoreID               uint64     `gorm:"column:store_id;type:bigint unsigned;"`
 	ChannelID             ChannelID  `gorm:"embedded;embeddedPrefix:ci_"`
-	SelStorageProposalCid DBCid      `gorm:"column:sel_proposal_cid;type:varchar(256);"` //piece info
+	SelStorageProposalCid DBCid      `gorm:"column:sel_proposal_cid;type:varchar(256);"` // piece info
 	Status                uint64     `gorm:"column:status;type:bigint unsigned;"`
 	Receiver              string     `gorm:"column:receiver;type:varchar(256);primary_key"`
 	TotalSent             uint64     `gorm:"column:total_sent;type:bigint unsigned;"`

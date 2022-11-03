@@ -68,7 +68,7 @@ func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
 	for _, addr := range addrs {
 		dealTracker.checkSlash(ctx, addr, head.Key())
 		dealTracker.checkPreCommitAndCommit(ctx, addr, head.Key())
-		//todo check expire
+		// todo check expire
 	}
 }
 
@@ -79,14 +79,14 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 	}
 
 	for _, deal := range deals {
-		//not check market piece status , maybe skip Packing and update to proving status directly
+		// not check market piece status , maybe skip Packing and update to proving status directly
 		dealProposal, err := dealTracker.fullNode.StateMarketStorageDeal(ctx, deal.DealID, tsk)
 		if err != nil {
-			//todo if deal not found maybe need to market storage deal as error
+			// todo if deal not found maybe need to market storage deal as error
 			log.Errorf("get market deal for sector %d of miner %s %s", deal.SectorNumber, addr, err.Error())
 			continue
 		}
-		if dealProposal.State.SectorStartEpoch > -1 { //include in sector
+		if dealProposal.State.SectorStartEpoch > -1 { // include in sector
 			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealActive, market.Proving)
 			if err != nil {
 				log.Errorf("update deal status to active for sector %d of miner %s %w", deal.SectorNumber, addr, err)
@@ -97,14 +97,14 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 		if deal.State == storagemarket.StorageDealAwaitingPreCommit && deal.PieceStatus == market.Assigned {
 			preInfo, err := dealTracker.fullNode.StateSectorPreCommitInfo(ctx, addr, deal.SectorNumber, tsk)
 			if err != nil {
-				if strings.Contains(err.Error(), "not found") { //todo remove this check after nv17 update
+				if strings.Contains(err.Error(), "not found") { // todo remove this check after nv17 update
 					continue
 				}
 				log.Debugf("get precommit info for sector %d of miner %s: %s", deal.SectorNumber, addr, err)
 				continue
 			}
 
-			if preInfo == nil { //precommit maybe not submitted
+			if preInfo == nil { // precommit maybe not submitted
 				continue
 			}
 
@@ -126,7 +126,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 			}
 		}
 
-		//todo may skip storage dealsealing, and run into active
+		// todo may skip storage dealsealing, and run into active
 	}
 }
 
@@ -142,7 +142,7 @@ func (dealTracker *DealTracker) checkSlash(ctx metrics.MetricsCtx, addr address.
 			log.Errorf("get market deal info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			continue
 		}
-		if dealProposal.State.SlashEpoch > -1 { //include in sector
+		if dealProposal.State.SlashEpoch > -1 { // include in sector
 			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealSlashed, "")
 			if err != nil {
 				log.Errorf("update deal status to slash for sector %d of miner %s %w", deal.SectorNumber, addr, err)

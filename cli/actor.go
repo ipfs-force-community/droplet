@@ -154,7 +154,6 @@ var actorSetAddrsCmd = &cli.Command{
 
 		fmt.Printf("Requested multiaddrs change in message %s\n", mid)
 		return nil
-
 	},
 }
 
@@ -227,7 +226,6 @@ var actorSetPeeridCmd = &cli.Command{
 
 		fmt.Printf("Requested peerid change in message %s\n", mid)
 		return nil
-
 	},
 }
 

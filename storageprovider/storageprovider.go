@@ -48,7 +48,6 @@ import (
 // StorageProvider provides an interface to the storage market for a single
 // storage miner.
 type StorageProvider interface {
-
 	// Start initializes deal processing on a StorageProvider and restarts in progress deals.
 	// It also registers the provider with a StorageMarketNetwork so it can receive incoming
 	// messages on the storage market's libp2p protocols
@@ -66,10 +65,10 @@ type StorageProvider interface {
 	// ImportDataForDeal manually imports data for an offline storage deal
 	ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error
 
-	//ImportPublishedDeal manually import published deals to storage deals
+	// ImportPublishedDeal manually import published deals to storage deals
 	ImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error
 
-	//ImportOfflineDeal manually import offline deals to storage deals
+	// ImportOfflineDeal manually import offline deals to storage deals
 	ImportOfflineDeal(ctx context.Context, deal types.MinerDeal) error
 
 	// SubscribeToEvents listens for events that happen related to storage deals on a provider
@@ -350,7 +349,7 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 // ImportPublishedDeal manually import published deals for an storage deal
 // It will verify that the deal is actually online
 func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error {
-	//check if exit
+	// check if exit
 	if !p.minerMgr.Has(ctx, deal.Proposal.Provider) {
 		return fmt.Errorf("miner %s not support", deal.Proposal.Provider)
 	}
@@ -405,27 +404,27 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 		return fmt.Errorf("deal online proposal(%s) not match with proposal(%s)", pCid, dealPCid)
 	}
 
-	//check if local exit
+	// check if local exit
 	if _, err := p.dealStore.GetDeal(ctx, deal.ProposalCid); err == nil {
 		return fmt.Errorf("deal exist proposal cid %s id %d", deal.ProposalCid, deal.DealID)
 	}
 
 	improtDeal := &types.MinerDeal{
-		ClientDealProposal: deal.ClientDealProposal, //checked
-		ProposalCid:        deal.ProposalCid,        //checked
-		PublishCid:         deal.PublishCid,         //unable to check, msg maybe unable found
-		Client:             deal.Client,             //not necessary
-		PayloadSize:        deal.PayloadSize,        //unable to check
+		ClientDealProposal: deal.ClientDealProposal, // checked
+		ProposalCid:        deal.ProposalCid,        // checked
+		PublishCid:         deal.PublishCid,         // unable to check, msg maybe unable found
+		Client:             deal.Client,             // not necessary
+		PayloadSize:        deal.PayloadSize,        // unable to check
 		Ref: &storagemarket.DataRef{
 			TransferType: "import",
-			Root:         deal.Ref.Root, //unable to check
+			Root:         deal.Ref.Root, // unable to check
 			PieceCid:     &deal.Proposal.PieceCID,
 			PieceSize:    deal.Proposal.PieceSize.Unpadded(),
 			RawBlockSize: deal.PayloadSize,
 		},
 		AvailableForRetrieval: deal.AvailableForRetrieval,
 		DealID:                deal.DealID,
-		//default
+		// default
 		AddFundsCid:       nil,
 		Miner:             p.net.ID(),
 		State:             storagemarket.StorageDealAwaitingPreCommit,
@@ -457,12 +456,12 @@ func (p *StorageProviderImpl) ImportOfflineDeal(ctx context.Context, deal types.
 		return fmt.Errorf("transfer type %s not match %s", deal.Ref.TransferType, storagemarket.TTManual)
 	}
 
-	//check if miner exit
+	// check if miner exit
 	if !p.minerMgr.Has(ctx, deal.Proposal.Provider) {
 		return fmt.Errorf("miner %s not support", deal.Proposal.Provider)
 	}
 
-	//check if local exit the deal
+	// check if local exit the deal
 	if _, err := p.dealStore.GetDeal(ctx, deal.ProposalCid); err == nil {
 		return fmt.Errorf("deal exist proposal cid %s id %d", deal.ProposalCid, deal.DealID)
 	} else if !errors.Is(err, repo.ErrNotFound) {
