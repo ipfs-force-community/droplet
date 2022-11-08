@@ -5,11 +5,11 @@ import (
 	"errors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/v2/blockstore"
 	"github.com/filecoin-project/venus/pkg/state"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/blockstore"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
