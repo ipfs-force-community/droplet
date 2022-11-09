@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -710,7 +709,7 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	addr address.Address,
 	amt abi.TokenAmount,
 ) (cid.Cid, error) {
-	params, err := actors.SerializeParams(&market.WithdrawBalanceParams{
+	params, err := actors.SerializeParams(&types2.MarketWithdrawBalanceParams{
 		ProviderOrClientAddress: addr,
 		Amount:                  amt,
 	})

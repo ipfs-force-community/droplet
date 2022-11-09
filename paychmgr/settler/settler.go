@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/paychmgr"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -62,7 +61,7 @@ func (pcs *paymentChannelSettler) messageHandler(msg *types.Message, rec *types.
 		if err != nil {
 			return true, err
 		}
-		go func(voucher *paych.SignedVoucher, submitMessageCID cid.Cid) {
+		go func(voucher *types.SignedVoucher, submitMessageCID cid.Cid) {
 			defer wg.Done()
 			msgLookup, err := pcs.api.WaitMsg(pcs.ctx, submitMessageCID, 1, constants.LookbackNoLimit, true)
 			if err != nil {

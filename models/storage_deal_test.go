@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +17,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus-market/v2/models/badger"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -47,12 +47,12 @@ func getTestMinerDeal(t *testing.T) *types.MinerDeal {
 	pid, err := peer.Decode("12D3KooWG8tR9PHjjXcMknbNPVWT75BuXXA2RaYx3fMwwg2oPZXd")
 	assert.Nil(t, err)
 
-	label, err := market.NewLabelFromString("label")
+	label, err := vTypes.NewLabelFromString("label")
 	assert.Nil(t, err)
 
 	return &types.MinerDeal{
-		ClientDealProposal: market.ClientDealProposal{
-			Proposal: market.DealProposal{
+		ClientDealProposal: vTypes.ClientDealProposal{
+			Proposal: vTypes.DealProposal{
 				PieceCID:             c,
 				PieceSize:            1024,
 				VerifiedDeal:         false,

@@ -14,10 +14,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	typegen "github.com/whyrusleeping/cbor-gen"
@@ -207,19 +207,19 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 }
 
 func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
-	var label market.DealLabel
+	var label vTypes.DealLabel
 	var err error
 	if utf8.ValidString(src.Label) {
-		label, err = market.NewLabelFromString(src.Label)
+		label, err = vTypes.NewLabelFromString(src.Label)
 	} else {
-		label, err = market.NewLabelFromBytes([]byte(src.Label))
+		label, err = vTypes.NewLabelFromBytes([]byte(src.Label))
 	}
 	if err != nil {
 		return nil, err
 	}
 	md := &types.MinerDeal{
-		ClientDealProposal: market.ClientDealProposal{
-			Proposal: market.DealProposal{
+		ClientDealProposal: vTypes.ClientDealProposal{
+			Proposal: vTypes.DealProposal{
 				PieceCID:             src.PieceCID.cid(),
 				PieceSize:            abi.PaddedPieceSize(src.PieceSize),
 				VerifiedDeal:         src.VerifiedDeal,

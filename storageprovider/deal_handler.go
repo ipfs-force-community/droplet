@@ -157,7 +157,7 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 
 	// Check that the delta between the start and end epochs (the deal
 	// duration) is within acceptable bounds
-	minDuration, maxDuration := market.DealDurationBounds(proposal.PieceSize)
+	minDuration, maxDuration := vTypes.DealDurationBounds(proposal.PieceSize)
 	if proposal.Duration() < minDuration || proposal.Duration() > maxDuration {
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("deal duration out of bounds (min, max, provided): %d, %d, %d", minDuration, maxDuration, proposal.Duration()))
 	}

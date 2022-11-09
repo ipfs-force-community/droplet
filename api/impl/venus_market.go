@@ -38,7 +38,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	"github.com/filecoin-project/venus-market/v2/version"
 
-	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
@@ -749,7 +748,7 @@ func (m *MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pa
 	return m.DealAssigner.GetDeals(ctx, miner, pageIndex, pageSize)
 }
 
-func (m *MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Address) ([]*paych.SignedVoucher, error) {
+func (m *MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Address) ([]*vTypes.SignedVoucher, error) {
 	return m.PaychAPI.PaychVoucherList(ctx, pch)
 }
 

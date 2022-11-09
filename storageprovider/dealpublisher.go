@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/config"
 	types2 "github.com/filecoin-project/venus-market/v2/types"
@@ -103,7 +102,7 @@ func (p *DealPublisher) ForcePublishPendingDeals() {
 	}
 }
 
-func (p *DealPublisher) Publish(ctx context.Context, deal market.ClientDealProposal) (cid.Cid, error) {
+func (p *DealPublisher) Publish(ctx context.Context, deal types.ClientDealProposal) (cid.Cid, error) {
 	pdeal := newPendingDeal(ctx, deal)
 
 	p.lk.Lock()
@@ -152,7 +151,7 @@ type singleDealPublisher struct {
 // A deal that is queued to be published
 type pendingDeal struct {
 	ctx    context.Context
-	deal   market.ClientDealProposal
+	deal   types.ClientDealProposal
 	Result chan publishResult
 }
 
@@ -162,7 +161,7 @@ type publishResult struct {
 	err    error
 }
 
-func newPendingDeal(ctx context.Context, deal market.ClientDealProposal) *pendingDeal {
+func newPendingDeal(ctx context.Context, deal types.ClientDealProposal) *pendingDeal {
 	return &pendingDeal{
 		ctx:    ctx,
 		deal:   deal,
@@ -210,7 +209,7 @@ func (p *singleDealPublisher) pendingDeals() marketTypes.PendingDealInfo {
 		}
 	}
 
-	pending := make([]market.ClientDealProposal, len(deals))
+	pending := make([]types.ClientDealProposal, len(deals))
 	for i, deal := range deals {
 		pending[i] = deal.deal
 	}
@@ -357,7 +356,7 @@ func (p *singleDealPublisher) publishReady(ready []*pendingDeal) {
 
 	// Validate each deal to make sure it can be published
 	validated := make([]*pendingDeal, 0, len(ready))
-	deals := make([]market.ClientDealProposal, 0, len(ready))
+	deals := make([]types.ClientDealProposal, 0, len(ready))
 	for _, pd := range ready {
 		// Validate the deal
 		if err := p.validateDeal(pd.deal); err != nil {
@@ -381,7 +380,7 @@ func (p *singleDealPublisher) publishReady(ready []*pendingDeal) {
 
 // validateDeal checks that the deal proposal start epoch hasn't already
 // elapsed
-func (p *singleDealPublisher) validateDeal(deal market.ClientDealProposal) error {
+func (p *singleDealPublisher) validateDeal(deal types.ClientDealProposal) error {
 	head, err := p.api.ChainHead(p.ctx)
 	if err != nil {
 		return err
@@ -395,7 +394,7 @@ func (p *singleDealPublisher) validateDeal(deal market.ClientDealProposal) error
 }
 
 // Sends the publish message
-func (p *singleDealPublisher) publishDealProposals(deals []market.ClientDealProposal) (cid.Cid, error) {
+func (p *singleDealPublisher) publishDealProposals(deals []types.ClientDealProposal) (cid.Cid, error) {
 	if len(deals) == 0 {
 		return cid.Undef, nil
 	}
@@ -418,7 +417,7 @@ func (p *singleDealPublisher) publishDealProposals(deals []market.ClientDealProp
 		return cid.Undef, err
 	}
 
-	params, err := actors.SerializeParams(&market.PublishStorageDealsParams{
+	params, err := actors.SerializeParams(&types.PublishStorageDealsParams{
 		Deals: deals,
 	})
 	if err != nil {
@@ -443,7 +442,7 @@ func (p *singleDealPublisher) publishDealProposals(deals []market.ClientDealProp
 	return msgId, nil
 }
 
-func pieceCids(deals []market.ClientDealProposal) string {
+func pieceCids(deals []types.ClientDealProposal) string {
 	cids := make([]string, 0, len(deals))
 	for _, dl := range deals {
 		cids = append(cids, dl.Proposal.PieceCID.String())

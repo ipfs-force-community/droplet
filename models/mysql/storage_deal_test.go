@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"gorm.io/gorm/clause"
@@ -430,8 +430,8 @@ func prepareStorageDealRepoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []*st
 			ProposalCid: cid1,
 			Miner:       peer1,
 			Client:      peer1,
-			ClientDealProposal: market.ClientDealProposal{
-				Proposal: market.DealProposal{
+			ClientDealProposal: vTypes.ClientDealProposal{
+				Proposal: vTypes.DealProposal{
 					Provider: getTestAddress(),
 					PieceCID: cid1,
 				},
@@ -449,8 +449,8 @@ func prepareStorageDealRepoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []*st
 			ProposalCid: cid2,
 			Miner:       peer2,
 			Client:      peer2,
-			ClientDealProposal: market.ClientDealProposal{
-				Proposal: market.DealProposal{
+			ClientDealProposal: vTypes.ClientDealProposal{
+				Proposal: vTypes.DealProposal{
 					Provider: getTestAddress(),
 					PieceCID: cid2,
 				},

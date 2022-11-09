@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/venus/pkg/constants"
 	marketactor "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
@@ -40,7 +39,7 @@ type CurrentDealInfoManager struct {
 // GetCurrentDealInfo gets the current deal state and deal ID.
 // Note that the deal ID is assigned when the deal is published, so it may
 // have changed if there was a reorg after the deal was published.
-func (mgr *CurrentDealInfoManager) GetCurrentDealInfo(ctx context.Context, tok types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (CurrentDealInfo, error) {
+func (mgr *CurrentDealInfoManager) GetCurrentDealInfo(ctx context.Context, tok types.TipSetKey, proposal *types.DealProposal, publishCid cid.Cid) (CurrentDealInfo, error) {
 	// Lookup the deal ID by comparing the deal proposal to the proposals in
 	// the publish deals message, and indexing into the message return value
 	dealID, pubMsgTok, err := mgr.dealIDFromPublishDealsMsg(ctx, tok, proposal, publishCid)
@@ -67,7 +66,7 @@ func (mgr *CurrentDealInfoManager) GetCurrentDealInfo(ctx context.Context, tok t
 
 // dealIDFromPublishDealsMsg looks up the publish deals message by cid, and finds the deal ID
 // by looking at the message return value
-func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context, tok types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (abi.DealID, types.TipSetKey, error) {
+func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context, tok types.TipSetKey, proposal *types.DealProposal, publishCid cid.Cid) (abi.DealID, types.TipSetKey, error) {
 	dealID := abi.DealID(0)
 
 	// Get the return value of the publish deals message
@@ -124,7 +123,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, types.TipSetKey{}, fmt.Errorf("getting publish deal message %s: %w", publishCid, err)
 	}
 
-	var pubDealsParams market.PublishStorageDealsParams
+	var pubDealsParams types.PublishStorageDealsParams
 	if err := pubDealsParams.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
 		return dealID, types.TipSetKey{}, fmt.Errorf("unmarshalling publish deal message params for message %s: %w", publishCid, err)
 	}
@@ -171,7 +170,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	return dealIDs[outIdx], types.TipSetKey{}, nil
 }
 
-func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok types.TipSetKey, p1, p2 market.DealProposal) (bool, error) {
+func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok types.TipSetKey, p1, p2 types.DealProposal) (bool, error) {
 	p1ClientID, err := mgr.CDAPI.StateLookupID(ctx, p1.Client, tok)
 	if err != nil {
 		return false, err

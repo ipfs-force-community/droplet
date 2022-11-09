@@ -14,7 +14,6 @@ import (
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	tutils2 "github.com/filecoin-project/specs-actors/v7/support/testing"
 
-	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych/mock"
 )
@@ -66,7 +65,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a voucher with a value equal to the channel balance
-	voucher := paych.SignedVoucher{Amount: createAmt, Lane: 1}
+	voucher := types.SignedVoucher{Amount: createAmt, Lane: 1}
 	res, err := mgr.CreateVoucher(ctx, ch, voucher)
 	require.NoError(t, err)
 	require.NotNil(t, res.Voucher)
@@ -74,7 +73,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	// Create a voucher in a different lane with an amount that exceeds the
 	// channel balance
 	excessAmt := big.NewInt(5)
-	voucher = paych.SignedVoucher{Amount: excessAmt, Lane: 2}
+	voucher = types.SignedVoucher{Amount: excessAmt, Lane: 2}
 	res, err = mgr.CreateVoucher(ctx, ch, voucher)
 	require.NoError(t, err)
 	require.Nil(t, res.Voucher)
