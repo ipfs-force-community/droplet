@@ -5,123 +5,179 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 )
 
 func NewConsiderOnlineStorageDealsConfigFunc(cfg *MarketConfig) (ConsiderOnlineStorageDealsConfigFunc, error) {
-	return func() (out bool, err error) {
-		return cfg.ConsiderOnlineStorageDeals, nil
+	return func(mAddr address.Address) (bool, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.ConsiderOnlineStorageDeals, nil
 	}, nil
 }
 
 func NewSetConsideringOnlineStorageDealsFunc(cfg *MarketConfig) (SetConsiderOnlineStorageDealsConfigFunc, error) {
-	return func(b bool) (err error) {
-		cfg.ConsiderOnlineStorageDeals = b
+	return func(mAddr address.Address, b bool) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.ConsiderOnlineStorageDeals = b
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
 		return SaveConfig(cfg)
 	}, nil
 }
 
 func NewConsiderOnlineRetrievalDealsConfigFunc(cfg *MarketConfig) (ConsiderOnlineRetrievalDealsConfigFunc, error) {
-	return func() (out bool, err error) {
-		return cfg.ConsiderOnlineRetrievalDeals, nil
+	return func(mAddr address.Address) (bool, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.ConsiderOnlineRetrievalDeals, nil
 	}, nil
 }
 
 func NewSetConsiderOnlineRetrievalDealsConfigFunc(cfg *MarketConfig) (SetConsiderOnlineRetrievalDealsConfigFunc, error) {
-	return func(b bool) (err error) {
-		cfg.ConsiderOnlineRetrievalDeals = b
+	return func(mAddr address.Address, b bool) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.ConsiderOnlineRetrievalDeals = b
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
 		return SaveConfig(cfg)
 	}, nil
 }
 
 func NewStorageDealPieceCidBlocklistConfigFunc(cfg *MarketConfig) (StorageDealPieceCidBlocklistConfigFunc, error) {
-	return func() (out []cid.Cid, err error) {
-		return cfg.PieceCidBlocklist, nil
+	return func(mAddr address.Address) ([]cid.Cid, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.PieceCidBlocklist, nil
 	}, nil
 }
 
 func NewSetStorageDealPieceCidBlocklistConfigFunc(cfg *MarketConfig) (SetStorageDealPieceCidBlocklistConfigFunc, error) {
-	return func(blocklist []cid.Cid) (err error) {
-		cfg.PieceCidBlocklist = blocklist
+	return func(mAddr address.Address, blocklist []cid.Cid) (err error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.PieceCidBlocklist = blocklist
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
 		return SaveConfig(cfg)
 	}, nil
 }
 
 func NewConsiderOfflineStorageDealsConfigFunc(cfg *MarketConfig) (ConsiderOfflineStorageDealsConfigFunc, error) {
-	return func() (out bool, err error) {
-		return cfg.ConsiderOfflineStorageDeals, nil
+	return func(mAddr address.Address) (bool, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.ConsiderOfflineStorageDeals, nil
 	}, nil
 }
 
 func NewSetConsideringOfflineStorageDealsFunc(cfg *MarketConfig) (SetConsiderOfflineStorageDealsConfigFunc, error) {
-	return func(b bool) (err error) {
-		cfg.ConsiderOfflineStorageDeals = b
+	return func(mAddr address.Address, b bool) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.ConsiderOfflineStorageDeals = b
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
 		return SaveConfig(cfg)
 	}, nil
 }
 
 func NewConsiderOfflineRetrievalDealsConfigFunc(cfg *MarketConfig) (ConsiderOfflineRetrievalDealsConfigFunc, error) {
-	return func() (out bool, err error) {
-		return cfg.ConsiderOfflineRetrievalDeals, nil
+	return func(mAddr address.Address) (bool, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.ConsiderOfflineRetrievalDeals, nil
 	}, nil
 }
 
 func NewSetConsiderOfflineRetrievalDealsConfigFunc(cfg *MarketConfig) (SetConsiderOfflineRetrievalDealsConfigFunc, error) {
-	return func(b bool) (err error) {
-		cfg.ConsiderOfflineRetrievalDeals = b
+	return func(mAddr address.Address, b bool) (err error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.ConsiderOfflineRetrievalDeals = b
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
 		return SaveConfig(cfg)
 	}, nil
 }
 
 func NewConsiderVerifiedStorageDealsConfigFunc(cfg *MarketConfig) (ConsiderVerifiedStorageDealsConfigFunc, error) {
-	return func() (out bool, err error) {
-		return cfg.ConsiderVerifiedStorageDeals, nil
+	return func(mAddr address.Address) (bool, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.ConsiderVerifiedStorageDeals, nil
 	}, nil
 }
 
 func NewSetConsideringVerifiedStorageDealsFunc(cfg *MarketConfig) (SetConsiderVerifiedStorageDealsConfigFunc, error) {
-	return func(b bool) (err error) {
-		cfg.ConsiderVerifiedStorageDeals = b
+	return func(mAddr address.Address, b bool) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.ConsiderVerifiedStorageDeals = b
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
 		return SaveConfig(cfg)
 	}, nil
 }
 
 func NewConsiderUnverifiedStorageDealsConfigFunc(cfg *MarketConfig) (ConsiderUnverifiedStorageDealsConfigFunc, error) {
-	return func() (out bool, err error) {
-		return cfg.ConsiderUnverifiedStorageDeals, nil
+	return func(mAddr address.Address) (bool, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.ConsiderUnverifiedStorageDeals, nil
 	}, nil
 }
 
 func NewSetConsideringUnverifiedStorageDealsFunc(cfg *MarketConfig) (SetConsiderUnverifiedStorageDealsConfigFunc, error) {
-	return func(b bool) (err error) {
-		cfg.ConsiderUnverifiedStorageDeals = b
-		return SaveConfig(cfg)
-	}, nil
-}
-
-func NewSetExpectedSealDurationFunc(cfg *MarketConfig) (SetExpectedSealDurationFunc, error) {
-	return func(delay time.Duration) (err error) {
-		cfg.ExpectedSealDuration = Duration(delay)
-		return SaveConfig(cfg)
-	}, nil
-}
-
-func NewGetExpectedSealDurationFunc(cfg *MarketConfig) (GetExpectedSealDurationFunc, error) {
-	return func() (out time.Duration, err error) {
-		return time.Duration(cfg.ExpectedSealDuration), nil
-	}, nil
-}
-
-func NewSetMaxDealStartDelayFunc(cfg *MarketConfig) (SetMaxDealStartDelayFunc, error) {
-	return func(delay time.Duration) (err error) {
-		cfg.MaxDealStartDelay = Duration(delay)
+	return func(mAddr address.Address, b bool) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.ConsiderUnverifiedStorageDeals = b
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
 		return SaveConfig(cfg)
 	}, nil
 }
 
 func NewGetMaxDealStartDelayFunc(cfg *MarketConfig) (GetMaxDealStartDelayFunc, error) {
-	return func() (out time.Duration, err error) {
-		return time.Duration(cfg.MaxDealStartDelay), nil
+	return func(mAddr address.Address) (time.Duration, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return time.Duration(pCfg.MaxDealStartDelay), nil
+	}, nil
+}
+
+func NewSetMaxDealStartDelayFunc(cfg *MarketConfig) (SetMaxDealStartDelayFunc, error) {
+	return func(mAddr address.Address, delay time.Duration) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.MaxDealStartDelay = Duration(delay)
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
+		return SaveConfig(cfg)
+	}, nil
+}
+
+func NewGetExpectedSealDurationFunc(cfg *MarketConfig) (GetExpectedSealDurationFunc, error) {
+	return func(mAddr address.Address) (time.Duration, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return time.Duration(pCfg.ExpectedSealDuration), nil
+	}, nil
+}
+
+func NewSetExpectedSealDurationFunc(cfg *MarketConfig) (SetExpectedSealDurationFunc, error) {
+	return func(mAddr address.Address, delay time.Duration) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.ExpectedSealDuration = Duration(delay)
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
+		return SaveConfig(cfg)
 	}, nil
 }
 

@@ -234,6 +234,8 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 		}
 	}
 
+	// todo 这里应该使用 StorageDealFilter ???
+
 	err = storageDealPorcess.SendSignedResponse(ctx, proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealWaitingForData,
 		Proposal: minerDeal.ProposalCid,
@@ -520,7 +522,6 @@ func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context
 		Signature: sig,
 	}
 
-	// TODO: review ???
 	err = s.WriteDealResponse(signedResponse, storageDealPorcess.spn.SignWithGivenMiner(mAddr))
 	if err != nil {
 		// Assume client disconnected

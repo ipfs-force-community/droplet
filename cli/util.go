@@ -3,12 +3,14 @@ package cli
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-address"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -329,4 +331,19 @@ func (a *AppFmt) GetScret(prompt string, isMasked bool) (string, error) {
 		return "", err
 	}
 	return string(pw), nil
+}
+
+func shouldAddress(s string, checkEmpty bool, allowActor bool) (address.Address, error) {
+	if checkEmpty && s == "" {
+		return address.Undef, fmt.Errorf("empty address string")
+	}
+
+	if allowActor {
+		id, err := strconv.ParseUint(s, 10, 64)
+		if err == nil {
+			return address.NewIDAddress(id)
+		}
+	}
+
+	return address.NewFromString(s)
 }

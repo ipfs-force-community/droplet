@@ -44,21 +44,21 @@ var (
 type ProviderNodeAdapter struct {
 	v1api.FullNode
 
+	cfg *config.MarketConfig
+
 	fundMgr   *fundmgr.FundManager
 	msgClient clients.IMixMessage
 
 	dealPublisher *DealPublisher
 
-	extendPieceMeta             DealAssiger
-	addBalanceSpec              *types.MessageSendSpec
-	maxDealCollateralMultiplier uint64
-	dsMatcher                   *dealStateMatcher
-	dealInfo                    *CurrentDealInfoManager
+	extendPieceMeta DealAssiger
+	dsMatcher       *dealStateMatcher
+	dealInfo        *CurrentDealInfoManager
 
 	signer signer.ISigner
 }
 
-func NewProviderNodeAdapter(fc *config.MarketConfig) func(
+func NewProviderNodeAdapter(cfg *config.MarketConfig) func(
 	dealPublisher *DealPublisher,
 	extendPieceMeta DealAssiger,
 	fundMgr *fundmgr.FundManager,
@@ -81,14 +81,9 @@ func NewProviderNodeAdapter(fc *config.MarketConfig) func(
 			dsMatcher:       newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(fullNode))),
 			extendPieceMeta: extendPieceMeta,
 			fundMgr:         fundMgr,
-
-			signer: signer,
+			cfg:             cfg,
+			signer:          signer,
 		}
-		if fc != nil {
-			na.addBalanceSpec = &types.MessageSendSpec{MaxFee: abi.TokenAmount(fc.MaxMarketBalanceAddFee)}
-			na.maxDealCollateralMultiplier = fc.MaxProviderCollateralMultiplier
-		}
-		na.maxDealCollateralMultiplier = defaultMaxProviderCollateralMultiplier
 		na.dealInfo = &CurrentDealInfoManager{
 			CDAPI: &CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: na},
 		}
@@ -219,12 +214,16 @@ func (pna *ProviderNodeAdapter) ReleaseFunds(ctx context.Context, addr address.A
 // Adds funds with the StorageMinerActor for a piecestorage participant.  Used by both providers and clients.
 func (pna *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
-	msgId, err := pna.msgClient.PushMessage(ctx, &types.Message{
-		To:     marketactor.Address,
-		From:   addr,
-		Value:  amount,
-		Method: builtin.MethodsMarket.AddBalance,
-	}, pna.addBalanceSpec)
+	pCfg := pna.cfg.MinerProviderConfig(addr, true)
+	msgId, err := pna.msgClient.PushMessage(ctx,
+		&types.Message{
+			To:     marketactor.Address,
+			From:   addr,
+			Value:  amount,
+			Method: builtin.MethodsMarket.AddBalance,
+		},
+		&types.MessageSendSpec{MaxFee: abi.TokenAmount(pCfg.MaxMarketBalanceAddFee)},
+	)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -246,7 +245,7 @@ func (pna *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Add
 	return utils.ToSharedBalance(bal), nil
 }
 
-func (pna *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
+func (pna *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, provider address.Address, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
 	bounds, err := pna.StateDealProviderCollateralBounds(ctx, size, isVerified, types.EmptyTSK)
 	if err != nil {
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
@@ -254,7 +253,8 @@ func (pna *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context
 
 	// The maximum amount of collateral that the provider will put into escrow
 	// for a deal is calculated as a multiple of the minimum bounded amount
-	max := types.BigMul(bounds.Min, types.NewInt(pna.maxDealCollateralMultiplier))
+	pCfg := pna.cfg.MinerProviderConfig(provider, true)
+	max := types.BigMul(bounds.Min, types.NewInt(pCfg.MaxProviderCollateralMultiplier))
 
 	return bounds.Min, max, nil
 }
@@ -351,7 +351,7 @@ type StorageProviderNode interface {
 	WaitForMessage(ctx context.Context, mcid cid.Cid, onCompletion func(exitcode.ExitCode, []byte, cid.Cid, error) error) error
 
 	// DealProviderCollateralBounds returns the min and max collateral a storage provider can issue.
-	DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error)
+	DealProviderCollateralBounds(ctx context.Context, provider address.Address, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error)
 
 	// PublishDeals publishes a deal on chain, returns the message cid, but does not wait for message to appear
 	PublishDeals(ctx context.Context, deal types2.MinerDeal) (cid.Cid, error)

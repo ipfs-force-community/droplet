@@ -126,9 +126,6 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 var retrievalDealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all active retrieval deals for this miner",
-	Flags: []cli.Flag{
-		minerFlag,
-	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
@@ -136,15 +133,7 @@ var retrievalDealsListCmd = &cli.Command{
 		}
 		defer closer()
 
-		var mAddr address.Address
-		if cctx.IsSet("miner") {
-			mAddr, err = address.NewFromString(cctx.String("miner"))
-			if err != nil {
-				return err
-			}
-		}
-
-		deals, err := api.MarketListRetrievalDeals(DaemonContext(cctx), mAddr)
+		deals, err := api.MarketListRetrievalDeals(DaemonContext(cctx))
 		if err != nil {
 			return err
 		}

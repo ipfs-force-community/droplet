@@ -186,6 +186,8 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 		return retrievalmarket.DealStatusRejected, err
 	}
 
+	// todo 要使用 `RetrievalDealFilter` ?
+
 	if deal.UnsealPrice.GreaterThan(big.Zero()) {
 		return retrievalmarket.DealStatusFundsNeededUnseal, nil
 	}

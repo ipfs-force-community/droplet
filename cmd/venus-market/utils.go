@@ -118,20 +118,13 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	}
 
 	if cctx.IsSet(RetrievalPaymentAddress.Name) {
-		addrStr := strings.Split(cctx.String(RetrievalPaymentAddress.Name), ":")
-		addr, err := address.NewFromString(addrStr[0])
+		addrStr := cctx.String(RetrievalPaymentAddress.Name)
+		addr, err := address.NewFromString(addrStr)
 		if err != nil {
 			return fmt.Errorf("flag provide a wrong address %s %w", addrStr, err)
 		}
 
-		account := ""
-		if len(addrStr) >= 2 {
-			account = addrStr[1]
-		}
-		cfg.RetrievalPaymentAddress = config.User{
-			Addr:    config.Address(addr),
-			Account: account,
-		}
+		cfg.RetrievalPaymentAddress = config.Address(addr)
 	}
 	return nil
 }
