@@ -40,10 +40,8 @@ type dealPublisherAPI interface {
 
 type DealPublisher struct {
 	api dealPublisherAPI
-	as  *AddressSelector
 
-	publishSpec   *types.MessageSendSpec
-	publishMsgCfg PublishMsgConfig
+	cfg *config.MarketConfig
 
 	lk         sync.Mutex
 	publishers map[address.Address]*singleDealPublisher
@@ -51,21 +49,17 @@ type DealPublisher struct {
 
 func NewDealPublisherWrapper(
 	cfg *config.MarketConfig,
-) func(lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage, as *AddressSelector) *DealPublisher {
-	return func(lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage, as *AddressSelector) *DealPublisher {
+) func(lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage) *DealPublisher {
+	return func(lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage) *DealPublisher {
 		dp := &DealPublisher{
 			api: struct {
 				v1api.FullNode
 				clients.IMixMessage
 			}{full, msgClient},
-			as:          as,
-			publishSpec: &types.MessageSendSpec{MaxFee: abi.TokenAmount(cfg.MaxPublishDealsFee)},
-			publishMsgCfg: PublishMsgConfig{
-				Period:         time.Duration(cfg.PublishMsgPeriod),
-				MaxDealsPerMsg: cfg.MaxDealsPerPublishMsg,
-			},
+			cfg:        cfg,
 			publishers: map[address.Address]*singleDealPublisher{},
 		}
+
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
 				dp.lk.Lock()
@@ -112,7 +106,13 @@ func (p *DealPublisher) Publish(ctx context.Context, deal types.ClientDealPropos
 	providerAddr := deal.Proposal.Provider
 	publisher, ok := p.publishers[providerAddr]
 	if !ok {
-		publisher = newDealPublisher(p.api, p.as, p.publishMsgCfg, p.publishSpec)
+		pCfg := p.cfg.MinerProviderConfig(providerAddr, true)
+		publisher = newDealPublisher(
+			p.api,
+			&AddressSelector{AddressConfig: pCfg.AddressConfig},
+			pCfg.MaxDealsPerPublishMsg,
+			time.Duration(pCfg.PublishMsgPeriod),
+			&types.MessageSendSpec{MaxFee: abi.TokenAmount(pCfg.MaxPublishDealsFee)})
 		p.publishers[providerAddr] = publisher
 	}
 	publisher.processNewDeal(pdeal)
@@ -172,19 +172,11 @@ func newPendingDeal(ctx context.Context, deal types.ClientDealProposal) *pending
 	}
 }
 
-type PublishMsgConfig struct {
-	// The amount of time to wait for more deals to arrive before
-	// publishing
-	Period time.Duration
-	// The maximum number of deals to include in a single PublishStorageDeals
-	// message
-	MaxDealsPerMsg uint64
-}
-
 func newDealPublisher(
 	dpapi dealPublisherAPI,
 	as *AddressSelector,
-	publishMsgCfg PublishMsgConfig,
+	maxDealsPerPublishMsg uint64,
+	publishPeriod time.Duration,
 	publishSpec *types.MessageSendSpec,
 ) *singleDealPublisher {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -193,8 +185,8 @@ func newDealPublisher(
 		as:                    as,
 		ctx:                   ctx,
 		Shutdown:              cancel,
-		maxDealsPerPublishMsg: publishMsgCfg.MaxDealsPerMsg,
-		publishPeriod:         publishMsgCfg.Period,
+		maxDealsPerPublishMsg: maxDealsPerPublishMsg,
+		publishPeriod:         publishPeriod,
 		publishSpec:           publishSpec,
 	}
 }
