@@ -6,13 +6,20 @@ import (
 	"encoding/json"
 	"os/exec"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/venus-market/v2/config"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
-func CliStorageDealFilter(cmd string) config.StorageDealFilter {
-	return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
+func CliStorageDealFilter(cfg *config.MarketConfig) config.StorageDealFilter {
+	return func(ctx context.Context, mAddr address.Address, deal storagemarket.MinerDeal) (bool, string, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		if pCfg == nil || len(pCfg.Filter) == 0 {
+			return true, "", nil
+		}
+
 		d := struct {
 			storagemarket.MinerDeal
 			DealType string
@@ -20,12 +27,17 @@ func CliStorageDealFilter(cmd string) config.StorageDealFilter {
 			MinerDeal: deal,
 			DealType:  "piecestorage",
 		}
-		return runDealFilter(ctx, cmd, d)
+		return runDealFilter(ctx, pCfg.Filter, d)
 	}
 }
 
-func CliRetrievalDealFilter(cmd string) config.RetrievalDealFilter {
-	return func(ctx context.Context, deal types.ProviderDealState) (bool, string, error) {
+func CliRetrievalDealFilter(cfg *config.MarketConfig) config.RetrievalDealFilter {
+	return func(ctx context.Context, mAddr address.Address, deal types.ProviderDealState) (bool, string, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		if pCfg == nil || len(pCfg.Filter) == 0 {
+			return true, "", nil
+		}
+
 		d := struct {
 			types.ProviderDealState
 			DealType string
@@ -33,7 +45,7 @@ func CliRetrievalDealFilter(cmd string) config.RetrievalDealFilter {
 			ProviderDealState: deal,
 			DealType:          "retrieval",
 		}
-		return runDealFilter(ctx, cmd, d)
+		return runDealFilter(ctx, pCfg.RetrievalFilter, d)
 	}
 }
 

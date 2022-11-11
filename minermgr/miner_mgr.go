@@ -46,7 +46,7 @@ func NewMinerMgrImpl(ctx metrics.MetricsCtx, authClient *jwtclient.AuthClient, c
 	}
 
 	// storage miner
-	for _, miner := range cfg.StorageMiners {
+	for _, miner := range cfg.Miners {
 		m.localMiners[address.Address(miner.Addr)] = &market.User{Addr: address.Address(miner.Addr), Account: miner.Account}
 	}
 
