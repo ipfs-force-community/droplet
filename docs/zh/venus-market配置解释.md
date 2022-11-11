@@ -21,7 +21,7 @@ SimultaneousTransfersForStoragePerClient = 20
 SimultaneousTransfersForRetrieval = 20
 Filter = ""
 RetrievalFilter = ""
-TransfePath = ""
+TransferPath = ""
 MaxPublishDealsFee = "0 FIL"
 MaxMarketBalanceAddFee = "0 FIL
 
@@ -214,7 +214,7 @@ RetrievalFilter = ""
 
 # 订单传输数据的存储位置
 # 字符串类型 可选 为空值时默认使用`MARKET_REPO`的路径
-TransfePath = ""
+TransferPath = ""
 
 # 发送订单消息的最大费用
 # FIL类型 默认为："0 FIL"

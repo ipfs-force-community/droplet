@@ -7,21 +7,20 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
-
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	peer "github.com/libp2p/go-libp2p/core/peer"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var allSelectorBytes []byte
@@ -185,6 +184,8 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 	if err != nil {
 		return retrievalmarket.DealStatusRejected, err
 	}
+
+	// todo need use`RetrievalDealFilter` ?
 
 	if deal.UnsealPrice.GreaterThan(big.Zero()) {
 		return retrievalmarket.DealStatusFundsNeededUnseal, nil

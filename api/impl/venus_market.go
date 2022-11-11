@@ -131,7 +131,8 @@ func (m *MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Ad
 	return m.listDeals(ctx, addrs)
 }
 
-func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]types.ProviderDealState, error) {
+// 检索订单没法按 `miner address` 过滤
+func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]types.ProviderDealState, error) {
 	var out []types.ProviderDealState
 	deals, err := m.RetrievalProvider.ListDeals(ctx)
 	if err != nil {
@@ -144,7 +145,6 @@ func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr add
 				deal.ChannelID = nil // don't try to push unparsable peer IDs over jsonrpc
 			}
 		}
-		// todo: 按miner过滤交易
 		out = append(out, *deal)
 	}
 	return out, nil
@@ -325,68 +325,68 @@ func (m *MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Ci
 	return &ci, nil
 }
 
-func (m *MarketNodeImpl) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderOnlineStorageDealsConfigFunc()
+func (m *MarketNodeImpl) DealsConsiderOnlineStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderOnlineStorageDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderOnlineStorageDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsSetConsiderOnlineStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	return m.SetConsiderOnlineStorageDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderOnlineRetrievalDealsConfigFunc()
+func (m *MarketNodeImpl) DealsConsiderOnlineRetrievalDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderOnlineRetrievalDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderOnlineRetrievalDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	return m.SetConsiderOnlineRetrievalDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
-	return m.StorageDealPieceCidBlocklistConfigFunc()
+func (m *MarketNodeImpl) DealsPieceCidBlocklist(ctx context.Context, mAddr address.Address) ([]cid.Cid, error) {
+	return m.StorageDealPieceCidBlocklistConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
-	return m.SetStorageDealPieceCidBlocklistConfigFunc(cids)
+func (m *MarketNodeImpl) DealsSetPieceCidBlocklist(ctx context.Context, mAddr address.Address, cids []cid.Cid) error {
+	return m.SetStorageDealPieceCidBlocklistConfigFunc(mAddr, cids)
 }
 
-func (m *MarketNodeImpl) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderOfflineStorageDealsConfigFunc()
+func (m *MarketNodeImpl) DealsConsiderOfflineStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderOfflineStorageDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderOfflineStorageDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsSetConsiderOfflineStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	return m.SetConsiderOfflineStorageDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderOfflineRetrievalDealsConfigFunc()
+func (m *MarketNodeImpl) DealsConsiderOfflineRetrievalDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderOfflineRetrievalDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderOfflineRetrievalDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	return m.SetConsiderOfflineRetrievalDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) DealsConsiderVerifiedStorageDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderVerifiedStorageDealsConfigFunc()
+func (m *MarketNodeImpl) DealsConsiderVerifiedStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderVerifiedStorageDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderVerifiedStorageDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	return m.SetConsiderVerifiedStorageDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) DealsConsiderUnverifiedStorageDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderUnverifiedStorageDealsConfigFunc()
+func (m *MarketNodeImpl) DealsConsiderUnverifiedStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderUnverifiedStorageDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderUnverifiedStorageDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	return m.SetConsiderUnverifiedStorageDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
-	return m.GetExpectedSealDurationFunc()
+func (m *MarketNodeImpl) SectorGetSealDelay(ctx context.Context, mAddr address.Address) (time.Duration, error) {
+	return m.GetExpectedSealDurationFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, duration time.Duration) error {
-	return m.SetExpectedSealDurationFunc(duration)
+func (m *MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, mAddr address.Address, duration time.Duration) error {
+	return m.SetExpectedSealDurationFunc(mAddr, duration)
 }
 
 func (m *MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error) {

@@ -3,14 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
-
-	"github.com/filecoin-project/venus-market/v2/cmd"
 
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 
+	"github.com/filecoin-project/venus-market/v2/cmd"
 	"github.com/filecoin-project/venus-market/v2/config"
 )
 
@@ -88,50 +86,14 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		cfg.Mysql.ConnectionString = cctx.String(MysqlDsnFlag.Name)
 	}
 
-	if cctx.IsSet(MinerListFlag.Name) {
-		storageMiners := make(map[config.Address]struct{}, 0)
-		for _, storageMiner := range cfg.StorageMiners {
-			if _, ok := storageMiners[storageMiner.Addr]; !ok {
-				storageMiners[storageMiner.Addr] = struct{}{}
-			}
-		}
-
-		addrStrs := cctx.StringSlice(MinerListFlag.Name)
-		for _, miners := range addrStrs {
-			addrStr := strings.Split(miners, ":")
-			addr, err := address.NewFromString(addrStr[0])
-			if err != nil {
-				return fmt.Errorf("flag provide a wrong address %s %w", addrStr, err)
-			}
-			account := ""
-			if len(addrStr) >= 2 {
-				account = addrStr[1]
-			}
-
-			if _, ok := storageMiners[config.Address(addr)]; !ok {
-				cfg.StorageMiners = append(cfg.StorageMiners, config.User{
-					Addr:    config.Address(addr),
-					Account: account,
-				})
-			}
-		}
-	}
-
 	if cctx.IsSet(RetrievalPaymentAddress.Name) {
-		addrStr := strings.Split(cctx.String(RetrievalPaymentAddress.Name), ":")
-		addr, err := address.NewFromString(addrStr[0])
+		addrStr := cctx.String(RetrievalPaymentAddress.Name)
+		addr, err := address.NewFromString(addrStr)
 		if err != nil {
 			return fmt.Errorf("flag provide a wrong address %s %w", addrStr, err)
 		}
 
-		account := ""
-		if len(addrStr) >= 2 {
-			account = addrStr[1]
-		}
-		cfg.RetrievalPaymentAddress = config.User{
-			Addr:    config.Address(addr),
-			Account: account,
-		}
+		cfg.RetrievalPaymentAddress = config.Address(addr)
 	}
 	return nil
 }

@@ -88,13 +88,9 @@ var (
 		Usage: "mysql connection string",
 	}
 
-	MinerListFlag = &cli.StringSliceFlag{
-		Name:  "miner",
-		Usage: "support miner(f01000:jimmy for signer-type: gateway, f01000 for signer-type: wallet/lotus node)",
-	}
 	RetrievalPaymentAddress = &cli.StringFlag{
 		Name:  "payment-addr",
-		Usage: "payment address for retrieval(f01000:jimmy for signer-type: gateway, f01000 for signer-type: wallet/lotus node)",
+		Usage: "payment address for retrieval, eg. f01000",
 	}
 )
 

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
@@ -138,14 +139,21 @@ func setup(t *testing.T) StorageProvider {
 		t.Error(err)
 	}
 
-	homeDir := config.HomeDir("")
 	psManager, err := piecestorage.NewPieceStorageManager(&config.PieceStorage{})
 	assert.Nil(t, err)
 	psManager.AddMemPieceStorage(piecestorage.NewMemPieceStore("", nil))
 	addrMgr := mockAddrMgr{}
 
 	// todo how to mock dagstore
-	provider, err := NewStorageProvider(ctx, ask, h, config.DefaultMarketConfig, &homeDir, psManager, dt, spn, nil, r, addrMgr, nil)
+	tf := func(address.Address) (filestore.FileStore, error) {
+		transferPath := config.DefaultMarketConfig.MustHomePath()
+		store, err := filestore.NewLocalFileStore(filestore.OsPath(transferPath))
+		if err != nil {
+			return nil, err
+		}
+		return store, nil
+	}
+	provider, err := NewStorageProvider(ctx, ask, h, tf, psManager, dt, spn, nil, r, addrMgr, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -181,6 +189,8 @@ type mockProviderNode struct {
 	data   map[abi.DealID]types.MarketDeal
 	head   *types.TipSet
 }
+
+var _ StorageProviderNode = (*mockProviderNode)(nil)
 
 func newMockProviderNode() *mockProviderNode {
 	return &mockProviderNode{
@@ -259,7 +269,7 @@ func (m *mockProviderNode) WaitForMessage(ctx context.Context, mcid cid.Cid, onC
 	panic("implement me")
 }
 
-func (m *mockProviderNode) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
+func (m *mockProviderNode) DealProviderCollateralBounds(ctx context.Context, provider address.Address, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
 	// TODO implement me
 	panic("implement me")
 }

@@ -475,8 +475,9 @@ github.com/filecoin-project/storetheindex v0.4.17 h1:w0dVc954TGPukoVbidlYvn9Xt+w
 github.com/filecoin-project/storetheindex v0.4.17/go.mod h1:y2dL8C5D3PXi183hdxgGtM8vVYOZ1lg515tpl/D3tN8=
 github.com/filecoin-project/test-vectors/schema v0.0.5/go.mod h1:iQ9QXLpYWL3m7warwvK1JC/pTri8mnfEmKygNDqqY6E=
 github.com/filecoin-project/venus v1.2.4/go.mod h1:hJULXHGAnWuq5S5KRtPkwbT8DqgM9II7NwyNU7t59D0=
-github.com/filecoin-project/venus v1.7.1-0.20221102021930-ac0f60ee4c31 h1:FWuhJfj8/Ym6v+MALq1gmqgkigizs5sJKMVz7YjX2hE=
 github.com/filecoin-project/venus v1.7.1-0.20221102021930-ac0f60ee4c31/go.mod h1:+QxMl7tEDvNLPt2ZnsGQOKWdmNoWF4ZxrHP+Z4phv/0=
+github.com/filecoin-project/venus v1.7.1-0.20221110085416-1bafd56d671a h1:ZS8qNrSLSX1JDgGRZ4YS/KOPNkW63u6plx3HF/TUci4=
+github.com/filecoin-project/venus v1.7.1-0.20221110085416-1bafd56d671a/go.mod h1:+QxMl7tEDvNLPt2ZnsGQOKWdmNoWF4ZxrHP+Z4phv/0=
 github.com/filecoin-project/venus-auth v1.3.2/go.mod h1:m5Jog2GYxztwP7w3m/iJdv/V1/bTcAVU9rm/CbhxRQU=
 github.com/filecoin-project/venus-auth v1.8.0-rc1/go.mod h1:DR/RdqOycbMyQ4/oKGYMGlh8qwpLw8A40eL1Qbj7KpQ=
 github.com/filecoin-project/venus-auth v1.8.0-rc1.0.20221101071442-c2ed29a74e9e h1:KsM5XFZrnoN4JmeRBMwSlpUuexJaNQuRJMjTbZzPcQc=

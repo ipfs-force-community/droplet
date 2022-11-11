@@ -12,7 +12,6 @@ import (
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/mitchellh/go-homedir"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-address"
@@ -78,8 +77,9 @@ type StorageProvider interface {
 type StorageProviderImpl struct {
 	net smnet.StorageMarketNetwork
 
+	tf config.TransferFileStoreConfigFunc
+
 	spn       StorageProviderNode
-	fs        filestore.FileStore
 	conns     *connmanager.ConnManager
 	storedAsk IStorageAsk
 
@@ -117,8 +117,7 @@ func NewStorageProvider(
 	mCtx metrics.MetricsCtx,
 	storedAsk IStorageAsk,
 	h host.Host,
-	cfg *config.MarketConfig,
-	homeDir *config.HomeDir,
+	tf config.TransferFileStoreConfigFunc,
 	pieceStorageMgr *piecestorage.PieceStorageManager,
 	dataTransfer network.ProviderDataTransfer,
 	spn StorageProviderNode,
@@ -129,25 +128,12 @@ func NewStorageProvider(
 ) (StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
-	var err error
-	transferPath := cfg.TransfePath
-	if len(transferPath) == 0 {
-		transferPath = string(*homeDir)
-	}
-	transferPath, err = homedir.Expand(transferPath)
-	if err != nil {
-		return nil, err
-	}
-	store, err := filestore.NewLocalFileStore(filestore.OsPath(transferPath))
-	if err != nil {
-		return nil, err
-	}
-
 	spV2 := &StorageProviderImpl{
 		net: net,
 
+		tf: tf,
+
 		spn:       spn,
-		fs:        store,
 		conns:     connmanager.NewConnManager(),
 		storedAsk: storedAsk,
 
@@ -158,7 +144,7 @@ func NewStorageProvider(
 		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(mCtx, spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, spV2.fs, minerMgr, repo, pieceStorageMgr, dataTransfer, dagStore)
+	dealProcess, err := NewStorageDealProcessImpl(mCtx, spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, tf, minerMgr, pieceStorageMgr, dataTransfer, dagStore)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +154,7 @@ func NewStorageProvider(
 	// register a data transfer event handler -- this will send events to the state machines based on DT events
 	spV2.unsubDataTransfer = dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(spV2.transferProcess)) // fsm.Group
 
-	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.dealStore, spV2.net, spV2.fs, dealProcess, mixMsgClient)
+	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.dealStore, spV2.net, tf, dealProcess, mixMsgClient)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +237,6 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 		return fmt.Errorf("failed getting deal %s: %w", propCid, err)
 	}
 
-	// TODO: Check the deal status
 	if isTerminateState(d) {
 		return fmt.Errorf("deal %s is terminate state", propCid)
 	}
@@ -260,7 +245,12 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 		return fmt.Errorf("deal %s does not support offline data", propCid)
 	}
 
-	tempfi, err := p.fs.CreateTemp()
+	fs, err := p.tf(d.Proposal.Provider)
+	if err != nil {
+		return fmt.Errorf("failed to create temp filestore for provider %s: %w", d.Proposal.Provider.String(), err)
+	}
+
+	tempfi, err := fs.CreateTemp()
 	if err != nil {
 		return fmt.Errorf("failed to create temp file for data import: %w", err)
 	}
@@ -271,7 +261,7 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 	}()
 	cleanup := func() {
 		_ = tempfi.Close()
-		_ = p.fs.Delete(tempfi.Path())
+		_ = fs.Delete(tempfi.Path())
 	}
 
 	log.Debugw("will copy imported file to local file", "propCid", propCid)
