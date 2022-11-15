@@ -1,33 +1,77 @@
 # venus market 的配置解释
 
-一份典型的venus market 的配置是这样的:
+一份典型的 `venus-market` 的配置是这样的:
 ```
 
-# ****** 基础参数配置 ********
-ConsiderOnlineStorageDeals = true
-ConsiderOfflineStorageDeals = true
-ConsiderOnlineRetrievalDeals = true
-ConsiderOfflineRetrievalDeals = true
-ConsiderVerifiedStorageDeals = true
-ConsiderUnverifiedStorageDeals = true
-PieceCidBlocklist = []
-ExpectedSealDuration = "24h0m0s"
-MaxDealStartDelay = "336h0m0s"
-PublishMsgPeriod = "1h0m0s"
-MaxDealsPerPublishMsg = 8
-MaxProviderCollateralMultiplier = 2
+# ****** 数据传输参数配置 ********
 SimultaneousTransfersForStorage = 20
 SimultaneousTransfersForStoragePerClient = 20
 SimultaneousTransfersForRetrieval = 20
-Filter = ""
-RetrievalFilter = ""
-TransferPath = ""
-MaxPublishDealsFee = "0 FIL"
-MaxMarketBalanceAddFee = "0 FIL
 
+
+# ****** 全局基础参数配置 ********
+[CommonProviderConfig]
+  ConsiderOnlineStorageDeals = true
+  ConsiderOfflineStorageDeals = true
+  ConsiderOnlineRetrievalDeals = true
+  ConsiderOfflineRetrievalDeals = true
+  ConsiderVerifiedStorageDeals = true
+  ConsiderUnverifiedStorageDeals = true
+  PieceCidBlocklist = []
+  ExpectedSealDuration = "24h0m0s"
+  MaxDealStartDelay = "336h0m0s"
+  PublishMsgPeriod = "1h0m0s"
+  MaxDealsPerPublishMsg = 8
+  MaxProviderCollateralMultiplier = 2
+  Filter = ""
+  RetrievalFilter = ""
+  TransferPath = ""
+  MaxPublishDealsFee = "0 FIL"
+  MaxMarketBalanceAddFee = "0 FIL"
+  [CommonProviderConfig.RetrievalPricing]
+    Strategy = "default"
+    [CommonProviderConfig.RetrievalPricing.Default]
+      VerifiedDealsFreeTransfer = true
+    [CommonProviderConfig.RetrievalPricing.External]
+      Path = ""
+  [CommonProviderConfig.AddressConfig]
+    DisableWorkerFallback = false
+    
+
+每个矿工可以有独立的基础参数，没有配置时使用全局配置，配置方式如下：
+
+# ****** miner基础参数配置 ********
+[[Miners]]
+  Addr = "f01000"
+  Account = "testuser01"
+  
+   ConsiderOnlineStorageDeals = true
+   ConsiderOfflineStorageDeals = true
+   ConsiderOnlineRetrievalDeals = true
+   ConsiderOfflineRetrievalDeals = true
+   ConsiderVerifiedStorageDeals = true
+   ConsiderUnverifiedStorageDeals = true
+   PieceCidBlocklist = []
+   ExpectedSealDuration = "24h0m0s"
+   MaxDealStartDelay = "336h0m0s"
+   PublishMsgPeriod = "1h0m0s"
+   MaxDealsPerPublishMsg = 8
+   MaxProviderCollateralMultiplier = 2
+   Filter = ""
+   RetrievalFilter = ""
+   TransferPath = ""
+   MaxPublishDealsFee = "0 FIL"
+   MaxMarketBalanceAddFee = "0 FIL"
+   [CommonProviderConfig.RetrievalPricing]
+     Strategy = "default"
+     [CommonProviderConfig.RetrievalPricing.Default]
+       VerifiedDealsFreeTransfer = true
+     [CommonProviderConfig.RetrievalPricing.External]
+       Path = ""
+   [CommonProviderConfig.AddressConfig]
+     DisableWorkerFallback = false
 
 # ****** venus market 网络配置  ********
-
 [API]
   ListenAddress = "/ip4/127.0.0.1/tcp/41235"
   RemoteListenAddress = ""
@@ -85,11 +129,6 @@ Path = "./.vscode/test"
 Path = "journal"
 
 
-# ******** 消息发送地址的配置 ********
-[AddressConfig]
-DisableWorkerFallback = false
-
-
 # ******** DAG存储设置 ********
 
 [DAGStore]
@@ -105,16 +144,7 @@ UseTransient = false
 
 # ******** 数据检索配置 ********
 
-[RetrievalPaymentAddress]
-Addr = ""
-Account = ""
-
-[RetrievalPricing]
-Strategy = "default"
-[RetrievalPricing.Default]
-VerifiedDealsFreeTransfer = true
-[RetrievalPricing.External]
-Path = ""
+RetrievalPaymentAddress = ""
 
 
 
@@ -138,6 +168,21 @@ Path = ""
 ```
 
 接下来，将这个配置分成基础参数，网络配置，Venus组件配置等多个部分进行讲解
+
+## 数据传输参数配置
+```
+# 存储订单的最大同时传输数目
+# 整数类型 默认为：20
+SimultaneousTransfersForStorage = 20
+
+# 针对每一个客户端的存储订单最大同时传输数目
+# 整数类型 默认为：20
+SimultaneousTransfersForStoragePerClient = 20
+
+# 获取数据最大同时传输数目
+# 整数类型 默认为：20
+SimultaneousTransfersForRetrieval = 20
+```
 
 ## 基础参数配置
 
@@ -194,18 +239,6 @@ MaxDealsPerPublishMsg = 8
 # 整数类型 默认为：2
 MaxProviderCollateralMultiplier = 2
 
-# 存储订单的最大同时传输数目
-# 整数类型 默认为：20
-SimultaneousTransfersForStorage = 20
-
-# 针对每一个客户端的存储订单最大同时传输数目
-# 整数类型 默认为：20
-SimultaneousTransfersForStoragePerClient = 20
-
-# 获取数据最大同时传输数目
-# 整数类型 默认为：20
-SimultaneousTransfersForRetrieval = 20
-
 # 保留字段
 Filter = ""
 
@@ -224,6 +257,43 @@ MaxPublishDealsFee = "0 FIL"
 # 发送增加抵押消息时花费的最大费用
 # FIL类型 默认为："0 FIL"
 MaxMarketBalanceAddFee = "0 FIL"
+
+# 保留字段，当前配置无效
+[RetrievalPricing]
+
+# 使用的策略类型
+# 字符串类型 可以选择"default"和"external"  默认为:"default"
+# 前者使用内置的默认策略，后者使用外部提供的脚本自定义的策略
+Strategy = "default"
+
+[RetrievalPricing.Default]
+
+# 对于经过认证的订单数据，是否定价为0
+# 布尔值 默认为 "true"
+# 只有Strategy = "default" 才会生效
+VerifiedDealsFreeTransfer = true
+
+[RetrievalPricing.External]
+# 定义外部策略的脚本的路径
+# 字符串类型 如果选择external策略时，必选
+Path = ""
+
+# 该设置为保留字段，当前无效
+[AddressConfig]
+
+# 是否降低使用woker地址发布消息的优先级，如果是，则只有在其他可选地址没有的情况下才会使用woker的地址发消息
+# 布尔值 默认为 false
+DisableWorkerFallback = false
+
+[[AddressConfig.DealPublishControl]]
+
+# 发布订单消息的地址
+# 字符串类型 必选
+Addr = ""
+
+# 持有相应地址的账户
+# 字符串类型 必选
+Account =""
 ```
 
 ## venus market 网络配置
@@ -347,7 +417,7 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 
 预置矿工信息
 ```
-[[StorageMiners]]
+[[Miners]]
 # 矿工的地址
 # 字符串类型 必选
 Addr =""
@@ -355,6 +425,8 @@ Addr =""
 # 账户名
 # 字符串类型 必选
 Account = ""
+
+# 基础参数，见上文
 ```
 
 
@@ -464,30 +536,6 @@ Token = ""
 Path = "journal"
 ```
 
-## 消息发送地址的配置
-
-该设置为保留字段，当前无效
-
-```
-[AddressConfig]
-
-# 是否降低使用woker地址发布消息的优先级，如果是，则只有在其他可选地址没有的情况下才会使用woker的地址发消息
-# 布尔值 默认为 false
-DisableWorkerFallback = false
-
-
-[[DealPublishControl]]
-
-# 发布订单消息的地址
-# 字符串类型 必选
-Addr = ""
-
-# 持有相应地址的账户
-# 字符串类型 必选
-Account =""
-
-```
-
 
 ## DAG存储设置
 
@@ -539,37 +587,8 @@ UseTransient = false
 ### [RetrievalPaymentAddress]
 获取订单扇区数据时，使用的收款地址
 ```
-[RetrievalPaymentAddress]
-Addr = ""
-Account = ""
-
+RetrievalPaymentAddress = ""
 ```
-
-### [RetrievalPricing]
-
-保留字段，当前配置无效
-
-``` 
-[RetrievalPricing]
-
-# 使用的策略类型
-# 字符串类型 可以选择"default"和"external"  默认为:"default"
-# 前者使用内置的默认策略，后者使用外部提供的脚本自定义的策略
-Strategy = "default"
-
-[RetrievalPricing.Default]
-
-# 对于经过认证的订单数据，是否定价为0
-# 布尔值 默认为 "true"
-# 只有Strategy = "default" 才会生效
-VerifiedDealsFreeTransfer = true
-
-[RetrievalPricing.External]
-# 定义外部策略的脚本的路径
-# 字符串类型 如果选择external策略时，必选
-Path = ""
-```
-
 
 ## Metric 配置
 
