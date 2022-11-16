@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
+	vsTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -92,3 +93,37 @@ type (
 
 // TransferFileStoreConfigFunc is a function which reads transfer-path from miner config creates FileStore object.
 type TransferFileStoreConfigFunc func(address.Address) (filestore.FileStore, error)
+
+// PublishMsgPeriodConfigFunc is a function which reads the publish message period from miner config.
+type PublishMsgPeriodConfigFunc func(address.Address) (time.Duration, error)
+
+// SetPublishMsgPeriodConfigFunc is a function which is used to set the publish message period for miner.
+type SetPublishMsgPeriodConfigFunc func(address.Address, time.Duration) error
+
+// MaxDealsPerPublishMsgFunc is a function which reads the maximum number of deals to include
+// in a single PublishStorageDeals message from miner config.
+type MaxDealsPerPublishMsgFunc func(address.Address) (uint64, error)
+
+// SetMaxDealsPerPublishMsgFunc is a function which is used to set the maximum number of deals
+// to include in a single PublishStorageDeals message for miner.
+type SetMaxDealsPerPublishMsgFunc func(address.Address, uint64) error
+
+// MaxProviderCollateralMultiplierFunc is a function which reads the maximum collateral that the provider
+// will put up against a deal from miner config.
+type MaxProviderCollateralMultiplierFunc func(address.Address) (uint64, error)
+
+// SetMaxProviderCollateralMultiplierFunc is a function which is used to set the maximum collateral
+// that the provider will put up against a deal for miner.
+type SetMaxProviderCollateralMultiplierFunc func(address.Address, uint64) error
+
+// TransferPathFunc is a function which reads the transfer-path from miner config.
+type TransferPathFunc func(address.Address) (string, error)
+
+// SetTransferPathFunc is a function which is used to set the transfer-path for miner.
+type SetTransferPathFunc func(address.Address, string) error
+
+type MaxPublishDealsFeeFunc func(address.Address) (vsTypes.FIL, error)
+type SetMaxPublishDealsFeeFunc func(address.Address, vsTypes.FIL) error
+
+type MaxMarketBalanceAddFeeFunc func(address.Address) (vsTypes.FIL, error)
+type SetMaxMarketBalanceAddFeeFunc func(address.Address, vsTypes.FIL) error
