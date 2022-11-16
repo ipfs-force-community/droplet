@@ -1,4 +1,12 @@
-# venus-market
+<h1 align="center">Venus Center Authorization</h1>
+
+<p align="center">
+ <a href="https://github.com/filecoin-project/venus-market/actions"><img src="https://github.com/filecoin-project/venus-market/actions/workflows/build_upload.yml/badge.svg"/></a>
+ <a href="https://codecov.io/gh/filecoin-project/venus-market"><img src="https://codecov.io/gh/filecoin-project/venus-market/branch/master/graph/badge.svg?token=J5QWYWkgHT"/></a>
+ <a href="https://goreportcard.com/report/github.com/filecoin-project/venus-market"><img src="https://goreportcard.com/badge/github.com/filecoin-project/venus-market"/></a>
+ <a href="https://github.com/filecoin-project/venus-market/tags"><img src="https://img.shields.io/github/v/tag/filecoin-project/venus-market"/></a>
+  <br>
+</p>
 
 Use [Venus Issues](https://github.com/filecoin-project/venus/issues) for reporting issues about this repository.
 
