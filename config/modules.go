@@ -10,6 +10,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/filestore"
 
 	"github.com/ipfs-force-community/venus-common-utils/builder"
+
+	vsTypes "github.com/filecoin-project/venus/venus-shared/types"
 )
 
 func NewConsiderOnlineStorageDealsConfigFunc(cfg *MarketConfig) (ConsiderOnlineStorageDealsConfigFunc, error) {
@@ -21,6 +23,7 @@ func NewConsiderOnlineStorageDealsConfigFunc(cfg *MarketConfig) (ConsiderOnlineS
 
 func NewSetConsideringOnlineStorageDealsFunc(cfg *MarketConfig) (SetConsiderOnlineStorageDealsConfigFunc, error) {
 	return func(mAddr address.Address, b bool) error {
+		// mAddr==Undef,update global; otherwise, if exist, update, else create with global
 		pCfg := cfg.MinerProviderConfig(mAddr, false)
 		if pCfg == nil {
 			pCfg = defaultProviderConfig()
@@ -183,6 +186,25 @@ func NewSetExpectedSealDurationFunc(cfg *MarketConfig) (SetExpectedSealDurationF
 	}, nil
 }
 
+func NewTransferPathFunc(cfg *MarketConfig) (TransferPathFunc, error) {
+	return func(mAddr address.Address) (string, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.TransferPath, nil
+	}, nil
+}
+
+func NewSetTransferPathFunc(cfg *MarketConfig) (SetTransferPathFunc, error) {
+	return func(mAddr address.Address, path string) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.TransferPath = path
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
+		return SaveConfig(cfg)
+	}, nil
+}
+
 func NewTransferFileStoreConfigFunc(cfg *MarketConfig) (TransferFileStoreConfigFunc, error) {
 	return func(mAddr address.Address) (store filestore.FileStore, err error) {
 		pCfg := cfg.MinerProviderConfig(mAddr, true)
@@ -201,6 +223,101 @@ func NewTransferFileStoreConfigFunc(cfg *MarketConfig) (TransferFileStoreConfigF
 			return nil, err
 		}
 		return store, nil
+	}, nil
+}
+
+func NewPublishMsgPeriodConfigFunc(cfg *MarketConfig) (PublishMsgPeriodConfigFunc, error) {
+	return func(mAddr address.Address) (time.Duration, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return time.Duration(pCfg.PublishMsgPeriod), nil
+	}, nil
+}
+
+func NewSetPublishMsgPeriodConfigFunc(cfg *MarketConfig) (SetPublishMsgPeriodConfigFunc, error) {
+	return func(mAddr address.Address, d time.Duration) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.PublishMsgPeriod = Duration(d)
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
+		return SaveConfig(cfg)
+	}, nil
+}
+
+func NewMaxDealsPerPublishMsgFunc(cfg *MarketConfig) (MaxDealsPerPublishMsgFunc, error) {
+	return func(mAddr address.Address) (uint64, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.MaxDealsPerPublishMsg, nil
+	}, nil
+}
+
+func NewSetMaxDealsPerPublishMsgFunc(cfg *MarketConfig) (SetMaxDealsPerPublishMsgFunc, error) {
+	return func(mAddr address.Address, nums uint64) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.MaxDealsPerPublishMsg = nums
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
+		return SaveConfig(cfg)
+	}, nil
+}
+
+func NewMaxProviderCollateralMultiplierFunc(cfg *MarketConfig) (MaxProviderCollateralMultiplierFunc, error) {
+	return func(mAddr address.Address) (uint64, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.MaxProviderCollateralMultiplier, nil
+	}, nil
+}
+
+func NewSetMaxProviderCollateralMultiplierFunc(cfg *MarketConfig) (SetMaxProviderCollateralMultiplierFunc, error) {
+	return func(mAddr address.Address, c uint64) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.MaxProviderCollateralMultiplier = c
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
+		return SaveConfig(cfg)
+	}, nil
+}
+
+func NewMaxPublishDealsFeeFunc(cfg *MarketConfig) (MaxPublishDealsFeeFunc, error) {
+	return func(mAddr address.Address) (vsTypes.FIL, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.MaxPublishDealsFee, nil
+	}, nil
+}
+
+func NewSetMaxPublishDealsFeeFunc(cfg *MarketConfig) (SetMaxPublishDealsFeeFunc, error) {
+	return func(mAddr address.Address, f vsTypes.FIL) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.MaxPublishDealsFee = f
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
+		return SaveConfig(cfg)
+	}, nil
+}
+
+func NewMaxMarketBalanceAddFeeFunc(cfg *MarketConfig) (MaxMarketBalanceAddFeeFunc, error) {
+	return func(mAddr address.Address) (vsTypes.FIL, error) {
+		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		return pCfg.MaxMarketBalanceAddFee, nil
+	}, nil
+}
+
+func NewSetMaxMarketBalanceAddFeeFunc(cfg *MarketConfig) (SetMaxMarketBalanceAddFeeFunc, error) {
+	return func(mAddr address.Address, f vsTypes.FIL) error {
+		pCfg := cfg.MinerProviderConfig(mAddr, false)
+		if pCfg == nil {
+			pCfg = defaultProviderConfig()
+		}
+		pCfg.MaxMarketBalanceAddFee = f
+		cfg.SetMinerProviderConfig(mAddr, pCfg)
+		return SaveConfig(cfg)
 	}, nil
 }
 
@@ -237,7 +354,21 @@ var ConfigServerOpts = func(cfg *MarketConfig) builder.Option {
 		builder.Override(new(SetMaxDealStartDelayFunc), NewSetMaxDealStartDelayFunc),
 		builder.Override(new(GetMaxDealStartDelayFunc), NewGetMaxDealStartDelayFunc),
 
+		builder.Override(new(TransferPathFunc), NewTransferPathFunc),
+		builder.Override(new(SetTransferPathFunc), NewSetTransferPathFunc),
 		builder.Override(new(TransferFileStoreConfigFunc), NewTransferFileStoreConfigFunc),
+
+		builder.Override(new(PublishMsgPeriodConfigFunc), NewPublishMsgPeriodConfigFunc),
+		builder.Override(new(SetPublishMsgPeriodConfigFunc), NewSetPublishMsgPeriodConfigFunc),
+		builder.Override(new(MaxDealsPerPublishMsgFunc), NewMaxDealsPerPublishMsgFunc),
+		builder.Override(new(SetMaxDealsPerPublishMsgFunc), NewSetMaxDealsPerPublishMsgFunc),
+		builder.Override(new(MaxProviderCollateralMultiplierFunc), NewMaxProviderCollateralMultiplierFunc),
+		builder.Override(new(SetMaxProviderCollateralMultiplierFunc), NewSetMaxProviderCollateralMultiplierFunc),
+
+		builder.Override(new(MaxPublishDealsFeeFunc), NewMaxPublishDealsFeeFunc),
+		builder.Override(new(SetMaxPublishDealsFeeFunc), NewSetMaxPublishDealsFeeFunc),
+		builder.Override(new(MaxMarketBalanceAddFeeFunc), NewMaxMarketBalanceAddFeeFunc),
+		builder.Override(new(SetMaxMarketBalanceAddFeeFunc), NewSetMaxMarketBalanceAddFeeFunc),
 	)
 }
 
