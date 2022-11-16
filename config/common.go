@@ -134,6 +134,11 @@ func defaultProviderConfig() *ProviderConfig {
 		MaxDealsPerPublishMsg:           8,
 		MaxProviderCollateralMultiplier: 2,
 
+		Filter:          "",
+		RetrievalFilter: "",
+
+		TransferPath: "",
+
 		RetrievalPricing: &RetrievalPricing{
 			Strategy: RetrievalPricingDefaultMode,
 			Default: &RetrievalPricingDefault{
