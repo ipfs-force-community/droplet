@@ -1,4 +1,4 @@
-<h1 align="center">Venus Center Authorization</h1>
+<h1 align="center">Venus Market</h1>
 
 <p align="center">
  <a href="https://github.com/filecoin-project/venus-market/actions"><img src="https://github.com/filecoin-project/venus-market/actions/workflows/build_upload.yml/badge.svg"/></a>
