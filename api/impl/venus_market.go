@@ -468,17 +468,6 @@ func (m *MarketNodeImpl) DealsSetMaxStartDelay(ctx context.Context, mAddr addres
 	return m.SetMaxDealStartDelayFunc(mAddr, duration)
 }
 
-func (m *MarketNodeImpl) MarketDataTransferPath(ctx context.Context, mAddr address.Address) (string, error) {
-	return m.TransferPathFunc(mAddr)
-}
-
-func (m *MarketNodeImpl) MarketDataSetTransferPath(ctx context.Context, mAddr address.Address, path string) error {
-	if err := m.permissionVerify(ctx, mAddr); err != nil {
-		return err
-	}
-	return m.SetTransferPathFunc(mAddr, path)
-}
-
 func (m *MarketNodeImpl) DealsPublishMsgPeriod(ctx context.Context, mAddr address.Address) (time.Duration, error) {
 	return m.PublishMsgPeriodConfigFunc(mAddr)
 }
@@ -488,6 +477,14 @@ func (m *MarketNodeImpl) DealsSetPublishMsgPeriod(ctx context.Context, mAddr add
 		return err
 	}
 	return m.SetPublishMsgPeriodConfigFunc(mAddr, duration)
+}
+
+func (m *MarketNodeImpl) MarketDataTransferPath(ctx context.Context, mAddr address.Address) (string, error) {
+	return m.TransferPathFunc(mAddr)
+}
+
+func (m *MarketNodeImpl) MarketDataSetTransferPath(ctx context.Context, mAddr address.Address, path string) error {
+	return m.SetTransferPathFunc(mAddr, path)
 }
 
 func (m *MarketNodeImpl) MarketMaxDealsPerPublishMsg(ctx context.Context, mAddr address.Address) (uint64, error) {
