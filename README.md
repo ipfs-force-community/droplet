@@ -14,7 +14,7 @@ venus-market will deliver a complete deal making experience as what lotus offers
 
 Use [Venus Issues](https://github.com/filecoin-project/venus/issues) for reporting issues about this repository.
 
-# # feature
+## feature
 1. market 2.0 mainly implements the aggregation of multiple storage miners. clients can issue orders or retrieve any providers registered to venus-market. 
 2. all metadata of provider server is stored in the mysql database that providing better data security.
 3. providers do not need to pay attention for the details of the deal,  only need to query the market regularly to see if you have any deal to seal. 
@@ -66,5 +66,3 @@ set retrieval ask
 ./market-client run --node-url <node url> --node-token <auth token>  --wallet-url <wallet url> --wallet-token  <wallet token> --addr <client default address>
 ```
 Note:**please use a seperate address, or maybe nonce confiction**
-
-## 
