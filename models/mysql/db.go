@@ -6,11 +6,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus-messager/models/mtypes"
 	"github.com/ipfs/go-cid"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -168,13 +166,6 @@ func (c DBCid) cidPtr() *cid.Cid {
 	}
 	cid := cid.Cid(c)
 	return &cid
-}
-
-func convertBigInt(v big.Int) mtypes.Int {
-	if v.Nil() {
-		return mtypes.NewInt(0)
-	}
-	return mtypes.NewFromGo(v.Int)
 }
 
 func decodePeerId(str string) (peer.ID, error) {

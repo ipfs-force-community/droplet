@@ -6,7 +6,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/filecoin-project/go-address"
-	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	"gorm.io/gorm"
@@ -28,10 +28,10 @@ func NewRetrievalAskRepo(db *gorm.DB) repo.IRetrievalAskRepo {
 type retrievalAsk struct {
 	ID                      uint       `gorm:"primary_key"`
 	Address                 DBAddress  `gorm:"column:address;uniqueIndex;type:varchar(256)"`
-	PricePerByte            mtypes.Int `gorm:"column:price_per_byte;type:varchar(256);"`
-	UnsealPrice             mtypes.Int `gorm:"column:unseal_price;type:varchar(256);"`
-	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;"`
-	PaymentIntervalIncrease uint64     `gorm:"column:payment_interval_increase;type:bigint unsigned;"`
+	PricePerByte            mtypes.Int `gorm:"column:price_per_byte;type:varchar(256);default:0"`
+	UnsealPrice             mtypes.Int `gorm:"column:unseal_price;type:varchar(256);default:0"`
+	PaymentInterval         uint64     `gorm:"column:payment_interval;type:bigint unsigned;NOT NULL;"`
+	PaymentIntervalIncrease uint64     `gorm:"column:payment_interval_increase;type:bigint unsigned;NOT NULL;"`
 	TimeStampOrm
 }
 
@@ -46,8 +46,8 @@ func (rar *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (
 	}
 	return &types.RetrievalAsk{
 		Miner:                   addr,
-		PricePerByte:            fbig.Int{Int: mAsk.PricePerByte.Int},
-		UnsealPrice:             fbig.Int{Int: mAsk.UnsealPrice.Int},
+		PricePerByte:            big.Int(mtypes.SafeFromGo(mAsk.PricePerByte.Int)),
+		UnsealPrice:             big.Int(mtypes.SafeFromGo(mAsk.UnsealPrice.Int)),
 		PaymentInterval:         mAsk.PaymentInterval,
 		PaymentIntervalIncrease: mAsk.PaymentIntervalIncrease,
 		TimeStamp:               mAsk.Timestamp(),
@@ -60,8 +60,8 @@ func (rar *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk
 		UpdateAll: true,
 	}).Create(&retrievalAsk{
 		Address:                 DBAddress(ask.Miner),
-		PricePerByte:            convertBigInt(ask.PricePerByte),
-		UnsealPrice:             convertBigInt(ask.UnsealPrice),
+		PricePerByte:            mtypes.SafeFromGo(ask.PricePerByte.Int),
+		UnsealPrice:             mtypes.SafeFromGo(ask.UnsealPrice.Int),
 		PaymentInterval:         ask.PaymentInterval,
 		PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
 		TimeStampOrm:            *(&TimeStampOrm{CreatedAt: ask.CreatedAt, UpdatedAt: ask.UpdatedAt}).Refresh(),
@@ -78,8 +78,8 @@ func (rar *retrievalAskRepo) ListAsk(ctx context.Context) ([]*types.RetrievalAsk
 	for index, ask := range dbAsks {
 		results[index] = &types.RetrievalAsk{
 			Miner:                   ask.Address.addr(),
-			PricePerByte:            fbig.Int{Int: ask.PricePerByte.Int},
-			UnsealPrice:             fbig.Int{Int: ask.UnsealPrice.Int},
+			PricePerByte:            big.Int(mtypes.SafeFromGo(ask.PricePerByte.Int)),
+			UnsealPrice:             big.Int(mtypes.SafeFromGo(ask.UnsealPrice.Int)),
 			PaymentInterval:         ask.PaymentInterval,
 			PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
 			TimeStamp:               ask.Timestamp(),
