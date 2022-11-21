@@ -8,20 +8,19 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/venus-market/v2/config"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 func CliStorageDealFilter(cfg *config.MarketConfig) config.StorageDealFilter {
-	return func(ctx context.Context, mAddr address.Address, deal storagemarket.MinerDeal) (bool, string, error) {
+	return func(ctx context.Context, mAddr address.Address, deal *types.MinerDeal) (bool, string, error) {
 		pCfg := cfg.MinerProviderConfig(mAddr, true)
 		if pCfg == nil || len(pCfg.Filter) == 0 {
 			return true, "", nil
 		}
 
 		d := struct {
-			storagemarket.MinerDeal
+			*types.MinerDeal
 			DealType string
 		}{
 			MinerDeal: deal,
