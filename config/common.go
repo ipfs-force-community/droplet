@@ -103,10 +103,10 @@ type ProviderConfig struct {
 
 	// A command used for fine-grained evaluation of piecestorage deals
 	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
-	Filter string // todo reserve
+	Filter string
 	// A command used for fine-grained evaluation of retrieval deals
 	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
-	RetrievalFilter string // todo reserve
+	RetrievalFilter string
 
 	TransferPath string
 
