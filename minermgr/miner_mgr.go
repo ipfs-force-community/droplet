@@ -103,6 +103,9 @@ func (m *MinerMgrImpl) Has(ctx context.Context, mAddr address.Address) bool {
 }
 
 func (m *MinerMgrImpl) getMinerFromVenusAuth(ctx context.Context, skip, limit int64) error {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
 	if m.authClient == nil {
 		return nil
 	}

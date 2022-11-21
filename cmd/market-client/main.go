@@ -78,7 +78,7 @@ var (
 
 	SignerTypeFlag = &cli.StringFlag{
 		Name:   "signer-type",
-		Usage:  "signer service type(lotusnode, wallet, gateway)",
+		Usage:  "signer service type(lotusnode, wallet)",
 		Value:  config.SignerTypeWallet,
 		Hidden: false,
 	}
