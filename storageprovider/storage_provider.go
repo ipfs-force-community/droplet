@@ -125,6 +125,7 @@ func NewStorageProvider(
 	repo repo.Repo,
 	minerMgr minermgr.IMinerMgr,
 	mixMsgClient clients.IMixMessage,
+	sdf config.StorageDealFilter,
 ) (StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -144,7 +145,7 @@ func NewStorageProvider(
 		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(mCtx, spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, tf, minerMgr, pieceStorageMgr, dataTransfer, dagStore)
+	dealProcess, err := NewStorageDealProcessImpl(mCtx, spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, tf, minerMgr, pieceStorageMgr, dataTransfer, dagStore, sdf)
 	if err != nil {
 		return nil, err
 	}

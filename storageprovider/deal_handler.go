@@ -68,6 +68,8 @@ type StorageDealProcessImpl struct {
 
 	minerMgr        minermgr.IMinerMgr
 	pieceStorageMgr *piecestorage.PieceStorageManager
+
+	sdf config.StorageDealFilter
 }
 
 // NewStorageDealProcessImpl returns a new deal process instance
@@ -83,6 +85,7 @@ func NewStorageDealProcessImpl(
 	pieceStorageMgr *piecestorage.PieceStorageManager,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
+	sdf config.StorageDealFilter,
 ) (StorageDealHandler, error) {
 	err := dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{deals}, nil))
 	if err != nil {
@@ -109,7 +112,16 @@ func NewStorageDealProcessImpl(
 
 		pieceStorageMgr: pieceStorageMgr,
 		dagStore:        dagStore,
+
+		sdf: sdf,
 	}, nil
+}
+
+func (storageDealPorcess *StorageDealProcessImpl) runDealDecisionLogic(ctx context.Context, minerDeal *types.MinerDeal) (bool, string, error) {
+	if storageDealPorcess.sdf == nil {
+		return true, "", nil
+	}
+	return storageDealPorcess.sdf(ctx, minerDeal.Proposal.Provider, minerDeal)
 }
 
 // StorageDealUnknown->StorageDealValidating(ValidateDealProposal)->StorageDealAcceptWait(DecideOnProposal)->StorageDealWaitingForData
@@ -233,7 +245,14 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 		}
 	}
 
-	// todo 这里应该使用 StorageDealFilter ???
+	accept, reason, err := storageDealPorcess.runDealDecisionLogic(ctx, minerDeal)
+	if err != nil {
+		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("custom deal decision logic failed: %w", err))
+	}
+
+	if !accept {
+		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf(reason))
+	}
 
 	err = storageDealPorcess.SendSignedResponse(ctx, proposal.Provider, &network.Response{
 		State:    storagemarket.StorageDealWaitingForData,
@@ -549,7 +568,6 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleReject(ctx context.Conte
 		log.Errorf("failed response for reject: %s", err.Error())
 	}
 
-	// 断开连接
 	if err = storageDealPorcess.conns.Disconnect(deal.ProposalCid); err != nil {
 		log.Warnf("closing client connection: %+v", err)
 	}

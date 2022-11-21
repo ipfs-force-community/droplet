@@ -239,10 +239,10 @@ MaxDealsPerPublishMsg = 8
 # 整数类型 默认为：2
 MaxProviderCollateralMultiplier = 2
 
-# 保留字段
+# 通过外部执行器来筛选存储订单,是可执行的程序或脚本
 Filter = ""
 
-# 保留字段
+# 通过外部执行器来筛选检索订单,是可执行的程序或脚本
 RetrievalFilter = ""
 
 # 订单传输数据的存储位置

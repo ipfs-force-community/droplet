@@ -5,20 +5,22 @@ import (
 	"math"
 	"time"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/v2/config"
-	"github.com/filecoin-project/venus-market/v2/paychmgr"
-	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/dtutils"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
+
+	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-market/v2/network"
-	logging "github.com/ipfs/go-log/v2"
+	"github.com/filecoin-project/venus-market/v2/paychmgr"
+
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var queryTimeout = 5 * time.Second
@@ -57,6 +59,7 @@ func NewProvider(network rmnet.RetrievalMarketNetwork,
 	payAPI *paychmgr.PaychAPI,
 	repo repo.Repo,
 	cfg *config.MarketConfig,
+	rdf config.RetrievalDealFilter,
 ) (*RetrievalProvider, error) {
 	storageDealsRepo := repo.StorageDealRepo()
 	retrievalDealRepo := repo.RetrievalDealRepo()
@@ -74,7 +77,7 @@ func NewProvider(network rmnet.RetrievalMarketNetwork,
 	}
 
 	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo, storageDealsRepo)
-	p.requestValidator = NewProviderRequestValidator(address.Address(cfg.RetrievalPaymentAddress), storageDealsRepo, retrievalDealRepo, retrievalAskRepo, pieceInfo)
+	p.requestValidator = NewProviderRequestValidator(address.Address(cfg.RetrievalPaymentAddress), storageDealsRepo, retrievalDealRepo, retrievalAskRepo, pieceInfo, rdf)
 	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{retrievalDealRepo, p.stores})
 	p.reValidator = NewProviderRevalidator(fullNode, payAPI, retrievalDealRepo, retrievalHandler)
 

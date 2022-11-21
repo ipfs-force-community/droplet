@@ -8,8 +8,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/filestore"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-
 	vsTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
@@ -85,9 +83,7 @@ type SetExpectedSealDurationFunc func(address.Address, time.Duration) error
 type GetExpectedSealDurationFunc func(address.Address) (time.Duration, error)
 
 type (
-	// todo 目前没有被实际使用 ???
-	StorageDealFilter func(ctx context.Context, mAddr address.Address, deal storagemarket.MinerDeal) (bool, string, error)
-	// todo 目前没有被实际使用 ???
+	StorageDealFilter   func(ctx context.Context, mAddr address.Address, deal *types.MinerDeal) (bool, string, error)
 	RetrievalDealFilter func(ctx context.Context, mAddr address.Address, deal types.ProviderDealState) (bool, string, error)
 )
 

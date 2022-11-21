@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/utils"
 
 	"github.com/filecoin-project/venus/pkg/constants"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var (
@@ -86,7 +87,7 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 		startDelay config.GetMaxDealStartDelayFunc,
 		spn storagemarket.StorageProviderNode,
 	) config.StorageDealFilter {
-		return func(ctx context.Context, mAddr address.Address, deal storagemarket.MinerDeal) (bool, string, error) {
+		return func(ctx context.Context, mAddr address.Address, deal *types.MinerDeal) (bool, string, error) {
 			b, err := onlineOk(mAddr)
 			if err != nil {
 				return false, "miner error", err
