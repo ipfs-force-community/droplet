@@ -18,21 +18,6 @@ import (
 
 var log = logging.Logger("clients")
 
-//var (
-//	ReplaceWalletMethod = builder.NextInvoke()
-//)
-
-//func ConvertWalletToISinge(fullNode v1api.FullNode, signer signer.ISigner) error {
-//	fullNodeStruct := fullNode.(*v1api.FullNodeStruct)
-//	fullNodeStruct.IWalletStruct.Internal.WalletHas = func(p0 context.Context, p1 address.Address) (bool, error) {
-//		return signer.WalletHas(p0, p1)
-//	}
-//	fullNodeStruct.IWalletStruct.Internal.WalletSign = func(p0 context.Context, p1 address.Address, p2 []byte, p3 types2.MsgMeta) (*vCrypto.Signature, error) {
-//		return signer.WalletSign(p0, p1, p2, p3)
-//	}
-//	return nil
-//}
-
 func NewMarketEvent(mctx metrics.MetricsCtx) (gwAPI.IMarketEvent, error) {
 	stream := marketevent.NewMarketEventStream(mctx, &localMinerValidator{}, gwTypes.DefaultConfig())
 	return stream, nil
