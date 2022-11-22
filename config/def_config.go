@@ -6,8 +6,6 @@ import (
 	"github.com/ipfs-force-community/metrics"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
 )
 
 const (
@@ -44,6 +42,10 @@ var DefaultMarketConfig = &MarketConfig{
 		Url:   "", // /ip4/<ip>/tcp/5678
 		Token: "",
 	},
+	AuthNode: AuthNode{
+		Url:   "", // "http://<ip>:8989",
+		Token: "",
+	},
 	Mysql: Mysql{
 		ConnectionString: "",
 		MaxOpenConn:      100,
@@ -51,51 +53,23 @@ var DefaultMarketConfig = &MarketConfig{
 		ConnMaxLifeTime:  "1m",
 		Debug:            false,
 	},
-	AuthNode: AuthNode{
-		Url:   "", // "http://<ip>:8989",
-		Token: "",
+	PieceStorage: PieceStorage{
+		Fs: []*FsPieceStorage{},
 	},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
 		MaxConcurrencyStorageCalls: 100,
 		GCInterval:                 Duration(1 * time.Minute),
 	},
-	Journal: Journal{Path: "journal"},
-	PieceStorage: PieceStorage{
-		Fs: []*FsPieceStorage{},
-	},
-	ConsiderOnlineStorageDeals:     true,
-	ConsiderOfflineStorageDeals:    true,
-	ConsiderOnlineRetrievalDeals:   true,
-	ConsiderOfflineRetrievalDeals:  true,
-	ConsiderVerifiedStorageDeals:   true,
-	ConsiderUnverifiedStorageDeals: true,
-	PieceCidBlocklist:              []cid.Cid{},
-	// TODO: It'd be nice to set this based on sector size
-	MaxDealStartDelay:    Duration(time.Hour * 24 * 14),
-	ExpectedSealDuration: Duration(time.Hour * 24),
-	PublishMsgPeriod:     Duration(time.Hour),
-
-	MaxDealsPerPublishMsg:           8,
-	MaxProviderCollateralMultiplier: 2,
 
 	SimultaneousTransfersForRetrieval:        DefaultSimultaneousTransfers,
 	SimultaneousTransfersForStoragePerClient: DefaultSimultaneousTransfers,
 	SimultaneousTransfersForStorage:          DefaultSimultaneousTransfers,
 
-	RetrievalPricing: &RetrievalPricing{
-		Strategy: RetrievalPricingDefaultMode,
-		Default: &RetrievalPricingDefault{
-			VerifiedDealsFreeTransfer: true,
-		},
-		External: &RetrievalPricingExternal{
-			Path: "",
-		},
-	},
-
-	MaxPublishDealsFee:     types.FIL(types.NewInt(0)),
-	MaxMarketBalanceAddFee: types.FIL(types.NewInt(0)),
-	Metrics:                *metrics.DefaultMetricsConfig(),
+	CommonProviderConfig: defaultProviderConfig(),
+	Miners:               make([]*MinerConfig, 0),
+	Journal:              Journal{Path: "journal"},
+	Metrics:              *metrics.DefaultMetricsConfig(),
 }
 
 var DefaultMarketClientConfig = &MarketClientConfig{

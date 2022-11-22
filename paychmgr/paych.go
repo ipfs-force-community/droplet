@@ -13,11 +13,12 @@ import (
 
 	"github.com/filecoin-project/go-state-types/actors"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+
 	"github.com/filecoin-project/venus/pkg/crypto"
 	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
-
-	"github.com/filecoin-project/venus-market/v2/models/repo"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -622,6 +623,7 @@ func (ca *channelAccessor) settle(ctx context.Context, ch address.Address) (cid.
 	if err != nil {
 		return cid.Undef, err
 	}
+
 	msgId, err := ca.api.PushMessage(ctx, msg, nil)
 	if err != nil {
 		return cid.Undef, err

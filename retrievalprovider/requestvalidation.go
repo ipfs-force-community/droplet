@@ -7,21 +7,21 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
-
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	peer "github.com/libp2p/go-libp2p/core/peer"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var allSelectorBytes []byte
@@ -41,11 +41,26 @@ type ProviderRequestValidator struct {
 	pieceInfo     *PieceInfo
 	retrievalDeal repo.IRetrievalDealRepo
 	retrievalAsk  repo.IRetrievalAskRepo
+	rdf           config.RetrievalDealFilter
 }
 
 // NewProviderRequestValidator returns a new instance of the ProviderRequestValidator
-func NewProviderRequestValidator(paymentAddr address.Address, storageDeals repo.StorageDealRepo, retrievalDeal repo.IRetrievalDealRepo, retrievalAsk repo.IRetrievalAskRepo, pieceInfo *PieceInfo) *ProviderRequestValidator {
-	return &ProviderRequestValidator{paymentAddr: paymentAddr, storageDeals: storageDeals, retrievalDeal: retrievalDeal, retrievalAsk: retrievalAsk, pieceInfo: pieceInfo}
+func NewProviderRequestValidator(
+	paymentAddr address.Address,
+	storageDeals repo.StorageDealRepo,
+	retrievalDeal repo.IRetrievalDealRepo,
+	retrievalAsk repo.IRetrievalAskRepo,
+	pieceInfo *PieceInfo,
+	rdf config.RetrievalDealFilter,
+) *ProviderRequestValidator {
+	return &ProviderRequestValidator{
+		paymentAddr:   paymentAddr,
+		storageDeals:  storageDeals,
+		retrievalDeal: retrievalDeal,
+		retrievalAsk:  retrievalAsk,
+		pieceInfo:     pieceInfo,
+		rdf:           rdf,
+	}
 }
 
 // ValidatePush validates a push request received from the peer that will send data
@@ -160,6 +175,13 @@ func (rv *ProviderRequestValidator) validatePull(ctx context.Context, isRestart 
 	return &response, datatransfer.ErrPause
 }
 
+func (rv *ProviderRequestValidator) runDealDecisionLogic(ctx context.Context, deal *types.ProviderDealState) (bool, string, error) {
+	if rv.rdf == nil {
+		return true, "", nil
+	}
+	return rv.rdf(ctx, address.Undef, *deal)
+}
+
 func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.ProviderDealState) (retrievalmarket.DealStatus, error) {
 	minerdeals, err := rv.pieceInfo.GetPieceInfoFromCid(ctx, deal.PayloadCID, deal.PieceCID)
 	if err != nil {
@@ -172,7 +194,6 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 	ctx, cancel := context.WithTimeout(ctx, askTimeout)
 	defer cancel()
 
-	// todo how to select deal
 	deal.SelStorageProposalCid = minerdeals[0].ProposalCid
 	ask, err := rv.retrievalAsk.GetAsk(ctx, rv.paymentAddr)
 	if err != nil {
@@ -184,6 +205,15 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 	err = CheckDealParams(ask, deal.PricePerByte, deal.PaymentInterval, deal.PaymentIntervalIncrease, deal.UnsealPrice)
 	if err != nil {
 		return retrievalmarket.DealStatusRejected, err
+	}
+
+	// todo: 检索订单的 `miner` 从哪里来?
+	accepted, reason, err := rv.runDealDecisionLogic(ctx, deal)
+	if err != nil {
+		return retrievalmarket.DealStatusErrored, err
+	}
+	if !accepted {
+		return retrievalmarket.DealStatusRejected, errors.New(reason)
 	}
 
 	if deal.UnsealPrice.GreaterThan(big.Zero()) {

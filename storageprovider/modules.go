@@ -8,11 +8,16 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/ipfs-force-community/metrics"
+	"github.com/ipfs-force-community/venus-common-utils/builder"
+	"github.com/ipfs-force-community/venus-common-utils/journal"
 
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/dealfilter"
@@ -20,11 +25,8 @@ import (
 	"github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/utils"
 
-	"github.com/ipfs-force-community/metrics"
-	"github.com/ipfs-force-community/venus-common-utils/builder"
-	"github.com/ipfs-force-community/venus-common-utils/journal"
-
 	"github.com/filecoin-project/venus/pkg/constants"
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var (
@@ -85,8 +87,8 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 		startDelay config.GetMaxDealStartDelayFunc,
 		spn storagemarket.StorageProviderNode,
 	) config.StorageDealFilter {
-		return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
-			b, err := onlineOk()
+		return func(ctx context.Context, mAddr address.Address, deal *types.MinerDeal) (bool, string, error) {
+			b, err := onlineOk(mAddr)
 			if err != nil {
 				return false, "miner error", err
 			}
@@ -96,7 +98,7 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, "miner is not considering online piecestorage deals", nil
 			}
 
-			b, err = offlineOk()
+			b, err = offlineOk(mAddr)
 			if err != nil {
 				return false, "miner error", err
 			}
@@ -106,7 +108,7 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, "miner is not accepting offline piecestorage deals", nil
 			}
 
-			b, err = verifiedOk()
+			b, err = verifiedOk(mAddr)
 			if err != nil {
 				return false, "miner error", err
 			}
@@ -116,7 +118,7 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, "miner is not accepting verified piecestorage deals", nil
 			}
 
-			b, err = unverifiedOk()
+			b, err = unverifiedOk(mAddr)
 			if err != nil {
 				return false, "miner error", err
 			}
@@ -126,7 +128,7 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, "miner is not accepting unverified piecestorage deals", nil
 			}
 
-			blocklist, err := blocklistFunc()
+			blocklist, err := blocklistFunc(mAddr)
 			if err != nil {
 				return false, "miner error", err
 			}
@@ -138,7 +140,7 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				}
 			}
 
-			sealDuration, err := expectedSealTimeFunc()
+			sealDuration, err := expectedSealTimeFunc(mAddr)
 			if err != nil {
 				return false, "miner error", err
 			}
@@ -154,7 +156,7 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, fmt.Sprintf("cannot seal a sector before %s", deal.Proposal.StartEpoch), nil
 			}
 
-			sd, err := startDelay()
+			sd, err := startDelay(mAddr)
 			if err != nil {
 				return false, "miner error", err
 			}
@@ -166,34 +168,21 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
 			}
 
-			if user != nil {
-				return user(ctx, deal)
-			}
-
-			return true, "", nil
+			// user never will be nil?
+			return user(ctx, mAddr, deal)
 		}
 	}
 }
 
-func NewAddressSelector(cfg *config.MarketConfig) (*AddressSelector, error) {
-	return &AddressSelector{
-		AddressConfig: cfg.AddressConfig,
-	}, nil
-}
-
 var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 	return builder.Options(
-		builder.Override(new(*AddressSelector), NewAddressSelector),
 		builder.Override(new(IStorageAsk), NewStorageAsk),
 		builder.Override(new(network.ProviderDataTransfer), NewProviderDAGServiceDataTransfer), // save to metadata /datatransfer/provider/transfers
 		//   save to metadata /deals/provider/piecestorage-ask/latest
-		builder.Override(new(config.StorageDealFilter), BasicDealFilter(nil)),
 		builder.Override(new(StorageProvider), NewStorageProvider),
 		builder.Override(new(*DealPublisher), NewDealPublisherWrapper(cfg)),
 		builder.Override(HandleDealsKey, HandleDeals),
-		builder.If(cfg.Filter != "",
-			builder.Override(new(config.StorageDealFilter), BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Filter))),
-		),
+		builder.Override(new(config.StorageDealFilter), BasicDealFilter(dealfilter.CliStorageDealFilter(cfg))),
 		builder.Override(new(StorageProviderNode), NewProviderNodeAdapter(cfg)),
 		builder.Override(new(DealAssiger), NewDealAssigner),
 		builder.Override(StartDealTracker, NewDealTracker),

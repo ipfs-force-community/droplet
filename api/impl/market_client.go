@@ -3,14 +3,15 @@ package impl
 import (
 	"context"
 
-	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/client"
 	"github.com/filecoin-project/venus-market/v2/version"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
-
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
 )
 
 var _ clientapi.IMarketClient = (*MarketClientNodeImpl)(nil)
@@ -18,7 +19,7 @@ var _ clientapi.IMarketClient = (*MarketClientNodeImpl)(nil)
 type MarketClientNodeImpl struct {
 	client.API
 	FundAPI
-	Messager clients2.IMixMessage
+	Messager clients.IMixMessage
 }
 
 func (m *MarketClientNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error) {
@@ -34,6 +35,7 @@ func (m *MarketClientNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTy
 			GasOverEstimation: meta.GasOverEstimation,
 		}
 	}
+
 	return m.Messager.PushMessage(ctx, msg, spec)
 }
 

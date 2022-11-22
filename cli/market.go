@@ -17,28 +17,31 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus-market/v2/storageprovider"
-	"github.com/filecoin-project/venus/venus-shared/types/market"
-
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/venus-market/v2/storageprovider"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var storageDealSelectionCmd = &cli.Command{
 	Name:  "selection",
 	Usage: "Configure acceptance criteria for storage deal proposals",
+	Flags: []cli.Flag{
+		minerFlag,
+	},
 	Subcommands: []*cli.Command{
 		storageDealSelectionShowCmd,
 		storageDealSelectionResetCmd,
@@ -50,24 +53,41 @@ var storageDealSelectionShowCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List storage deal proposal selection criteria",
 	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
 		smapi, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		onlineOk, err := smapi.DealsConsiderOnlineStorageDeals(DaemonContext(cctx))
+		onlineOk, err := smapi.DealsConsiderOnlineStorageDeals(DaemonContext(cctx), mAddr)
 		if err != nil {
 			return err
 		}
 
-		offlineOk, err := smapi.DealsConsiderOfflineStorageDeals(DaemonContext(cctx))
+		offlineOk, err := smapi.DealsConsiderOfflineStorageDeals(DaemonContext(cctx), mAddr)
+		if err != nil {
+			return err
+		}
+
+		verifiedOk, err := smapi.DealsConsiderVerifiedStorageDeals(DaemonContext(cctx), mAddr)
+		if err != nil {
+			return err
+		}
+
+		unverifiedOk, err := smapi.DealsConsiderUnverifiedStorageDeals(DaemonContext(cctx), mAddr)
 		if err != nil {
 			return err
 		}
 
 		fmt.Printf("considering online storage deals: %t\n", onlineOk)
 		fmt.Printf("considering offline storage deals: %t\n", offlineOk)
+		fmt.Printf("considering verified storage deals: %t\n", verifiedOk)
+		fmt.Printf("considering unverified storage deals: %t\n", unverifiedOk)
 
 		return nil
 	},
@@ -77,28 +97,33 @@ var storageDealSelectionResetCmd = &cli.Command{
 	Name:  "reset",
 	Usage: "Reset storage deal proposal selection criteria to default values",
 	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
 		smapi, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		err = smapi.DealsSetConsiderOnlineStorageDeals(DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderOnlineStorageDeals(DaemonContext(cctx), mAddr, true)
 		if err != nil {
 			return err
 		}
 
-		err = smapi.DealsSetConsiderOfflineStorageDeals(DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderOfflineStorageDeals(DaemonContext(cctx), mAddr, true)
 		if err != nil {
 			return err
 		}
 
-		err = smapi.DealsSetConsiderVerifiedStorageDeals(DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderVerifiedStorageDeals(DaemonContext(cctx), mAddr, true)
 		if err != nil {
 			return err
 		}
 
-		err = smapi.DealsSetConsiderUnverifiedStorageDeals(DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderUnverifiedStorageDeals(DaemonContext(cctx), mAddr, true)
 		if err != nil {
 			return err
 		}
@@ -125,6 +150,11 @@ var storageDealSelectionRejectCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
 		smapi, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
@@ -132,28 +162,28 @@ var storageDealSelectionRejectCmd = &cli.Command{
 		defer closer()
 
 		if cctx.Bool("online") {
-			err = smapi.DealsSetConsiderOnlineStorageDeals(DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderOnlineStorageDeals(DaemonContext(cctx), mAddr, false)
 			if err != nil {
 				return err
 			}
 		}
 
 		if cctx.Bool("offline") {
-			err = smapi.DealsSetConsiderOfflineStorageDeals(DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderOfflineStorageDeals(DaemonContext(cctx), mAddr, false)
 			if err != nil {
 				return err
 			}
 		}
 
 		if cctx.Bool("verified") {
-			err = smapi.DealsSetConsiderVerifiedStorageDeals(DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderVerifiedStorageDeals(DaemonContext(cctx), mAddr, false)
 			if err != nil {
 				return err
 			}
 		}
 
 		if cctx.Bool("unverified") {
-			err = smapi.DealsSetConsiderUnverifiedStorageDeals(DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderUnverifiedStorageDeals(DaemonContext(cctx), mAddr, false)
 			if err != nil {
 				return err
 			}
@@ -334,7 +364,9 @@ var StorageDealsCmd = &cli.Command{
 		setBlocklistCmd,
 		getBlocklistCmd,
 		resetBlocklistCmd,
-		setSealDurationCmd,
+		expectedSealDurationCmd,
+		maxDealStartDelayCmd,
+		dealsPublishMsgPeriodCmd,
 		dealsPendingPublish,
 	},
 }
@@ -657,15 +689,21 @@ var getBlocklistCmd = &cli.Command{
 	Usage: "List the contents of the miner's piece CID blocklist",
 	Flags: []cli.Flag{
 		&CidBaseFlag,
+		minerFlag,
 	},
 	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		blocklist, err := api.DealsPieceCidBlocklist(DaemonContext(cctx))
+		blocklist, err := api.DealsPieceCidBlocklist(DaemonContext(cctx), mAddr)
 		if err != nil {
 			return err
 		}
@@ -687,8 +725,15 @@ var setBlocklistCmd = &cli.Command{
 	Name:      "set-blocklist",
 	Usage:     "Set the miner's list of blocklisted piece CIDs",
 	ArgsUsage: "[<path-of-file-containing-newline-delimited-piece-CIDs> (optional, will read from stdin if omitted)]",
-	Flags:     []cli.Flag{},
+	Flags: []cli.Flag{
+		minerFlag,
+	},
 	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
@@ -726,30 +771,78 @@ var setBlocklistCmd = &cli.Command{
 			return err
 		}
 
-		return api.DealsSetPieceCidBlocklist(DaemonContext(cctx), blocklist)
+		return api.DealsSetPieceCidBlocklist(DaemonContext(cctx), mAddr, blocklist)
 	},
 }
 
 var resetBlocklistCmd = &cli.Command{
 	Name:  "reset-blocklist",
 	Usage: "Remove all entries from the miner's piece CID blocklist",
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		minerFlag,
+	},
 	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		return api.DealsSetPieceCidBlocklist(DaemonContext(cctx), []cid.Cid{})
+		return api.DealsSetPieceCidBlocklist(DaemonContext(cctx), mAddr, []cid.Cid{})
 	},
 }
 
-var setSealDurationCmd = &cli.Command{
-	Name:      "set-seal-duration",
-	Usage:     "Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.",
-	ArgsUsage: "<minutes>",
+var expectedSealDurationCmd = &cli.Command{
+	Name:  "seal-duration",
+	Usage: "Configure the expected time, that you expect sealing sectors to take. Deals that start before this duration will be rejected.",
+	Flags: []cli.Flag{
+		minerFlag,
+	},
+	Subcommands: []*cli.Command{
+		expectedSealDurationGetCmd,
+		expectedSealDurationSetCmd,
+	},
+}
+
+var expectedSealDurationGetCmd = &cli.Command{
+	Name: "get",
 	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
+		marketApi, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+		t, err := marketApi.SectorGetExpectedSealDuration(ctx, mAddr)
+		if err != nil {
+			return err
+		}
+		fmt.Println("seal-duration: ", t.String())
+		return nil
+	},
+}
+
+var expectedSealDurationSetCmd = &cli.Command{
+	Name:      "set-seal-duration",
+	Usage:     "eg. '1m','30s',...",
+	ArgsUsage: "<duration>",
+	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
 		marketApi, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
@@ -757,17 +850,150 @@ var setSealDurationCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 		if cctx.Args().Len() != 1 {
-			return fmt.Errorf("must pass duration in minutes")
+			return fmt.Errorf("must pass duration")
 		}
 
-		hs, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		d, err := time.ParseDuration(cctx.Args().Get(0))
 		if err != nil {
 			return fmt.Errorf("could not parse duration: %w", err)
 		}
 
-		delay := hs * uint64(time.Minute)
+		return marketApi.SectorSetExpectedSealDuration(ctx, mAddr, d)
+	},
+}
 
-		return marketApi.SectorSetExpectedSealDuration(ctx, time.Duration(delay))
+var maxDealStartDelayCmd = &cli.Command{
+	Name:  "max-start-delay",
+	Usage: "Configure the maximum amount of time proposed deal StartEpoch can be in future.",
+	Flags: []cli.Flag{
+		minerFlag,
+	},
+	Subcommands: []*cli.Command{
+		maxDealStartDelayGetCmd,
+		maxDealStartDelaySetCmd,
+	},
+}
+
+var maxDealStartDelayGetCmd = &cli.Command{
+	Name: "get",
+	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
+		marketApi, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+		t, err := marketApi.DealsMaxStartDelay(ctx, mAddr)
+		if err != nil {
+			return err
+		}
+		fmt.Println("max start delay: ", t.String())
+		return nil
+	},
+}
+
+var maxDealStartDelaySetCmd = &cli.Command{
+	Name:      "set",
+	Usage:     "eg. '1m','30s',...",
+	ArgsUsage: "<minutes>",
+	Flags: []cli.Flag{
+		minerFlag,
+	},
+	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
+		marketApi, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return fmt.Errorf("must pass duration")
+		}
+
+		delay, err := time.ParseDuration(cctx.Args().Get(0))
+		if err != nil {
+			return fmt.Errorf("could not parse duration: %w", err)
+		}
+
+		return marketApi.DealsSetMaxStartDelay(ctx, mAddr, delay)
+	},
+}
+
+var dealsPublishMsgPeriodCmd = &cli.Command{
+	Name:  "max-start-delay",
+	Usage: "Configure the the amount of time to wait for more deals to be ready to publish before publishing them all as a batch.",
+	Flags: []cli.Flag{
+		minerFlag,
+	},
+	Subcommands: []*cli.Command{
+		dealsPublishMsgPeriodGetCmd,
+		dealsPublishMsgPeriodSetCmd,
+	},
+}
+
+var dealsPublishMsgPeriodGetCmd = &cli.Command{
+	Name: "get",
+	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
+		marketApi, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+		t, err := marketApi.DealsPublishMsgPeriod(ctx, mAddr)
+		if err != nil {
+			return err
+		}
+		fmt.Println("publish msg period: ", t.String())
+		return nil
+	},
+}
+
+var dealsPublishMsgPeriodSetCmd = &cli.Command{
+	Name:      "set",
+	Usage:     "eg. '1m','30s',...",
+	ArgsUsage: "<duration>",
+	Flags: []cli.Flag{
+		minerFlag,
+	},
+	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
+		marketApi, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		if cctx.Args().Len() != 1 {
+			return fmt.Errorf("must pass duration")
+		}
+
+		period, err := time.ParseDuration(cctx.Args().Get(0))
+		if err != nil {
+			return fmt.Errorf("could not parse duration: %w", err)
+		}
+		return marketApi.DealsSetPublishMsgPeriod(ctx, mAddr, period)
 	},
 }
 

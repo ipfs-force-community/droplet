@@ -8,7 +8,11 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
@@ -16,18 +20,19 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+
 	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/minermgr"
 	"github.com/filecoin-project/venus-market/v2/models"
 	network2 "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
+
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 	"github.com/filecoin-project/venus/venus-shared/api/chain/v1/mock"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	marketypes "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
 )
 
 //go:embed testdata/import_deal.json
@@ -124,7 +129,7 @@ func setup(t *testing.T) StorageProvider {
 	}
 
 	r := models.NewInMemoryRepo(t)
-	ask, _ := NewStorageAsk(ctx, r, spn)
+	ask, _ := NewStorageAsk(spn, r, spn)
 	h, err := network2.MockHost(ctx)
 	if err != nil {
 		t.Error(err)
@@ -134,14 +139,21 @@ func setup(t *testing.T) StorageProvider {
 		t.Error(err)
 	}
 
-	homeDir := config.HomeDir("")
 	psManager, err := piecestorage.NewPieceStorageManager(&config.PieceStorage{})
 	assert.Nil(t, err)
 	psManager.AddMemPieceStorage(piecestorage.NewMemPieceStore("", nil))
 	addrMgr := mockAddrMgr{}
 
 	// todo how to mock dagstore
-	provider, err := NewStorageProvider(ctx, ask, h, config.DefaultMarketConfig, &homeDir, psManager, dt, spn, nil, r, addrMgr, nil)
+	tf := func(address.Address) (filestore.FileStore, error) {
+		transferPath := config.DefaultMarketConfig.MustHomePath()
+		store, err := filestore.NewLocalFileStore(filestore.OsPath(transferPath))
+		if err != nil {
+			return nil, err
+		}
+		return store, nil
+	}
+	provider, err := NewStorageProvider(ctx, ask, h, tf, psManager, dt, spn, nil, r, addrMgr, nil, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -150,27 +162,24 @@ func setup(t *testing.T) StorageProvider {
 
 type mockAddrMgr struct{}
 
+var _ minermgr.IMinerMgr = (*mockAddrMgr)(nil)
+
+func (m mockAddrMgr) MinerList(ctx context.Context) ([]address.Address, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (m mockAddrMgr) Has(ctx context.Context, addr address.Address) bool {
 	return addr.String() == "t01043" || addr.String() == "t010938"
 }
 
-func (m mockAddrMgr) ActorAddress(ctx context.Context) ([]address.Address, error) {
-	// TODO implement me
-	panic("implement me")
-}
-
 func (m mockAddrMgr) ActorList(ctx context.Context) ([]marketypes.User, error) {
-	// TODO implement me
+	//TODO implement me
 	panic("implement me")
 }
 
 func (m mockAddrMgr) GetMiners(ctx context.Context) ([]marketypes.User, error) {
-	// TODO implement me
-	panic("implement me")
-}
-
-func (m mockAddrMgr) GetAccount(ctx context.Context, addr address.Address) (string, error) {
-	// TODO implement me
+	//TODO implement me
 	panic("implement me")
 }
 
@@ -180,6 +189,8 @@ type mockProviderNode struct {
 	data   map[abi.DealID]types.MarketDeal
 	head   *types.TipSet
 }
+
+var _ StorageProviderNode = (*mockProviderNode)(nil)
 
 func newMockProviderNode() *mockProviderNode {
 	return &mockProviderNode{
@@ -258,7 +269,7 @@ func (m *mockProviderNode) WaitForMessage(ctx context.Context, mcid cid.Cid, onC
 	panic("implement me")
 }
 
-func (m *mockProviderNode) DealProviderCollateralBounds(ctx context.Context, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
+func (m *mockProviderNode) DealProviderCollateralBounds(ctx context.Context, provider address.Address, size abi.PaddedPieceSize, isVerified bool) (abi.TokenAmount, abi.TokenAmount, error) {
 	// TODO implement me
 	panic("implement me")
 }

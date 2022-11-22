@@ -6,11 +6,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/ipfs-force-community/metrics"
-
-	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
+
+	"github.com/ipfs-force-community/metrics"
 
 	"github.com/ipfs/go-cid"
 	carv2 "github.com/ipld/go-car/v2"
@@ -29,14 +28,17 @@ import (
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
+	"github.com/filecoin-project/go-state-types/builtin/v9/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-	"github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 
-	minermgr2 "github.com/filecoin-project/venus-market/v2/minermgr"
+	"github.com/filecoin-project/venus-market/v2/config"
+	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
+	"github.com/filecoin-project/venus-market/v2/minermgr"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	network2 "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
+
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
@@ -60,12 +62,14 @@ type StorageDealProcessImpl struct {
 	spn        StorageProviderNode
 	deals      repo.StorageDealRepo
 	ask        IStorageAsk
-	fs         filestore.FileStore
+	tf         config.TransferFileStoreConfigFunc
 	stores     *stores.ReadWriteBlockstores
-	dagStore   stores.DAGStoreWrapper // TODO:检查是否遗漏
+	dagStore   stores.DAGStoreWrapper
 
-	minerMgr        minermgr2.IAddrMgr
+	minerMgr        minermgr.IMinerMgr
 	pieceStorageMgr *piecestorage.PieceStorageManager
+
+	sdf config.StorageDealFilter
 }
 
 // NewStorageDealProcessImpl returns a new deal process instance
@@ -76,21 +80,20 @@ func NewStorageDealProcessImpl(
 	spn StorageProviderNode,
 	deals repo.StorageDealRepo,
 	ask IStorageAsk,
-	fs filestore.FileStore,
-	minerMgr minermgr2.IAddrMgr,
-	repo repo.Repo,
+	tf config.TransferFileStoreConfigFunc,
+	minerMgr minermgr.IMinerMgr,
 	pieceStorageMgr *piecestorage.PieceStorageManager,
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
+	sdf config.StorageDealFilter,
 ) (StorageDealHandler, error) {
-	stores := stores.NewReadWriteBlockstores()
-
 	err := dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{deals}, nil))
 	if err != nil {
 		return nil, err
 	}
 
-	err = dataTransfer.RegisterTransportConfigurer(&requestvalidation.StorageDataTransferVoucher{}, dtutils.TransportConfigurer(newProviderStoreGetter(deals, stores)))
+	blockstores := stores.NewReadWriteBlockstores()
+	err = dataTransfer.RegisterTransportConfigurer(&requestvalidation.StorageDataTransferVoucher{}, dtutils.TransportConfigurer(newProviderStoreGetter(deals, blockstores)))
 	if err != nil {
 		return nil, err
 	}
@@ -102,20 +105,28 @@ func NewStorageDealProcessImpl(
 		spn:        spn,
 		deals:      deals,
 		ask:        ask,
-		fs:         fs,
-		stores:     stores,
+		tf:         tf,
+		stores:     blockstores,
 
 		minerMgr: minerMgr,
 
 		pieceStorageMgr: pieceStorageMgr,
 		dagStore:        dagStore,
+
+		sdf: sdf,
 	}, nil
+}
+
+func (storageDealPorcess *StorageDealProcessImpl) runDealDecisionLogic(ctx context.Context, minerDeal *types.MinerDeal) (bool, string, error) {
+	if storageDealPorcess.sdf == nil {
+		return true, "", nil
+	}
+	return storageDealPorcess.sdf(ctx, minerDeal.Proposal.Provider, minerDeal)
 }
 
 // StorageDealUnknown->StorageDealValidating(ValidateDealProposal)->StorageDealAcceptWait(DecideOnProposal)->StorageDealWaitingForData
 func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
 	storageDealPorcess.peerTagger.TagPeer(minerDeal.Client, minerDeal.ProposalCid.String())
-
 	tok, curEpoch, err := storageDealPorcess.spn.GetChainHead(ctx)
 	if err != nil {
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("node error getting most recent state id: %w", err))
@@ -127,7 +138,6 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 
 	proposal := minerDeal.Proposal
 
-	// TODO: 判断 proposal.Provider 在本矿池中
 	if !storageDealPorcess.minerMgr.Has(ctx, proposal.Provider) {
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("incorrect provider for deal"))
 	}
@@ -169,7 +179,7 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("invalid deal end epoch %d: cannot be more than %d past current epoch %d", proposal.EndEpoch, miner.MaxSectorExpirationExtension, curEpoch))
 	}
 
-	pcMin, pcMax, err := storageDealPorcess.spn.DealProviderCollateralBounds(ctx, proposal.PieceSize, proposal.VerifiedDeal)
+	pcMin, pcMax, err := storageDealPorcess.spn.DealProviderCollateralBounds(ctx, proposal.Provider, proposal.PieceSize, proposal.VerifiedDeal)
 	if err != nil {
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("node error getting collateral bounds: %w", err))
 	}
@@ -233,6 +243,15 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 		if dataCap.LessThan(pieceSize) {
 			return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("verified deal DataCap too small for proposed piece size"))
 		}
+	}
+
+	accept, reason, err := storageDealPorcess.runDealDecisionLogic(ctx, minerDeal)
+	if err != nil {
+		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("custom deal decision logic failed: %w", err))
+	}
+
+	if !accept {
+		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf(reason))
 	}
 
 	err = storageDealPorcess.SendSignedResponse(ctx, proposal.Provider, &network.Response{
@@ -402,7 +421,11 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		if deal.PiecePath != "" {
 			// Data for offline deals is stored on disk, so if PiecePath is set,
 			// create a Reader from the file path
-			file, err := storageDealPorcess.fs.Open(deal.PiecePath)
+			fs, err := storageDealPorcess.tf(deal.Proposal.Provider)
+			if err != nil {
+				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("get temp file store for %s: %w", deal.Proposal.Provider, err))
+			}
+			file, err := fs.Open(deal.PiecePath)
 			if err != nil {
 				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("reading piece at path %s: %w", deal.PiecePath, err))
 			}
@@ -521,7 +544,6 @@ func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context
 		Signature: sig,
 	}
 
-	// TODO: review ???
 	err = s.WriteDealResponse(signedResponse, storageDealPorcess.spn.SignWithGivenMiner(mAddr))
 	if err != nil {
 		// Assume client disconnected
@@ -546,7 +568,6 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleReject(ctx context.Conte
 		log.Errorf("failed response for reject: %s", err.Error())
 	}
 
-	// 断开连接
 	if err = storageDealPorcess.conns.Disconnect(deal.ProposalCid); err != nil {
 		log.Warnf("closing client connection: %+v", err)
 	}
@@ -565,15 +586,25 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleError(ctx context.Contex
 	storageDealPorcess.peerTagger.UntagPeer(deal.Client, deal.ProposalCid.String())
 
 	if deal.PiecePath != filestore.Path("") {
-		err := storageDealPorcess.fs.Delete(deal.PiecePath)
+		fs, err := storageDealPorcess.tf(deal.Proposal.Provider)
 		if err != nil {
-			log.Warnf("deleting piece at path %s: %w", deal.PiecePath, err)
+			log.Warnf("get temp file store for %s: %w", deal.Proposal.Provider, err)
+		} else {
+			err = fs.Delete(deal.PiecePath)
+			if err != nil {
+				log.Warnf("deleting piece at path %s: %w", deal.PiecePath, err)
+			}
 		}
 	}
 	if deal.MetadataPath != filestore.Path("") {
-		err := storageDealPorcess.fs.Delete(deal.MetadataPath)
+		fs, err := storageDealPorcess.tf(deal.Proposal.Provider)
 		if err != nil {
-			log.Warnf("deleting piece at path %s: %w", deal.MetadataPath, err)
+			log.Warnf("get temp file store for %s: %w", deal.Proposal.Provider, err)
+		} else {
+			err = fs.Delete(deal.MetadataPath)
+			if err != nil {
+				log.Warnf("deleting piece at path %s: %w", deal.MetadataPath, err)
+			}
 		}
 	}
 

@@ -9,8 +9,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/stores"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -25,7 +23,12 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
+	"github.com/filecoin-project/venus-auth/jwtclient"
 
 	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/config"
@@ -38,7 +41,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	"github.com/filecoin-project/venus-market/v2/version"
 
-	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
@@ -64,12 +66,14 @@ type MarketNodeImpl struct {
 	DealPublisher     *storageprovider.DealPublisher
 	DealAssigner      storageprovider.DealAssiger
 
+	AuthClient *jwtclient.AuthClient
+
 	Messager                                    clients2.IMixMessage
 	StorageAsk                                  storageprovider.IStorageAsk
 	DAGStore                                    *dagstore.DAGStore
 	DAGStoreWrapper                             stores.DAGStoreWrapper
 	PieceStorageMgr                             *piecestorage.PieceStorageManager
-	MinerMgr                                    minermgr.IAddrMgr
+	UserMgr                                     minermgr.IMinerMgr
 	PaychAPI                                    *paychmgr.PaychAPI
 	Repo                                        repo.Repo
 	Config                                      *config.MarketConfig
@@ -87,22 +91,39 @@ type MarketNodeImpl struct {
 	SetConsiderVerifiedStorageDealsConfigFunc   config.SetConsiderVerifiedStorageDealsConfigFunc
 	ConsiderUnverifiedStorageDealsConfigFunc    config.ConsiderUnverifiedStorageDealsConfigFunc
 	SetConsiderUnverifiedStorageDealsConfigFunc config.SetConsiderUnverifiedStorageDealsConfigFunc
-	/*	SetSealingConfigFunc                        dtypes.SetSealingConfigFunc
-		GetSealingConfigFunc                        dtypes.GetSealingConfigFunc  */
+
 	GetExpectedSealDurationFunc config.GetExpectedSealDurationFunc
 	SetExpectedSealDurationFunc config.SetExpectedSealDurationFunc
+
+	GetMaxDealStartDelayFunc config.GetMaxDealStartDelayFunc
+	SetMaxDealStartDelayFunc config.SetMaxDealStartDelayFunc
+
+	TransferPathFunc    config.TransferPathFunc
+	SetTransferPathFunc config.SetTransferPathFunc
+
+	PublishMsgPeriodConfigFunc             config.PublishMsgPeriodConfigFunc
+	SetPublishMsgPeriodConfigFunc          config.SetPublishMsgPeriodConfigFunc
+	MaxDealsPerPublishMsgFunc              config.MaxDealsPerPublishMsgFunc
+	SetMaxDealsPerPublishMsgFunc           config.SetMaxDealsPerPublishMsgFunc
+	MaxProviderCollateralMultiplierFunc    config.MaxProviderCollateralMultiplierFunc
+	SetMaxProviderCollateralMultiplierFunc config.SetMaxProviderCollateralMultiplierFunc
+
+	MaxPublishDealsFeeFunc        config.MaxPublishDealsFeeFunc
+	SetMaxPublishDealsFeeFunc     config.SetMaxPublishDealsFeeFunc
+	MaxMarketBalanceAddFeeFunc    config.MaxMarketBalanceAddFeeFunc
+	SetMaxMarketBalanceAddFeeFunc config.SetMaxMarketBalanceAddFeeFunc
 }
 
-func (m *MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
-	return m.MinerMgr.ActorList(ctx)
+func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
+	return m.UserMgr.ActorList(ctx)
 }
 
-func (m *MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {
-	return m.MinerMgr.Has(ctx, addr), nil
+func (m MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {
+	return m.UserMgr.Has(ctx, addr), nil
 }
 
-func (m *MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
-	if bHas := m.MinerMgr.Has(ctx, addr); bHas {
+func (m MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
+	if bHas := m.UserMgr.Has(ctx, addr); bHas {
 		minerInfo, err := m.FullNode.StateMinerInfo(ctx, addr, vTypes.EmptyTSK)
 		if err != nil {
 			return 0, err
@@ -132,7 +153,8 @@ func (m *MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Ad
 	return m.listDeals(ctx, addrs)
 }
 
-func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr address.Address) ([]types.ProviderDealState, error) {
+// 检索订单没法按 `miner address` 过滤
+func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]types.ProviderDealState, error) {
 	var out []types.ProviderDealState
 	deals, err := m.RetrievalProvider.ListDeals(ctx)
 	if err != nil {
@@ -145,7 +167,6 @@ func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, mAddr add
 				deal.ChannelID = nil // don't try to push unparsable peer IDs over jsonrpc
 			}
 		}
-		// todo: 按miner过滤交易
 		out = append(out, *deal)
 	}
 	return out, nil
@@ -326,68 +347,188 @@ func (m *MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Ci
 	return &ci, nil
 }
 
-func (m *MarketNodeImpl) DealsConsiderOnlineStorageDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderOnlineStorageDealsConfigFunc()
+func (m *MarketNodeImpl) permissionVerify(ctx context.Context, mAddr address.Address) error {
+	if bHas := auth.HasPerm(ctx, []auth.Permission{}, "admin"); bHas {
+		return nil
+	}
+
+	name, bExist := jwtclient.CtxGetName(ctx)
+	if !bExist {
+		return fmt.Errorf("token illegal")
+	}
+
+	bExist, err := m.AuthClient.MinerExistInUser(name, mAddr.String())
+	if err != nil {
+		return err
+	}
+
+	if !bExist {
+		return fmt.Errorf("the token has no permissions to operate this miner")
+	}
+
+	return nil
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderOnlineStorageDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderOnlineStorageDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsConsiderOnlineStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderOnlineStorageDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsConsiderOnlineRetrievalDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderOnlineRetrievalDealsConfigFunc()
+func (m *MarketNodeImpl) DealsSetConsiderOnlineStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetConsiderOnlineStorageDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderOnlineRetrievalDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsConsiderOnlineRetrievalDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderOnlineRetrievalDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsPieceCidBlocklist(ctx context.Context) ([]cid.Cid, error) {
-	return m.StorageDealPieceCidBlocklistConfigFunc()
+func (m *MarketNodeImpl) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetConsiderOnlineRetrievalDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) DealsSetPieceCidBlocklist(ctx context.Context, cids []cid.Cid) error {
-	return m.SetStorageDealPieceCidBlocklistConfigFunc(cids)
+func (m *MarketNodeImpl) DealsPieceCidBlocklist(ctx context.Context, mAddr address.Address) ([]cid.Cid, error) {
+	return m.StorageDealPieceCidBlocklistConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsConsiderOfflineStorageDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderOfflineStorageDealsConfigFunc()
+func (m *MarketNodeImpl) DealsSetPieceCidBlocklist(ctx context.Context, mAddr address.Address, cids []cid.Cid) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetStorageDealPieceCidBlocklistConfigFunc(mAddr, cids)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderOfflineStorageDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderOfflineStorageDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsConsiderOfflineStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderOfflineStorageDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsConsiderOfflineRetrievalDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderOfflineRetrievalDealsConfigFunc()
+func (m *MarketNodeImpl) DealsSetConsiderOfflineStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetConsiderOfflineStorageDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderOfflineRetrievalDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsConsiderOfflineRetrievalDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderOfflineRetrievalDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsConsiderVerifiedStorageDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderVerifiedStorageDealsConfigFunc()
+func (m *MarketNodeImpl) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetConsiderOfflineRetrievalDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderVerifiedStorageDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsConsiderVerifiedStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderVerifiedStorageDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) DealsConsiderUnverifiedStorageDeals(ctx context.Context) (bool, error) {
-	return m.ConsiderUnverifiedStorageDealsConfigFunc()
+func (m *MarketNodeImpl) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetConsiderVerifiedStorageDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, b bool) error {
-	return m.SetConsiderUnverifiedStorageDealsConfigFunc(b)
+func (m *MarketNodeImpl) DealsConsiderUnverifiedStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
+	return m.ConsiderUnverifiedStorageDealsConfigFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) SectorGetSealDelay(ctx context.Context) (time.Duration, error) {
-	return m.GetExpectedSealDurationFunc()
+func (m *MarketNodeImpl) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetConsiderUnverifiedStorageDealsConfigFunc(mAddr, b)
 }
 
-func (m *MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, duration time.Duration) error {
-	return m.SetExpectedSealDurationFunc(duration)
+func (m *MarketNodeImpl) SectorGetExpectedSealDuration(ctx context.Context, mAddr address.Address) (time.Duration, error) {
+	return m.GetExpectedSealDurationFunc(mAddr)
+}
+
+func (m *MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, mAddr address.Address, duration time.Duration) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetExpectedSealDurationFunc(mAddr, duration)
+}
+
+func (m *MarketNodeImpl) DealsMaxStartDelay(ctx context.Context, mAddr address.Address) (time.Duration, error) {
+	return m.GetMaxDealStartDelayFunc(mAddr)
+}
+
+func (m *MarketNodeImpl) DealsSetMaxStartDelay(ctx context.Context, mAddr address.Address, duration time.Duration) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetMaxDealStartDelayFunc(mAddr, duration)
+}
+
+func (m *MarketNodeImpl) DealsPublishMsgPeriod(ctx context.Context, mAddr address.Address) (time.Duration, error) {
+	return m.PublishMsgPeriodConfigFunc(mAddr)
+}
+
+func (m *MarketNodeImpl) DealsSetPublishMsgPeriod(ctx context.Context, mAddr address.Address, duration time.Duration) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetPublishMsgPeriodConfigFunc(mAddr, duration)
+}
+
+func (m *MarketNodeImpl) MarketDataTransferPath(ctx context.Context, mAddr address.Address) (string, error) {
+	return m.TransferPathFunc(mAddr)
+}
+
+func (m *MarketNodeImpl) MarketDataSetTransferPath(ctx context.Context, mAddr address.Address, path string) error {
+	return m.SetTransferPathFunc(mAddr, path)
+}
+
+func (m *MarketNodeImpl) MarketMaxDealsPerPublishMsg(ctx context.Context, mAddr address.Address) (uint64, error) {
+	return m.MaxDealsPerPublishMsgFunc(mAddr)
+}
+
+func (m *MarketNodeImpl) MarketSetMaxDealsPerPublishMsg(ctx context.Context, mAddr address.Address, num uint64) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetMaxDealsPerPublishMsgFunc(mAddr, num)
+}
+
+func (m *MarketNodeImpl) DealsMaxProviderCollateralMultiplier(ctx context.Context, mAddr address.Address) (uint64, error) {
+	return m.MaxProviderCollateralMultiplierFunc(mAddr)
+}
+
+func (m *MarketNodeImpl) DealsSetMaxProviderCollateralMultiplier(ctx context.Context, mAddr address.Address, c uint64) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetMaxProviderCollateralMultiplierFunc(mAddr, c)
+}
+
+func (m *MarketNodeImpl) DealsMaxPublishFee(ctx context.Context, mAddr address.Address) (vTypes.FIL, error) {
+	return m.MaxPublishDealsFeeFunc(mAddr)
+}
+
+func (m *MarketNodeImpl) DealsSetMaxPublishFee(ctx context.Context, mAddr address.Address, fee vTypes.FIL) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetMaxPublishDealsFeeFunc(mAddr, fee)
+}
+
+func (m *MarketNodeImpl) MarketMaxBalanceAddFee(ctx context.Context, mAddr address.Address) (vTypes.FIL, error) {
+	return m.MaxMarketBalanceAddFeeFunc(mAddr)
+}
+
+func (m *MarketNodeImpl) MarketSetMaxBalanceAddFee(ctx context.Context, mAddr address.Address, fee vTypes.FIL) error {
+	if err := m.permissionVerify(ctx, mAddr); err != nil {
+		return err
+	}
+	return m.SetMaxMarketBalanceAddFeeFunc(mAddr, fee)
 }
 
 func (m *MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (*vTypes.MsgLookup, error) {
@@ -434,7 +575,7 @@ func (m *MarketNodeImpl) listDeals(ctx context.Context, addrs []address.Address)
 	}
 
 	for _, deal := range allDeals {
-		if m.MinerMgr.Has(ctx, deal.Proposal.Provider) && has(deal.Proposal.Provider) {
+		if m.UserMgr.Has(ctx, deal.Proposal.Provider) && has(deal.Proposal.Provider) {
 			out = append(out, deal)
 		}
 	}
