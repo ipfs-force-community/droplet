@@ -56,15 +56,16 @@ type StorageDealHandler interface {
 var _ StorageDealHandler = (*StorageDealProcessImpl)(nil)
 
 type StorageDealProcessImpl struct {
-	metricsCtx metrics.MetricsCtx
-	conns      *connmanager.ConnManager
-	peerTagger network.PeerTagger
-	spn        StorageProviderNode
-	deals      repo.StorageDealRepo
-	ask        IStorageAsk
-	tf         config.TransferFileStoreConfigFunc
-	stores     *stores.ReadWriteBlockstores
-	dagStore   stores.DAGStoreWrapper
+	metricsCtx     metrics.MetricsCtx
+	conns          *connmanager.ConnManager
+	peerTagger     network.PeerTagger
+	spn            StorageProviderNode
+	deals          repo.StorageDealRepo
+	ask            IStorageAsk
+	tf             config.TransferFileStoreConfigFunc
+	stores         *stores.ReadWriteBlockstores
+	dagStore       stores.DAGStoreWrapper
+	eventPublisher *EventPublishAdapter
 
 	minerMgr        minermgr.IMinerMgr
 	pieceStorageMgr *piecestorage.PieceStorageManager
@@ -86,6 +87,7 @@ func NewStorageDealProcessImpl(
 	dataTransfer network2.ProviderDataTransfer,
 	dagStore stores.DAGStoreWrapper,
 	sdf config.StorageDealFilter,
+	pb *EventPublishAdapter,
 ) (StorageDealHandler, error) {
 	err := dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{deals}, nil))
 	if err != nil {
@@ -112,8 +114,8 @@ func NewStorageDealProcessImpl(
 
 		pieceStorageMgr: pieceStorageMgr,
 		dagStore:        dagStore,
-
-		sdf: sdf,
+		eventPublisher:  pb,
+		sdf:             sdf,
 	}, nil
 }
 
@@ -129,10 +131,12 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 	storageDealPorcess.peerTagger.TagPeer(minerDeal.Client, minerDeal.ProposalCid.String())
 	tok, curEpoch, err := storageDealPorcess.spn.GetChainHead(ctx)
 	if err != nil {
+		storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, minerDeal)
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("node error getting most recent state id: %w", err))
 	}
 
 	if err := providerutils.VerifyProposal(ctx, minerDeal.ClientDealProposal, tok, storageDealPorcess.spn.VerifySignature); err != nil {
+		storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, minerDeal)
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("verifying StorageDealProposal: %w", err))
 	}
 
@@ -181,6 +185,7 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 
 	pcMin, pcMax, err := storageDealPorcess.spn.DealProviderCollateralBounds(ctx, proposal.Provider, proposal.PieceSize, proposal.VerifiedDeal)
 	if err != nil {
+		storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, minerDeal)
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("node error getting collateral bounds: %w", err))
 	}
 
@@ -221,6 +226,7 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 	// check market funds
 	clientMarketBalance, err := storageDealPorcess.spn.GetBalance(ctx, proposal.Client, tok)
 	if err != nil {
+		storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, minerDeal)
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("node error getting client market balance failed: %w", err))
 	}
 
@@ -234,6 +240,7 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 	if proposal.VerifiedDeal {
 		dataCap, err := storageDealPorcess.spn.GetDataCap(ctx, proposal.Client, tok)
 		if err != nil {
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, minerDeal)
 			return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("node error fetching verified data cap: %w", err))
 		}
 		if dataCap == nil {
@@ -245,6 +252,7 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 		}
 	}
 
+	storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDealDeciding, minerDeal)
 	accept, reason, err := storageDealPorcess.runDealDecisionLogic(ctx, minerDeal)
 	if err != nil {
 		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, fmt.Errorf("custom deal decision logic failed: %w", err))
@@ -262,6 +270,8 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 		return storageDealPorcess.HandleError(ctx, minerDeal, err)
 	}
 
+	storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDealAccepted, minerDeal)
+
 	if err := storageDealPorcess.conns.Disconnect(minerDeal.ProposalCid); err != nil {
 		log.Warnf("closing client connection: %+v", err)
 	}
@@ -272,25 +282,30 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context, deal *types.MinerDeal) error {
 	// VerifyData
 	if deal.State == storagemarket.StorageDealVerifyData {
-		// finalize the blockstore as we're done writing deal data to it.
-		if err := storageDealPorcess.FinalizeBlockstore(deal.ProposalCid); err != nil {
+
+		handleErr := func(err error) error {
 			deal.PiecePath = filestore.Path("")
 			deal.MetadataPath = filestore.Path("")
-			return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("failed to finalize read/write blockstore: %w", err))
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDataVerificationFailed, deal)
+			return storageDealPorcess.HandleError(ctx, deal, err)
+		}
+
+		// finalize the blockstore as we're done writing deal data to it.
+		if err := storageDealPorcess.FinalizeBlockstore(deal.ProposalCid); err != nil {
+			err = fmt.Errorf("failed to finalize read/write blockstore: %w", err)
+			return handleErr(err)
 		}
 
 		pieceCid, metadataPath, err := storageDealPorcess.GeneratePieceCommitment(deal.ProposalCid, deal.InboundCAR, deal.Proposal.PieceSize)
 		if err != nil {
-			deal.PiecePath = filestore.Path("")
-			deal.MetadataPath = filestore.Path("")
-			return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("error generating CommP: %w", err))
+			err = fmt.Errorf("error generating CommP: %w", err)
+			return handleErr(err)
 		}
 
 		// Verify CommP matches
 		if pieceCid != deal.Proposal.PieceCID {
-			deal.PiecePath = filestore.Path("")
-			deal.MetadataPath = filestore.Path("")
-			return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("proposal CommP doesn't match calculated CommP"))
+			err = fmt.Errorf("proposal CommP doesn't match calculated CommP")
+			return handleErr(err)
 		}
 
 		deal.PiecePath = filestore.Path("")
@@ -301,10 +316,11 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 		err = storageDealPorcess.deals.SaveDeal(ctx, deal)
 		if err != nil {
-			deal.PiecePath = filestore.Path("")
-			deal.MetadataPath = filestore.Path("")
-			return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database"))
+			err = fmt.Errorf("fail to save deal to database: %w", err)
+			return handleErr(err)
 		}
+
+		storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventVerifiedData, deal)
 	}
 
 	// ReserveProviderFunds
@@ -312,18 +328,22 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 	if deal.State == storagemarket.StorageDealReserveProviderFunds {
 		tok, _, err := storageDealPorcess.spn.GetChainHead(ctx)
 		if err != nil {
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, deal)
 			return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("acquiring chain head: %w", err))
 		}
 
 		waddr, err := storageDealPorcess.spn.GetMinerWorkerAddress(ctx, deal.Proposal.Provider, tok)
 		if err != nil {
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, deal)
 			return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("looking up miner worker: %w", err))
 		}
 
 		mcid, err := storageDealPorcess.spn.ReserveFunds(ctx, waddr, deal.Proposal.Provider, deal.Proposal.ProviderCollateral)
 		if err != nil {
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, deal)
 			return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("reserving funds: %w", err))
 		}
+		storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventFundsReserved, deal)
 
 		if deal.FundsReserved.Nil() {
 			deal.FundsReserved = deal.Proposal.ProviderCollateral
@@ -335,11 +355,12 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		if mcid != cid.Undef {
 			deal.AddFundsCid = &mcid
 			deal.State = storagemarket.StorageDealProviderFunding
-
 		} else {
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventFunded, deal)
 			deal.State = storagemarket.StorageDealPublish // PublishDeal
 		}
 
+		storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventFundingInitiated, deal)
 		err = storageDealPorcess.deals.SaveDeal(ctx, deal)
 		if err != nil {
 			return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database"))
@@ -350,6 +371,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		// TODO: 返回值处理
 		errW := node.WaitForMessage(ctx, *deal.AddFundsCid, func(code exitcode.ExitCode, bytes []byte, finalCid cid.Cid, err error) error {
 			if err != nil {
+				storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, deal)
 				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("AddFunds errored: %w", err))
 			}
 			if code != exitcode.Ok {
@@ -365,6 +387,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			return nil
 		})
 
+		storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventFunded, deal)
 		if errW != nil {
 			return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("wait AddFunds msg for provider errored: %w", errW))
 		}
@@ -381,9 +404,11 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 
 		pdMCid, err := node.PublishDeals(ctx, smDeal)
 		if err != nil {
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, deal)
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDealPublishError, deal)
 			return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("publishing deal: %w", err))
 		}
-
+		storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDealPublishInitiated, deal)
 		deal.PublishCid = &pdMCid
 
 		deal.State = storagemarket.StorageDealPublishing
@@ -397,12 +422,16 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 		if deal.PublishCid != nil {
 			res, err := storageDealPorcess.spn.WaitForPublishDeals(ctx, *deal.PublishCid, deal.Proposal)
 			if err != nil {
+				storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, deal)
+				storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDealPublishError, deal)
 				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("PublishStorageDeals errored: %w", err))
 			}
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDealPublished, deal)
 
 			// Once the deal has been published, release funds that were reserved
 			// for deal publishing
 			storageDealPorcess.releaseReservedFunds(ctx, deal)
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventFundsReleased, deal)
 
 			deal.DealID = res.DealID
 			deal.PublishCid = &res.FinalCid
@@ -554,6 +583,7 @@ func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context
 
 // StorageDealRejecting(RejectDeal)->StorageDealFailing(FailDeal)
 func (storageDealPorcess *StorageDealProcessImpl) HandleReject(ctx context.Context, deal *types.MinerDeal, event storagemarket.StorageDealStatus, err error) error {
+	storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDealRejected, deal)
 	deal.State = event
 	deal.Message = err.Error()
 
@@ -563,6 +593,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleReject(ctx context.Conte
 		Proposal: deal.ProposalCid,
 	})
 
+	storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventRejectionSent, deal)
 	// ProviderEventSendResponseFailed/ProviderEventRejectionSent -> StorageDealFailing
 	if err != nil {
 		log.Errorf("failed response for reject: %s", err.Error())
@@ -628,6 +659,7 @@ func (storageDealPorcess *StorageDealProcessImpl) releaseReservedFunds(ctx conte
 		err := storageDealPorcess.spn.ReleaseFunds(ctx, deal.Proposal.Provider, deal.FundsReserved)
 		if err != nil {
 			// nonfatal error
+			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, deal)
 			log.Warnf("failed to release funds: %s", err)
 		}
 

@@ -23,16 +23,23 @@ import (
 )
 
 type DealTracker struct {
-	period      time.Duration // TODO: Preferably configurable?
-	storageRepo repo.StorageDealRepo
-	minerMgr    minermgr.IMinerMgr
-	fullNode    v1api.FullNode
+	period         time.Duration // TODO: Preferably configurable?
+	storageRepo    repo.StorageDealRepo
+	minerMgr       minermgr.IMinerMgr
+	fullNode       v1api.FullNode
+	eventPublisher *EventPublishAdapter
 }
 
 var ReadyRetrievalDealStatus = []storagemarket.StorageDealStatus{storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive}
 
-func NewDealTracker(lc fx.Lifecycle, r repo.Repo, minerMgr minermgr.IMinerMgr, fullNode v1api.FullNode) *DealTracker {
-	tracker := &DealTracker{period: time.Minute, storageRepo: r.StorageDealRepo(), minerMgr: minerMgr, fullNode: fullNode}
+func NewDealTracker(lc fx.Lifecycle, r repo.Repo, minerMgr minermgr.IMinerMgr, fullNode v1api.FullNode, pb *EventPublishAdapter) *DealTracker {
+	tracker := &DealTracker{
+		period:         time.Minute,
+		storageRepo:    r.StorageDealRepo(),
+		minerMgr:       minerMgr,
+		fullNode:       fullNode,
+		eventPublisher: pb,
+	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -108,8 +115,12 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 		if dealProposal.State.SectorStartEpoch > -1 { // include in sector
 			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealActive, market.Proving)
 			if err != nil {
-				return fmt.Errorf("update deal status to active for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+				log.Errorf("update deal status to active for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+				continue
 			}
+
+			dealTracker.eventPublisher.PublishWithCid(storagemarket.ProviderEventDealActivated, deal.ProposalCid)
+
 			continue
 		}
 
@@ -142,6 +153,8 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 			if err != nil {
 				return fmt.Errorf("update deal status to sealing for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 			}
+
+			dealTracker.eventPublisher.PublishWithCid(storagemarket.ProviderEventDealHandedOff, deal.ProposalCid)
 		}
 	}
 	return nil
