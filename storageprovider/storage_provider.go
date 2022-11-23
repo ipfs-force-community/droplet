@@ -44,6 +44,45 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
+type internalProviderEvent struct {
+	evt  storagemarket.ProviderEvent
+	deal storagemarket.MinerDeal
+}
+
+func providerDispatcher(evt pubsub.Event, fn pubsub.SubscriberFn) error {
+	ie, ok := evt.(internalProviderEvent)
+	if !ok {
+		return errors.New("wrong type of event")
+	}
+	cb, ok := fn.(storagemarket.ProviderSubscriber)
+	if !ok {
+		return errors.New("wrong type of callback")
+	}
+	cb(ie.evt, ie.deal)
+	return nil
+}
+
+type EventPublishAdapter struct {
+	dealStore repo.StorageDealRepo
+	Pubsub    *pubsub.PubSub
+}
+
+func NewEventPublishAdapter(repo repo.Repo) *EventPublishAdapter {
+	return &EventPublishAdapter{dealStore: repo.StorageDealRepo(), Pubsub: pubsub.New(providerDispatcher)}
+}
+
+func (p *EventPublishAdapter) Publish(evt storagemarket.ProviderEvent, deal *types.MinerDeal) error {
+	return p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: *deal.FilMarketMinerDeal()})
+}
+
+func (p *EventPublishAdapter) PublishWithCid(evt storagemarket.ProviderEvent, cid cid.Cid) error {
+	deal, err := p.dealStore.GetDeal(context.TODO(), cid)
+	if err != nil {
+		return err
+	}
+	return p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: *deal.FilMarketMinerDeal()})
+}
+
 // StorageProvider provides an interface to the storage market for a single
 // storage miner.
 type StorageProvider interface {
@@ -83,7 +122,7 @@ type StorageProviderImpl struct {
 	conns     *connmanager.ConnManager
 	storedAsk IStorageAsk
 
-	pubSub *pubsub.PubSub
+	eventPublisher *EventPublishAdapter
 
 	unsubDataTransfer datatransfer.Unsubscribe
 
@@ -92,24 +131,6 @@ type StorageProviderImpl struct {
 	transferProcess IDatatransferHandler
 	storageReceiver smnet.StorageReceiver
 	minerMgr        minermgr.IMinerMgr
-}
-
-type internalProviderEvent struct {
-	evt  storagemarket.ProviderEvent
-	deal storagemarket.MinerDeal
-}
-
-func providerDispatcher(evt pubsub.Event, fn pubsub.SubscriberFn) error {
-	ie, ok := evt.(internalProviderEvent)
-	if !ok {
-		return errors.New("wrong type of event")
-	}
-	cb, ok := fn.(storagemarket.ProviderSubscriber)
-	if !ok {
-		return errors.New("wrong type of callback")
-	}
-	cb(ie.evt, ie.deal)
-	return nil
 }
 
 // NewStorageProvider returns a new storage provider
@@ -126,6 +147,7 @@ func NewStorageProvider(
 	minerMgr minermgr.IMinerMgr,
 	mixMsgClient clients.IMixMessage,
 	sdf config.StorageDealFilter,
+	pb *EventPublishAdapter,
 ) (StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -138,14 +160,14 @@ func NewStorageProvider(
 		conns:     connmanager.NewConnManager(),
 		storedAsk: storedAsk,
 
-		pubSub: pubsub.New(providerDispatcher),
+		eventPublisher: pb,
 
 		dealStore: repo.StorageDealRepo(),
 
 		minerMgr: minerMgr,
 	}
 
-	dealProcess, err := NewStorageDealProcessImpl(mCtx, spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, tf, minerMgr, pieceStorageMgr, dataTransfer, dagStore, sdf)
+	dealProcess, err := NewStorageDealProcessImpl(mCtx, spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, tf, minerMgr, pieceStorageMgr, dataTransfer, dagStore, sdf, pb)
 	if err != nil {
 		return nil, err
 	}
@@ -153,9 +175,9 @@ func NewStorageProvider(
 
 	spV2.transferProcess = NewDataTransferProcess(dealProcess, spV2.dealStore)
 	// register a data transfer event handler -- this will send events to the state machines based on DT events
-	spV2.unsubDataTransfer = dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(spV2.transferProcess)) // fsm.Group
+	spV2.unsubDataTransfer = dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(spV2.transferProcess, pb)) // fsm.Group
 
-	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.dealStore, spV2.net, tf, dealProcess, mixMsgClient)
+	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.dealStore, spV2.net, tf, dealProcess, mixMsgClient, pb)
 	if err != nil {
 		return nil, err
 	}
@@ -285,6 +307,7 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 
 	proofType, err := p.spn.GetProofType(ctx, d.Proposal.Provider, nil) // TODO: 判断是不是属于此矿池?
 	if err != nil {
+		p.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, d)
 		cleanup()
 		return fmt.Errorf("failed to determine proof type: %w", err)
 	}
@@ -328,6 +351,7 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 	if err := p.dealStore.SaveDeal(ctx, d); err != nil {
 		return fmt.Errorf("save deal(%d) failed:%w", d.DealID, err)
 	}
+	p.eventPublisher.Publish(storagemarket.ProviderEventManualDataReceived, d)
 	go func() {
 		err := p.dealProcess.HandleOff(context.TODO(), d)
 		if err != nil {
@@ -357,6 +381,7 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 	// check is deal online
 	onlineDeal, err := p.spn.StateMarketStorageDeal(ctx, deal.DealID, types2.EmptyTSK)
 	if err != nil {
+		p.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, &deal)
 		return fmt.Errorf("cannt find deal(%d) ", deal.DealID)
 	}
 	// get client addr
@@ -370,6 +395,7 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 		}
 	}
 	if err != nil {
+		p.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, &deal)
 		return fmt.Errorf("get account for %s err: %w", onlineDeal.Proposal.Client, err)
 	}
 	// change DealProposal the same as type in spec-actors
@@ -462,10 +488,12 @@ func (p *StorageProviderImpl) ImportOfflineDeal(ctx context.Context, deal types.
 	// check client signature
 	tok, _, err := p.spn.GetChainHead(ctx)
 	if err != nil {
+		p.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, &deal)
 		return fmt.Errorf("node error getting most recent state id: %w", err)
 	}
 
 	if err := providerutils.VerifyProposal(ctx, deal.ClientDealProposal, tok, p.spn.VerifySignature); err != nil {
+		p.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, &deal)
 		return fmt.Errorf("verifying StorageDealProposal: %w", err)
 	}
 
@@ -517,7 +545,7 @@ func (p *StorageProviderImpl) GetStorageCollateral(ctx context.Context, mAddr ad
 // SubscribeToEvents allows another component to listen for events on the StorageProvider
 // in order to track deals as they progress through the deal flow
 func (p *StorageProviderImpl) SubscribeToEvents(subscriber storagemarket.ProviderSubscriber) shared.Unsubscribe {
-	return shared.Unsubscribe(p.pubSub.Subscribe(subscriber))
+	return shared.Unsubscribe(p.eventPublisher.Pubsub.Subscribe(subscriber))
 }
 
 func curTime() cbg.CborTime {
