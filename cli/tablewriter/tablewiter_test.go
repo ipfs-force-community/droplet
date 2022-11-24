@@ -8,25 +8,21 @@ import (
 )
 
 func TestTableWriter(t *testing.T) {
-	tw := New(Col("C1"), Col("X"), Col("C333"), NewLineCol("Thing"))
+	tw := New(Col("Head1"), Col("Head won't show up "), Col("Head3"), NewLineCol("New Line Head"))
 	tw.Write(map[string]interface{}{
-		"C1":   "234",
-		"C333": "ou",
+		"Head1": "any",
+		"Head3": "any",
 	})
 	tw.Write(map[string]interface{}{
-		"C1":    "23uieui4",
-		"C333":  "ou",
-		"X":     color.GreenString("#"),
-		"Thing": "a very long thing, annoyingly so",
+		"Head1":         "any",
+		"Head3":         "any",
+		"Surprise Head": color.GreenString("#"),
+		"New Line Head": "short value",
 	})
 	tw.Write(map[string]interface{}{
-		"C1":   "ttttttttt",
-		"C333": "eui",
-	})
-	tw.Write(map[string]interface{}{
-		"C1":             "1",
-		"C333":           "2",
-		"SurpriseColumn": "42",
+		"Head1":         "any",
+		"Head3":         "a very very very very long value",
+		"New Line Head": "a very very very very long value",
 	})
 	if err := tw.Flush(os.Stdout); err != nil {
 		t.Fatal(err)
