@@ -10,7 +10,7 @@ SimultaneousTransfersForRetrieval = 20
 
 
 # ****** 全局基础参数配置 ********
-[CommonProviderConfig]
+[CommonProvider]
   ConsiderOnlineStorageDeals = true
   ConsiderOfflineStorageDeals = true
   ConsiderOnlineRetrievalDeals = true
@@ -28,14 +28,14 @@ SimultaneousTransfersForRetrieval = 20
   TransferPath = ""
   MaxPublishDealsFee = "0 FIL"
   MaxMarketBalanceAddFee = "0 FIL"
-  [CommonProviderConfig.RetrievalPricing]
+  RetrievalPaymentAddress = ""
+  DealPublishAddress = []
+  [CommonProvider.RetrievalPricing]
     Strategy = "default"
-    [CommonProviderConfig.RetrievalPricing.Default]
+    [CommonProvider.RetrievalPricing.Default]
       VerifiedDealsFreeTransfer = true
-    [CommonProviderConfig.RetrievalPricing.External]
+    [CommonProvider.RetrievalPricing.External]
       Path = ""
-  [CommonProviderConfig.AddressConfig]
-    DisableWorkerFallback = false
     
 
 每个矿工可以有独立的基础参数，没有配置时使用全局配置，配置方式如下：
@@ -62,14 +62,14 @@ SimultaneousTransfersForRetrieval = 20
    TransferPath = ""
    MaxPublishDealsFee = "0 FIL"
    MaxMarketBalanceAddFee = "0 FIL"
-   [CommonProviderConfig.RetrievalPricing]
+   RetrievalPaymentAddress = ""
+   DealPublishAddress = []
+   [CommonProvider.RetrievalPricing]
      Strategy = "default"
-     [CommonProviderConfig.RetrievalPricing.Default]
+     [CommonProvider.RetrievalPricing.Default]
        VerifiedDealsFreeTransfer = true
-     [CommonProviderConfig.RetrievalPricing.External]
+     [CommonProvider.RetrievalPricing.External]
        Path = ""
-   [CommonProviderConfig.AddressConfig]
-     DisableWorkerFallback = false
 
 # ****** venus market 网络配置  ********
 [API]
