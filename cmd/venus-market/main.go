@@ -87,11 +87,6 @@ var (
 		Name:  "mysql-dsn",
 		Usage: "mysql connection string",
 	}
-
-	RetrievalPaymentAddress = &cli.StringFlag{
-		Name:  "payment-addr",
-		Usage: "payment address for retrieval, eg. f01000",
-	}
 )
 
 func main() {

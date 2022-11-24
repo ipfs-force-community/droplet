@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-state-types/big"
@@ -23,11 +22,10 @@ type RetrievalStreamHandler struct {
 	retrievalDealStore repo.IRetrievalDealRepo
 	storageDealStore   repo.StorageDealRepo
 	pieceInfo          *PieceInfo
-	paymentAddr        address.Address
 }
 
-func NewRetrievalStreamHandler(askRepo repo.IRetrievalAskRepo, retrievalDealStore repo.IRetrievalDealRepo, storageDealStore repo.StorageDealRepo, pieceInfo *PieceInfo, paymentAddr address.Address) *RetrievalStreamHandler {
-	return &RetrievalStreamHandler{askRepo: askRepo, retrievalDealStore: retrievalDealStore, storageDealStore: storageDealStore, pieceInfo: pieceInfo, paymentAddr: paymentAddr}
+func NewRetrievalStreamHandler(askRepo repo.IRetrievalAskRepo, retrievalDealStore repo.IRetrievalDealRepo, storageDealStore repo.StorageDealRepo, pieceInfo *PieceInfo) *RetrievalStreamHandler {
+	return &RetrievalStreamHandler{askRepo: askRepo, retrievalDealStore: retrievalDealStore, storageDealStore: storageDealStore, pieceInfo: pieceInfo}
 }
 
 /*
@@ -59,14 +57,6 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		return
 	}
 
-	// since 'paymentAddr' is empty, to `cborMarshal` a struct with empty address would get an error,
-	// it is impossible to `WriteQueryResponse` success.
-	// just return and output a log.
-	if p.paymentAddr == address.Undef {
-		log.Errorf("'RetrievalPaymentAddress' configuration is not set")
-		return
-	}
-
 	sendResp := func(resp retrievalmarket.QueryResponse) {
 		if err := stream.WriteQueryResponse(resp); err != nil {
 			log.Errorf("Retrieval query: writing query response: %s", err)
@@ -78,7 +68,6 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		PieceCIDFound:   retrievalmarket.QueryItemUnavailable,
 		MinPricePerByte: big.Zero(),
 		UnsealPrice:     big.Zero(),
-		PaymentAddress:  p.paymentAddr,
 	}
 
 	minerDeals, err := p.pieceInfo.GetPieceInfoFromCid(ctx, query.PayloadCID, query.PieceCID)
@@ -95,14 +84,15 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		return
 	}
 
+	selectDeal := minerDeals[0]
+
 	answer.Status = retrievalmarket.QueryResponseAvailable
 	// todo payload size maybe different with real piece size.
-	answer.Size = uint64(minerDeals[0].Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
+	answer.Size = uint64(selectDeal.Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
 	answer.PieceCIDFound = retrievalmarket.QueryItemAvailable
-	answer.PaymentAddress = p.paymentAddr
+	answer.PaymentAddress = selectDeal.Proposal.Provider
 
-	// todo use market ask maybe need miner ask list for future
-	ask, err := p.askRepo.GetAsk(ctx, p.paymentAddr)
+	ask, err := p.askRepo.GetAsk(ctx, selectDeal.Proposal.Provider)
 	if err != nil {
 		log.Errorf("Retrieval query: GetAsk: %s", err)
 		answer.Status = retrievalmarket.QueryResponseError
