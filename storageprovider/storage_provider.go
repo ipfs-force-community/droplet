@@ -85,6 +85,7 @@ func (p *EventPublishAdapter) PublishWithCid(evt storagemarket.ProviderEvent, ci
 	deal, err := p.dealStore.GetDeal(context.TODO(), cid)
 	if err != nil {
 		log.Debugf("get deal fail %s  when publish event %s err: %s", cid, evt, err)
+		return
 	}
 	err = p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: deal})
 	if err != nil {
