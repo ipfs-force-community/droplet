@@ -175,25 +175,25 @@ var pieceStorageListCmd = &cli.Command{
 		storagelist := nodeApi.ListPieceStorageInfos(ctx)
 
 		w := tablewriter.New(
-			tablewriter.Col("name"),
-			tablewriter.Col("readonly"),
-			tablewriter.Col("path/enter point"),
-			tablewriter.Col("type"),
+			tablewriter.Col("Name"),
+			tablewriter.Col("ReadOnly"),
+			tablewriter.Col("Type"),
+			tablewriter.Col("Path"),
 		)
 
 		for _, storage := range storagelist.FsStorage {
 			w.Write(map[string]interface{}{
-				"Name":                storage.Name,
-				"Readonly":            storage.ReadOnly,
-				"Path or Enter point": storage.Path,
-				"Type":                "file system",
+				"Name":     storage.Name,
+				"ReadOnly": storage.ReadOnly,
+				"Path":     storage.Path,
+				"Type":     "file system",
 			})
 		}
 
 		for _, storage := range storagelist.S3Storage {
 			w.Write(map[string]interface{}{
 				"Name":     storage.Name,
-				"Readonly": storage.ReadOnly,
+				"ReadOnly": storage.ReadOnly,
 				"Path":     storage.EndPoint + "/" + storage.SubDir + storage.Bucket,
 				"Type":     "S3",
 			})
