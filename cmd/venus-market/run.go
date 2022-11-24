@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/urfave/cli/v2"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
+	"github.com/filecoin-project/venus-market/v2/cmd"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/dagstore"
 	"github.com/filecoin-project/venus-market/v2/fundmgr"
@@ -34,32 +36,126 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
 )
 
-var poolRunCmd = &cli.Command{
-	Name:  "pool-run",
-	Usage: "Run the market daemon in pool mode",
+var runCmd = &cli.Command{
+	Name:  "run",
+	Usage: "Run the market daemon",
 	Flags: []cli.Flag{
 		NodeUrlFlag,
-		NodeTokenFlag,
 		AuthUrlFlag,
-		AuthTokeFlag,
 		MessagerUrlFlag,
-		MessagerTokenFlag,
 		GatewayUrlFlag,
-		GatewayTokenFlag,
+		ChainServiceTokenFlag,
 		SignerTypeFlag,
 		SignerUrlFlag,
 		SignerTokenFlag,
 		MysqlDsnFlag,
-		RetrievalPaymentAddress,
 	},
-	Action: poolDaemon,
+	Action: runDaemon,
 }
 
-func poolDaemon(cctx *cli.Context) error {
-	utils.SetupLogLevels()
-	cfg, err := prepare(cctx, config.SignerTypeGateway)
+func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
+	if cctx.IsSet(NodeUrlFlag.Name) {
+		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
+	}
+
+	if cctx.IsSet(AuthUrlFlag.Name) {
+		cfg.AuthNode.Url = cctx.String(AuthUrlFlag.Name)
+	}
+
+	if cctx.IsSet(MessagerUrlFlag.Name) {
+		cfg.Messager.Url = cctx.String(MessagerUrlFlag.Name)
+	}
+
+	// chain service token
+	if cctx.IsSet(ChainServiceTokenFlag.Name) {
+		csToken := cctx.String(ChainServiceTokenFlag.Name)
+		cfg.Node.Token = csToken
+		cfg.Messager.Token = csToken
+		cfg.AuthNode.Token = csToken
+	}
+
+	signerType := cctx.String(SignerTypeFlag.Name)
+	switch signerType {
+	case config.SignerTypeGateway:
+		if cctx.IsSet(GatewayUrlFlag.Name) {
+			cfg.Signer.Url = cctx.String(GatewayUrlFlag.Name)
+		}
+
+		if cctx.IsSet(ChainServiceTokenFlag.Name) {
+			cfg.Signer.Token = cctx.String(ChainServiceTokenFlag.Name)
+		}
+	case config.SignerTypeWallet:
+		if cctx.IsSet(SignerUrlFlag.Name) {
+			cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
+		}
+
+		if cctx.IsSet(SignerTokenFlag.Name) {
+			cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
+		}
+	case config.SignerTypeLotusnode:
+		if cctx.IsSet(NodeUrlFlag.Name) {
+			cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
+		}
+
+		if cctx.IsSet(ChainServiceTokenFlag.Name) {
+			cfg.Signer.Token = cctx.String(ChainServiceTokenFlag.Name)
+		}
+	default:
+		return fmt.Errorf("unsupport signer type %s", signerType)
+	}
+	cfg.Signer.SignerType = signerType
+
+	if cctx.IsSet(MysqlDsnFlag.Name) {
+		cfg.Mysql.ConnectionString = cctx.String(MysqlDsnFlag.Name)
+	}
+
+	return nil
+}
+
+func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
+	cfg := config.DefaultMarketConfig
+	cfg.HomeDir = cctx.String(RepoFlag.Name)
+	cfgPath, err := cfg.ConfigPath()
 	if err != nil {
-		return fmt.Errorf("prepare pool run failed:%w", err)
+		return nil, err
+	}
+
+	mainLog.Info("load config from path ", cfgPath)
+	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		//create
+		err = flagData(cctx, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("parser data from flag: %w", err)
+		}
+
+		err = config.SaveConfig(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("save config to %s: %w", cfgPath, err)
+		}
+	} else if err == nil {
+		//loadConfig
+		err = config.LoadConfig(cfgPath, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		err = flagData(cctx, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("parser data from flag: %w", err)
+		}
+	} else {
+		return nil, err
+	}
+
+	return cfg, cmd.FetchAndLoadBundles(cctx.Context, cfg.Node)
+}
+
+func runDaemon(cctx *cli.Context) error {
+	utils.SetupLogLevels()
+
+	cfg, err := prepare(cctx)
+	if err != nil {
+		return fmt.Errorf("prepare run failed: %w", err)
 	}
 
 	// Configuration sanity check
@@ -98,7 +194,7 @@ func poolDaemon(cctx *cli.Context) error {
 		minermgr.MinerMgrOpts(),
 
 		// clients
-		clients.ClientsOpts(true, "pool", &cfg.Messager, &cfg.Signer),
+		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),
 		piecestorage.PieceStorageOpts(&cfg.PieceStorage),

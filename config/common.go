@@ -37,7 +37,7 @@ type Common struct {
 	Libp2p Libp2p
 }
 
-// chain-service connect config
+// ConnectConfig chain-service connect config
 type ConnectConfig struct {
 	Url   string
 	Token string
@@ -46,11 +46,9 @@ type ConnectConfig struct {
 type (
 	Node     ConnectConfig
 	Messager ConnectConfig
-	Market   ConnectConfig
 	AuthNode ConnectConfig
 )
 
-// signer config
 type SignerType = string
 
 const (
@@ -60,12 +58,12 @@ const (
 )
 
 type Signer struct {
-	SignerType SignerType `toml:"Type"` // wallet/gateway
+	SignerType SignerType `toml:"Type"`
 	Url        string
 	Token      string
 }
 
-// common config for provider
+// ProviderConfig is common config for provider
 type ProviderConfig struct {
 	// When enabled, the miner can accept online deals
 	ConsiderOnlineStorageDeals bool

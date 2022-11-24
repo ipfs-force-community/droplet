@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/dealfilter"
 	_ "github.com/filecoin-project/venus-market/v2/network"
 
+	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -78,5 +79,8 @@ var RetrievalProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(IRetrievalProvider), NewProvider), // save to metadata /retrievals/provider
 		builder.Override(HandleRetrievalKey, HandleRetrieval),
 		builder.Override(new(config.RetrievalDealFilter), RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg))),
+		builder.Override(new(gatewayAPIV2.IMarketEvent), NewMarketEventStream),
+		builder.Override(new(gatewayAPIV2.IMarketClient), builder.From(new(gatewayAPIV2.IMarketEvent))),
+		builder.Override(new(gatewayAPIV2.IMarketServiceProvider), builder.From(new(gatewayAPIV2.IMarketEvent))),
 	)
 }

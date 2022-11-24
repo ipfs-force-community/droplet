@@ -9,11 +9,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/pkg/errors"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/dagstore"
@@ -27,6 +22,11 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
@@ -43,20 +43,23 @@ import (
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
+	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
+	marketAPI "github.com/filecoin-project/venus/venus-shared/api/market"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
+	gatewayTypes "github.com/filecoin-project/venus/venus-shared/types/gateway"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var (
-	_   marketapi.IMarket = (*MarketNodeImpl)(nil)
+	_   marketAPI.IMarket = (*MarketNodeImpl)(nil)
 	log                   = logging.Logger("market_api")
 )
 
 type MarketNodeImpl struct {
-	FundAPI
-	MarketEventAPI
 	fx.In
+
+	FundAPI
+	gatewayAPIV2.IMarketServiceProvider
 
 	FullNode          v1api.FullNode
 	Host              host.Host
@@ -112,6 +115,14 @@ type MarketNodeImpl struct {
 	SetMaxPublishDealsFeeFunc     config.SetMaxPublishDealsFeeFunc
 	MaxMarketBalanceAddFeeFunc    config.MaxMarketBalanceAddFeeFunc
 	SetMaxMarketBalanceAddFeeFunc config.SetMaxMarketBalanceAddFeeFunc
+}
+
+func (m MarketNodeImpl) ResponseMarketEvent(ctx context.Context, resp *gatewayTypes.ResponseEvent) error {
+	return m.IMarketServiceProvider.ResponseMarketEvent(ctx, resp)
+}
+
+func (m MarketNodeImpl) ListenMarketEvent(ctx context.Context, policy *gatewayTypes.MarketRegisterPolicy) (<-chan *gatewayTypes.RequestEvent, error) {
+	return m.IMarketServiceProvider.ListenMarketEvent(ctx, policy)
 }
 
 func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
@@ -478,7 +489,7 @@ func (m *MarketNodeImpl) MarketDataTransferPath(ctx context.Context, mAddr addre
 	return m.TransferPathFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) MarketDataSetTransferPath(ctx context.Context, mAddr address.Address, path string) error {
+func (m *MarketNodeImpl) MarketSetDataTransferPath(ctx context.Context, mAddr address.Address, path string) error {
 	return m.SetTransferPathFunc(mAddr, path)
 }
 

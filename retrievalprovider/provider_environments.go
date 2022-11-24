@@ -5,9 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -17,7 +14,12 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/dtutils"
 	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/venus-market/v2/models/repo"
+
+	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 // CheckDealParams verifies the given deal params are acceptable
@@ -56,7 +58,6 @@ type providerDealEnvironment struct {
 // to add all blocks to a blockstore that is used to serve retrieval
 func (pde *providerDealEnvironment) PrepareBlockstore(ctx context.Context, dealID retrievalmarket.DealID, pieceCid cid.Cid) error {
 	// Load the blockstore that has the deal data
-	// 触发unseal过程
 	bs, err := pde.p.dagStore.LoadShard(ctx, pieceCid)
 	if err != nil {
 		return fmt.Errorf("failed to load blockstore for piece %s: %w", pieceCid, err)

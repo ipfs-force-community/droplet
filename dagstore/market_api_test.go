@@ -53,7 +53,8 @@ func TestMarket(t *testing.T) {
 	_, err = memPieceStorage.SaveTo(ctx, testResourceId.String(), payloadWriter)
 	assert.Nil(t, err)
 
-	marketAPI := NewMarketAPI(ctx, r, pmgr, false)
+	// todo: mock IMarketEvent
+	marketAPI := NewMarketAPI(ctx, r, pmgr, nil, false)
 
 	size, err := marketAPI.GetUnpaddedCARSize(ctx, testResourceId)
 	assert.Nil(t, err)

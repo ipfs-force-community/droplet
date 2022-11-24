@@ -31,20 +31,21 @@ var DefaultMarketConfig = &MarketConfig{
 		},
 	},
 	Node: Node{
-		Url:   "", // "/ip4/<ip>/tcp/3453",
-		Token: "",
+		Url:   "/ip4/<ip>/tcp/3453",
+		Token: "<cs-token>",
 	},
 	Messager: Messager{
-		Url:   "", // /ip4/<ip>/tcp/39812
-		Token: "",
-	},
-	Signer: Signer{
-		Url:   "", // /ip4/<ip>/tcp/5678
-		Token: "",
+		Url:   "/ip4/<ip>/tcp/39812",
+		Token: "<cs-token>",
 	},
 	AuthNode: AuthNode{
-		Url:   "", // "http://<ip>:8989",
-		Token: "",
+		Url:   "http://<ip>:8989",
+		Token: "<cs-token>",
+	},
+	Signer: Signer{
+		SignerType: "wallet",
+		Url:        "/ip4/<ip>/tcp/5678",
+		Token:      "<signer-token>",
 	},
 	Mysql: Mysql{
 		ConnectionString: "",
@@ -73,7 +74,7 @@ var DefaultMarketConfig = &MarketConfig{
 }
 
 var DefaultMarketClientConfig = &MarketClientConfig{
-	Home: Home{"~/.venusclient"},
+	Home: Home{"~/.marketclient"},
 	Common: Common{
 		API: API{
 			ListenAddress: "/ip4/127.0.0.1/tcp/41231/ws",
@@ -89,16 +90,16 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		},
 	},
 	Node: Node{
-		Url:   "", // "/ip4/<ip>/tcp/3453",
-		Token: "",
+		Url:   "/ip4/<ip>/tcp/3453",
+		Token: "<cs-token>",
 	},
 	Signer: Signer{
-		Url:   "", // "/ip4/<ip>/tcp/5678",
-		Token: "",
+		Url:   "/ip4/<ip>/tcp/5678",
+		Token: "<cs-token>",
 	},
 	Messager: Messager{
-		Url:   "", // "/ip4/<ip>/tcp/39812",
-		Token: "",
+		Url:   "/ip4/<ip>/tcp/39812",
+		Token: "<cs-token>",
 	},
 	DefaultMarketAddress:              Address(address.Undef),
 	SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
