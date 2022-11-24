@@ -77,7 +77,7 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 	blocklistFunc config.StorageDealPieceCidBlocklistConfigFunc,
 	expectedSealTimeFunc config.GetExpectedSealDurationFunc,
 	startDelay config.GetMaxDealStartDelayFunc,
-	spn storagemarket.StorageProviderNode) config.StorageDealFilter {
+	spn StorageProviderNode) config.StorageDealFilter {
 	return func(onlineOk config.ConsiderOnlineStorageDealsConfigFunc,
 		offlineOk config.ConsiderOfflineStorageDealsConfigFunc,
 		verifiedOk config.ConsiderVerifiedStorageDealsConfigFunc,
@@ -85,7 +85,7 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 		blocklistFunc config.StorageDealPieceCidBlocklistConfigFunc,
 		expectedSealTimeFunc config.GetExpectedSealDurationFunc,
 		startDelay config.GetMaxDealStartDelayFunc,
-		spn storagemarket.StorageProviderNode,
+		spn StorageProviderNode,
 	) config.StorageDealFilter {
 		return func(ctx context.Context, mAddr address.Address, deal *types.MinerDeal) (bool, string, error) {
 			b, err := onlineOk(mAddr)
@@ -186,6 +186,7 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(StorageProviderNode), NewProviderNodeAdapter(cfg)),
 		builder.Override(new(DealAssiger), NewDealAssigner),
 		builder.Override(StartDealTracker, NewDealTracker),
+		builder.Override(new(*EventPublishAdapter), NewEventPublishAdapter),
 	)
 }
 

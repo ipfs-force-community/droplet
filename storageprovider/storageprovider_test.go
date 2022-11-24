@@ -153,7 +153,7 @@ func setup(t *testing.T) StorageProvider {
 		}
 		return store, nil
 	}
-	provider, err := NewStorageProvider(ctx, ask, h, tf, psManager, dt, spn, nil, r, addrMgr, nil, nil)
+	provider, err := NewStorageProvider(ctx, ask, h, tf, psManager, dt, spn, nil, r, addrMgr, nil, nil, NewEventPublishAdapter(r))
 	if err != nil {
 		t.Error(err)
 	}

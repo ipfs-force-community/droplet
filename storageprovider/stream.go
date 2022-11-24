@@ -25,14 +25,15 @@ import (
 var _ network.StorageReceiver = (*StorageDealStream)(nil)
 
 type StorageDealStream struct {
-	conns        *connmanager.ConnManager
-	storedAsk    IStorageAsk
-	spn          StorageProviderNode
-	deals        repo.StorageDealRepo
-	net          network.StorageMarketNetwork
-	tf           config.TransferFileStoreConfigFunc
-	dealProcess  StorageDealHandler
-	mixMsgClient clients.IMixMessage
+	conns          *connmanager.ConnManager
+	storedAsk      IStorageAsk
+	spn            StorageProviderNode
+	deals          repo.StorageDealRepo
+	net            network.StorageMarketNetwork
+	tf             config.TransferFileStoreConfigFunc
+	dealProcess    StorageDealHandler
+	mixMsgClient   clients.IMixMessage
+	eventPublisher *EventPublishAdapter
 }
 
 // NewStorageReceiver returns a new StorageReceiver implements functions for receiving incoming data on storage protocols
@@ -45,16 +46,18 @@ func NewStorageDealStream(
 	tf config.TransferFileStoreConfigFunc,
 	dealProcess StorageDealHandler,
 	mixMsgClient clients.IMixMessage,
+	pubsub *EventPublishAdapter,
 ) (network.StorageReceiver, error) {
 	return &StorageDealStream{
-		conns:        conns,
-		storedAsk:    storedAsk,
-		spn:          spn,
-		deals:        deals,
-		net:          net,
-		tf:           tf,
-		dealProcess:  dealProcess,
-		mixMsgClient: mixMsgClient,
+		conns:          conns,
+		storedAsk:      storedAsk,
+		spn:            spn,
+		deals:          deals,
+		net:            net,
+		tf:             tf,
+		dealProcess:    dealProcess,
+		mixMsgClient:   mixMsgClient,
+		eventPublisher: pubsub,
 	}, nil
 }
 
@@ -169,6 +172,8 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		return
 	}
 
+	storageDealStream.eventPublisher.Publish(storagemarket.ProviderEventOpen, deal)
+
 	err = storageDealStream.conns.AddStream(proposalNd.Cid(), s)
 	if err != nil {
 		log.Errorf("add stream to connection %s %w", proposalNd.Cid(), err)
@@ -251,6 +256,7 @@ func (storageDealStream *StorageDealStream) resendProposalResponse(s network.Sto
 		Addr: md.Proposal.Provider,
 	})
 	if err != nil {
+		storageDealStream.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, md)
 		return fmt.Errorf("failed to sign response message: %w", err)
 	}
 
@@ -274,12 +280,14 @@ func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context
 
 	tok, _, err := storageDealStream.spn.GetChainHead(ctx)
 	if err != nil {
+		storageDealStream.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, md)
 		log.Errorf("failed to get chain head: %s", err)
 		return nil, address.Undef, fmt.Errorf("internal error")
 	}
 
 	err = providerutils.VerifySignature(ctx, request.Signature, md.ClientDealProposal.Proposal.Client, buf, tok, storageDealStream.spn.VerifySignature)
 	if err != nil {
+		storageDealStream.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, md)
 		log.Errorf("invalid deal status request signature: %s", err)
 		return nil, address.Undef, fmt.Errorf("internal error")
 	}
