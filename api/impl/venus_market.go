@@ -174,14 +174,9 @@ func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]types.
 
 func (m *MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan types.MinerDeal, error) {
 	results := make(chan types.MinerDeal)
-	unsub := m.StorageProvider.SubscribeToEvents(func(evt storagemarket.ProviderEvent, deal storagemarket.MinerDeal) {
-		mDeal, err := m.Repo.StorageDealRepo().GetDeal(ctx, deal.ProposalCid)
-		if err != nil {
-			log.Errorf("find deal by proposalCid failed:%s", err.Error())
-			return
-		}
+	unsub := m.StorageProvider.SubscribeToEvents(func(evt storagemarket.ProviderEvent, deal *types.MinerDeal) {
 		select {
-		case results <- *mDeal:
+		case results <- *deal:
 		case <-ctx.Done():
 		}
 	})
