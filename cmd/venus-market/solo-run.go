@@ -45,7 +45,6 @@ var soloRunCmd = &cli.Command{
 		SignerUrlFlag,
 		SignerTokenFlag,
 		MysqlDsnFlag,
-		RetrievalPaymentAddress,
 	},
 	Action: soloDaemon,
 }

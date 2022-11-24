@@ -108,9 +108,11 @@ func (p *DealPublisher) Publish(ctx context.Context, deal market.ClientDealPropo
 	publisher, ok := p.publishers[providerAddr]
 	if !ok {
 		pCfg := p.cfg.MinerProviderConfig(providerAddr, true)
+		addrs := config.CfgAddrArrToNative(pCfg.DealPublishAddress)
+
 		publisher = newDealPublisher(
 			p.api,
-			&AddressSelector{AddressConfig: pCfg.AddressConfig},
+			addrs,
 			pCfg.MaxDealsPerPublishMsg,
 			time.Duration(pCfg.PublishMsgPeriod),
 			&types.MessageSendSpec{MaxFee: abi.TokenAmount(pCfg.MaxPublishDealsFee)})
@@ -136,8 +138,8 @@ func (p *DealPublisher) Publish(ctx context.Context, deal market.ClientDealPropo
 // message. When the limit is reached the singleDealPublisher immediately submits a
 // publish message with all deals in the queue.
 type singleDealPublisher struct {
-	api dealPublisherAPI
-	as  *AddressSelector
+	api          dealPublisherAPI
+	publishAddrs []address.Address
 
 	ctx      context.Context
 	Shutdown context.CancelFunc
@@ -175,7 +177,7 @@ func newPendingDeal(ctx context.Context, deal market.ClientDealProposal) *pendin
 
 func newDealPublisher(
 	dpapi dealPublisherAPI,
-	as *AddressSelector,
+	publishAddrs []address.Address,
 	maxDealsPerPublishMsg uint64,
 	publishPeriod time.Duration,
 	publishSpec *types.MessageSendSpec,
@@ -183,7 +185,7 @@ func newDealPublisher(
 	ctx, cancel := context.WithCancel(context.Background())
 	return &singleDealPublisher{
 		api:                   dpapi,
-		as:                    as,
+		publishAddrs:          publishAddrs,
 		ctx:                   ctx,
 		Shutdown:              cancel,
 		maxDealsPerPublishMsg: maxDealsPerPublishMsg,
@@ -420,7 +422,7 @@ func (p *singleDealPublisher) publishDealProposals(deals []market.ClientDealProp
 		return cid.Undef, fmt.Errorf("serializing PublishStorageDeals params failed: %w", err)
 	}
 
-	addr, _, err := p.as.AddressFor(p.ctx, p.api, mi, marketTypes.DealPublishAddr, big.Zero(), big.Zero())
+	addr, _, err := pickAddress(p.ctx, p.api, mi, big.Zero(), big.Zero(), p.publishAddrs)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("selecting address for publishing deals: %w", err)
 	}
@@ -459,4 +461,77 @@ func (p *singleDealPublisher) filterCancelledDeals() {
 		}
 	}
 	p.pending = p.pending[:i]
+}
+
+func pickAddress(ctx context.Context, a dealPublisherAPI, mi types.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
+	leastBad := mi.Worker //default to worker
+	bestAvail := minFunds
+
+	ctl := map[address.Address]struct{}{}
+	for _, a := range append(mi.ControlAddresses, mi.Owner, mi.Worker) {
+		ctl[a] = struct{}{}
+	}
+
+	for _, addr := range addrs {
+		if addr.Protocol() != address.ID {
+			var err error
+			addr, err = a.StateLookupID(ctx, addr, types.EmptyTSK)
+			if err != nil {
+				log.Warnw("looking up control address", "address", addr, "error", err)
+				continue
+			}
+		}
+
+		if _, ok := ctl[addr]; !ok {
+			log.Warnw("non-control address configured for sending messages", "address", addr)
+			continue
+		}
+
+		if maybeUseAddress(ctx, a, addr, goodFunds, &leastBad, &bestAvail) {
+			return leastBad, bestAvail, nil
+		}
+	}
+
+	log.Warnw("No address had enough funds to for full message Fee, selecting least bad address", "address", leastBad, "balance", types.FIL(bestAvail), "optimalFunds", types.FIL(goodFunds), "minFunds", types.FIL(minFunds))
+
+	return leastBad, bestAvail, nil
+}
+
+func maybeUseAddress(ctx context.Context, a dealPublisherAPI, addr address.Address, goodFunds abi.TokenAmount, leastBad *address.Address, bestAvail *abi.TokenAmount) bool {
+	b, err := a.WalletBalance(ctx, addr)
+	if err != nil {
+		log.Errorw("checking control address balance", "addr", addr, "error", err)
+		return false
+	}
+
+	if b.GreaterThanEqual(goodFunds) {
+		k, err := a.StateAccountKey(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			log.Errorw("getting account key", "error", err)
+			return false
+		}
+
+		have, err := a.WalletHas(ctx, k)
+		if err != nil {
+			log.Errorw("failed to check control address", "addr", addr, "error", err)
+			return false
+		}
+
+		if !have {
+			log.Errorw("don't have key", "key", k, "address", addr)
+			return false
+		}
+
+		*leastBad = addr
+		*bestAvail = b
+		return true
+	}
+
+	if b.GreaterThan(*bestAvail) {
+		*leastBad = addr
+		*bestAvail = b
+	}
+
+	log.Warnw("address didn't have enough funds to send message", "address", addr, "required", types.FIL(goodFunds), "balance", types.FIL(b))
+	return false
 }

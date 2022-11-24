@@ -50,7 +50,6 @@ var poolRunCmd = &cli.Command{
 		SignerUrlFlag,
 		SignerTokenFlag,
 		MysqlDsnFlag,
-		RetrievalPaymentAddress,
 	},
 	Action: poolDaemon,
 }

@@ -37,24 +37,6 @@ type RetrievalPricingDefault struct {
 	VerifiedDealsFreeTransfer bool
 }
 
-type AddressConfig struct {
-	DealPublishControl []Address
-
-	// DisableWorkerFallback disables usage of the worker address for messages
-	// sent automatically, if control addresses are configured.
-	// A control address that doesn't have enough funds will still be chosen
-	// over the worker address if this flag is set.
-	DisableWorkerFallback bool
-}
-
-func (ac AddressConfig) Address() []address.Address {
-	addrs := make([]address.Address, len(ac.DealPublishControl))
-	for index, mAddr := range ac.DealPublishControl {
-		addrs[index] = address.Address(mAddr)
-	}
-	return addrs
-}
-
 type Journal struct {
 	Path string
 }
@@ -172,10 +154,8 @@ type MarketConfig struct {
 	PieceStorage PieceStorage
 	DAGStore     DAGStoreConfig
 
-	RetrievalPaymentAddress Address // todo 也需要每个矿工可以单独设置
-
-	CommonProviderConfig *ProviderConfig
-	Miners               []*MinerConfig
+	CommonProvider *ProviderConfig
+	Miners         []*MinerConfig
 
 	Journal Journal
 	Metrics metrics.MetricsConfig
@@ -215,7 +195,7 @@ func (m *MarketConfig) MinerProviderConfig(mAddr address.Address, useCommon bool
 	}
 
 	if useCommon {
-		return m.CommonProviderConfig
+		return m.CommonProvider
 	}
 
 	return nil
@@ -223,7 +203,7 @@ func (m *MarketConfig) MinerProviderConfig(mAddr address.Address, useCommon bool
 
 func (m *MarketConfig) SetMinerProviderConfig(mAddr address.Address, pCfg *ProviderConfig) {
 	if mAddr == address.Undef {
-		m.CommonProviderConfig = pCfg
+		m.CommonProvider = pCfg
 	} else {
 		for i := range m.Miners {
 			if m.Miners[i].Addr == Address(mAddr) {
