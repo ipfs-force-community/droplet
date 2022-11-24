@@ -46,15 +46,18 @@ import (
 
 type internalProviderEvent struct {
 	evt  storagemarket.ProviderEvent
-	deal storagemarket.MinerDeal
+	deal *types.MinerDeal
 }
+
+// ProviderSubscriber is a callback that is run when events are emitted on a StorageProvider
+type ProviderSubscriber func(event storagemarket.ProviderEvent, deal *types.MinerDeal)
 
 func providerDispatcher(evt pubsub.Event, fn pubsub.SubscriberFn) error {
 	ie, ok := evt.(internalProviderEvent)
 	if !ok {
 		return errors.New("wrong type of event")
 	}
-	cb, ok := fn.(storagemarket.ProviderSubscriber)
+	cb, ok := fn.(ProviderSubscriber)
 	if !ok {
 		return errors.New("wrong type of callback")
 	}
@@ -72,7 +75,7 @@ func NewEventPublishAdapter(repo repo.Repo) *EventPublishAdapter {
 }
 
 func (p *EventPublishAdapter) Publish(evt storagemarket.ProviderEvent, deal *types.MinerDeal) {
-	err := p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: *deal.FilMarketMinerDeal()})
+	err := p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: deal})
 	if err != nil {
 		log.Debugf("publish deal %s event %s err: %s", deal.ProposalCid, evt, err)
 	}
@@ -83,7 +86,7 @@ func (p *EventPublishAdapter) PublishWithCid(evt storagemarket.ProviderEvent, ci
 	if err != nil {
 		log.Debugf("get deal fail %s  when publish event %s err: %s", cid, evt, err)
 	}
-	err = p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: *deal.FilMarketMinerDeal()})
+	err = p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: deal})
 	if err != nil {
 		log.Debugf("publish deal %s event %s err: %s", cid, evt, err)
 	}
@@ -116,7 +119,7 @@ type StorageProvider interface {
 	ImportOfflineDeal(ctx context.Context, deal types.MinerDeal) error
 
 	// SubscribeToEvents listens for events that happen related to storage deals on a provider
-	SubscribeToEvents(subscriber storagemarket.ProviderSubscriber) shared.Unsubscribe
+	SubscribeToEvents(subscriber ProviderSubscriber) shared.Unsubscribe
 }
 
 type StorageProviderImpl struct {
@@ -550,7 +553,7 @@ func (p *StorageProviderImpl) GetStorageCollateral(ctx context.Context, mAddr ad
 
 // SubscribeToEvents allows another component to listen for events on the StorageProvider
 // in order to track deals as they progress through the deal flow
-func (p *StorageProviderImpl) SubscribeToEvents(subscriber storagemarket.ProviderSubscriber) shared.Unsubscribe {
+func (p *StorageProviderImpl) SubscribeToEvents(subscriber ProviderSubscriber) shared.Unsubscribe {
 	return shared.Unsubscribe(p.eventPublisher.Pubsub.Subscribe(subscriber))
 }
 
