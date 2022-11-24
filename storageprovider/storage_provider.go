@@ -71,16 +71,22 @@ func NewEventPublishAdapter(repo repo.Repo) *EventPublishAdapter {
 	return &EventPublishAdapter{dealStore: repo.StorageDealRepo(), Pubsub: pubsub.New(providerDispatcher)}
 }
 
-func (p *EventPublishAdapter) Publish(evt storagemarket.ProviderEvent, deal *types.MinerDeal) error {
-	return p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: *deal.FilMarketMinerDeal()})
+func (p *EventPublishAdapter) Publish(evt storagemarket.ProviderEvent, deal *types.MinerDeal) {
+	err := p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: *deal.FilMarketMinerDeal()})
+	if err != nil {
+		log.Debugf("publish deal %s event %s err: %s", deal.ProposalCid, evt, err)
+	}
 }
 
-func (p *EventPublishAdapter) PublishWithCid(evt storagemarket.ProviderEvent, cid cid.Cid) error {
+func (p *EventPublishAdapter) PublishWithCid(evt storagemarket.ProviderEvent, cid cid.Cid) {
 	deal, err := p.dealStore.GetDeal(context.TODO(), cid)
 	if err != nil {
-		return err
+		log.Debugf("get deal fail %s  when publish event %s err: %s", cid, evt, err)
 	}
-	return p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: *deal.FilMarketMinerDeal()})
+	err = p.Pubsub.Publish(internalProviderEvent{evt: evt, deal: *deal.FilMarketMinerDeal()})
+	if err != nil {
+		log.Debugf("publish deal %s event %s err: %s", cid, evt, err)
+	}
 }
 
 // StorageProvider provides an interface to the storage market for a single
