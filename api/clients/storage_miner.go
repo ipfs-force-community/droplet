@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+// MarketRequestEvent todo no use
 type MarketRequestEvent interface {
 	IsUnsealed(ctx context.Context, miner address.Address, pieceCid cid.Cid, sector storage.SectorRef, offset types.PaddedByteIndex, size abi.PaddedPieceSize) (bool, error)
 	// SectorsUnsealPiece will Unseal a Sealed sector file for the given sector.

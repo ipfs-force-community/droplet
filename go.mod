@@ -30,9 +30,9 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
 	github.com/filecoin-project/specs-storage v0.4.1
-	github.com/filecoin-project/venus v1.7.1-0.20221116064917-aab91a46434e
-	github.com/filecoin-project/venus-auth v1.8.0-rc1.0.20221101071442-c2ed29a74e9e
-	github.com/filecoin-project/venus-messager v1.8.0-rc2.0.20221103053206-08c153719d87
+	github.com/filecoin-project/venus v1.8.1-0.20221124100242-52038a0c5746
+	github.com/filecoin-project/venus-auth v1.8.1-0.20221124050656-73734ff50be5
+	github.com/filecoin-project/venus-messager v1.8.1-0.20221124093938-eee70cda6d54
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -40,7 +40,7 @@ require (
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
-	github.com/ipfs-force-community/venus-gateway v1.8.0-rc1.0.20221102034912-cf73a722a26a
+	github.com/ipfs-force-community/venus-gateway v1.8.1-0.20221124093814-a16028a23ace
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.4.0
 	github.com/ipfs/go-cid v0.2.0

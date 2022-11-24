@@ -9,11 +9,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/pkg/errors"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/dagstore"
@@ -27,6 +22,11 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
@@ -54,9 +54,9 @@ var (
 )
 
 type MarketNodeImpl struct {
-	FundAPI
-	MarketEventAPI
 	fx.In
+
+	FundAPI
 
 	FullNode          v1api.FullNode
 	Host              host.Host
@@ -483,7 +483,7 @@ func (m *MarketNodeImpl) MarketDataTransferPath(ctx context.Context, mAddr addre
 	return m.TransferPathFunc(mAddr)
 }
 
-func (m *MarketNodeImpl) MarketDataSetTransferPath(ctx context.Context, mAddr address.Address, path string) error {
+func (m *MarketNodeImpl) MarketSetDataTransferPath(ctx context.Context, mAddr address.Address, path string) error {
 	return m.SetTransferPathFunc(mAddr, path)
 }
 
