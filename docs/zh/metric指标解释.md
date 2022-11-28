@@ -54,3 +54,13 @@ StorageRetrievalHitCount = stats.Int64("piecestorage/retrieval_hit", "PieceStora
 // 保存 piece 时正好命中 piecestore 中的 piece 的次数
 StorageSaveHitCount      = stats.Int64("piecestorage/save_hit", "PieceStorage hit count for save piece data", stats.UnitDimensionless)
 ```
+
+### rpc
+```
+# 调用无效RPC方法的次数
+RPCInvalidMethod = stats.Int64("rpc/invalid_method", "Total number of invalid RPC methods called", stats.UnitDimensionless)
+# RPC请求失败的次数
+RPCRequestError  = stats.Int64("rpc/request_error", "Total number of request errors handled", stats.UnitDimensionless)
+# RPC响应失败的次数
+RPCResponseError = stats.Int64("rpc/response_error", "Total number of responses errors handled", stats.UnitDimensionless)
+```
