@@ -36,7 +36,7 @@ func init() {
 
 // ProviderRequestValidator validates incoming requests for the Retrieval Provider
 type ProviderRequestValidator struct {
-	paymentAddr   address.Address
+	cfg           *config.MarketConfig
 	storageDeals  repo.StorageDealRepo
 	pieceInfo     *PieceInfo
 	retrievalDeal repo.IRetrievalDealRepo
@@ -46,7 +46,7 @@ type ProviderRequestValidator struct {
 
 // NewProviderRequestValidator returns a new instance of the ProviderRequestValidator
 func NewProviderRequestValidator(
-	paymentAddr address.Address,
+	cfg *config.MarketConfig,
 	storageDeals repo.StorageDealRepo,
 	retrievalDeal repo.IRetrievalDealRepo,
 	retrievalAsk repo.IRetrievalAskRepo,
@@ -54,7 +54,7 @@ func NewProviderRequestValidator(
 	rdf config.RetrievalDealFilter,
 ) *ProviderRequestValidator {
 	return &ProviderRequestValidator{
-		paymentAddr:   paymentAddr,
+		cfg:           cfg,
 		storageDeals:  storageDeals,
 		retrievalDeal: retrievalDeal,
 		retrievalAsk:  retrievalAsk,
@@ -110,7 +110,6 @@ func (rv *ProviderRequestValidator) validatePull(ctx context.Context, isRestart 
 		return nil, errors.New("incorrect CID for this proposal")
 	}
 
-	// Check the proposal selector matches
 	buf := new(bytes.Buffer)
 	err := dagcbor.Encode(selector, buf)
 	if err != nil {
@@ -194,8 +193,11 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 	ctx, cancel := context.WithTimeout(ctx, askTimeout)
 	defer cancel()
 
-	deal.SelStorageProposalCid = minerdeals[0].ProposalCid
-	ask, err := rv.retrievalAsk.GetAsk(ctx, rv.paymentAddr)
+	//todo this deal may not match with query ask, no way to get miner id in current protocol
+	selectDeal := minerdeals[0]
+	//	providerPaymentAddr := rv.cfg.MinerProviderConfig(selectDeal.Proposal.Provider, false).RetrievalPaymentAddress
+	deal.SelStorageProposalCid = selectDeal.ProposalCid
+	ask, err := rv.retrievalAsk.GetAsk(ctx, selectDeal.Proposal.Provider)
 	if err != nil {
 		return retrievalmarket.DealStatusErrored, err
 	}

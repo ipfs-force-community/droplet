@@ -7,7 +7,6 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/dtutils"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
@@ -73,11 +72,11 @@ func NewProvider(network rmnet.RetrievalMarketNetwork,
 		retrievalDealRepo:      retrievalDealRepo,
 		storageDealRepo:        storageDealsRepo,
 		stores:                 stores.NewReadOnlyBlockstores(),
-		retrievalStreamHandler: NewRetrievalStreamHandler(retrievalAskRepo, retrievalDealRepo, storageDealsRepo, pieceInfo, address.Address(cfg.RetrievalPaymentAddress)),
+		retrievalStreamHandler: NewRetrievalStreamHandler(retrievalAskRepo, retrievalDealRepo, storageDealsRepo, pieceInfo),
 	}
 
 	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo, storageDealsRepo)
-	p.requestValidator = NewProviderRequestValidator(address.Address(cfg.RetrievalPaymentAddress), storageDealsRepo, retrievalDealRepo, retrievalAskRepo, pieceInfo, rdf)
+	p.requestValidator = NewProviderRequestValidator(cfg, storageDealsRepo, retrievalDealRepo, retrievalAskRepo, pieceInfo, rdf)
 	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{retrievalDealRepo, p.stores})
 	p.reValidator = NewProviderRevalidator(fullNode, payAPI, retrievalDealRepo, retrievalHandler)
 

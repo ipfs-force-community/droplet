@@ -6,8 +6,6 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/venus-market/v2/cmd"
 	"github.com/filecoin-project/venus-market/v2/config"
 )
@@ -86,15 +84,6 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		cfg.Mysql.ConnectionString = cctx.String(MysqlDsnFlag.Name)
 	}
 
-	if cctx.IsSet(RetrievalPaymentAddress.Name) {
-		addrStr := cctx.String(RetrievalPaymentAddress.Name)
-		addr, err := address.NewFromString(addrStr)
-		if err != nil {
-			return fmt.Errorf("flag provide a wrong address %s %w", addrStr, err)
-		}
-
-		cfg.RetrievalPaymentAddress = config.Address(addr)
-	}
 	return nil
 }
 

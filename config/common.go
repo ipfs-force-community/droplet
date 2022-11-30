@@ -115,7 +115,9 @@ type ProviderConfig struct {
 	MaxPublishDealsFee     types.FIL
 	MaxMarketBalanceAddFee types.FIL
 
-	AddressConfig AddressConfig // todo 当前版本无效
+	RetrievalPaymentAddress Address // todo 也需要每个矿工可以单独设置
+
+	DealPublishAddress []Address
 }
 
 func defaultProviderConfig() *ProviderConfig {
