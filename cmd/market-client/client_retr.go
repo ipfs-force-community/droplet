@@ -12,7 +12,7 @@ import (
 
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
@@ -113,10 +113,10 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi clientapi.IMarketClie
 			return nil, fmt.Errorf("offer error: %s", offer.Err)
 		}
 
-		maxPrice := types2.MustParseFIL(DefaultMaxRetrievePrice)
+		maxPrice := types.MustParseFIL(DefaultMaxRetrievePrice)
 
 		if cctx.String("maxPrice") != "" {
-			maxPrice, err = types2.ParseFIL(cctx.String("maxPrice"))
+			maxPrice, err = types.ParseFIL(cctx.String("maxPrice"))
 			if err != nil {
 				return nil, fmt.Errorf("parsing maxPrice: %w", err)
 			}
@@ -159,12 +159,14 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi clientapi.IMarketClie
 				event = retrievalmarket.ClientEvents[*evt.Event]
 			}
 
-			printf("Recv %s, Paid %s, %s (%s), %s\n",
-				types2.SizeStr(types2.NewInt(evt.BytesReceived)),
-				types2.FIL(evt.TotalPaid),
+			printf("Recv %s, Paid %s, %s (%s), %s [%d|%d]\n",
+				types.SizeStr(types.NewInt(evt.BytesReceived)),
+				types.FIL(evt.TotalPaid),
 				strings.TrimPrefix(event, "ClientEvent"),
 				strings.TrimPrefix(retrievalmarket.DealStatuses[evt.Status], "DealStatus"),
 				time.Since(start).Truncate(time.Millisecond),
+				evt.ID,
+				types.NewInt(evt.BytesReceived),
 			)
 
 			switch evt.Status {
