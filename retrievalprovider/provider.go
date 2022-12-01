@@ -51,7 +51,8 @@ type RetrievalProvider struct {
 }
 
 // NewProvider returns a new retrieval Provider
-func NewProvider(network rmnet.RetrievalMarketNetwork,
+func NewProvider(
+	network rmnet.RetrievalMarketNetwork,
 	dagStore stores.DAGStoreWrapper,
 	dataTransfer network.ProviderDataTransfer,
 	fullNode v1api.FullNode,

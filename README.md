@@ -29,19 +29,26 @@ git clone https://github.com/filecoin-project/venus-market.git
 cd venus-market
 make
 ```
-## how to setup venus-market
+## how to set up venus-market
 
-run as venus-pool service
+run:
+
+- run in chain service
 ```shell script
-./venus-market pool-run --auth-url <auth url> --node-url <node url> --messager-url <messager url>  --gateway-url <signer url>  --auth-token <auth token>  --payment-addr <addr:account>
+./venus-market run --auth-url=<auth url> --node-url=<node url> --messager-url=<messager url>  --gateway-url=<signer url> --cs-token=<token of admin-authority> --signer-type="gateway"
 ```
 
-run in local 
+- run in local, conn venus chain service and use lotus-wallet/venus-wallet to sign 
 ```shell script
-./venus-market solo-run --node-url <node url>  --node-token <auth token> --signer-url <local wallet url>  --signer-token <local wallet token> --payment-addr <addr:account>
+./venus-market run --auth-url=<auth url> --node-url=<node url> --messager-url=<messager url> --cs-token=<token of write-authority> --signer-type="wallet"  --signer-url=<wallet url> --signer-token=<wallet token>
 ```
 
-set peerid and address
+- run in local, conn lotus full node and use lotus full node to sign
+```shell script
+./venus-market run --node-url=<node url> --messager-url=<node url> --cs-token=<token of lotus> --signer-type="lotusnode"
+```
+
+set peer id and address
 
 ```shell script
 ./venus-market net  listen                               #query venus-market address and peerid

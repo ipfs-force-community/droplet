@@ -10,6 +10,8 @@ import (
 	marketTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
+// todo 支持动态配置?
+
 type IMinerMgr interface {
 	Has(context.Context, address.Address) bool
 	MinerList(context.Context) ([]address.Address, error)

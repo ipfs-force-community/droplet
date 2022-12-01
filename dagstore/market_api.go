@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
 	"github.com/ipfs-force-community/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -15,6 +14,9 @@ import (
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-padreader"
 
+	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
+
+	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"github.com/filecoin-project/venus-market/v2/utils"
@@ -28,20 +30,22 @@ type MarketAPI interface {
 }
 
 type marketAPI struct {
-	pieceStorageMgr *piecestorage.PieceStorageManager
-	pieceRepo       repo.StorageDealRepo
-	useTransient    bool
-	metricsCtx      metrics.MetricsCtx
+	pieceStorageMgr     *piecestorage.PieceStorageManager
+	pieceRepo           repo.StorageDealRepo
+	useTransient        bool
+	metricsCtx          metrics.MetricsCtx
+	gatewayMarketClient gatewayAPIV2.IMarketClient
 }
 
 var _ MarketAPI = (*marketAPI)(nil)
 
-func NewMarketAPI(ctx metrics.MetricsCtx, repo repo.Repo, pieceStorageMgr *piecestorage.PieceStorageManager, useTransient bool) MarketAPI {
+func NewMarketAPI(ctx metrics.MetricsCtx, repo repo.Repo, pieceStorageMgr *piecestorage.PieceStorageManager, gatewayMarketClient gatewayAPIV2.IMarketClient, useTransient bool) MarketAPI {
 	return &marketAPI{
-		pieceRepo:       repo.StorageDealRepo(),
-		pieceStorageMgr: pieceStorageMgr,
-		useTransient:    useTransient,
-		metricsCtx:      ctx,
+		pieceRepo:           repo.StorageDealRepo(),
+		pieceStorageMgr:     pieceStorageMgr,
+		useTransient:        useTransient,
+		metricsCtx:          ctx,
+		gatewayMarketClient: gatewayMarketClient,
 	}
 }
 
@@ -56,6 +60,7 @@ func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, err
 	}
 	return true, nil
 	// todo check isunseal from miner
+	// m.gatewayMarketClient.IsUnsealed()
 }
 
 func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
@@ -111,7 +116,6 @@ func (m *marketAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (u
 
 	len := pieceInfo.Deals[0].Length
 
-	// todo is this size need to convert to unpad size
 	return uint64(len), nil
 }
 

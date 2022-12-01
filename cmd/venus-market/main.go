@@ -36,34 +36,31 @@ var (
 		Name:  "node-url",
 		Usage: "url to connect to daemon service",
 	}
-	NodeTokenFlag = &cli.StringFlag{
-		Name:  "node-token",
-		Usage: "node token",
-	}
 
 	AuthUrlFlag = &cli.StringFlag{
 		Name:  "auth-url",
 		Usage: "url to connect to auth service",
-	}
-	AuthTokeFlag = &cli.StringFlag{
-		Name:  "auth-token",
-		Usage: "token for connect venus components",
 	}
 
 	MessagerUrlFlag = &cli.StringFlag{
 		Name:  "messager-url",
 		Usage: "url to connect messager service",
 	}
-	MessagerTokenFlag = &cli.StringFlag{
-		Name:   "messager-token",
-		Usage:  "messager token",
-		Hidden: true,
+
+	GatewayUrlFlag = &cli.StringFlag{
+		Name:  "gateway-url",
+		Usage: "used to connect gateway service for sign",
+	}
+
+	ChainServiceTokenFlag = &cli.StringFlag{
+		Name:  "cs-token",
+		Usage: "chain service token",
 	}
 
 	SignerTypeFlag = &cli.StringFlag{
-		Name:   "signer-type",
-		Usage:  "signer service type(lotusnode, wallet, gateway)",
-		Hidden: false,
+		Name:  "signer-type",
+		Usage: "signer service type(lotusnode, wallet, gateway)",
+		Value: "wallet",
 	}
 	SignerUrlFlag = &cli.StringFlag{
 		Name:  "signer-url",
@@ -72,15 +69,6 @@ var (
 	SignerTokenFlag = &cli.StringFlag{
 		Name:  "signer-token",
 		Usage: "auth token for connect signer service",
-	}
-
-	GatewayUrlFlag = &cli.StringFlag{
-		Name:  "gateway-url",
-		Usage: "used to connect gateway service for sign",
-	}
-	GatewayTokenFlag = &cli.StringFlag{
-		Name:  "gateway-token",
-		Usage: "used to connect gateway service for sign",
 	}
 
 	MysqlDsnFlag = &cli.StringFlag{
@@ -99,8 +87,7 @@ func main() {
 			RepoFlag,
 		},
 		Commands: []*cli.Command{
-			soloRunCmd,
-			poolRunCmd,
+			runCmd,
 			cli2.PiecesCmd,
 			cli2.RetrievalDealsCmd,
 			cli2.StorageDealsCmd,

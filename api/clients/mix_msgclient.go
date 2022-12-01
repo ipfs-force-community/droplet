@@ -37,7 +37,7 @@ type MixMsgClient struct {
 	full          v1api.FullNode
 	venusMessager IVenusMessager
 	signer        signer.ISigner
-	nonceAssign   *nonceAssigner
+	nonceAssign   INonceAssigner
 }
 
 func NewMixMsgClient(params MPoolReplaceParams) IMixMessage {
