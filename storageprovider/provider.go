@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
@@ -274,7 +273,7 @@ func (pna *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
-func (pna *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
+func (pna *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal types.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
 	// Wait for deal to be published (plus additional time for confidence)
 	receipt, err := pna.msgClient.WaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
 	if err != nil {

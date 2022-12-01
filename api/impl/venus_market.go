@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
