@@ -11,6 +11,13 @@ import (
 	"math"
 	"sort"
 
+	"github.com/libp2p/go-libp2p/core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
+
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/filestore"
@@ -20,13 +27,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
 	"github.com/filecoin-project/venus-market/v2/models/badger/statestore"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p/core/peer"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
 )
 
 type SignedStorageAsk struct {

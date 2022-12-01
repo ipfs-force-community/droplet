@@ -39,19 +39,27 @@ var retrievalDealSelectionCmd = &cli.Command{
 var retrievalDealSelectionShowCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List retrieval deal proposal selection criteria",
+	Flags: []cli.Flag{
+		minerFlag,
+	},
 	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
 		smapi, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		onlineOk, err := smapi.DealsConsiderOnlineRetrievalDeals(DaemonContext(cctx))
+		onlineOk, err := smapi.DealsConsiderOnlineRetrievalDeals(DaemonContext(cctx), mAddr)
 		if err != nil {
 			return err
 		}
 
-		offlineOk, err := smapi.DealsConsiderOfflineRetrievalDeals(DaemonContext(cctx))
+		offlineOk, err := smapi.DealsConsiderOfflineRetrievalDeals(DaemonContext(cctx), mAddr)
 		if err != nil {
 			return err
 		}
@@ -66,19 +74,27 @@ var retrievalDealSelectionShowCmd = &cli.Command{
 var retrievalDealSelectionResetCmd = &cli.Command{
 	Name:  "reset",
 	Usage: "Reset retrieval deal proposal selection criteria to default values",
+	Flags: []cli.Flag{
+		minerFlag,
+	},
 	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
 		smapi, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		err = smapi.DealsSetConsiderOnlineRetrievalDeals(DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderOnlineRetrievalDeals(DaemonContext(cctx), mAddr, true)
 		if err != nil {
 			return err
 		}
 
-		err = smapi.DealsSetConsiderOfflineRetrievalDeals(DaemonContext(cctx), true)
+		err = smapi.DealsSetConsiderOfflineRetrievalDeals(DaemonContext(cctx), mAddr, true)
 		if err != nil {
 			return err
 		}
@@ -97,8 +113,14 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name: "offline",
 		},
+		minerFlag,
 	},
 	Action: func(cctx *cli.Context) error {
+		mAddr, err := shouldAddress(cctx.String("miner"), false, false)
+		if err != nil {
+			return fmt.Errorf("invalid miner address: %w", err)
+		}
+
 		smapi, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
@@ -106,14 +128,14 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 		defer closer()
 
 		if cctx.Bool("online") {
-			err = smapi.DealsSetConsiderOnlineRetrievalDeals(DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderOnlineRetrievalDeals(DaemonContext(cctx), mAddr, false)
 			if err != nil {
 				return err
 			}
 		}
 
 		if cctx.Bool("offline") {
-			err = smapi.DealsSetConsiderOfflineRetrievalDeals(DaemonContext(cctx), false)
+			err = smapi.DealsSetConsiderOfflineRetrievalDeals(DaemonContext(cctx), mAddr, false)
 			if err != nil {
 				return err
 			}
@@ -126,9 +148,6 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 var retrievalDealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all active retrieval deals for this miner",
-	Flags: []cli.Flag{
-		minerFlag,
-	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
@@ -136,15 +155,7 @@ var retrievalDealsListCmd = &cli.Command{
 		}
 		defer closer()
 
-		var mAddr address.Address
-		if cctx.IsSet("miner") {
-			mAddr, err = address.NewFromString(cctx.String("miner"))
-			if err != nil {
-				return err
-			}
-		}
-
-		deals, err := api.MarketListRetrievalDeals(DaemonContext(cctx), mAddr)
+		deals, err := api.MarketListRetrievalDeals(DaemonContext(cctx))
 		if err != nil {
 			return err
 		}

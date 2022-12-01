@@ -38,7 +38,7 @@ run as venus-pool service
 
 run in local 
 ```shell script
-./venus-market solo-run --node-url <node url>  --node-token <auth token> --wallet-url <local wallet url>  --wallet-token <local wallet token>   --payment-addr <addr:account>
+./venus-market solo-run --node-url <node url>  --node-token <auth token> --signer-url <local wallet url>  --signer-token <local wallet token> --payment-addr <addr:account>
 ```
 
 set peerid and address
@@ -63,6 +63,6 @@ set retrieval ask
 ## how to setup market client
 
 ```shell script
-./market-client run --node-url <node url> --node-token <auth token>  --wallet-url <wallet url> --wallet-token  <wallet token> --addr <client default address>
+./market-client run --node-url <node url> --node-token <auth token>  --signer-url <wallet url> --signer-token  <wallet token> --addr <client default address>
 ```
 Note:**please use a seperate address, or maybe nonce confiction**
