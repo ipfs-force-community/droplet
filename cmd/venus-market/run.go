@@ -158,11 +158,6 @@ func runDaemon(cctx *cli.Context) error {
 		return fmt.Errorf("prepare run failed: %w", err)
 	}
 
-	// Configuration sanity check
-	if len(cfg.AuthNode.Url) == 0 {
-		return fmt.Errorf("pool mode have to configure auth node")
-	}
-
 	if len(cfg.Signer.Url) == 0 {
 		return fmt.Errorf("the signer node must be configured")
 	}
@@ -170,7 +165,10 @@ func runDaemon(cctx *cli.Context) error {
 	ctx := cctx.Context
 
 	// 'NewAuthClient' never returns an error, no needs to check
-	authClient, _ := jwtclient.NewAuthClient(cfg.AuthNode.Url)
+	var authClient *jwtclient.AuthClient
+	if len(cfg.AuthNode.Url) != 0 {
+		authClient, _ = jwtclient.NewAuthClient(cfg.AuthNode.Url)
+	}
 
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
