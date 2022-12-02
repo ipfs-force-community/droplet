@@ -274,7 +274,7 @@ func marketClient(cctx *cli.Context) error {
 
 		config.ConfigClientOpts(cfg),
 
-		clients2.ClientsOpts(false, "", &cfg.Messager, &cfg.Signer),
+		clients2.ClientsOpts(false, &cfg.Messager, &cfg.Signer),
 		models.DBOptions(false, nil),
 		network.NetworkOpts(false, cfg.SimultaneousTransfersForStorage, 0, cfg.SimultaneousTransfersForRetrieval),
 		paychmgr.PaychOpts,
