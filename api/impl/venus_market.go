@@ -140,7 +140,7 @@ func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
 	}
 	ret := []types.User{}
 	for _, actor := range actors {
-		if err := m.checkPermissionByName(ctx, actor.Account); err != nil {
+		if err := m.checkPermissionByName(ctx, actor.Account); err == nil {
 			ret = append(ret, actor)
 		}
 	}
@@ -389,7 +389,7 @@ func (m *MarketNodeImpl) MarketCancelDataTransfer(ctx context.Context, transferI
 
 func (m *MarketNodeImpl) MarketPendingDeals(ctx context.Context) ([]types.PendingDealInfo, error) {
 	dealInfos := m.DealPublisher.PendingDeals()
-	ret := make([]types.PendingDealInfo, len(dealInfos))
+	ret := make([]types.PendingDealInfo, 0, len(dealInfos))
 	for addr, dealInfo := range dealInfos {
 		if err := m.checkPermissionByMiner(ctx, addr); err == nil {
 			ret = append(ret, dealInfo)
@@ -1238,20 +1238,19 @@ func (m *MarketNodeImpl) checkPermissionBySigner(ctx context.Context, addrs ...a
 	}
 	user, exist := jwtclient.CtxGetName(ctx)
 	if !exist {
-		return nil
+		return ErrorUserNotFound
 	}
-	for _, addr := range addrs {
-		auth_users, err := m.AuthClient.GetUserBySigner(addr.String())
+
+	for _, wAddr := range addrs {
+		ok, err := m.AuthClient.SignerExistInUser(user, wAddr.String())
 		if err != nil {
-			return fmt.Errorf("get auth user by signer %s failed when check permission: %s", addr.String(), err)
+			return fmt.Errorf("check signer exist in user fail %s failed when check permission: %s", wAddr.String(), err)
 		}
-		for _, auth_user := range auth_users {
-			if auth_user.Name == user {
-				return nil
-			}
+		if !ok {
+			return ErrorPermissionDeny
 		}
 	}
-	return ErrorPermissionDeny
+	return nil
 }
 
 func (m *MarketNodeImpl) checkPermissionByMiner(ctx context.Context, addrs ...address.Address) error {
@@ -1284,18 +1283,6 @@ func (m *MarketNodeImpl) checkPermissionByName(ctx context.Context, name string)
 		return ErrorPermissionDeny
 	}
 	return nil
-}
-
-// isAdmin check if the user is admin and return user name
-func (m *MarketNodeImpl) isAdmin(ctx context.Context) (isAdmin bool, name string, err error) {
-	if auth.HasPerm(ctx, []auth.Permission{}, core.PermAdmin) {
-		isAdmin = true
-	}
-	name, exit := jwtclient.CtxGetName(ctx)
-	if !exit && !isAdmin {
-		err = ErrorUserNotFound
-	}
-	return
 }
 
 func (m *MarketNodeImpl) MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error) {
