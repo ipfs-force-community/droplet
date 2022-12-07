@@ -175,6 +175,7 @@ func runDaemon(cctx *cli.Context) error {
 	closeFunc, err := builder.New(ctx,
 		// defaults
 		builder.Override(new(*jwtclient.AuthClient), authClient),
+		builder.Override(new(jwtclient.IAuthClient), authClient),
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
 			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)

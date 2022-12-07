@@ -77,7 +77,7 @@ type MarketNodeImpl struct {
 	DealPublisher     *storageprovider.DealPublisher
 	DealAssigner      storageprovider.DealAssiger
 
-	AuthClient *jwtclient.AuthClient
+	AuthClient jwtclient.IAuthClient
 
 	Messager                                    clients2.IMixMessage
 	StorageAsk                                  storageprovider.IStorageAsk
