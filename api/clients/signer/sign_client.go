@@ -24,9 +24,9 @@ type ISigner interface {
 	WalletSign(ctx context.Context, signerAddr address.Address, msg []byte, meta vTypes.MsgMeta) (*vCrypto.Signature, error)
 }
 
-func NewISignerClient(isServer bool) func(metrics.MetricsCtx, fx.Lifecycle, *config.Signer, *jwtclient.AuthClient) (ISigner, error) {
+func NewISignerClient(isServer bool, authClient jwtclient.IAuthClient) func(metrics.MetricsCtx, fx.Lifecycle, *config.Signer) (ISigner, error) {
 
-	return func(mCtx metrics.MetricsCtx, lc fx.Lifecycle, signerCfg *config.Signer, authClient *jwtclient.AuthClient) (ISigner, error) {
+	return func(mCtx metrics.MetricsCtx, lc fx.Lifecycle, signerCfg *config.Signer) (ISigner, error) {
 		var (
 			signer ISigner
 			closer jsonrpc.ClientCloser

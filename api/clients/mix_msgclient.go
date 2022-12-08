@@ -44,6 +44,7 @@ func NewMixMsgClient(params MPoolReplaceParams) IMixMessage {
 	return &MixMsgClient{
 		full:          params.FullNode,
 		venusMessager: params.VenusMessager,
+		signer:        params.Signer,
 		nonceAssign:   newNonceAssign(params.FullNode),
 	}
 }
