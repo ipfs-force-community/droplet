@@ -59,7 +59,7 @@ SimultaneousTransfersForRetrieval = 20
    MaxProviderCollateralMultiplier = 2
    Filter = ""
    RetrievalFilter = ""
-   TransferPath = ""
+   TransferPath = "/mnt/transfer"
    MaxPublishDealsFee = "0 FIL"
    MaxMarketBalanceAddFee = "0 FIL"
    RetrievalPaymentAddress = ""
@@ -428,7 +428,59 @@ Account = ""
 
 # 基础参数，见上文
 ```
+:::tip
 
+基础参数在不配置时将会使用 `CommonProvider`, 如下:
+```
+[[Miners]]
+  Addr = "f02472"
+  Account = "litao"
+```
+
+基础参数一旦配置了一项,则所有项都必须自己配置,比如配置:
+```
+[[Miners]]
+  Addr = "f02472"
+  Account = "litao"
+  TransferPath = "/mnt/transfer/2472"
+```
+这样的配置会导致基础参数中的其他配置项都去各自类型的零值,而不会用 `CommonProvider` 中的配置，
+如 `f02472` 对应的 `ConsiderOnlineStorageDeals` 等于 `false`, 而并非是 `CommonProvider` 中的 true.
+
+这一点需要特别注意,正确的配置方式:
+```
+[[Miners]]
+  Addr = "f02472"
+  Account = "litao"
+  TransferPath = "/mnt/transfer/2472"
+  ConsiderOnlineStorageDeals = true
+  ConsiderOfflineStorageDeals = true
+  ConsiderOnlineRetrievalDeals = true
+  ConsiderOfflineRetrievalDeals = true
+  ConsiderVerifiedStorageDeals = true
+  ConsiderUnverifiedStorageDeals = true
+  PieceCidBlocklist = []
+  ExpectedSealDuration = "24h0m0s"
+  MaxDealStartDelay = "336h0m0s"
+  PublishMsgPeriod = "1m0s"
+  MaxDealsPerPublishMsg = 8
+  MaxProviderCollateralMultiplier = 2
+  Filter = ""
+  RetrievalFilter = ""
+  MaxPublishDealsFee = "0 FIL"
+  MaxMarketBalanceAddFee = "0 FIL"
+  RetrievalPaymentAddress = ""
+  [RetrievalPricing]
+    Strategy = "default"
+    [RetrievalPricing.Default]
+      VerifiedDealsFreeTransfer = true
+    [RetrievalPricing.External]
+      Path = ""
+```
+
+这样不是很灵活,以后会考虑优化.
+
+:::
 
 
 ## 数据库配置
