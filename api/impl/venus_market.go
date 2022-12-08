@@ -291,11 +291,7 @@ func (m *MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address
 }
 
 func (m *MarketNodeImpl) MarketListAsk(ctx context.Context) ([]*types.SignedStorageAsk, error) {
-	asks, err := m.StorageAsk.ListAsk(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return asks, nil
+	return m.StorageAsk.ListAsk(ctx)
 }
 
 func (m *MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*types.SignedStorageAsk, error) {
