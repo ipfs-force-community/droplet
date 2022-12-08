@@ -192,7 +192,7 @@ func runDaemon(cctx *cli.Context) error {
 		minermgr.MinerMgrOpts(),
 
 		// clients
-		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer),
+		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, authClient),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),
 		piecestorage.PieceStorageOpts(&cfg.PieceStorage),
