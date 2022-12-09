@@ -368,11 +368,11 @@ venus 消息服务接入配置
 ```
 [Messager]
 # 消息服务入口
-# 字符串类型 必选（也可以直接通过命令行的 --messager-url flag 进行配置）
+# 字符串类型 可选（也可以直接通过命令行的 --messager-url flag 进行配置） 不接入链服务时可不填
 Url = "/ip4/192.168.200.128/tcp/39812/"
 
 # venus 系列组件的鉴权token
-# 字符串类型 必选（也可以直接通过命令行的 --auth-token flag 进行配置）
+# 字符串类型 可选（也可以直接通过命令行的 --auth-token flag 进行配置） 不接入链服务时可不填
 Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
 ```
 
@@ -404,11 +404,11 @@ venus 提供鉴权服务接入配置
 [AuthNode]
 
 # 鉴权服务入口
-# 字符串类型 必选（也可以直接通过命令行的 --signer-url flag 进行配置）
+# 字符串类型 可选（也可以直接通过命令行的 --signer-url flag 进行配置） 不接入链服务时可不填
 Url = "http://192.168.200.128:8989"
 
 # venus 系列组件的鉴权token
-# 字符串类型 必选（也可以直接通过命令行的 --auth-token flag 进行配置）
+# 字符串类型 可选（也可以直接通过命令行的 --auth-token flag 进行配置） 不接入链服务时可不填
 Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
 ```
 
