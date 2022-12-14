@@ -73,7 +73,7 @@ func NewProvider(
 		retrievalDealRepo:      retrievalDealRepo,
 		storageDealRepo:        storageDealsRepo,
 		stores:                 stores.NewReadOnlyBlockstores(),
-		retrievalStreamHandler: NewRetrievalStreamHandler(retrievalAskRepo, retrievalDealRepo, storageDealsRepo, pieceInfo),
+		retrievalStreamHandler: NewRetrievalStreamHandler(cfg, retrievalAskRepo, retrievalDealRepo, storageDealsRepo, pieceInfo),
 	}
 
 	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo, storageDealsRepo)

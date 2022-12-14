@@ -91,16 +91,17 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		},
 	},
 	Node: Node{
-		Url:   "/ip4/<ip>/tcp/3453",
-		Token: "<cs-token>",
+		Url:   "", // /ip4/<ip>/tcp/3453
+		Token: "", // cs-token
 	},
 	Signer: Signer{
-		Url:   "/ip4/<ip>/tcp/5678",
-		Token: "<cs-token>",
+		SignerType: "wallet",
+		Url:        "", // /ip4/<ip>/tcp/5678
+		Token:      "", // signer-token
 	},
 	Messager: Messager{
-		Url:   "/ip4/<ip>/tcp/39812",
-		Token: "<cs-token>",
+		Url:   "", // /ip4/<ip>/tcp/39812
+		Token: "", // cs-token
 	},
 	DefaultMarketAddress:              Address(address.Undef),
 	SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
