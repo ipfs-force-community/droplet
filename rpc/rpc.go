@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -20,7 +21,7 @@ import (
 
 var log = logging.Logger("modules")
 
-func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.Router, maxRequestSize int64,
+func ServeRPC(ctx context.Context, home config.IHome, apiCfg *config.API, mux *mux.Router, maxRequestSize int64,
 	namespace string, authClient *jwtclient.AuthClient, api interface{}, shutdownCh <-chan struct{},
 ) error {
 	serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -33,14 +34,10 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 	mux.Handle("/rpc/v0", rpcServer)
 	mux.PathPrefix("/").Handler(http.DefaultServeMux)
 
-	localJwtClient, token, err := jwtclient.NewLocalAuthClient()
+	localJwtClient, err := getLocalJwtClient(home, apiCfg)
 	if err != nil {
 		return err
 	}
-	if err = saveAPIInfo(home, cfg, token); err != nil {
-		return err
-	}
-
 	var handler http.Handler
 	if authClient != nil {
 		handler = jwtclient.NewAuthMux(localJwtClient, jwtclient.WarpIJwtAuthClient(authClient), mux)
@@ -61,7 +58,7 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 		log.Warn("RPC Graceful shutdown successful")
 	}()
 
-	addr, err := multiaddr.NewMultiaddr(cfg.ListenAddress)
+	addr, err := multiaddr.NewMultiaddr(apiCfg.ListenAddress)
 	if err != nil {
 		return err
 	}
@@ -76,6 +73,36 @@ func ServeRPC(ctx context.Context, home config.IHome, cfg *config.API, mux *mux.
 		return err
 	}
 	return nil
+}
+
+func getLocalJwtClient(home config.IHome, apiCfg *config.API) (jwtclient.IJwtAuthClient, error) {
+	if len(apiCfg.PrivateKey) == 0 {
+		secret, err := jwtclient.RandSecret()
+		if err != nil {
+			return nil, err
+		}
+		apiCfg.PrivateKey = hex.EncodeToString(secret)
+		err = config.SaveConfig(home)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	secret, err := hex.DecodeString(apiCfg.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	localJwtClient, token, err := jwtclient.NewLocalAuthClientWithSecret(secret)
+	if err != nil {
+		return nil, err
+	}
+
+	err = saveAPIInfo(home, apiCfg, token)
+	if err != nil {
+		return nil, err
+	}
+	return localJwtClient, nil
 }
 
 func saveAPIInfo(home config.IHome, apiCfg *config.API, token []byte) error {

@@ -13,6 +13,8 @@ type API struct {
 	ListenAddress       string
 	RemoteListenAddress string
 	Timeout             Duration
+
+	PrivateKey string
 }
 
 // Libp2p contains configs for libp2p
