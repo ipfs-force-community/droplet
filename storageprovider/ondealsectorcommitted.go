@@ -313,7 +313,7 @@ func dealSectorInReplicaUpdateSuccess(msg *types.Message, rec *types.MessageRece
 func dealSectorInPreCommitMsg(msg *types.Message, res CurrentDealInfo) (*abi.SectorNumber, error) {
 	switch msg.Method {
 	case builtin.MethodsMiner.PreCommitSector:
-		var params types.SectorPreCommitInfo
+		var params types.PreCommitSectorParams
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 			return nil, fmt.Errorf("unmarshal pre commit: %w", err)
 		}
