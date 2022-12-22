@@ -5,21 +5,19 @@ import (
 	"fmt"
 	"os"
 
-	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
-	"github.com/filecoin-project/venus-market/v2/cmd"
-	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
-
 	metrics2 "github.com/ipfs/go-metrics-interface"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
 
+	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/api/impl"
 	cli2 "github.com/filecoin-project/venus-market/v2/cli"
 	"github.com/filecoin-project/venus-market/v2/client"
+	"github.com/filecoin-project/venus-market/v2/cmd"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/fundmgr"
 	"github.com/filecoin-project/venus-market/v2/models"
@@ -29,15 +27,17 @@ import (
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus-market/v2/utils"
-	"github.com/filecoin-project/venus/venus-shared/api/permission"
-
 	"github.com/filecoin-project/venus-market/v2/version"
+
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 
 	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
+
+	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
+	"github.com/filecoin-project/venus/venus-shared/api/permission"
 )
 
 var (
@@ -76,12 +76,18 @@ var (
 		Usage: "token used to connect venus chain service components, eg. venus-meassger, venus",
 	}
 
+	SignerTypeFlag = &cli.StringFlag{
+		Name:   "signer-type",
+		Usage:  "signer service type(lotusnode, wallet)",
+		Value:  config.SignerTypeWallet,
+		Hidden: false,
+	}
 	SignerUrlFlag = &cli.StringFlag{
-		Name:  "wallet-url",
+		Name:  "signer-url",
 		Usage: "used to connect wallet service for sign",
 	}
 	SignerTokenFlag = &cli.StringFlag{
-		Name:  "wallet-token",
+		Name:  "signer-token",
 		Usage: "wallet token for connect signer service",
 	}
 
@@ -121,6 +127,7 @@ func main() {
 					MessagerUrlFlag,
 					MessagerTokenFlag,
 					AuthTokenFlag,
+					SignerTypeFlag,
 					SignerUrlFlag,
 					SignerTokenFlag,
 					DefaultAddressFlag,
@@ -136,6 +143,7 @@ func main() {
 func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 	if cctx.IsSet(NodeUrlFlag.Name) {
 		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
+		cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
 	}
 
 	if cctx.IsSet(MessagerUrlFlag.Name) {
@@ -153,21 +161,37 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 
 	if cctx.IsSet(NodeTokenFlag.Name) {
 		cfg.Node.Token = cctx.String(NodeTokenFlag.Name)
+		cfg.Signer.Token = cctx.String(NodeTokenFlag.Name)
 	}
 
 	if cctx.IsSet(MessagerTokenFlag.Name) {
 		cfg.Messager.Token = cctx.String(MessagerTokenFlag.Name)
 	}
 
-	if cctx.IsSet(SignerUrlFlag.Name) {
-		if !cctx.IsSet(SignerTokenFlag.Name) {
-			return fmt.Errorf("signer-url is set, but signer-token is not set")
+	signerType := cctx.String(SignerTypeFlag.Name)
+	switch signerType {
+	case config.SignerTypeWallet:
+		{
+			if cctx.IsSet(SignerUrlFlag.Name) {
+				cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
+			}
+			if cctx.IsSet(SignerTokenFlag.Name) {
+				cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
+			}
 		}
-
-		cfg.Signer.SignerType = "wallet"
-		cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
-		cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
+	case config.SignerTypeLotusnode:
+		{
+			if cctx.IsSet(NodeUrlFlag.Name) {
+				cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
+			}
+			if cctx.IsSet(NodeTokenFlag.Name) {
+				cfg.Signer.Token = cctx.String(NodeTokenFlag.Name)
+			}
+		}
+	default:
+		return fmt.Errorf("unsupport signer type %s", signerType)
 	}
+	cfg.Signer.SignerType = signerType
 
 	if cctx.IsSet(DefaultAddressFlag.Name) {
 		addr, err := address.NewFromString(cctx.String(DefaultAddressFlag.Name))
@@ -224,6 +248,12 @@ func marketClient(cctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Configuration sanity check
+	if len(cfg.Signer.Url) == 0 {
+		return fmt.Errorf("the signer node must be configured")
+	}
+
 	if err := cmd.FetchAndLoadBundles(cctx.Context, cfg.Node); err != nil {
 		return err
 	}
@@ -244,7 +274,7 @@ func marketClient(cctx *cli.Context) error {
 
 		config.ConfigClientOpts(cfg),
 
-		clients2.ClientsOpts(false, "", &cfg.Messager, &cfg.Signer),
+		clients2.ClientsOpts(false, &cfg.Messager, &cfg.Signer, nil),
 		models.DBOptions(false, nil),
 		network.NetworkOpts(false, cfg.SimultaneousTransfersForStorage, 0, cfg.SimultaneousTransfersForRetrieval),
 		paychmgr.PaychOpts,

@@ -3,7 +3,7 @@ package version
 var (
 	CurrentCommit string
 
-	Version = "2.4.0"
+	Version = "v2.5.0-rc1"
 )
 
 func UserVersion() string {

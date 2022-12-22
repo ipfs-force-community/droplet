@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"github.com/filecoin-project/go-jsonrpc/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -107,7 +108,7 @@ var (
 	}
 )
 
-var views = []*view.View{
+var views = append([]*view.View{
 	GraphsyncReceivingPeersCountView,
 	GraphsyncReceivingActiveCountView,
 	GraphsyncReceivingCountCountView,
@@ -126,4 +127,4 @@ var views = []*view.View{
 
 	StorageRetrievalHitCountView,
 	StorageSaveHitCountView,
-}
+}, metrics.DefaultViews...)

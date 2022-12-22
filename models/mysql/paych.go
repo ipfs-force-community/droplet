@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	fbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -25,12 +25,12 @@ type channelInfo struct {
 	Channel                DBAddress  `gorm:"column:channel;type:varchar(256);index"`
 	Control                DBAddress  `gorm:"column:control;type:varchar(256);"`
 	Target                 DBAddress  `gorm:"column:target;type:varchar(256);"`
-	Direction              uint64     `gorm:"column:direction;type:bigint unsigned;"`
-	NextLane               uint64     `gorm:"column:next_lane;type:bigint unsigned;"`
-	Amount                 mtypes.Int `gorm:"column:amount;type:varchar(256);"`
-	PendingAmount          mtypes.Int `gorm:"column:pending_amount;type:varchar(256);"`
-	AvailableAmount        mtypes.Int `gorm:"column:available_amount;type:varchar(256);"`
-	PendingAvailableAmount mtypes.Int `gorm:"column:pending_available_amount;type:varchar(256);"`
+	Direction              uint64     `gorm:"column:direction;type:bigint unsigned;NOT NULL;"`
+	NextLane               uint64     `gorm:"column:next_lane;type:bigint unsigned;NOT NULL;"`
+	Amount                 mtypes.Int `gorm:"column:amount;type:varchar(256);default:0;"`
+	PendingAmount          mtypes.Int `gorm:"column:pending_amount;type:varchar(256);default:0;"`
+	AvailableAmount        mtypes.Int `gorm:"column:available_amount;type:varchar(256);default:0;"`
+	PendingAvailableAmount mtypes.Int `gorm:"column:pending_available_amount;type:varchar(256);default:0;"`
 	CreateMsg              DBCid      `gorm:"column:create_msg;type:varchar(256);"`
 	AddFundsMsg            DBCid      `gorm:"column:add_funds_msg;type:varchar(256);"`
 	Settling               bool       `gorm:"column:settling;"`
@@ -52,10 +52,10 @@ func fromChannelInfo(src *types.ChannelInfo) *channelInfo {
 		Target:                 DBAddress(src.Target),
 		Direction:              src.Direction,
 		NextLane:               src.NextLane,
-		Amount:                 convertBigInt(src.Amount),
-		PendingAmount:          convertBigInt(src.PendingAmount),
-		AvailableAmount:        convertBigInt(src.AvailableAmount),
-		PendingAvailableAmount: convertBigInt(src.PendingAvailableAmount),
+		Amount:                 mtypes.SafeFromGo(src.Amount.Int),
+		PendingAmount:          mtypes.SafeFromGo(src.PendingAmount.Int),
+		AvailableAmount:        mtypes.SafeFromGo(src.AvailableAmount.Int),
+		PendingAvailableAmount: mtypes.SafeFromGo(src.PendingAvailableAmount.Int),
 		Settling:               src.Settling,
 		VoucherInfo:            src.Vouchers,
 		TimeStampOrm:           TimeStampOrm{CreatedAt: src.CreatedAt, UpdatedAt: src.UpdatedAt},
@@ -88,10 +88,10 @@ func toChannelInfo(src *channelInfo) (*types.ChannelInfo, error) {
 		Direction:              src.Direction,
 		Vouchers:               src.VoucherInfo,
 		NextLane:               src.NextLane,
-		Amount:                 fbig.Int{Int: src.Amount.Int},
-		PendingAmount:          fbig.Int{Int: src.PendingAmount.Int},
-		AvailableAmount:        fbig.Int{Int: src.AvailableAmount.Int},
-		PendingAvailableAmount: fbig.Int{Int: src.PendingAvailableAmount.Int},
+		Amount:                 big.Int(mtypes.SafeFromGo(src.Amount.Int)),
+		PendingAmount:          big.Int(mtypes.SafeFromGo(src.PendingAmount.Int)),
+		AvailableAmount:        big.Int(mtypes.SafeFromGo(src.AvailableAmount.Int)),
+		PendingAvailableAmount: big.Int(mtypes.SafeFromGo(src.PendingAvailableAmount.Int)),
 
 		CreateMsg:   src.CreateMsg.cidPtr(),
 		AddFundsMsg: src.AddFundsMsg.cidPtr(),
@@ -110,7 +110,7 @@ func NewChannelInfoRepo(db *gorm.DB) repo.PaychChannelInfoRepo {
 	return &channelInfoRepo{db}
 }
 
-func (cir *channelInfoRepo) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt fbig.Int) (*types.ChannelInfo, error) {
+func (cir *channelInfoRepo) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt big.Int) (*types.ChannelInfo, error) {
 	ci := &types.ChannelInfo{
 		Direction:     types.DirOutbound,
 		NextLane:      0,

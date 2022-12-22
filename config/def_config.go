@@ -6,8 +6,6 @@ import (
 	"github.com/ipfs-force-community/metrics"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
 )
 
 const (
@@ -32,17 +30,23 @@ var DefaultMarketConfig = &MarketConfig{
 			NoAnnounceAddresses: []string{},
 		},
 	},
+	// 两种选择: 空或者注释形式
 	Node: Node{
-		Url:   "", // "/ip4/<ip>/tcp/3453",
-		Token: "",
+		Url:   "", // /ip4/<ip>/tcp/3453
+		Token: "", // cs-token
 	},
 	Messager: Messager{
 		Url:   "", // /ip4/<ip>/tcp/39812
-		Token: "",
+		Token: "", // cs-token
+	},
+	AuthNode: AuthNode{
+		Url:   "", // http://<ip>:8989
+		Token: "", // cs-token
 	},
 	Signer: Signer{
-		Url:   "", // /ip4/<ip>/tcp/5678
-		Token: "",
+		SignerType: "wallet",
+		Url:        "", // /ip4/<ip>/tcp/5678
+		Token:      "", // signer-token
 	},
 	Mysql: Mysql{
 		ConnectionString: "",
@@ -51,55 +55,27 @@ var DefaultMarketConfig = &MarketConfig{
 		ConnMaxLifeTime:  "1m",
 		Debug:            false,
 	},
-	AuthNode: AuthNode{
-		Url:   "", // "http://<ip>:8989",
-		Token: "",
+	PieceStorage: PieceStorage{
+		Fs: []*FsPieceStorage{},
 	},
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
 		MaxConcurrencyStorageCalls: 100,
 		GCInterval:                 Duration(1 * time.Minute),
 	},
-	Journal: Journal{Path: "journal"},
-	PieceStorage: PieceStorage{
-		Fs: []*FsPieceStorage{},
-	},
-	ConsiderOnlineStorageDeals:     true,
-	ConsiderOfflineStorageDeals:    true,
-	ConsiderOnlineRetrievalDeals:   true,
-	ConsiderOfflineRetrievalDeals:  true,
-	ConsiderVerifiedStorageDeals:   true,
-	ConsiderUnverifiedStorageDeals: true,
-	PieceCidBlocklist:              []cid.Cid{},
-	// TODO: It'd be nice to set this based on sector size
-	MaxDealStartDelay:    Duration(time.Hour * 24 * 14),
-	ExpectedSealDuration: Duration(time.Hour * 24),
-	PublishMsgPeriod:     Duration(time.Hour),
-
-	MaxDealsPerPublishMsg:           8,
-	MaxProviderCollateralMultiplier: 2,
 
 	SimultaneousTransfersForRetrieval:        DefaultSimultaneousTransfers,
 	SimultaneousTransfersForStoragePerClient: DefaultSimultaneousTransfers,
 	SimultaneousTransfersForStorage:          DefaultSimultaneousTransfers,
 
-	RetrievalPricing: &RetrievalPricing{
-		Strategy: RetrievalPricingDefaultMode,
-		Default: &RetrievalPricingDefault{
-			VerifiedDealsFreeTransfer: true,
-		},
-		External: &RetrievalPricingExternal{
-			Path: "",
-		},
-	},
-
-	MaxPublishDealsFee:     types.FIL(types.NewInt(0)),
-	MaxMarketBalanceAddFee: types.FIL(types.NewInt(0)),
-	Metrics:                *metrics.DefaultMetricsConfig(),
+	CommonProvider: defaultProviderConfig(),
+	Miners:         make([]*MinerConfig, 0),
+	Journal:        Journal{Path: "journal"},
+	Metrics:        *metrics.DefaultMetricsConfig(),
 }
 
 var DefaultMarketClientConfig = &MarketClientConfig{
-	Home: Home{"~/.venusclient"},
+	Home: Home{"~/.marketclient"},
 	Common: Common{
 		API: API{
 			ListenAddress: "/ip4/127.0.0.1/tcp/41231/ws",
@@ -115,16 +91,17 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		},
 	},
 	Node: Node{
-		Url:   "", // "/ip4/<ip>/tcp/3453",
-		Token: "",
+		Url:   "", // /ip4/<ip>/tcp/3453
+		Token: "", // cs-token
 	},
 	Signer: Signer{
-		Url:   "", // "/ip4/<ip>/tcp/5678",
-		Token: "",
+		SignerType: "wallet",
+		Url:        "", // /ip4/<ip>/tcp/5678
+		Token:      "", // signer-token
 	},
 	Messager: Messager{
-		Url:   "", // "/ip4/<ip>/tcp/39812",
-		Token: "",
+		Url:   "", // /ip4/<ip>/tcp/39812
+		Token: "", // cs-token
 	},
 	DefaultMarketAddress:              Address(address.Undef),
 	SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,

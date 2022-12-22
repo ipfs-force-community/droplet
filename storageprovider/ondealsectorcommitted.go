@@ -13,6 +13,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/pkg/events"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
@@ -359,7 +361,7 @@ func sectorInCommitMsg(msg *types.Message, sectorNumber abi.SectorNumber) (bool,
 		return params.SectorNumber == sectorNumber, nil
 
 	case builtin.MethodsMiner.ProveCommitAggregate:
-		var params types.ProveCommitAggregateParams
+		var params miner.ProveCommitAggregateParams
 		if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 			return false, fmt.Errorf("failed to unmarshal prove commit sector params: %w", err)
 		}

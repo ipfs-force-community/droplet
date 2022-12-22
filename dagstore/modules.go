@@ -15,6 +15,8 @@ import (
 	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 
+	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
+
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
@@ -27,9 +29,9 @@ const (
 	DefaultDAGStoreDir         = "dagstore"
 )
 
-// NewMarketAPI creates a new MarketAPI adaptor for the dagstore mounts.
-func CreateAndStartMarketAPI(ctx metrics.MetricsCtx, lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage *piecestorage.PieceStorageManager) (MarketAPI, error) {
-	mountApi := NewMarketAPI(ctx, repo, pieceStorage, r.UseTransient)
+// CreateAndStartMarketAPI creates a new MarketAPI adaptor for the dagstore mounts.
+func CreateAndStartMarketAPI(ctx metrics.MetricsCtx, lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage *piecestorage.PieceStorageManager, gatewayMarketClient gatewayAPIV2.IMarketClient) (MarketAPI, error) {
+	mountApi := NewMarketAPI(ctx, repo, pieceStorage, gatewayMarketClient, r.UseTransient)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return mountApi.Start(ctx)

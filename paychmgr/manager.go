@@ -6,16 +6,21 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/venus-market/v2/api/clients"
+	"github.com/filecoin-project/venus-market/v2/api/clients/signer"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
+
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+
 	"github.com/ipfs-force-community/metrics"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("paych")
@@ -87,11 +92,11 @@ type ManagerParams struct {
 	SM           IStateManager
 }
 
-func NewManager(mctx metrics.MetricsCtx, repo repo.Repo, msgClient clients.IMixMessage, fullNode v1api.FullNode) (*Manager, error) {
+func NewManager(mctx metrics.MetricsCtx, repo repo.Repo, msgClient clients.IMixMessage, signer signer.ISigner, fullNode v1api.FullNode) (*Manager, error) {
 	ctx, shutdown := context.WithCancel(mctx)
 	impl := &managerAPIImpl{
 		IStateManager:      newStateMgrAdapter(fullNode),
-		paychDependencyAPI: newPaychDependencyAPI(msgClient, fullNode, fullNode),
+		paychDependencyAPI: newPaychDependencyAPI(msgClient, fullNode, signer),
 	}
 	pm := &Manager{
 		ctx:             ctx,
@@ -335,6 +340,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	if err != nil {
 		return nil, err
 	}
+
 	has, err := pm.pchapi.WalletHas(ctx, toKey)
 	if err != nil {
 		return nil, err

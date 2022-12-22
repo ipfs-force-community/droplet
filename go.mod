@@ -29,10 +29,9 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/specs-storage v0.4.1
-	github.com/filecoin-project/venus v1.8.0
-	github.com/filecoin-project/venus-auth v1.8.0
-	github.com/filecoin-project/venus-messager v1.8.0
+	github.com/filecoin-project/venus v1.9.0-rc1
+	github.com/filecoin-project/venus-auth v1.9.0-rc1
+	github.com/filecoin-project/venus-messager v1.9.0-rc1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -40,7 +39,7 @@ require (
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
-	github.com/ipfs-force-community/venus-gateway v1.8.0
+	github.com/ipfs-force-community/venus-gateway v1.9.0-rc1
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.4.0
 	github.com/ipfs/go-cid v0.2.0
@@ -58,7 +57,7 @@ require (
 	github.com/ipfs/go-ipld-cbor v0.0.6
 	github.com/ipfs/go-ipld-format v0.4.0
 	github.com/ipfs/go-log/v2 v2.5.1
-	github.com/ipfs/go-merkledag v0.8.0
+	github.com/ipfs/go-merkledag v0.8.1
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.4.0
@@ -98,7 +97,6 @@ require (
 	github.com/DataDog/zstd v1.4.1 // indirect
 	github.com/Stebalien/go-bitfield v0.0.1 // indirect
 	github.com/acobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249 // indirect
-	github.com/ahmetb/go-linq/v3 v3.2.0 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/awnumar/memcall v0.0.0-20191004114545-73db50fd9f80 // indirect
 	github.com/awnumar/memguard v0.22.2 // indirect
@@ -137,11 +135,11 @@ require (
 	github.com/filecoin-project/specs-actors/v4 v4.0.2 // indirect
 	github.com/filecoin-project/specs-actors/v5 v5.0.6 // indirect
 	github.com/filecoin-project/specs-actors/v6 v6.0.2 // indirect
+	github.com/filecoin-project/specs-storage v0.4.1 // indirect
 	github.com/filecoin-project/storetheindex v0.4.17 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
-	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/gbrlsnchs/jwt/v3 v3.0.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.8.1 // indirect
@@ -280,7 +278,6 @@ require (
 	github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f // indirect
 	github.com/whyrusleeping/go-logging v0.0.1 // indirect
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
-	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.0.2 // indirect
 	github.com/xdg-go/stringprep v1.0.2 // indirect

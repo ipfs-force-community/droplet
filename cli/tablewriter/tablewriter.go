@@ -43,7 +43,6 @@ func New(cols ...Column) *TableWriter {
 }
 
 func (w *TableWriter) Write(r map[string]interface{}) {
-	// this can cause columns to be out of order, but will at least work
 	byColID := map[int]string{}
 
 cloop:

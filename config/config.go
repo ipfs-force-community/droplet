@@ -1,83 +1,12 @@
 package config
 
 import (
-	"encoding"
 	"fmt"
-	"time"
 
 	"github.com/ipfs-force-community/metrics"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs/go-cid"
 )
-
-// API contains configs for API endpoint
-type API struct {
-	// Binding address for the Lotus API
-	ListenAddress       string
-	RemoteListenAddress string
-	Timeout             Duration
-}
-
-// Libp2p contains configs for libp2p
-type Libp2p struct {
-	// Binding address for the libp2p host - 0 means random port.
-	// Format: multiaddress; see https://multiformats.io/multiaddr/
-	ListenAddresses []string
-	// Addresses to explicitally announce to other peers. If not specified,
-	// all interface addresses are announced
-	// Format: multiaddress
-	AnnounceAddresses []string
-	// Addresses to not announce
-	// Format: multiaddress
-	NoAnnounceAddresses []string
-	ProtectedPeers      []string
-
-	PrivateKey string
-}
-
-type ConnectConfig struct {
-	Url   string
-	Token string
-}
-
-type (
-	Node     ConnectConfig
-	Messager ConnectConfig
-	Market   ConnectConfig
-	AuthNode ConnectConfig
-)
-
-type Common struct {
-	API    API
-	Libp2p Libp2p
-}
-
-type SignerType = string
-
-const (
-	SignerTypeWallet  = "wallet"
-	SignerTypeGateway = "gateway"
-)
-
-type Signer struct {
-	SignerType SignerType `toml:"Type"` // wallet/gateway
-	Url        string
-	Token      string
-}
-
-type Mysql struct {
-	ConnectionString string
-	MaxOpenConn      int
-	MaxIdleConn      int
-	ConnMaxLifeTime  string
-	Debug            bool
-}
-
-type Journal struct {
-	Path string
-}
 
 const (
 	// RetrievalPricingDefault configures the node to use the default retrieval pricing policy.
@@ -108,22 +37,8 @@ type RetrievalPricingDefault struct {
 	VerifiedDealsFreeTransfer bool
 }
 
-type AddressConfig struct {
-	DealPublishControl []User
-
-	// DisableWorkerFallback disables usage of the worker address for messages
-	// sent automatically, if control addresses are configured.
-	// A control address that doesn't have enough funds will still be chosen
-	// over the worker address if this flag is set.
-	DisableWorkerFallback bool
-}
-
-func (ac AddressConfig) Address() []address.Address {
-	addrs := make([]address.Address, len(ac.DealPublishControl))
-	for index, miner := range ac.DealPublishControl {
-		addrs[index] = address.Address(miner.Addr)
-	}
-	return addrs
+type Journal struct {
+	Path string
 }
 
 type DAGStoreConfig struct {
@@ -180,13 +95,11 @@ type PieceStorage struct {
 	Fs []*FsPieceStorage
 	S3 []*S3PieceStorage
 }
-
 type FsPieceStorage struct {
 	Name     string
 	ReadOnly bool
 	Path     string
 }
-
 type S3PieceStorage struct {
 	Name     string
 	ReadOnly bool
@@ -199,61 +112,25 @@ type S3PieceStorage struct {
 	Token     string
 }
 
-type User struct {
-	Addr    Address
-	Account string
+type Mysql struct {
+	ConnectionString string
+	MaxOpenConn      int
+	MaxIdleConn      int
+	ConnMaxLifeTime  string
+	Debug            bool
 }
 
-// StorageMiner is a miner config
+type MinerConfig struct {
+	Addr    Address
+	Account string // todo 在合并run模式后才真正起作用
+
+	*ProviderConfig
+}
+
 type MarketConfig struct {
 	Home `toml:"-"`
 
 	Common
-
-	Node     Node
-	Messager Messager
-	Signer   Signer
-	AuthNode AuthNode
-
-	Mysql Mysql
-
-	PieceStorage  PieceStorage
-	Journal       Journal
-	AddressConfig AddressConfig
-	DAGStore      DAGStoreConfig
-
-	StorageMiners           []User
-	RetrievalPaymentAddress User
-
-	// When enabled, the miner can accept online deals
-	ConsiderOnlineStorageDeals bool
-	// When enabled, the miner can accept offline deals
-	ConsiderOfflineStorageDeals bool
-	// When enabled, the miner can accept retrieval deals
-	ConsiderOnlineRetrievalDeals bool
-	// When enabled, the miner can accept offline retrieval deals
-	ConsiderOfflineRetrievalDeals bool
-	// When enabled, the miner can accept verified deals
-	ConsiderVerifiedStorageDeals bool
-	// When enabled, the miner can accept unverified deals
-	ConsiderUnverifiedStorageDeals bool
-	// A list of Data CIDs to reject when making deals
-	PieceCidBlocklist []cid.Cid
-	// Maximum expected amount of time getting the deal into a sealed sector will take
-	// This includes the time the deal will need to get transferred and published
-	// before being assigned to a sector
-	ExpectedSealDuration Duration
-	// Maximum amount of time proposed deal StartEpoch can be in future
-	MaxDealStartDelay Duration
-	// When a deal is ready to publish, the amount of time to wait for more
-	// deals to be ready to publish before publishing them all as a batch
-	PublishMsgPeriod Duration
-	// The maximum number of deals to include in a single PublishStorageDeals
-	// message
-	MaxDealsPerPublishMsg uint64
-	// The maximum collateral that the provider will put up against a deal,
-	// as a multiplier of the minimum collateral bound
-	MaxProviderCollateralMultiplier uint64
 
 	// The maximum number of parallel online data transfers for storage deals
 	SimultaneousTransfersForStorage uint64
@@ -267,20 +144,20 @@ type MarketConfig struct {
 	// The maximum number of parallel online data transfers for retrieval deals
 	SimultaneousTransfersForRetrieval uint64
 
-	// A command used for fine-grained evaluation of piecestorage deals
-	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
-	Filter string
-	// A command used for fine-grained evaluation of retrieval deals
-	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
-	RetrievalFilter string
+	Node     Node
+	Messager Messager
+	Signer   Signer
+	AuthNode AuthNode
 
-	TransfePath string
+	Mysql Mysql
 
-	RetrievalPricing *RetrievalPricing
+	PieceStorage PieceStorage
+	DAGStore     DAGStoreConfig
 
-	MaxPublishDealsFee     types.FIL
-	MaxMarketBalanceAddFee types.FIL
+	CommonProvider *ProviderConfig
+	Miners         []*MinerConfig
 
+	Journal Journal
 	Metrics metrics.MetricsConfig
 }
 
@@ -310,69 +187,35 @@ func (m *MarketConfig) AddS3PieceStorage(fsps *S3PieceStorage) error {
 	return SaveConfig(m)
 }
 
-type MarketClientConfig struct {
-	Home `toml:"-"`
-	Common
-
-	Node     Node
-	Messager Messager
-	Signer   Signer
-
-	// The maximum number of parallel online data transfers (piecestorage+retrieval)
-	SimultaneousTransfersForRetrieval uint64
-	SimultaneousTransfersForStorage   uint64
-	DefaultMarketAddress              Address
-}
-
-var (
-	_ encoding.TextMarshaler   = (*Duration)(nil)
-	_ encoding.TextUnmarshaler = (*Duration)(nil)
-)
-
-// Duration is a wrapper type for Duration
-// for decoding and encoding from/to TOML
-type Duration time.Duration
-
-// UnmarshalText implements interface for TOML decoding
-func (dur *Duration) UnmarshalText(text []byte) error {
-	d, err := time.ParseDuration(string(text))
-	if err != nil {
-		return err
+func (m *MarketConfig) MinerProviderConfig(mAddr address.Address, useCommon bool) *ProviderConfig {
+	for i := range m.Miners {
+		if m.Miners[i].Addr == Address(mAddr) && m.Miners[i].ProviderConfig != nil {
+			return m.Miners[i].ProviderConfig
+		}
 	}
-	*dur = Duration(d)
-	return err
-}
 
-func (dur Duration) MarshalText() ([]byte, error) {
-	d := time.Duration(dur)
-	return []byte(d.String()), nil
-}
-
-// Address is a wrapper type for Address
-// for decoding and encoding from/to TOML
-type Address address.Address
-
-// UnmarshalText implements interface for TOML decoding
-func (addr *Address) UnmarshalText(text []byte) error {
-	d, err := address.NewFromString(string(text))
-	if err != nil {
-		return err
+	if useCommon {
+		return m.CommonProvider
 	}
-	*addr = Address(d)
-	return err
+
+	return nil
 }
 
-func (addr Address) MarshalText() ([]byte, error) {
-	if address.Address(addr) == address.Undef {
-		return []byte{}, nil
-	}
-	return []byte(address.Address(addr).String()), nil
-}
+func (m *MarketConfig) SetMinerProviderConfig(mAddr address.Address, pCfg *ProviderConfig) {
+	if mAddr == address.Undef {
+		m.CommonProvider = pCfg
+	} else {
+		for i := range m.Miners {
+			if m.Miners[i].Addr == Address(mAddr) {
+				m.Miners[i].ProviderConfig = pCfg
+				return
+			}
+		}
 
-func ConvertConfigAddress(addrs []Address) []address.Address {
-	addrs2 := make([]address.Address, len(addrs))
-	for index, addr := range addrs {
-		addrs2[index] = address.Address(addr)
+		// create
+		m.Miners = append(m.Miners, &MinerConfig{
+			Addr:           Address(mAddr),
+			ProviderConfig: pCfg,
+		})
 	}
-	return addrs2
 }

@@ -3,10 +3,11 @@ package metrics
 import (
 	"context"
 
+	"go.uber.org/fx"
+
 	"github.com/ipfs-force-community/metrics"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	metrics2 "github.com/ipfs/go-metrics-interface"
-	"go.uber.org/fx"
 )
 
 var startMetricsKey = builder.NextInvoke()

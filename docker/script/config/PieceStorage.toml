@@ -1,6 +1,0 @@
-[PieceStorage]
-
-  [[PieceStorage.Fs]]
-    Name = "DefaultPieceStorage"
-    ReadOnly = false
-    Path = "/PieceStorage"

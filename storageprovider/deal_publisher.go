@@ -7,20 +7,23 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"go.uber.org/fx"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
+
 	"github.com/filecoin-project/venus-market/v2/api/clients"
 	"github.com/filecoin-project/venus-market/v2/config"
 	types2 "github.com/filecoin-project/venus-market/v2/types"
+
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	marketactor "github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	marketTypes "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/ipfs/go-cid"
-	"go.uber.org/fx"
 )
 
 type dealPublisherAPI interface {
@@ -37,10 +40,8 @@ type dealPublisherAPI interface {
 
 type DealPublisher struct {
 	api dealPublisherAPI
-	as  *AddressSelector
 
-	publishSpec   *types.MessageSendSpec
-	publishMsgCfg PublishMsgConfig
+	cfg *config.MarketConfig
 
 	lk         sync.Mutex
 	publishers map[address.Address]*singleDealPublisher
@@ -48,21 +49,17 @@ type DealPublisher struct {
 
 func NewDealPublisherWrapper(
 	cfg *config.MarketConfig,
-) func(lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage, as *AddressSelector) *DealPublisher {
-	return func(lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage, as *AddressSelector) *DealPublisher {
+) func(lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage) *DealPublisher {
+	return func(lc fx.Lifecycle, full v1api.FullNode, msgClient clients.IMixMessage) *DealPublisher {
 		dp := &DealPublisher{
 			api: struct {
 				v1api.FullNode
 				clients.IMixMessage
 			}{full, msgClient},
-			as:          as,
-			publishSpec: &types.MessageSendSpec{MaxFee: abi.TokenAmount(cfg.MaxPublishDealsFee)},
-			publishMsgCfg: PublishMsgConfig{
-				Period:         time.Duration(cfg.PublishMsgPeriod),
-				MaxDealsPerMsg: cfg.MaxDealsPerPublishMsg,
-			},
+			cfg:        cfg,
 			publishers: map[address.Address]*singleDealPublisher{},
 		}
+
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
 				dp.lk.Lock()
@@ -109,7 +106,15 @@ func (p *DealPublisher) Publish(ctx context.Context, deal types.ClientDealPropos
 	providerAddr := deal.Proposal.Provider
 	publisher, ok := p.publishers[providerAddr]
 	if !ok {
-		publisher = newDealPublisher(p.api, p.as, p.publishMsgCfg, p.publishSpec)
+		pCfg := p.cfg.MinerProviderConfig(providerAddr, true)
+		addrs := config.CfgAddrArrToNative(pCfg.DealPublishAddress)
+
+		publisher = newDealPublisher(
+			p.api,
+			addrs,
+			pCfg.MaxDealsPerPublishMsg,
+			time.Duration(pCfg.PublishMsgPeriod),
+			&types.MessageSendSpec{MaxFee: abi.TokenAmount(pCfg.MaxPublishDealsFee)})
 		p.publishers[providerAddr] = publisher
 	}
 	publisher.processNewDeal(pdeal)
@@ -132,8 +137,8 @@ func (p *DealPublisher) Publish(ctx context.Context, deal types.ClientDealPropos
 // message. When the limit is reached the singleDealPublisher immediately submits a
 // publish message with all deals in the queue.
 type singleDealPublisher struct {
-	api dealPublisherAPI
-	as  *AddressSelector
+	api          dealPublisherAPI
+	publishAddrs []address.Address
 
 	ctx      context.Context
 	Shutdown context.CancelFunc
@@ -169,29 +174,21 @@ func newPendingDeal(ctx context.Context, deal types.ClientDealProposal) *pending
 	}
 }
 
-type PublishMsgConfig struct {
-	// The amount of time to wait for more deals to arrive before
-	// publishing
-	Period time.Duration
-	// The maximum number of deals to include in a single PublishStorageDeals
-	// message
-	MaxDealsPerMsg uint64
-}
-
 func newDealPublisher(
 	dpapi dealPublisherAPI,
-	as *AddressSelector,
-	publishMsgCfg PublishMsgConfig,
+	publishAddrs []address.Address,
+	maxDealsPerPublishMsg uint64,
+	publishPeriod time.Duration,
 	publishSpec *types.MessageSendSpec,
 ) *singleDealPublisher {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &singleDealPublisher{
 		api:                   dpapi,
-		as:                    as,
+		publishAddrs:          publishAddrs,
 		ctx:                   ctx,
 		Shutdown:              cancel,
-		maxDealsPerPublishMsg: publishMsgCfg.MaxDealsPerMsg,
-		publishPeriod:         publishMsgCfg.Period,
+		maxDealsPerPublishMsg: maxDealsPerPublishMsg,
+		publishPeriod:         publishPeriod,
 		publishSpec:           publishSpec,
 	}
 }
@@ -424,18 +421,21 @@ func (p *singleDealPublisher) publishDealProposals(deals []types.ClientDealPropo
 		return cid.Undef, fmt.Errorf("serializing PublishStorageDeals params failed: %w", err)
 	}
 
-	addr, _, err := p.as.AddressFor(p.ctx, p.api, mi, marketTypes.DealPublishAddr, big.Zero(), big.Zero())
+	addr, _, err := pickAddress(p.ctx, p.api, mi, big.Zero(), big.Zero(), p.publishAddrs)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("selecting address for publishing deals: %w", err)
 	}
 
-	msgId, err := p.api.PushMessage(p.ctx, &types.Message{
-		To:     marketactor.Address,
-		From:   addr,
-		Value:  types.NewInt(0),
-		Method: builtin.MethodsMarket.PublishStorageDeals,
-		Params: params,
-	}, p.publishSpec)
+	msgId, err := p.api.PushMessage(
+		p.ctx,
+		&types.Message{
+			To:     marketactor.Address,
+			From:   addr,
+			Value:  types.NewInt(0),
+			Method: builtin.MethodsMarket.PublishStorageDeals,
+			Params: params,
+		}, p.publishSpec)
+
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -460,4 +460,77 @@ func (p *singleDealPublisher) filterCancelledDeals() {
 		}
 	}
 	p.pending = p.pending[:i]
+}
+
+func pickAddress(ctx context.Context, a dealPublisherAPI, mi types.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
+	leastBad := mi.Worker //default to worker
+	bestAvail := minFunds
+
+	ctl := map[address.Address]struct{}{}
+	for _, a := range append(mi.ControlAddresses, mi.Owner, mi.Worker) {
+		ctl[a] = struct{}{}
+	}
+
+	for _, addr := range addrs {
+		if addr.Protocol() != address.ID {
+			var err error
+			addr, err = a.StateLookupID(ctx, addr, types.EmptyTSK)
+			if err != nil {
+				log.Warnw("looking up control address", "address", addr, "error", err)
+				continue
+			}
+		}
+
+		if _, ok := ctl[addr]; !ok {
+			log.Warnw("non-control address configured for sending messages", "address", addr)
+			continue
+		}
+
+		if maybeUseAddress(ctx, a, addr, goodFunds, &leastBad, &bestAvail) {
+			return leastBad, bestAvail, nil
+		}
+	}
+
+	log.Warnw("No address had enough funds to for full message Fee, selecting least bad address", "address", leastBad, "balance", types.FIL(bestAvail), "optimalFunds", types.FIL(goodFunds), "minFunds", types.FIL(minFunds))
+
+	return leastBad, bestAvail, nil
+}
+
+func maybeUseAddress(ctx context.Context, a dealPublisherAPI, addr address.Address, goodFunds abi.TokenAmount, leastBad *address.Address, bestAvail *abi.TokenAmount) bool {
+	b, err := a.WalletBalance(ctx, addr)
+	if err != nil {
+		log.Errorw("checking control address balance", "addr", addr, "error", err)
+		return false
+	}
+
+	if b.GreaterThanEqual(goodFunds) {
+		k, err := a.StateAccountKey(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			log.Errorw("getting account key", "error", err)
+			return false
+		}
+
+		have, err := a.WalletHas(ctx, k)
+		if err != nil {
+			log.Errorw("failed to check control address", "addr", addr, "error", err)
+			return false
+		}
+
+		if !have {
+			log.Errorw("don't have key", "key", k, "address", addr)
+			return false
+		}
+
+		*leastBad = addr
+		*bestAvail = b
+		return true
+	}
+
+	if b.GreaterThan(*bestAvail) {
+		*leastBad = addr
+		*bestAvail = b
+	}
+
+	log.Warnw("address didn't have enough funds to send message", "address", addr, "required", types.FIL(goodFunds), "balance", types.FIL(b))
+	return false
 }
