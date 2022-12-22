@@ -28,12 +28,14 @@ func (m *MarketClientNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.
 
 func (m *MarketClientNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *vTypes.MessageSendSpec) (cid.Cid, error) {
 	var spec *vTypes.MessageSendSpec
+
 	if meta != nil {
 		spec = &vTypes.MessageSendSpec{
 			MaxFee:            meta.MaxFee,
 			GasOverEstimation: meta.GasOverEstimation,
 		}
 	}
+
 	return m.Messager.PushMessage(ctx, msg, spec)
 }
 
