@@ -69,7 +69,7 @@ var DefaultMarketConfig = &MarketConfig{
 	SimultaneousTransfersForStorage:          DefaultSimultaneousTransfers,
 
 	CommonProvider: defaultProviderConfig(),
-	Miners:         make([]*MinerConfig, 0),
+	Miners:         nil,
 	Journal:        Journal{Path: "journal"},
 	Metrics:        *metrics.DefaultMetricsConfig(),
 }
