@@ -122,7 +122,7 @@ type Mysql struct {
 
 type MinerConfig struct {
 	Addr    Address
-	Account string // todo 在合并run模式后才真正起作用
+	Account string
 
 	*ProviderConfig
 }
