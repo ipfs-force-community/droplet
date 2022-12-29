@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -27,7 +26,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus-auth/core"
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
 	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
@@ -140,7 +138,7 @@ func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
 	}
 	ret := []types.User{}
 	for _, actor := range actors {
-		if err := m.checkPermissionByName(ctx, actor.Account); err == nil {
+		if err := jwtclient.CheckPermissionByName(ctx, actor.Account); err == nil {
 			ret = append(ret, actor)
 		}
 	}
@@ -148,14 +146,14 @@ func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
 }
 
 func (m MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {
-	if err := m.checkPermissionByMiner(ctx, addr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr); err != nil {
 		return false, err
 	}
 	return m.UserMgr.Has(ctx, addr), nil
 }
 
 func (m MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
-	if err := m.checkPermissionByMiner(ctx, addr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr); err != nil {
 		return 0, err
 	}
 	if bHas := m.UserMgr.Has(ctx, addr); bHas {
@@ -171,13 +169,6 @@ func (m MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Addres
 }
 
 func (m *MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
-	deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, propCid)
-	if err != nil {
-		return err
-	}
-	if err := m.checkPermissionByMiner(ctx, deal.Proposal.Provider); err != nil {
-		return err
-	}
 	fi, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
@@ -188,7 +179,7 @@ func (m *MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.C
 }
 
 func (m *MarketNodeImpl) MarketImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error {
-	if err := m.checkPermissionByMiner(ctx, deal.Proposal.Provider); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
 		return err
 	}
 	return m.StorageProvider.ImportPublishedDeal(ctx, deal)
@@ -196,7 +187,7 @@ func (m *MarketNodeImpl) MarketImportPublishedDeal(ctx context.Context, deal typ
 
 func (m *MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Address) ([]*vTypes.MarketDeal, error) {
 	for _, addr := range addrs {
-		if err := m.checkPermissionByMiner(ctx, addr); err != nil {
+		if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr); err != nil {
 			return nil, errors.Errorf("check permission of miner %s failed: %s", addr, err)
 		}
 	}
@@ -226,11 +217,9 @@ func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]types.
 func (m *MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan types.MinerDeal, error) {
 	results := make(chan types.MinerDeal)
 	unsub := m.StorageProvider.SubscribeToEvents(func(evt storagemarket.ProviderEvent, deal *types.MinerDeal) {
-		if err := m.checkPermissionByMiner(ctx, deal.Proposal.Provider); err == nil {
-			select {
-			case results <- *deal:
-			case <-ctx.Done():
-			}
+		select {
+		case results <- *deal:
+		case <-ctx.Done():
 		}
 	})
 	go func() {
@@ -244,7 +233,7 @@ func (m *MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan types
 func (m *MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]types.MinerDeal, error) {
 	var deals []*types.MinerDeal
 	var err error
-	if err = m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err = jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return nil, err
 	}
 	if mAddr == address.Undef {
@@ -272,14 +261,14 @@ func (m *MarketNodeImpl) UpdateStorageDealStatus(ctx context.Context, dealPropos
 	if err != nil {
 		return err
 	}
-	if err := m.checkPermissionByMiner(ctx, deal.Proposal.Provider); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
 		return err
 	}
 	return m.Repo.StorageDealRepo().UpdateDealStatus(ctx, dealProposal, state, pieceState)
 }
 
 func (m *MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address, price vTypes.BigInt, verifiedPrice vTypes.BigInt, duration abi.ChainEpoch, minPieceSize abi.PaddedPieceSize, maxPieceSize abi.PaddedPieceSize) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	options := []storagemarket.StorageAskOption{
@@ -295,14 +284,14 @@ func (m *MarketNodeImpl) MarketListAsk(ctx context.Context) ([]*types.SignedStor
 }
 
 func (m *MarketNodeImpl) MarketGetAsk(ctx context.Context, mAddr address.Address) (*types.SignedStorageAsk, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return nil, err
 	}
 	return m.StorageAsk.GetAsk(ctx, mAddr)
 }
 
 func (m *MarketNodeImpl) MarketSetRetrievalAsk(ctx context.Context, mAddr address.Address, ask *retrievalmarket.Ask) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.Repo.RetrievalAskRepo().SetAsk(ctx, &types.RetrievalAsk{
@@ -319,7 +308,7 @@ func (m *MarketNodeImpl) MarketListRetrievalAsk(ctx context.Context) ([]*types.R
 }
 
 func (m *MarketNodeImpl) MarketGetRetrievalAsk(ctx context.Context, mAddr address.Address) (*retrievalmarket.Ask, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return nil, err
 	}
 	ask, err := m.Repo.RetrievalAskRepo().GetAsk(ctx, mAddr)
@@ -387,7 +376,7 @@ func (m *MarketNodeImpl) MarketPendingDeals(ctx context.Context) ([]types.Pendin
 	dealInfos := m.DealPublisher.PendingDeals()
 	ret := make([]types.PendingDealInfo, 0, len(dealInfos))
 	for addr, dealInfo := range dealInfos {
-		if err := m.checkPermissionByMiner(ctx, addr); err == nil {
+		if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr); err == nil {
 			ret = append(ret, dealInfo)
 		}
 	}
@@ -425,210 +414,210 @@ func (m *MarketNodeImpl) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.Ci
 }
 
 func (m *MarketNodeImpl) DealsConsiderOnlineStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return false, err
 	}
 	return m.ConsiderOnlineStorageDealsConfigFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetConsiderOnlineStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetConsiderOnlineStorageDealsConfigFunc(mAddr, b)
 }
 
 func (m *MarketNodeImpl) DealsConsiderOnlineRetrievalDeals(ctx context.Context, mAddr address.Address) (bool, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return false, err
 	}
 	return m.ConsiderOnlineRetrievalDealsConfigFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetConsiderOnlineRetrievalDeals(ctx context.Context, mAddr address.Address, b bool) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetConsiderOnlineRetrievalDealsConfigFunc(mAddr, b)
 }
 
 func (m *MarketNodeImpl) DealsPieceCidBlocklist(ctx context.Context, mAddr address.Address) ([]cid.Cid, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return nil, err
 	}
 	return m.StorageDealPieceCidBlocklistConfigFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetPieceCidBlocklist(ctx context.Context, mAddr address.Address, cids []cid.Cid) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetStorageDealPieceCidBlocklistConfigFunc(mAddr, cids)
 }
 
 func (m *MarketNodeImpl) DealsConsiderOfflineStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return false, err
 	}
 	return m.ConsiderOfflineStorageDealsConfigFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetConsiderOfflineStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetConsiderOfflineStorageDealsConfigFunc(mAddr, b)
 }
 
 func (m *MarketNodeImpl) DealsConsiderOfflineRetrievalDeals(ctx context.Context, mAddr address.Address) (bool, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return false, err
 	}
 	return m.ConsiderOfflineRetrievalDealsConfigFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetConsiderOfflineRetrievalDeals(ctx context.Context, mAddr address.Address, b bool) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetConsiderOfflineRetrievalDealsConfigFunc(mAddr, b)
 }
 
 func (m *MarketNodeImpl) DealsConsiderVerifiedStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return false, err
 	}
 	return m.ConsiderVerifiedStorageDealsConfigFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetConsiderVerifiedStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetConsiderVerifiedStorageDealsConfigFunc(mAddr, b)
 }
 
 func (m *MarketNodeImpl) DealsConsiderUnverifiedStorageDeals(ctx context.Context, mAddr address.Address) (bool, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return false, err
 	}
 	return m.ConsiderUnverifiedStorageDealsConfigFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetConsiderUnverifiedStorageDeals(ctx context.Context, mAddr address.Address, b bool) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetConsiderUnverifiedStorageDealsConfigFunc(mAddr, b)
 }
 
 func (m *MarketNodeImpl) SectorGetExpectedSealDuration(ctx context.Context, mAddr address.Address) (time.Duration, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return 0, err
 	}
 	return m.GetExpectedSealDurationFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) SectorSetExpectedSealDuration(ctx context.Context, mAddr address.Address, duration time.Duration) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetExpectedSealDurationFunc(mAddr, duration)
 }
 
 func (m *MarketNodeImpl) DealsMaxStartDelay(ctx context.Context, mAddr address.Address) (time.Duration, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return 0, err
 	}
 	return m.GetMaxDealStartDelayFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetMaxStartDelay(ctx context.Context, mAddr address.Address, duration time.Duration) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetMaxDealStartDelayFunc(mAddr, duration)
 }
 
 func (m *MarketNodeImpl) DealsPublishMsgPeriod(ctx context.Context, mAddr address.Address) (time.Duration, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return 0, err
 	}
 	return m.PublishMsgPeriodConfigFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetPublishMsgPeriod(ctx context.Context, mAddr address.Address, duration time.Duration) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetPublishMsgPeriodConfigFunc(mAddr, duration)
 }
 
 func (m *MarketNodeImpl) MarketDataTransferPath(ctx context.Context, mAddr address.Address) (string, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return "", err
 	}
 	return m.TransferPathFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) MarketSetDataTransferPath(ctx context.Context, mAddr address.Address, path string) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetTransferPathFunc(mAddr, path)
 }
 
 func (m *MarketNodeImpl) MarketMaxDealsPerPublishMsg(ctx context.Context, mAddr address.Address) (uint64, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return 0, err
 	}
 	return m.MaxDealsPerPublishMsgFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) MarketSetMaxDealsPerPublishMsg(ctx context.Context, mAddr address.Address, num uint64) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetMaxDealsPerPublishMsgFunc(mAddr, num)
 }
 
 func (m *MarketNodeImpl) DealsMaxProviderCollateralMultiplier(ctx context.Context, mAddr address.Address) (uint64, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return 0, err
 	}
 	return m.MaxProviderCollateralMultiplierFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetMaxProviderCollateralMultiplier(ctx context.Context, mAddr address.Address, c uint64) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetMaxProviderCollateralMultiplierFunc(mAddr, c)
 }
 
 func (m *MarketNodeImpl) DealsMaxPublishFee(ctx context.Context, mAddr address.Address) (vTypes.FIL, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return vTypes.FIL(vTypes.ZeroFIL), err
 	}
 	return m.MaxPublishDealsFeeFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) DealsSetMaxPublishFee(ctx context.Context, mAddr address.Address, fee vTypes.FIL) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetMaxPublishDealsFeeFunc(mAddr, fee)
 }
 
 func (m *MarketNodeImpl) MarketMaxBalanceAddFee(ctx context.Context, mAddr address.Address) (vTypes.FIL, error) {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return vTypes.FIL(vTypes.ZeroFIL), err
 	}
 	return m.MaxMarketBalanceAddFeeFunc(mAddr)
 }
 
 func (m *MarketNodeImpl) MarketSetMaxBalanceAddFee(ctx context.Context, mAddr address.Address, fee vTypes.FIL) error {
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return err
 	}
 	return m.SetMaxMarketBalanceAddFeeFunc(mAddr, fee)
@@ -640,7 +629,7 @@ func (m *MarketNodeImpl) MessagerWaitMessage(ctx context.Context, mid cid.Cid) (
 }
 
 func (m *MarketNodeImpl) MessagerPushMessage(ctx context.Context, msg *vTypes.Message, meta *vTypes.MessageSendSpec) (cid.Cid, error) {
-	if err := m.checkPermissionBySigner(ctx, msg.From); err != nil {
+	if err := jwtclient.CheckPermissionBySigner(ctx, m.AuthClient, msg.From); err != nil {
 		return cid.Undef, err
 	}
 	var spec *vTypes.MessageSendSpec
@@ -963,7 +952,7 @@ func (m *MarketNodeImpl) DagstoreGC(ctx context.Context) ([]types.DagstoreShardR
 }
 
 func (m *MarketNodeImpl) GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
-	if err := m.checkPermissionByMiner(ctx, miner); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return nil, err
 	}
 	return m.DealAssigner.GetUnPackedDeals(ctx, miner, spec)
@@ -974,7 +963,7 @@ func (m *MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, sid abi.Sector
 	if err != nil {
 		return nil, err
 	}
-	if err := m.checkPermissionByMiner(ctx, mAddr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
 		return nil, err
 	}
 
@@ -982,21 +971,21 @@ func (m *MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, sid abi.Sector
 }
 
 func (m *MarketNodeImpl) MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error {
-	if err := m.checkPermissionByMiner(ctx, miner); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return err
 	}
 	return m.DealAssigner.MarkDealsAsPacking(ctx, miner, deals)
 }
 
 func (m *MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.Address, dealId abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error {
-	if err := m.checkPermissionByMiner(ctx, miner); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return err
 	}
 	return m.DealAssigner.UpdateDealOnPacking(ctx, miner, dealId, sectorid, offset)
 }
 
 func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status types.PieceStatus) error {
-	if err := m.checkPermissionByMiner(ctx, miner); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return err
 	}
 	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, status)
@@ -1007,7 +996,7 @@ func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Ci
 	if err != nil {
 		return err
 	}
-	if err := m.checkPermissionByMiner(ctx, deal.Proposal.Provider); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
 		return err
 	}
 	fi, err := os.Open(fname)
@@ -1020,7 +1009,7 @@ func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Ci
 }
 
 func (m *MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error) {
-	if err := m.checkPermissionByMiner(ctx, miner); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return nil, err
 	}
 	return m.DealAssigner.GetDeals(ctx, miner, pageIndex, pageSize)
@@ -1031,7 +1020,7 @@ func (m *MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Addre
 	if err != nil {
 		return nil, err
 	}
-	if err := m.checkPermissionBySigner(ctx, ci.Control); err != nil {
+	if err := jwtclient.CheckPermissionBySigner(ctx, m.AuthClient, ci.Control); err != nil {
 		return nil, err
 	}
 	return m.PaychAPI.PaychVoucherList(ctx, pch)
@@ -1196,7 +1185,7 @@ func (m *MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) er
 }
 
 func (m *MarketNodeImpl) OfflineDealImport(ctx context.Context, deal types.MinerDeal) error {
-	if err := m.checkPermissionByMiner(ctx, deal.Proposal.Provider); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
 		return err
 	}
 	return m.StorageProvider.ImportOfflineDeal(ctx, deal)
@@ -1207,7 +1196,7 @@ func (m *MarketNodeImpl) Version(ctx context.Context) (vTypes.Version, error) {
 }
 
 func (m *MarketNodeImpl) GetStorageDealStatistic(ctx context.Context, miner address.Address) (*types.StorageDealStatistic, error) {
-	if err := m.checkPermissionByMiner(ctx, miner); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return nil, err
 	}
 	statistic, err := m.Repo.StorageDealRepo().GroupStorageDealNumberByStatus(ctx, miner)
@@ -1218,7 +1207,7 @@ func (m *MarketNodeImpl) GetStorageDealStatistic(ctx context.Context, miner addr
 }
 
 func (m *MarketNodeImpl) GetRetrievalDealStatistic(ctx context.Context, miner address.Address) (*types.RetrievalDealStatistic, error) {
-	if err := m.checkPermissionByMiner(ctx, miner); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return nil, err
 	}
 	statistic, err := m.Repo.RetrievalDealRepo().GroupRetrievalDealNumberByStatus(ctx, miner)
@@ -1228,61 +1217,8 @@ func (m *MarketNodeImpl) GetRetrievalDealStatistic(ctx context.Context, miner ad
 	return &types.RetrievalDealStatistic{DealsStatus: statistic}, nil
 }
 
-func (m *MarketNodeImpl) checkPermissionBySigner(ctx context.Context, addrs ...address.Address) error {
-	if auth.HasPerm(ctx, []auth.Permission{}, core.PermAdmin) {
-		return nil
-	}
-	user, exist := jwtclient.CtxGetName(ctx)
-	if !exist {
-		return ErrorUserNotFound
-	}
-
-	for _, wAddr := range addrs {
-		ok, err := m.AuthClient.SignerExistInUser(user, wAddr.String())
-		if err != nil {
-			return fmt.Errorf("check signer exist in user fail %s failed when check permission: %s", wAddr.String(), err)
-		}
-		if !ok {
-			return ErrorPermissionDeny
-		}
-	}
-	return nil
-}
-
-func (m *MarketNodeImpl) checkPermissionByMiner(ctx context.Context, addrs ...address.Address) error {
-	if auth.HasPerm(ctx, []auth.Permission{}, core.PermAdmin) {
-		return nil
-	}
-	user, exist := jwtclient.CtxGetName(ctx)
-	if !exist {
-		return ErrorUserNotFound
-	}
-	for _, mAddr := range addrs {
-		ok, err := m.AuthClient.MinerExistInUser(user, mAddr.String())
-		if err != nil {
-			return fmt.Errorf("check miner exist in user fail %s failed when check permission: %s", mAddr.String(), err)
-		}
-		if !ok {
-			return ErrorPermissionDeny
-		}
-	}
-	return nil
-}
-
-// checkPermissionByUser check weather the user has admin permission or is match the username passed in
-func (m *MarketNodeImpl) checkPermissionByName(ctx context.Context, name string) error {
-	if auth.HasPerm(ctx, []auth.Permission{}, core.PermAdmin) {
-		return nil
-	}
-	user, exist := jwtclient.CtxGetName(ctx)
-	if !exist || user != name {
-		return ErrorPermissionDeny
-	}
-	return nil
-}
-
 func (m *MarketNodeImpl) MarketAddBalance(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error) {
-	if err := m.checkPermissionBySigner(ctx, wallet); err != nil {
+	if err := jwtclient.CheckPermissionBySigner(ctx, m.AuthClient, wallet); err != nil {
 		return cid.Undef, err
 	}
 	return m.FundAPI.MarketAddBalance(ctx, wallet, addr, amt)
@@ -1291,28 +1227,28 @@ func (m *MarketNodeImpl) MarketAddBalance(ctx context.Context, wallet, addr addr
 func (m *MarketNodeImpl) MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt vTypes.BigInt) (cid.Cid, error) {
 	// we don't check permission on wallet because wallet will be the addr that the fund withdraw in
 	//but signing by wallet will be called automatically without permission check
-	if err := m.checkPermissionByMiner(ctx, addr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr); err != nil {
 		return cid.Undef, err
 	}
 	return m.FundAPI.MarketWithdraw(ctx, wallet, addr, amt)
 }
 
 func (m *MarketNodeImpl) MarketReserveFunds(ctx context.Context, wallet address.Address, addr address.Address, amt vTypes.BigInt) (cid.Cid, error) {
-	if err := m.checkPermissionBySigner(ctx, wallet); err != nil {
+	if err := jwtclient.CheckPermissionBySigner(ctx, m.AuthClient, wallet); err != nil {
 		return cid.Undef, err
 	}
 	return m.FundAPI.MarketReserveFunds(ctx, wallet, addr, amt)
 }
 
 func (m *MarketNodeImpl) MarketReleaseFunds(ctx context.Context, addr address.Address, amt vTypes.BigInt) error {
-	if err := m.checkPermissionByMiner(ctx, addr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr); err != nil {
 		return err
 	}
 	return m.FundAPI.MarketReleaseFunds(ctx, addr, amt)
 }
 
 func (m *MarketNodeImpl) MarketGetReserved(ctx context.Context, addr address.Address) (vTypes.BigInt, error) {
-	if err := m.checkPermissionByMiner(ctx, addr); err != nil {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr); err != nil {
 		return vTypes.BigInt{}, err
 	}
 	return m.FundAPI.MarketGetReserved(ctx, addr)
