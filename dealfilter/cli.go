@@ -7,8 +7,10 @@ import (
 	"os/exec"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/venus-market/v2/config"
+	vsTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -19,12 +21,21 @@ func CliStorageDealFilter(cfg *config.MarketConfig) config.StorageDealFilter {
 			return true, "", nil
 		}
 
+		isOffline := false
+		if deal.Ref != nil && deal.Ref.TransferType == storagemarket.TTManual {
+			isOffline = true
+		}
+
 		d := struct {
-			*types.MinerDeal
+			IsOffline bool
+			vsTypes.ClientDealProposal
 			DealType string
+			Agent    string
 		}{
-			MinerDeal: deal,
-			DealType:  "piecestorage",
+			IsOffline:          isOffline,
+			ClientDealProposal: deal.ClientDealProposal,
+			DealType:           "storage",
+			Agent:              "venus-market",
 		}
 		return runDealFilter(ctx, pCfg.Filter, d)
 	}
