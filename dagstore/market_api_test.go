@@ -54,7 +54,7 @@ func TestMarket(t *testing.T) {
 	assert.Nil(t, err)
 
 	// todo: mock IMarketEvent
-	marketAPI := NewMarketAPI(ctx, r, pmgr, nil, false)
+	marketAPI := NewMarketAPI(ctx, r, pmgr, nil, false, 100)
 
 	size, err := marketAPI.GetUnpaddedCARSize(ctx, testResourceId)
 	assert.Nil(t, err)

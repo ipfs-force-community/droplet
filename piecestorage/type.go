@@ -29,7 +29,7 @@ type IPieceStorage interface {
 	Len(context.Context, string) (int64, error)
 	// ListResourceIds get resource ids from piece store
 	ListResourceIds(ctx context.Context) ([]string, error)
-	// GetMountReader use direct read if storage have low performance effecitive ReadAt
+	// GetReaderCloser use direct read if storage have low performance effecitive ReadAt
 	GetReaderCloser(context.Context, string) (io.ReadCloser, error)
 	// GetMountReader used to support dagstore
 	GetMountReader(context.Context, string) (mount.Reader, error)
@@ -38,4 +38,5 @@ type IPieceStorage interface {
 	Has(context.Context, string) (bool, error)
 	Validate(string) error
 	GetStorageStatus() (market.StorageStatus, error)
+	GetPieceTransfer(context.Context, string) (*market.Transfer, error)
 }

@@ -21,7 +21,7 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 	// todo: extract name check logic to a function and check blank in name
 
 	for _, fsCfg := range cfg.Fs {
-		// check if storage already exist in manager and it's name is not empty
+		// check if storage already exist in manager, and it's name is not empty
 		if fsCfg.Name == "" {
 			return nil, fmt.Errorf("fs piece storage name is empty, must set storage name in piece storage config `name=yourname`")
 		}
@@ -38,7 +38,7 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 	}
 
 	for _, s3Cfg := range cfg.S3 {
-		// check if storage already exist in manager and it's name is not empty
+		// check if storage already exist in manager, and it's name is not empty
 		if s3Cfg.Name == "" {
 			return nil, fmt.Errorf("s3 pieceStorage name is empty, must set storage name in piece storage config `name=yourname`")
 		}
@@ -64,7 +64,7 @@ func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) 
 	_ = p.EachPieceStorage(func(st IPieceStorage) error {
 		has, err := st.Has(ctx, s)
 		if err != nil {
-			log.Warnf("got error while check avaibale in storageg")
+			log.Warnf("got error while check avaibale in storage: %s", err.Error())
 			return nil
 		}
 		if has {
@@ -74,7 +74,7 @@ func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) 
 	})
 
 	if len(storages) == 0 {
-		return nil, fmt.Errorf("unable to find piece in storage %s", s)
+		return nil, fmt.Errorf("unable to find piece %s in storage", s)
 	}
 
 	return randStorageSelector(storages)
@@ -125,7 +125,7 @@ func (p *PieceStorageManager) AddPieceStorage(s IPieceStorage) error {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 
-	// check if storage already exist in manager and it's name is not empty
+	// check if storage already exist in manager, and it's name is not empty
 	_, ok := p.storages[s.GetName()]
 	if ok {
 		return fmt.Errorf("duplicate storage name: %s", s.GetName())

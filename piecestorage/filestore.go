@@ -2,18 +2,20 @@ package piecestorage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 
+	"github.com/filecoin-project/dagstore/mount"
+
+	"github.com/filecoin-project/venus/pkg/util/fsutil"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 
-	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/utils"
-	"github.com/filecoin-project/venus/pkg/util/fsutil"
 )
 
 type fsPieceStorage struct {
@@ -21,7 +23,7 @@ type fsPieceStorage struct {
 	fsCfg   *config.FsPieceStorage
 }
 
-func (f *fsPieceStorage) Len(ctx context.Context, resourceId string) (int64, error) {
+func (f *fsPieceStorage) Len(_ context.Context, resourceId string) (int64, error) {
 	st, err := os.Stat(path.Join(f.baseUrl, resourceId))
 	if err != nil {
 		return 0, err
@@ -33,7 +35,7 @@ func (f *fsPieceStorage) Len(ctx context.Context, resourceId string) (int64, err
 	return st.Size(), err
 }
 
-func (f *fsPieceStorage) ListResourceIds(ctx context.Context) ([]string, error) {
+func (f *fsPieceStorage) ListResourceIds(_ context.Context) ([]string, error) {
 	entries, err := os.ReadDir(f.baseUrl)
 	if err != nil {
 		return nil, err
@@ -47,7 +49,7 @@ func (f *fsPieceStorage) ListResourceIds(ctx context.Context) ([]string, error) 
 	return resources, nil
 }
 
-func (f *fsPieceStorage) SaveTo(ctx context.Context, resourceId string, r io.Reader) (int64, error) {
+func (f *fsPieceStorage) SaveTo(_ context.Context, resourceId string, r io.Reader) (int64, error) {
 	if f.fsCfg.ReadOnly {
 		return 0, fmt.Errorf("do not write to a 'readonly' piece store")
 	}
@@ -67,7 +69,7 @@ func (f *fsPieceStorage) SaveTo(ctx context.Context, resourceId string, r io.Rea
 	return wlen, err
 }
 
-func (f *fsPieceStorage) GetReaderCloser(ctx context.Context, resourceId string) (io.ReadCloser, error) {
+func (f *fsPieceStorage) GetReaderCloser(_ context.Context, resourceId string) (io.ReadCloser, error) {
 	dstPath := path.Join(f.baseUrl, resourceId)
 	fs, err := os.Open(dstPath)
 	if err != nil {
@@ -76,7 +78,7 @@ func (f *fsPieceStorage) GetReaderCloser(ctx context.Context, resourceId string)
 	return fs, nil
 }
 
-func (f *fsPieceStorage) GetMountReader(ctx context.Context, resourceId string) (mount.Reader, error) {
+func (f *fsPieceStorage) GetMountReader(_ context.Context, resourceId string) (mount.Reader, error) {
 	dstPath := path.Join(f.baseUrl, resourceId)
 	fs, err := os.Open(dstPath)
 	if err != nil {
@@ -89,7 +91,25 @@ func (f *fsPieceStorage) GetRedirectUrl(_ context.Context, _ string) (string, er
 	return "", ErrUnsupportRedirect
 }
 
-func (f *fsPieceStorage) Has(ctx context.Context, resourceId string) (bool, error) {
+func (f *fsPieceStorage) GetPieceTransfer(_ context.Context, pieceCid string) (*market.Transfer, error) {
+	if f.fsCfg.ReadOnly {
+		return nil, fmt.Errorf("%s id readonly piece store", f.fsCfg.Name)
+	}
+
+	dstPath := path.Join(f.baseUrl, pieceCid)
+	transfer := market.FsTransfer{Path: dstPath}
+	params, err := json.Marshal(&transfer)
+	if err != nil {
+		return nil, fmt.Errorf("construct piece transfer: %w", err)
+	}
+
+	return &market.Transfer{
+		Type:   market.PiecesTransferFs,
+		Params: params,
+	}, nil
+}
+
+func (f *fsPieceStorage) Has(_ context.Context, resourceId string) (bool, error) {
 	_, err := os.Stat(path.Join(f.baseUrl, resourceId))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -100,7 +120,7 @@ func (f *fsPieceStorage) Has(ctx context.Context, resourceId string) (bool, erro
 	return true, nil
 }
 
-func (f *fsPieceStorage) Validate(resourceId string) error {
+func (f *fsPieceStorage) Validate(_ string) error {
 	st, err := os.Stat(f.baseUrl)
 	if err != nil {
 		if os.IsNotExist(err) {
