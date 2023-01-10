@@ -62,8 +62,8 @@ require (
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.4.0
 	github.com/ipld/go-car/v2 v2.4.1
-	github.com/ipld/go-codec-dagpb v1.3.2
-	github.com/ipld/go-ipld-prime v0.17.0
+	github.com/ipld/go-codec-dagpb v1.5.0
+	github.com/ipld/go-ipld-prime v0.18.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-libp2p v0.22.0
 	github.com/libp2p/go-maddr-filter v0.1.0
