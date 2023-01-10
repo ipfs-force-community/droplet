@@ -95,7 +95,6 @@ func main() {
 			cli2.NetCmd,
 			cli2.DataTransfersCmd,
 			cli2.DagstoreCmd,
-			cli2.MigrateCmd,
 			cli2.PieceStorageCmd,
 			cli2.MarketCmds,
 			cli2.StatsCmds,

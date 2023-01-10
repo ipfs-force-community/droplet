@@ -75,16 +75,20 @@ func NewDealPublisherWrapper(
 }
 
 // PendingDeals returns the list of deals that are queued up to be published
-func (p *DealPublisher) PendingDeals() []marketTypes.PendingDealInfo {
+func (p *DealPublisher) PendingDeals() map[address.Address]marketTypes.PendingDealInfo {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 
+	ret := make(map[address.Address]marketTypes.PendingDealInfo)
+
 	// Filter out deals whose context has been cancelled
-	var deals []marketTypes.PendingDealInfo
-	for _, publisher := range p.publishers {
-		deals = append(deals, publisher.pendingDeals())
+	for addr, publisher := range p.publishers {
+		pdi := publisher.pendingDeals()
+		if len(pdi.Deals) > 0 {
+			ret[addr] = pdi
+		}
 	}
-	return deals
+	return ret
 }
 
 // ForcePublishPendingDeals publishes all pending deals without waiting for
