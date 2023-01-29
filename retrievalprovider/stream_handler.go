@@ -63,6 +63,9 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	}
 
 	sendResp := func(resp retrievalmarket.QueryResponse) {
+		if resp.Status == retrievalmarket.QueryResponseError {
+			log.Errorf(resp.Message)
+		}
 		if err := stream.WriteQueryResponse(resp); err != nil {
 			log.Errorf("Retrieval query: writing query response: %s", err)
 		}
@@ -77,7 +80,6 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 
 	minerDeals, err := p.pieceInfo.GetPieceInfoFromCid(ctx, query.PayloadCID, query.PieceCID)
 	if err != nil {
-		log.Errorf("Retrieval query: query ready data: %s", err)
 		answer.Status = retrievalmarket.QueryResponseError
 		if errors.Is(err, repo.ErrNotFound) {
 			answer.Message = fmt.Sprintf("retrieve piece(%s) or payload(%s) failed, not found",
@@ -97,7 +99,6 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	answer.PieceCIDFound = retrievalmarket.QueryItemAvailable
 	paymentAddr := address.Address(p.cfg.MinerProviderConfig(selectDeal.Proposal.Provider, true).RetrievalPaymentAddress)
 	if paymentAddr == address.Undef {
-		log.Errorf("must specific payment address in venus-market")
 		answer.Status = retrievalmarket.QueryResponseError
 		answer.Message = "must specific payment address in venus-market"
 		sendResp(answer)
@@ -107,7 +108,6 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 
 	ask, err := p.askRepo.GetAsk(ctx, selectDeal.Proposal.Provider)
 	if err != nil {
-		log.Errorf("Retrieval query: GetAsk: %s", err)
 		answer.Status = retrievalmarket.QueryResponseError
 		answer.Message = fmt.Sprintf("failed to price deal: %s", err)
 		sendResp(answer)

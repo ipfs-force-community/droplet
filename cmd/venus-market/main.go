@@ -88,8 +88,8 @@ func main() {
 		Commands: []*cli.Command{
 			runCmd,
 			cli2.PiecesCmd,
-			cli2.RetrievalDealsCmd,
-			cli2.StorageDealsCmd,
+			cli2.RetrievalCmds,
+			cli2.StorageCmds,
 			cli2.ActorCmd,
 			cli2.NetCmd,
 			cli2.DataTransfersCmd,
