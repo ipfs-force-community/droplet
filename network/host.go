@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/venus-market/v2/config"
+
+	"github.com/filecoin-project/venus-market/v2/protocolproxy"
+
 	"github.com/filecoin-project/venus-market/v2/version"
 	"github.com/ipfs-force-community/metrics"
 	"github.com/libp2p/go-libp2p"
@@ -18,6 +22,8 @@ type P2PHostIn struct {
 
 	ID        peer.ID
 	Peerstore peerstore.Peerstore
+
+	Cfg *config.Libp2p
 
 	Opts [][]libp2p.Option `group:"libp2p"`
 }
@@ -43,6 +49,14 @@ func Host(mctx metrics.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (host.Host
 	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(params.Cfg.Proxy) == 0 {
+		addrInfo, err := peer.AddrInfoFromString(params.Cfg.Proxy)
+		if err != nil {
+			return nil, err
+		}
+		h = protocolproxy.NewForwardingHost(h, *addrInfo)
 	}
 
 	lc.Append(fx.Hook{
