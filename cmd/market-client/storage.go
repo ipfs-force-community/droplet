@@ -113,6 +113,8 @@ func GetAsks(ctx context.Context, api v1api.FullNode, capi clientapi.IMarketClie
 				}
 			}(miner)
 		}
+
+		wg.Wait()
 	}()
 
 loop:
@@ -184,6 +186,8 @@ loop:
 				lk.Unlock()
 			}(miner)
 		}
+
+		wg.Wait()
 	}()
 
 loop2:
