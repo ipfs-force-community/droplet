@@ -47,6 +47,7 @@ func (fh *ForwardingHost) Close() error {
 func (fh *ForwardingHost) SetStreamHandler(pid protocol.ID, handler network.StreamHandler) {
 	fh.Host.SetStreamHandler(pid, handler)
 
+	fmt.Println("protocol", pid)
 	// Save the handler so it can be invoked from the forwarding protocol's handler
 	// only set the handler if we are successful in registering the route
 	fh.handlersLk.Lock()
@@ -141,6 +142,7 @@ func (fh *ForwardingHost) validateForwardingRequest(request *messages.Forwarding
 // Calls to "NewStream" open an outbound forwarding request to the proxy, that is then sent on
 // the the specified peer
 func (fh *ForwardingHost) NewStream(ctx context.Context, p peer.ID, protocols ...protocol.ID) (network.Stream, error) {
+	log.Infow("ForwardingHost receive stream")
 	// If there is a direct connection to the peer (or there was a connection
 	// recently) open the stream over the direct connection
 	if p != fh.proxy {

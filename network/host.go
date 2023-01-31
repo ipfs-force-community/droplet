@@ -51,7 +51,7 @@ func Host(mctx metrics.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (host.Host
 		return nil, err
 	}
 
-	if len(params.Cfg.Proxy) == 0 {
+	if len(params.Cfg.Proxy) > 0 {
 		addrInfo, err := peer.AddrInfoFromString(params.Cfg.Proxy)
 		if err != nil {
 			return nil, err

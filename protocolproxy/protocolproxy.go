@@ -192,39 +192,6 @@ func (pp *ProtocolProxy) processForwardingRequest(p peer.ID, remote peer.ID, pro
 	return s, nil
 }
 
-// pipe a stream through the PP
-func (pp *ProtocolProxy) bridgeStreams(s1, s2 network.Stream) {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		// pipe reads on s1 to writes on s2
-		defer wg.Done()
-		_, err := io.Copy(s2, s1)
-		if err != nil {
-			_ = s1.Reset()
-			return
-		}
-		err = s2.CloseWrite()
-		if err != nil {
-			_ = s1.Reset()
-		}
-	}()
-	go func() {
-		// pipe reads on s2 to writes on s1
-		defer wg.Done()
-		_, err := io.Copy(s1, s2)
-		if err != nil {
-			_ = s2.Reset()
-			return
-		}
-		err = s1.CloseWrite()
-		if err != nil {
-			_ = s2.Reset()
-		}
-	}()
-	wg.Wait()
-}
-
 func (pp *ProtocolProxy) handleIncoming(s network.Stream) {
 	defer s.Close()
 
@@ -261,4 +228,40 @@ func (pp *ProtocolProxy) handleIncoming(s network.Stream) {
 	}
 
 	pp.bridgeStreams(s, routedStream)
+}
+
+// pipe a stream through the PP
+func (pp *ProtocolProxy) bridgeStreams(s1, s2 network.Stream) {
+	defer func() {
+		fmt.Println("exit stream")
+	}()
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		// pipe reads on s1 to writes on s2
+		defer wg.Done()
+		_, err := io.Copy(s2, s1)
+		if err != nil {
+			_ = s1.Reset()
+			return
+		}
+		err = s2.CloseWrite()
+		if err != nil {
+			_ = s1.Reset()
+		}
+	}()
+	go func() {
+		// pipe reads on s2 to writes on s1
+		defer wg.Done()
+		_, err := io.Copy(s1, s2)
+		if err != nil {
+			_ = s2.Reset()
+			return
+		}
+		err = s1.CloseWrite()
+		if err != nil {
+			_ = s2.Reset()
+		}
+	}()
+	wg.Wait()
 }

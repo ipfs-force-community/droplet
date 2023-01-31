@@ -78,6 +78,8 @@ func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAsk
 			log.Errorf("unable to close err %v", err)
 		}
 	}()
+
+	log.Infof("receive ask stream")
 	ar, err := s.ReadAskRequest()
 	if err != nil {
 		log.Errorf("failed to read AskRequest from incoming stream: %s", err)

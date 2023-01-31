@@ -7,7 +7,7 @@ import (
 	yamux "github.com/libp2p/go-libp2p/p2p/muxer/yamux"
 )
 
-func makeSmuxTransportOption() libp2p.Option {
+func MakeSmuxTransportOption() libp2p.Option {
 	const yamuxID = "/yamux/1.0.0"
 
 	ymxtpt := *yamux.DefaultTransport
@@ -22,7 +22,7 @@ func makeSmuxTransportOption() libp2p.Option {
 
 func SmuxTransport() func() (opts Libp2pOpts, err error) {
 	return func() (opts Libp2pOpts, err error) {
-		opts.Opts = append(opts.Opts, makeSmuxTransportOption())
+		opts.Opts = append(opts.Opts, MakeSmuxTransportOption())
 		return
 	}
 }
