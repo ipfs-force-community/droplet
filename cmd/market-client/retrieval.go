@@ -201,7 +201,7 @@ func outputRetrievalDeals(ctx context.Context, out io.Writer, localDeals []clien
 }
 
 var retrievalListCmd = &cli.Command{
-	Name:  "list-retrievals",
+	Name:  "list",
 	Usage: "List retrieval market deals",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
@@ -318,7 +318,7 @@ var retrievalCancelCmd = &cli.Command{
 }
 
 var clientQueryRetrievalAskCmd = &cli.Command{
-	Name:      "retrieval-ask",
+	Name:      "query-ask",
 	Usage:     "Get a miner's retrieval ask",
 	ArgsUsage: "[minerAddress] [data CID]",
 	Flags: []cli.Flag{
