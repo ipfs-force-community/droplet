@@ -25,12 +25,13 @@ var storageAsksCmds = &cli.Command{
 	Name:  "ask",
 	Usage: "Configure storage asks",
 	Subcommands: []*cli.Command{
-		setAskCmd,
-		getAskCmd,
+		setStorageAskCmd,
+		getStorageAskCmd,
+		listStorageAsksCmd,
 	},
 }
 
-var setAskCmd = &cli.Command{
+var setStorageAskCmd = &cli.Command{
 	Name:      "set",
 	ArgsUsage: "<miner address>",
 	Usage:     "Configure(set/update) the miner's ask",
@@ -150,7 +151,7 @@ var setAskCmd = &cli.Command{
 	},
 }
 
-var getAskCmd = &cli.Command{
+var getStorageAskCmd = &cli.Command{
 	Name:      "get",
 	Usage:     "Print the miner's ask",
 	ArgsUsage: "<miner address>",
@@ -207,6 +208,55 @@ var getAskCmd = &cli.Command{
 
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%d\n", types.FIL(ask.Price), types.FIL(ask.VerifiedPrice), types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
 
+		return w.Flush()
+	},
+}
+
+var listStorageAsksCmd = &cli.Command{
+	Name:  "list",
+	Usage: "List the currently configured storage provider asks",
+	Action: func(cctx *cli.Context) error {
+		ctx := DaemonContext(cctx)
+
+		fnapi, closer, err := NewFullNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		smapi, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		asks, err := smapi.MarketListStorageAsk(ctx)
+		if err != nil {
+			return err
+		}
+
+		head, err := fnapi.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		fmt.Fprintf(w, "Miner\tPrice per GiB/Epoch\tVerified\tMin. Piece Size (padded)\tMax. Piece Size (padded)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
+
+		for _, sask := range asks {
+			var ask *storagemarket.StorageAsk
+			if sask != nil && sask.Ask != nil {
+				ask = sask.Ask
+			}
+
+			dlt := ask.Expiry - head.Height()
+			rem := "<expired>"
+			if dlt > 0 {
+				rem = (time.Second * time.Duration(int64(dlt)*int64(constants.MainNetBlockDelaySecs))).String()
+			}
+
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\t%d\n", ask.Miner, types.FIL(ask.Price), types.FIL(ask.VerifiedPrice), types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
+		}
 		return w.Flush()
 	},
 }

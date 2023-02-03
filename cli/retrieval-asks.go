@@ -20,12 +20,13 @@ var retirevalAsksCmds = &cli.Command{
 	Name:  "ask",
 	Usage: "Configure retrieval asks",
 	Subcommands: []*cli.Command{
-		retrievalGetAskCmd,
-		retrievalSetAskCmd,
+		getRetrievalAskCmd,
+		setRetrievalAskCmd,
+		listRetrievalAskCmd,
 	},
 }
 
-var retrievalSetAskCmd = &cli.Command{
+var setRetrievalAskCmd = &cli.Command{
 	Name:      "set",
 	ArgsUsage: "<miner address>",
 	Usage:     "Configure(set/update)the provider's retrieval ask",
@@ -139,7 +140,7 @@ var retrievalSetAskCmd = &cli.Command{
 	},
 }
 
-var retrievalGetAskCmd = &cli.Command{
+var getRetrievalAskCmd = &cli.Command{
 	Name:      "get",
 	ArgsUsage: "<miner address>",
 	Usage:     "Get the provider's current retrieval ask",
@@ -178,6 +179,38 @@ var retrievalGetAskCmd = &cli.Command{
 			units.BytesSize(float64(ask.PaymentInterval)),
 			units.BytesSize(float64(ask.PaymentIntervalIncrease)),
 		)
+		return w.Flush()
+	},
+}
+
+var listRetrievalAskCmd = &cli.Command{
+	Name:  "list",
+	Usage: "List the currently configured retrieval miner asks",
+	Action: func(cctx *cli.Context) error {
+		ctx := DaemonContext(cctx)
+
+		api, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		asks, err := api.MarketListRetrievalAsk(ctx)
+		if err != nil {
+			return err
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		fmt.Fprintf(w, "Miner\tPrice per Byte\tUnseal Price\tPayment Interval\tPayment Interval Increase\n")
+		for _, ask := range asks {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+				ask.Miner,
+				types.FIL(ask.PricePerByte),
+				types.FIL(ask.UnsealPrice),
+				units.BytesSize(float64(ask.PaymentInterval)),
+				units.BytesSize(float64(ask.PaymentIntervalIncrease)),
+			)
+		}
 		return w.Flush()
 	},
 }

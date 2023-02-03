@@ -2,9 +2,7 @@ package impl
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"time"
@@ -234,7 +232,7 @@ func (m *MarketNodeImpl) MarketSetAsk(ctx context.Context, mAddr address.Address
 	return m.StorageAsk.SetAsk(ctx, mAddr, price, verifiedPrice, duration, options...)
 }
 
-func (m *MarketNodeImpl) MarketListAsk(ctx context.Context) ([]*types.SignedStorageAsk, error) {
+func (m *MarketNodeImpl) MarketListStorageAsk(ctx context.Context) ([]*types.SignedStorageAsk, error) {
 	return m.StorageAsk.ListAsk(ctx)
 }
 
@@ -897,110 +895,6 @@ func (m *MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pa
 
 func (m *MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Address) ([]*vTypes.SignedVoucher, error) {
 	return m.PaychAPI.PaychVoucherList(ctx, pch)
-}
-
-// ImportV1Data deprecated api
-func (m *MarketNodeImpl) ImportV1Data(ctx context.Context, src string) error {
-	type minerDealsIncludeStatus struct {
-		MinerDeal storagemarket.MinerDeal
-		DealInfo  piecestore.DealInfo
-		Status    types.PieceStatus
-	}
-
-	type exportData struct {
-		Miner          address.Address
-		MinerDeals     []minerDealsIncludeStatus
-		SignedVoucher  map[string]*types.ChannelInfo
-		StorageAsk     *storagemarket.SignedStorageAsk
-		RetrievalAsk   *retrievalmarket.Ask
-		RetrievalDeals []retrievalmarket.ProviderDealState
-	}
-
-	srcBytes, err := ioutil.ReadFile(src)
-	if err != nil {
-		return err
-	}
-
-	data := exportData{}
-	err = json.Unmarshal(srcBytes, &data)
-	if err != nil {
-		return err
-	}
-
-	err = m.Repo.StorageAskRepo().SetAsk(ctx, types.FromChainAsk(data.StorageAsk))
-	if err != nil {
-		return err
-	}
-
-	err = m.Repo.RetrievalAskRepo().SetAsk(ctx, &types.RetrievalAsk{
-		Miner:                   data.Miner,
-		PricePerByte:            data.RetrievalAsk.PricePerByte,
-		UnsealPrice:             data.RetrievalAsk.UnsealPrice,
-		PaymentInterval:         data.RetrievalAsk.PaymentInterval,
-		PaymentIntervalIncrease: data.RetrievalAsk.PaymentIntervalIncrease,
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, channelInfo := range data.SignedVoucher {
-		err = m.Repo.PaychChannelInfoRepo().SaveChannel(ctx, channelInfo)
-		if err != nil {
-			return fmt.Errorf("save channel fail %w", err)
-		}
-	}
-
-	for _, minerDeal := range data.MinerDeals {
-		err = m.Repo.StorageDealRepo().SaveDeal(ctx, &types.MinerDeal{
-			ClientDealProposal: minerDeal.MinerDeal.ClientDealProposal,
-			ProposalCid:        minerDeal.MinerDeal.ProposalCid,
-			AddFundsCid:        minerDeal.MinerDeal.AddFundsCid,
-			PublishCid:         minerDeal.MinerDeal.PublishCid,
-			Miner:              minerDeal.MinerDeal.Miner,
-			Client:             minerDeal.MinerDeal.Client,
-			State:              minerDeal.MinerDeal.State,
-			PiecePath:          minerDeal.MinerDeal.PiecePath,
-			//	PayloadSize:           ,//
-			MetadataPath:          minerDeal.MinerDeal.MetadataPath,
-			SlashEpoch:            minerDeal.MinerDeal.SlashEpoch,
-			FastRetrieval:         minerDeal.MinerDeal.FastRetrieval,
-			Message:               minerDeal.MinerDeal.Message,
-			FundsReserved:         minerDeal.MinerDeal.FundsReserved,
-			Ref:                   minerDeal.MinerDeal.Ref,
-			AvailableForRetrieval: minerDeal.MinerDeal.AvailableForRetrieval,
-			DealID:                minerDeal.MinerDeal.DealID,
-			CreationTime:          minerDeal.MinerDeal.CreationTime,
-			TransferChannelID:     minerDeal.MinerDeal.TransferChannelId,
-			SectorNumber:          minerDeal.MinerDeal.SectorNumber,
-			Offset:                minerDeal.DealInfo.Offset,
-			PieceStatus:           minerDeal.Status,
-			InboundCAR:            minerDeal.MinerDeal.InboundCAR,
-		})
-		if err != nil {
-			return fmt.Errorf("save storage deal fail %w", err)
-		}
-	}
-
-	for _, retrievalDeal := range data.RetrievalDeals {
-		err = m.Repo.RetrievalDealRepo().SaveDeal(ctx, &types.ProviderDealState{
-			DealProposal: retrievalDeal.DealProposal,
-			StoreID:      retrievalDeal.StoreID,
-			// SelStorageProposalCid: retrievalDeal,
-			ChannelID:       retrievalDeal.ChannelID,
-			Status:          retrievalDeal.Status,
-			Receiver:        retrievalDeal.Receiver,
-			TotalSent:       retrievalDeal.TotalSent,
-			FundsReceived:   retrievalDeal.FundsReceived,
-			Message:         retrievalDeal.Message,
-			CurrentInterval: retrievalDeal.CurrentInterval,
-			LegacyProtocol:  retrievalDeal.LegacyProtocol,
-		})
-		if err != nil {
-			return fmt.Errorf("retrieval storage deal fail %w", err)
-		}
-	}
-
-	return nil
 }
 
 func (m *MarketNodeImpl) AddFsPieceStorage(ctx context.Context, name string, path string, readonly bool) error {
