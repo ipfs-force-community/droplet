@@ -160,11 +160,13 @@ var storageDealSelectionRejectCmd = &cli.Command{
 		}
 		defer closer()
 
+		isUpdate := false
 		if cctx.Bool("online") {
 			err = smapi.DealsSetConsiderOnlineStorageDeals(DaemonContext(cctx), mAddr, false)
 			if err != nil {
 				return err
 			}
+			isUpdate = true
 		}
 
 		if cctx.Bool("offline") {
@@ -172,6 +174,7 @@ var storageDealSelectionRejectCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+			isUpdate = true
 		}
 
 		if cctx.Bool("verified") {
@@ -179,6 +182,7 @@ var storageDealSelectionRejectCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+			isUpdate = true
 		}
 
 		if cctx.Bool("unverified") {
@@ -186,8 +190,12 @@ var storageDealSelectionRejectCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+			isUpdate = true
 		}
 
+		if !isUpdate {
+			return errors.New("specify flag to update") //just tell user to use flag option
+		}
 		return nil
 	},
 }
