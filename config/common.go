@@ -32,6 +32,7 @@ type Libp2p struct {
 	ProtectedPeers      []string
 
 	PrivateKey string
+	Proxy      string
 }
 
 type Common struct {

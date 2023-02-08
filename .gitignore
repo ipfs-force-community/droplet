@@ -8,6 +8,7 @@ badgerStAskDb/
 *.puml
 market-client
 venus-market
+market-proxy
 sequence_chart.md
 .idea
 .vscode
