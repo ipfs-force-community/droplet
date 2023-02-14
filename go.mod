@@ -42,7 +42,7 @@ require (
 	github.com/ipfs-force-community/venus-gateway v1.9.0-rc1
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.4.0
-	github.com/ipfs/go-cid v0.2.0
+	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-cidutil v0.1.0
 	github.com/ipfs/go-datastore v0.5.1
 	github.com/ipfs/go-ds-badger2 v0.1.2
@@ -63,7 +63,7 @@ require (
 	github.com/ipld/go-car v0.4.0
 	github.com/ipld/go-car/v2 v2.4.1
 	github.com/ipld/go-codec-dagpb v1.5.0
-	github.com/ipld/go-ipld-prime v0.18.0
+	github.com/ipld/go-ipld-prime v0.19.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-libp2p v0.22.0
 	github.com/libp2p/go-maddr-filter v0.1.0
@@ -241,7 +241,7 @@ require (
 	github.com/multiformats/go-base36 v0.1.0 // indirect
 	github.com/multiformats/go-multiaddr-dns v0.3.1 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
-	github.com/multiformats/go-multicodec v0.5.0 // indirect
+	github.com/multiformats/go-multicodec v0.6.0 // indirect
 	github.com/multiformats/go-multistream v0.3.3 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
