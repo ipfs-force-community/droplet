@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 
-	init_ "github.com/filecoin-project/go-state-types/builtin/v9/init"
+	init_ "github.com/filecoin-project/go-state-types/builtin/v10/init"
 
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
