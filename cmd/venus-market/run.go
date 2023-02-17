@@ -74,36 +74,43 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 		cfg.AuthNode.Token = csToken
 	}
 
-	signerType := cctx.String(SignerTypeFlag.Name)
-	switch signerType {
-	case config.SignerTypeGateway:
-		if cctx.IsSet(GatewayUrlFlag.Name) {
-			cfg.Signer.Url = cctx.String(GatewayUrlFlag.Name)
-		}
+	if cctx.IsSet(SignerTypeFlag.Name) {
+		signerType := cctx.String(SignerTypeFlag.Name)
+		switch signerType {
+		case config.SignerTypeGateway:
+			if cctx.IsSet(GatewayUrlFlag.Name) {
+				cfg.Signer.Url = cctx.String(GatewayUrlFlag.Name)
+			}
 
-		if cctx.IsSet(ChainServiceTokenFlag.Name) {
-			cfg.Signer.Token = cctx.String(ChainServiceTokenFlag.Name)
-		}
-	case config.SignerTypeWallet:
-		if cctx.IsSet(SignerUrlFlag.Name) {
-			cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
-		}
+			if cctx.IsSet(ChainServiceTokenFlag.Name) {
+				cfg.Signer.Token = cctx.String(ChainServiceTokenFlag.Name)
+			}
+		case config.SignerTypeWallet:
+			if cctx.IsSet(SignerUrlFlag.Name) {
+				cfg.Signer.Url = cctx.String(SignerUrlFlag.Name)
+			}
 
-		if cctx.IsSet(SignerTokenFlag.Name) {
-			cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
-		}
-	case config.SignerTypeLotusnode:
-		if cctx.IsSet(NodeUrlFlag.Name) {
-			cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
-		}
+			if cctx.IsSet(SignerTokenFlag.Name) {
+				cfg.Signer.Token = cctx.String(SignerTokenFlag.Name)
+			}
+		case config.SignerTypeLotusnode:
+			if cctx.IsSet(NodeUrlFlag.Name) {
+				cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
+			}
 
-		if cctx.IsSet(ChainServiceTokenFlag.Name) {
-			cfg.Signer.Token = cctx.String(ChainServiceTokenFlag.Name)
+			if cctx.IsSet(ChainServiceTokenFlag.Name) {
+				cfg.Signer.Token = cctx.String(ChainServiceTokenFlag.Name)
+			}
+		default:
+			return fmt.Errorf("unsupport signer type %s", signerType)
 		}
-	default:
-		return fmt.Errorf("unsupport signer type %s", signerType)
+		cfg.Signer.SignerType = signerType
 	}
-	cfg.Signer.SignerType = signerType
+
+	if cfg.Signer.SignerType == config.SignerTypeLotusnode {
+		cfg.Messager.Token = ""
+		cfg.AuthNode.Token = ""
+	}
 
 	if cctx.IsSet(MysqlDsnFlag.Name) {
 		cfg.Mysql.ConnectionString = cctx.String(MysqlDsnFlag.Name)
@@ -193,7 +200,7 @@ func runDaemon(cctx *cli.Context) error {
 		minermgr.MinerMgrOpts(),
 
 		// clients
-		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer),
+		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, authClient),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),
 		piecestorage.PieceStorageOpts(&cfg.PieceStorage),

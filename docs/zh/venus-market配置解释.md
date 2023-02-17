@@ -59,7 +59,7 @@ SimultaneousTransfersForRetrieval = 20
    MaxProviderCollateralMultiplier = 2
    Filter = ""
    RetrievalFilter = ""
-   TransferPath = ""
+   TransferPath = "/mnt/transfer"
    MaxPublishDealsFee = "0 FIL"
    MaxMarketBalanceAddFee = "0 FIL"
    RetrievalPaymentAddress = ""
@@ -368,11 +368,11 @@ venus 消息服务接入配置
 ```
 [Messager]
 # 消息服务入口
-# 字符串类型 必选（也可以直接通过命令行的 --messager-url flag 进行配置）
+# 字符串类型 可选（也可以直接通过命令行的 --messager-url flag 进行配置） 不接入链服务时可不填
 Url = "/ip4/192.168.200.128/tcp/39812/"
 
 # venus 系列组件的鉴权token
-# 字符串类型 必选（也可以直接通过命令行的 --auth-token flag 进行配置）
+# 字符串类型 可选（也可以直接通过命令行的 --auth-token flag 进行配置） 不接入链服务时可不填
 Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
 ```
 
@@ -404,11 +404,11 @@ venus 提供鉴权服务接入配置
 [AuthNode]
 
 # 鉴权服务入口
-# 字符串类型 必选（也可以直接通过命令行的 --signer-url flag 进行配置）
+# 字符串类型 可选（也可以直接通过命令行的 --signer-url flag 进行配置） 不接入链服务时可不填
 Url = "http://192.168.200.128:8989"
 
 # venus 系列组件的鉴权token
-# 字符串类型 必选（也可以直接通过命令行的 --auth-token flag 进行配置）
+# 字符串类型 可选（也可以直接通过命令行的 --auth-token flag 进行配置） 不接入链服务时可不填
 Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
 ```
 
@@ -429,6 +429,59 @@ Account = ""
 # 基础参数，见上文
 ```
 
+:::tip
+
+基础参数在不配置时将会使用 `CommonProvider`, 如下:
+```
+[[Miners]]
+  Addr = "f02472"
+  Account = "litao"
+```
+
+基础参数一旦配置了一项,则所有项都必须自己配置,比如配置:
+```
+[[Miners]]
+  Addr = "f02472"
+  Account = "litao"
+  TransferPath = "/mnt/transfer/2472"
+```
+这样的配置会导致基础参数中的其他配置项都去各自类型的零值,而不会用 `CommonProvider` 中的配置，
+如 `f02472` 对应的 `ConsiderOnlineStorageDeals` 等于 `false`, 而并非是 `CommonProvider` 中的 true.
+
+这一点需要特别注意,正确的配置方式:
+```
+[[Miners]]
+  Addr = "f02472"
+  Account = "litao"
+  TransferPath = "/mnt/transfer/2472"
+  ConsiderOnlineStorageDeals = true
+  ConsiderOfflineStorageDeals = true
+  ConsiderOnlineRetrievalDeals = true
+  ConsiderOfflineRetrievalDeals = true
+  ConsiderVerifiedStorageDeals = true
+  ConsiderUnverifiedStorageDeals = true
+  PieceCidBlocklist = []
+  ExpectedSealDuration = "24h0m0s"
+  MaxDealStartDelay = "336h0m0s"
+  PublishMsgPeriod = "1m0s"
+  MaxDealsPerPublishMsg = 8
+  MaxProviderCollateralMultiplier = 2
+  Filter = ""
+  RetrievalFilter = ""
+  MaxPublishDealsFee = "0 FIL"
+  MaxMarketBalanceAddFee = "0 FIL"
+  RetrievalPaymentAddress = ""
+  [RetrievalPricing]
+    Strategy = "default"
+    [RetrievalPricing.Default]
+      VerifiedDealsFreeTransfer = true
+    [RetrievalPricing.External]
+      Path = ""
+```
+
+这样不是很灵活,以后会考虑优化.
+
+:::
 
 
 ## 数据库配置

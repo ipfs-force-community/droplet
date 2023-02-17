@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"github.com/filecoin-project/venus-auth/jwtclient"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/ipfs-force-community/venus-common-utils/builder"
@@ -13,10 +14,10 @@ import (
 
 var log = logging.Logger("clients")
 
-var ClientsOpts = func(server bool, msgCfg *config.Messager, signerCfg *config.Signer) builder.Option {
+var ClientsOpts = func(server bool, msgCfg *config.Messager, signerCfg *config.Signer, authClient jwtclient.IAuthClient) builder.Option {
 	return builder.Options(
 		builder.Override(new(IMixMessage), NewMixMsgClient),
-		builder.Override(new(signer.ISigner), signer.NewISignerClient(server)),
+		builder.Override(new(signer.ISigner), signer.NewISignerClient(server, authClient)),
 		builder.ApplyIf(
 			func(s *builder.Settings) bool {
 				return len(msgCfg.Url) > 0

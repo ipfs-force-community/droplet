@@ -44,6 +44,7 @@ func NewMixMsgClient(params MPoolReplaceParams) IMixMessage {
 	return &MixMsgClient{
 		full:          params.FullNode,
 		venusMessager: params.VenusMessager,
+		signer:        params.Signer,
 		nonceAssign:   newNonceAssign(params.FullNode),
 	}
 }
@@ -143,7 +144,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 			case msgTypes.UnKnown:
 				continue
 			//OnChain
-			case msgTypes.ReplacedMsg:
+			case msgTypes.NonceConflictMsg:
 				fallthrough
 			case msgTypes.OnChainMsg:
 				if msg.Confidence > int64(confidence) {
@@ -197,7 +198,7 @@ func (msgClient *MixMsgClient) SearchMsg(ctx context.Context, from types.TipSetK
 	case msgTypes.UnKnown:
 		return nil, nil
 	//OnChain
-	case msgTypes.ReplacedMsg:
+	case msgTypes.NonceConflictMsg:
 		fallthrough
 	case msgTypes.OnChainMsg:
 		return &types.MsgLookup{

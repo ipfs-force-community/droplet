@@ -13,6 +13,8 @@ type API struct {
 	ListenAddress       string
 	RemoteListenAddress string
 	Timeout             Duration
+
+	PrivateKey string
 }
 
 // Libp2p contains configs for libp2p
@@ -113,7 +115,7 @@ type ProviderConfig struct {
 	MaxPublishDealsFee     types.FIL
 	MaxMarketBalanceAddFee types.FIL
 
-	RetrievalPaymentAddress Address // todo 也需要每个矿工可以单独设置
+	RetrievalPaymentAddress Address
 
 	DealPublishAddress []Address
 }

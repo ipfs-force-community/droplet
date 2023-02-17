@@ -122,7 +122,7 @@ type Mysql struct {
 
 type MinerConfig struct {
 	Addr    Address
-	Account string // todo 在合并run模式后才真正起作用
+	Account string
 
 	*ProviderConfig
 }
@@ -189,7 +189,7 @@ func (m *MarketConfig) AddS3PieceStorage(fsps *S3PieceStorage) error {
 
 func (m *MarketConfig) MinerProviderConfig(mAddr address.Address, useCommon bool) *ProviderConfig {
 	for i := range m.Miners {
-		if m.Miners[i].Addr == Address(mAddr) {
+		if m.Miners[i].Addr == Address(mAddr) && m.Miners[i].ProviderConfig != nil {
 			return m.Miners[i].ProviderConfig
 		}
 	}

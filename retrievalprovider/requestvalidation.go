@@ -195,7 +195,6 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 
 	//todo this deal may not match with query ask, no way to get miner id in current protocol
 	selectDeal := minerdeals[0]
-	//	providerPaymentAddr := rv.cfg.MinerProviderConfig(selectDeal.Proposal.Provider, false).RetrievalPaymentAddress
 	deal.SelStorageProposalCid = selectDeal.ProposalCid
 	ask, err := rv.retrievalAsk.GetAsk(ctx, selectDeal.Proposal.Provider)
 	if err != nil {

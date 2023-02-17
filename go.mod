@@ -24,14 +24,14 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.24.0-v17
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-padreader v0.0.1
-	github.com/filecoin-project/go-state-types v0.9.8
+	github.com/filecoin-project/go-state-types v0.9.9
 	github.com/filecoin-project/go-statemachine v1.0.2
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.9.0-rc1
-	github.com/filecoin-project/venus-auth v1.8.1-0.20221219081818-e7027bc35b82
-	github.com/filecoin-project/venus-messager v1.8.1-0.20221124093938-eee70cda6d54
+	github.com/filecoin-project/venus v1.9.0-rc1.0.20230203064217-14f0513a243e
+	github.com/filecoin-project/venus-auth v1.9.0
+	github.com/filecoin-project/venus-messager v1.9.0-rc1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -39,10 +39,10 @@ require (
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
-	github.com/ipfs-force-community/venus-gateway v1.9.0-rc1.0.20221220065557-4e6481a72f42
+	github.com/ipfs-force-community/venus-gateway v1.9.0-rc1
 	github.com/ipfs/go-block-format v0.0.3
 	github.com/ipfs/go-blockservice v0.4.0
-	github.com/ipfs/go-cid v0.2.0
+	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-cidutil v0.1.0
 	github.com/ipfs/go-datastore v0.5.1
 	github.com/ipfs/go-ds-badger2 v0.1.2
@@ -62,8 +62,8 @@ require (
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.4.0
 	github.com/ipld/go-car/v2 v2.4.1
-	github.com/ipld/go-codec-dagpb v1.3.2
-	github.com/ipld/go-ipld-prime v0.17.0
+	github.com/ipld/go-codec-dagpb v1.5.0
+	github.com/ipld/go-ipld-prime v0.19.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-libp2p v0.22.0
 	github.com/libp2p/go-maddr-filter v0.1.0
@@ -241,7 +241,7 @@ require (
 	github.com/multiformats/go-base36 v0.1.0 // indirect
 	github.com/multiformats/go-multiaddr-dns v0.3.1 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
-	github.com/multiformats/go-multicodec v0.5.0 // indirect
+	github.com/multiformats/go-multicodec v0.6.0 // indirect
 	github.com/multiformats/go-multistream v0.3.3 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect

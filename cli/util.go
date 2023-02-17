@@ -70,11 +70,6 @@ var minerFlag = &cli.StringFlag{
 	Name: "miner",
 }
 
-var requiredMinerFlag = &cli.StringFlag{
-	Name:     "miner",
-	Required: true,
-}
-
 func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, error) {
 	homePath, err := homedir.Expand(cctx.String("repo"))
 	if err != nil {

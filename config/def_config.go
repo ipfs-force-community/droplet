@@ -30,22 +30,23 @@ var DefaultMarketConfig = &MarketConfig{
 			NoAnnounceAddresses: []string{},
 		},
 	},
+	// 两种选择: 空或者注释形式
 	Node: Node{
-		Url:   "/ip4/<ip>/tcp/3453",
-		Token: "<cs-token>",
+		Url:   "", // /ip4/<ip>/tcp/3453
+		Token: "", // cs-token
 	},
 	Messager: Messager{
-		Url:   "/ip4/<ip>/tcp/39812",
-		Token: "<cs-token>",
+		Url:   "", // /ip4/<ip>/tcp/39812
+		Token: "", // cs-token
 	},
 	AuthNode: AuthNode{
-		Url:   "http://<ip>:8989",
-		Token: "<cs-token>",
+		Url:   "", // http://<ip>:8989
+		Token: "", // cs-token
 	},
 	Signer: Signer{
 		SignerType: "wallet",
-		Url:        "/ip4/<ip>/tcp/5678",
-		Token:      "<signer-token>",
+		Url:        "", // /ip4/<ip>/tcp/5678
+		Token:      "", // signer-token
 	},
 	Mysql: Mysql{
 		ConnectionString: "",
@@ -68,7 +69,7 @@ var DefaultMarketConfig = &MarketConfig{
 	SimultaneousTransfersForStorage:          DefaultSimultaneousTransfers,
 
 	CommonProvider: defaultProviderConfig(),
-	Miners:         make([]*MinerConfig, 0),
+	Miners:         nil,
 	Journal:        Journal{Path: "journal"},
 	Metrics:        *metrics.DefaultMetricsConfig(),
 }
@@ -90,16 +91,17 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 		},
 	},
 	Node: Node{
-		Url:   "/ip4/<ip>/tcp/3453",
-		Token: "<cs-token>",
+		Url:   "", // /ip4/<ip>/tcp/3453
+		Token: "", // cs-token
 	},
 	Signer: Signer{
-		Url:   "/ip4/<ip>/tcp/5678",
-		Token: "<cs-token>",
+		SignerType: "wallet",
+		Url:        "", // /ip4/<ip>/tcp/5678
+		Token:      "", // signer-token
 	},
 	Messager: Messager{
-		Url:   "/ip4/<ip>/tcp/39812",
-		Token: "<cs-token>",
+		Url:   "", // /ip4/<ip>/tcp/39812
+		Token: "", // cs-token
 	},
 	DefaultMarketAddress:              Address(address.Undef),
 	SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
