@@ -37,7 +37,7 @@ func (m *MinerMgrImpl) MinerList(context.Context) ([]address.Address, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
-	miners := make([]address.Address, len(m.miners))
+	miners := make([]address.Address, 0, len(m.miners))
 	for miner := range m.miners {
 		miners = append(miners, miner)
 	}
@@ -49,7 +49,7 @@ func (m *MinerMgrImpl) ActorList(_ context.Context) ([]market.User, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()
 
-	users := make([]market.User, 0)
+	users := make([]market.User, 0, len(m.miners))
 	for _, user := range m.miners {
 		users = append(users, market.User{Addr: user.Addr, Account: user.Account})
 	}
