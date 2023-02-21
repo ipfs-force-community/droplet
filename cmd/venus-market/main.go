@@ -32,6 +32,12 @@ var (
 		Value:   "~/.venusmarket",
 	}
 
+	APIListenFlag = &cli.StringFlag{
+		Name:  "listen",
+		Usage: "specify endpoint for listen",
+		Value: "/ip4/127.0.0.1/tcp/41235",
+	}
+
 	NodeUrlFlag = &cli.StringFlag{
 		Name:  "node-url",
 		Usage: "url to connect to daemon service",
