@@ -308,6 +308,5 @@ require (
 
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.7-0.20230214070559-dbe74781184a
-	github.com/libp2p/go-libp2p-swarm => github.com/libp2p/go-libp2p-swarm v0.11.0
+	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.7-0.20230220074347-8db78dbc20d4
 )
