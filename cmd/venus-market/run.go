@@ -40,6 +40,7 @@ var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Run the market daemon",
 	Flags: []cli.Flag{
+		APIListenFlag,
 		NodeUrlFlag,
 		AuthUrlFlag,
 		MessagerUrlFlag,
@@ -54,6 +55,10 @@ var runCmd = &cli.Command{
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
+	if cctx.IsSet(APIListenFlag.Name) {
+		cfg.API.ListenAddress = cctx.String(APIListenFlag.Name)
+	}
+
 	if cctx.IsSet(NodeUrlFlag.Name) {
 		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
 	}
