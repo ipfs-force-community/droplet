@@ -22,17 +22,37 @@ import (
 
 var log = logging.Logger("modules")
 
-func ServeRPC(ctx context.Context, home config.IHome, apiCfg *config.API, mux *mux.Router, maxRequestSize int64,
-	namespace string, authClient *jwtclient.AuthClient, api interface{}, shutdownCh <-chan struct{},
+type APIHandle struct {
+	Path string
+	API  interface{}
+}
+
+func ServeRPC(
+	ctx context.Context,
+	home config.IHome,
+	apiCfg *config.API,
+	mux *mux.Router,
+	maxRequestSize int64,
+	namespace string,
+	authClient *jwtclient.AuthClient,
+	apiHandles []APIHandle,
+	shutdownCh <-chan struct{},
 ) error {
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
 		serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(maxRequestSize))
 	}
 
-	rpcServer := jsonrpc.NewServer(serverOptions...)
-	rpcServer.Register(namespace, api)
-	mux.Handle("/rpc/v0", rpcServer)
+	serveRpc := func(path string, hnd interface{}) {
+		rpcServer := jsonrpc.NewServer(serverOptions...)
+		rpcServer.Register(namespace, hnd)
+		mux.Handle(path, rpcServer)
+	}
+
+	for _, apiHnd := range apiHandles {
+		serveRpc(apiHnd.Path, apiHnd.API)
+	}
+
 	mux.PathPrefix("/").Handler(http.DefaultServeMux)
 
 	localJwtClient, err := getLocalJwtClient(home, apiCfg)

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/venus-market/v2/api/impl/v0api"
+
 	"github.com/gorilla/mux"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/fx"
@@ -32,7 +34,7 @@ import (
 	types2 "github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus-market/v2/utils"
 
-	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
+	marketapiV1 "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
 )
 
@@ -235,8 +237,13 @@ func runDaemon(cctx *cli.Context) error {
 		return fmt.Errorf("handle 'resource' failed: %w", err)
 	}
 
-	var fullAPI marketapi.IMarketStruct
-	permission.PermissionProxy(marketapi.IMarket(resAPI), &fullAPI)
+	var iMarket marketapiV1.IMarketStruct
+	permission.PermissionProxy(marketapiV1.IMarket(resAPI), &iMarket)
 
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, router, 1000, cli2.API_NAMESPACE_VENUS_MARKET, authClient, &fullAPI, finishCh)
+	api := (marketapiV1.IMarket)(&iMarket)
+	apiHandles := []rpc.APIHandle{
+		{Path: "/rpc/v1", API: api},
+		{Path: "/rpc/v0", API: v0api.WrapperV1IMarket{IMarket: api}},
+	}
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, router, 1000, cli2.API_NAMESPACE_VENUS_MARKET, authClient, apiHandles, finishCh)
 }
