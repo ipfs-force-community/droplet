@@ -105,6 +105,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 
 			if cctx.IsSet(ChainServiceTokenFlag.Name) {
 				cfg.Signer.Token = cctx.String(ChainServiceTokenFlag.Name)
+				cfg.AuthNode.Token = cctx.String(ChainServiceTokenFlag.Name)
 			}
 		default:
 			return fmt.Errorf("unsupport signer type %s", signerType)
@@ -179,7 +180,10 @@ func runDaemon(cctx *cli.Context) error {
 	// 'NewAuthClient' never returns an error, no needs to check
 	var authClient *jwtclient.AuthClient
 	if len(cfg.AuthNode.Url) != 0 {
-		authClient, _ = jwtclient.NewAuthClient(cfg.AuthNode.Url)
+		if len(cfg.AuthNode.Token) == 0 {
+			return fmt.Errorf("the auth node token must be configured if auth node url is configured")
+		}
+		authClient, _ = jwtclient.NewAuthClient(cfg.AuthNode.Url, cfg.AuthNode.Token)
 	}
 
 	resAPI := &impl.MarketNodeImpl{}
