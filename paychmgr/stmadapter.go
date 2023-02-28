@@ -47,7 +47,7 @@ func (s StateMgrAdapter) resolveToKeyAddress(ctx context.Context, addr address.A
 		}
 	}
 	state := state.NewView(cbor.NewCborStore(s.bsstore), ts.ParentState())
-	return state.ResolveToKeyAddr(ctx, addr)
+	return state.ResolveToDeterministicAddress(ctx, addr)
 }
 
 func (s StateMgrAdapter) getPaychState(ctx context.Context, addr address.Address, ts *types2.TipSet) (*types2.Actor, paych.State, error) {

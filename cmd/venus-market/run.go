@@ -40,6 +40,7 @@ var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Run the market daemon",
 	Flags: []cli.Flag{
+		APIListenFlag,
 		NodeUrlFlag,
 		AuthUrlFlag,
 		MessagerUrlFlag,
@@ -54,6 +55,10 @@ var runCmd = &cli.Command{
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
+	if cctx.IsSet(APIListenFlag.Name) {
+		cfg.API.ListenAddress = cctx.String(APIListenFlag.Name)
+	}
+
 	if cctx.IsSet(NodeUrlFlag.Name) {
 		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
 	}
@@ -186,6 +191,7 @@ func runDaemon(cctx *cli.Context) error {
 	closeFunc, err := builder.New(ctx,
 		// defaults
 		builder.Override(new(*jwtclient.AuthClient), authClient),
+		builder.Override(new(jwtclient.IAuthClient), authClient),
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
 			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)

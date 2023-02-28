@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/etherlabsio/healthcheck/v2"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
@@ -38,13 +39,14 @@ func ServeRPC(ctx context.Context, home config.IHome, apiCfg *config.API, mux *m
 	if err != nil {
 		return err
 	}
-	var handler http.Handler
+	var authMux *jwtclient.AuthMux
 	if authClient != nil {
-		handler = jwtclient.NewAuthMux(localJwtClient, jwtclient.WarpIJwtAuthClient(authClient), mux)
+		authMux = jwtclient.NewAuthMux(localJwtClient, jwtclient.WarpIJwtAuthClient(authClient), mux)
 	} else {
-		handler = jwtclient.NewAuthMux(localJwtClient, nil, mux)
+		authMux = jwtclient.NewAuthMux(localJwtClient, nil, mux)
 	}
-	srv := &http.Server{Handler: handler}
+	authMux.TrustHandle("/healthcheck", healthcheck.Handler())
+	srv := &http.Server{Handler: authMux}
 
 	go func() {
 		select {

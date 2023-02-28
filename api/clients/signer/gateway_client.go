@@ -36,7 +36,7 @@ type WrapperGatewayClient struct {
 }
 
 func (w *WrapperGatewayClient) getAccountsOfSigner(ctx context.Context, addr address.Address) ([]string, error) {
-	users, err := w.authClient.GetUserBySigner(addr.String())
+	users, err := w.authClient.GetUserBySigner(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
