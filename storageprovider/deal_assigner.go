@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sort"
 
-	"go.uber.org/fx"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -20,7 +18,7 @@ import (
 type DealAssiger interface {
 	MarkDealsAsPacking(ctx context.Context, miner address.Address, dealIDs []abi.DealID) error
 	UpdateDealOnPacking(ctx context.Context, miner address.Address, dealID abi.DealID, sectorid abi.SectorNumber, offset abi.PaddedPieceSize) error
-	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus types.PieceStatus) error
+	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus types.PieceStatus, dealStatus storagemarket.StorageDealStatus) error
 	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error)
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
 	AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
@@ -28,9 +26,7 @@ type DealAssiger interface {
 
 var _ DealAssiger = (*dealAssigner)(nil)
 
-// NewProviderPieceStore creates a statestore for storing metadata about pieces
-// shared by the piecestorage and retrieval providers
-func NewDealAssigner(lc fx.Lifecycle, r repo.Repo) (DealAssiger, error) {
+func NewDealAssigner(r repo.Repo) (DealAssiger, error) {
 	ps, err := newPieceStoreEx(r)
 	if err != nil {
 		return nil, fmt.Errorf("construct extend piece store %w", err)
@@ -83,8 +79,8 @@ func (ps *dealAssigner) UpdateDealOnPacking(ctx context.Context, miner address.A
 	return nil
 }
 
-// Store `dealInfo` in the dealAssigner with key `pieceCID`.
-func (ps *dealAssigner) UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus types.PieceStatus) error {
+// UpdateDealStatus store `dealInfo` in the dealAssigner with key `pieceCID`.
+func (ps *dealAssigner) UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus types.PieceStatus, dealStatus storagemarket.StorageDealStatus) error {
 	md, err := ps.repo.StorageDealRepo().GetDealByDealID(ctx, miner, dealID)
 	if err != nil {
 		log.Error("get deal [%d] error for %s", dealID, miner)
@@ -92,6 +88,7 @@ func (ps *dealAssigner) UpdateDealStatus(ctx context.Context, miner address.Addr
 	}
 
 	md.PieceStatus = pieceStatus
+	md.State = dealStatus
 	if err := ps.repo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
 		return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 	}
