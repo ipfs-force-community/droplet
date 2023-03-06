@@ -14,7 +14,8 @@ import (
 
 type IMinerMgr interface {
 	Has(context.Context, address.Address) bool
-	ActorList(ctx context.Context) ([]marketTypes.User, error)
+	ActorList(context.Context) ([]marketTypes.User, error)
+	ActorUpsert(context.Context, marketTypes.User) (bool, error)
 }
 
 var MinerMgrOpts = func() builder.Option {

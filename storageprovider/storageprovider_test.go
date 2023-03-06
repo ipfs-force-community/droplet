@@ -167,8 +167,12 @@ func (m mockAddrMgr) Has(ctx context.Context, addr address.Address) bool {
 	return addr.String() == "t01043" || addr.String() == "t010938"
 }
 
-func (m mockAddrMgr) ActorList(ctx context.Context) ([]marketypes.User, error) {
+func (m mockAddrMgr) ActorList(_ context.Context) ([]marketypes.User, error) {
 	//TODO implement me
+	panic("implement me")
+}
+
+func (m mockAddrMgr) ActorUpsert(_ context.Context, _ marketypes.User) (bool, error) {
 	panic("implement me")
 }
 

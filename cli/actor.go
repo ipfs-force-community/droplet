@@ -15,16 +15,62 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	mkTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
 var ActorCmd = &cli.Command{
 	Name:  "actor",
 	Usage: "manipulate the miner actor",
 	Subcommands: []*cli.Command{
+		actorAddCmd,
 		actorListCmd,
 		actorSetAddrsCmd,
 		actorSetPeeridCmd,
 		actorInfoCmd,
+	},
+}
+
+var actorAddCmd = &cli.Command{
+	Name:      "add",
+	Usage:     "add a miner to the system",
+	ArgsUsage: "<miner address>",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "account",
+			Value: "",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must set miner address")
+		}
+
+		nodeAPI, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		mAddr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		account := cctx.String("account")
+
+		bAdd, err := nodeAPI.ActorUpsert(cctx.Context, mkTypes.User{Addr: mAddr, Account: account})
+		if err != nil {
+			return err
+		}
+
+		opr := "Add"
+		if !bAdd {
+			opr = "Update"
+		}
+
+		fmt.Printf("%s miner %s success\n", opr, mAddr)
+
+		return nil
 	},
 }
 
