@@ -14,7 +14,6 @@ import (
 
 type IMinerMgr interface {
 	Has(context.Context, address.Address) bool
-	MinerList(context.Context) ([]address.Address, error)
 	ActorList(ctx context.Context) ([]marketTypes.User, error)
 }
 

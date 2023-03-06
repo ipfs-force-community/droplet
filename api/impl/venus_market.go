@@ -134,7 +134,7 @@ func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret := []types.User{}
+	ret := make([]types.User, 0)
 	for _, actor := range actors {
 		if err := jwtclient.CheckPermissionByName(ctx, actor.Account); err == nil {
 			ret = append(ret, actor)
