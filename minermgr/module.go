@@ -10,12 +10,11 @@ import (
 	marketTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
-// todo 支持动态配置?
-
 type IMinerMgr interface {
 	Has(context.Context, address.Address) bool
-	MinerList(context.Context) ([]address.Address, error)
 	ActorList(ctx context.Context) ([]marketTypes.User, error)
+	ActorUpsert(context.Context, marketTypes.User) (bool, error)
+	ActorDelete(context.Context, address.Address) error
 }
 
 var MinerMgrOpts = func() builder.Option {
