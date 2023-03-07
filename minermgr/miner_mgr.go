@@ -33,6 +33,25 @@ func NewMinerMgrImpl(_ metrics.MetricsCtx, cfg *config.MarketConfig) (IMinerMgr,
 	return m, nil
 }
 
+func (m *MinerMgrImpl) ActorUpsert(_ context.Context, user market.User) (bool, error) {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	_, ok := m.miners[user.Addr]
+	m.miners[user.Addr] = &user
+
+	return !ok, nil
+}
+
+func (m *MinerMgrImpl) ActorDelete(_ context.Context, mAddr address.Address) error {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	delete(m.miners, mAddr)
+
+	return nil
+}
+
 func (m *MinerMgrImpl) ActorList(_ context.Context) ([]market.User, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()

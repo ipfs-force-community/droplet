@@ -121,6 +121,64 @@ func (m *MarketNodeImpl) ListenMarketEvent(ctx context.Context, policy *gatewayT
 	return m.IMarketServiceProvider.ListenMarketEvent(ctx, policy)
 }
 
+func (m *MarketNodeImpl) ActorUpsert(ctx context.Context, user types.User) (bool, error) {
+	err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, user.Addr)
+	if err != nil {
+		return false, err
+	}
+
+	bAdd, err := m.UserMgr.ActorUpsert(ctx, user)
+	if err != nil {
+		return false, err
+	}
+
+	if bAdd {
+		m.Config.Miners = append(m.Config.Miners, &config.MinerConfig{
+			Addr:    config.Address(user.Addr),
+			Account: user.Account,
+		})
+	} else {
+		for idx := range m.Config.Miners {
+			if m.Config.Miners[idx].Addr == config.Address(user.Addr) {
+				m.Config.Miners[idx].Account = user.Account
+				break
+			}
+		}
+	}
+	err = config.SaveConfig(m.Config)
+	if err != nil {
+		return bAdd, err
+	}
+
+	return bAdd, nil
+}
+
+func (m *MarketNodeImpl) ActorDelete(ctx context.Context, mAddr address.Address) error {
+	err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr)
+	if err != nil {
+		return err
+	}
+
+	err = m.UserMgr.ActorDelete(ctx, mAddr)
+	if err != nil {
+		return err
+	}
+
+	for idx := range m.Config.Miners {
+		if m.Config.Miners[idx].Addr == config.Address(mAddr) {
+			m.Config.Miners = append(m.Config.Miners[:idx], m.Config.Miners[idx+1:]...)
+			break
+		}
+	}
+
+	err = config.SaveConfig(m.Config)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
 	actors, err := m.UserMgr.ActorList(ctx)
 	if err != nil {

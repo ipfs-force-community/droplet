@@ -172,6 +172,14 @@ func (m mockAddrMgr) ActorList(ctx context.Context) ([]marketypes.User, error) {
 	panic("implement me")
 }
 
+func (m mockAddrMgr) ActorUpsert(_ context.Context, _ marketypes.User) (bool, error) {
+	panic("implement me")
+}
+
+func (m mockAddrMgr) ActorDelete(_ context.Context, _ address.Address) error {
+	panic("implement me")
+}
+
 type mockProviderNode struct {
 	mock.MockFullNode
 	dataLk sync.Mutex
