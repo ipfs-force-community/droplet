@@ -33,18 +33,6 @@ func NewMinerMgrImpl(_ metrics.MetricsCtx, cfg *config.MarketConfig) (IMinerMgr,
 	return m, nil
 }
 
-func (m *MinerMgrImpl) MinerList(context.Context) ([]address.Address, error) {
-	m.lk.Lock()
-	defer m.lk.Unlock()
-
-	miners := make([]address.Address, 0, len(m.miners))
-	for miner := range m.miners {
-		miners = append(miners, miner)
-	}
-
-	return miners, nil
-}
-
 func (m *MinerMgrImpl) ActorList(_ context.Context) ([]market.User, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()

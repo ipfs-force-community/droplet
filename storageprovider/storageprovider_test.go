@@ -163,21 +163,11 @@ type mockAddrMgr struct{}
 
 var _ minermgr.IMinerMgr = (*mockAddrMgr)(nil)
 
-func (m mockAddrMgr) MinerList(ctx context.Context) ([]address.Address, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (m mockAddrMgr) Has(ctx context.Context, addr address.Address) bool {
 	return addr.String() == "t01043" || addr.String() == "t010938"
 }
 
 func (m mockAddrMgr) ActorList(ctx context.Context) ([]marketypes.User, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m mockAddrMgr) GetMiners(ctx context.Context) ([]marketypes.User, error) {
 	//TODO implement me
 	panic("implement me")
 }

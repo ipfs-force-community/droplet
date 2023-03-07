@@ -67,24 +67,24 @@ func (dealTracker *DealTracker) Start(ctx metrics.MetricsCtx) {
 }
 
 func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
-	addrs, err := dealTracker.minerMgr.MinerList(ctx)
+	actors, err := dealTracker.minerMgr.ActorList(ctx)
 	if err != nil {
-		log.Errorf("get miners list %w", err)
+		log.Errorf("get actor list err: %s", err)
 	}
 	head, err := dealTracker.fullNode.ChainHead(ctx)
 	if err != nil {
-		log.Errorf("get chain head %w", err)
+		log.Errorf("get chain head err: %s", err)
 	}
 
-	for _, addr := range addrs {
-		err = dealTracker.checkSlash(ctx, addr, head)
+	for _, actor := range actors {
+		err = dealTracker.checkSlash(ctx, actor.Addr, head)
 		if err != nil {
-			log.Errorf("fail to check slash %w", err)
+			log.Errorf("check slash err: %s", err)
 		}
 
-		err = dealTracker.checkPreCommitAndCommit(ctx, addr, head)
+		err = dealTracker.checkPreCommitAndCommit(ctx, actor.Addr, head)
 		if err != nil {
-			log.Errorf("fail to check precommit/commit/expired %w", err)
+			log.Errorf("check precommit/commit expired err: %s", err)
 		}
 	}
 }
@@ -115,7 +115,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 		if dealProposal.State.SectorStartEpoch > -1 { // include in sector
 			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealActive, market.Proving)
 			if err != nil {
-				log.Errorf("update deal status to active for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+				log.Errorf("update deal status to active for sector %d of miner %s err: %s", deal.SectorNumber, addr, err)
 				continue
 			}
 
@@ -133,7 +133,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 				return fmt.Errorf("get precommit info for sector %d of miner %s: %w", deal.SectorNumber, addr, err)
 			}
 
-			if preInfo == nil { // precommit maybe not submitted
+			if preInfo == nil { // PreCommit maybe not submitted
 				continue
 			}
 
