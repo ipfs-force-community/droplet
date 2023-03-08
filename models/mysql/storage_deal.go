@@ -35,7 +35,7 @@ type storageDeal struct {
 	PublishCid  DBCid  `gorm:"column:publish_cid;type:varchar(256);"`
 	Miner       string `gorm:"column:miner_peer;type:varchar(128);index:miner_state"`
 	Client      string `gorm:"column:client_peer;type:varchar(128);"`
-	State       uint64 `gorm:"column:state;type:bigint unsigned;index;index:miner_state;NOT NULL;"`
+	State       uint64 `gorm:"column:state;type:bigint unsigned;index;index:miner_state;index:idx_cdpprovider_state;NOT NULL;"`
 
 	PayloadSize           uint64     `gorm:"column:payload_size;type:bigint;NOT NULL;"`
 	PiecePath             string     `gorm:"column:piece_path;type:varchar(256);"`
@@ -67,7 +67,7 @@ type ClientDealProposal struct {
 	PieceSize    uint64    `gorm:"column:piece_size;type:bigint unsigned;NOT NULL;"`
 	VerifiedDeal bool      `gorm:"column:verified_deal;"`
 	Client       DBAddress `gorm:"column:client;type:varchar(256);"`
-	Provider     DBAddress `gorm:"column:provider;type:varchar(256);index"`
+	Provider     DBAddress `gorm:"column:provider;type:varchar(256);index;index:idx_cdpprovider_state"`
 
 	// Label is an arbitrary client chosen label to apply to the deal
 	Label string `gorm:"column:label;type:varchar(256);"`
