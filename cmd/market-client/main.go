@@ -52,6 +52,12 @@ var (
 		Value:   "~/.marketclient",
 	}
 
+	APIListenFlag = &cli.StringFlag{
+		Name:  "listen",
+		Usage: "specify endpoint for listen",
+		Value: "/ip4/127.0.0.1/tcp/41231",
+	}
+
 	NodeUrlFlag = &cli.StringFlag{
 		Name:  "node-url",
 		Usage: "url to connect to full node",
@@ -122,6 +128,7 @@ func main() {
 				Usage: "run market client daemon,(1) connect full node service: ./market-client run --node-url=<...> --node-token=<...> --addr=<WALLET_ADDR>;" +
 					"(2) connect venus shared service: ./market-client run --node-url=<...> --messager-url=<...> --auth-token=<...>  --signer-url=<...> --signer-token=<...> --addr=<WALLET_ADDR>.",
 				Flags: []cli.Flag{
+					APIListenFlag,
 					NodeUrlFlag,
 					NodeTokenFlag,
 					MessagerUrlFlag,
@@ -141,6 +148,10 @@ func main() {
 }
 
 func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
+	if cctx.IsSet(APIListenFlag.Name) {
+		cfg.API.ListenAddress = cctx.String(APIListenFlag.Name)
+	}
+
 	if cctx.IsSet(NodeUrlFlag.Name) {
 		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
 		cfg.Signer.Url = cctx.String(NodeUrlFlag.Name)
