@@ -40,7 +40,7 @@ import (
 	"github.com/filecoin-project/venus/pkg/constants"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
-	marketAPI "github.com/filecoin-project/venus/venus-shared/api/market"
+	marketAPI "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	gatewayTypes "github.com/filecoin-project/venus/venus-shared/types/gateway"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -49,14 +49,6 @@ import (
 var (
 	_   marketAPI.IMarket = (*MarketNodeImpl)(nil)
 	log                   = logging.Logger("market_api")
-)
-
-var (
-	// ErrorPermissionDeny is the error message returned when a user does not have permission to perform an action
-	ErrorPermissionDeny = fmt.Errorf("permission deny")
-
-	// ErrorUserNotFound is the error message returned when a user is not found in context
-	ErrorUserNotFound = fmt.Errorf("user not found")
 )
 
 type MarketNodeImpl struct {
@@ -121,20 +113,78 @@ type MarketNodeImpl struct {
 	SetMaxMarketBalanceAddFeeFunc config.SetMaxMarketBalanceAddFeeFunc
 }
 
-func (m MarketNodeImpl) ResponseMarketEvent(ctx context.Context, resp *gatewayTypes.ResponseEvent) error {
+func (m *MarketNodeImpl) ResponseMarketEvent(ctx context.Context, resp *gatewayTypes.ResponseEvent) error {
 	return m.IMarketServiceProvider.ResponseMarketEvent(ctx, resp)
 }
 
-func (m MarketNodeImpl) ListenMarketEvent(ctx context.Context, policy *gatewayTypes.MarketRegisterPolicy) (<-chan *gatewayTypes.RequestEvent, error) {
+func (m *MarketNodeImpl) ListenMarketEvent(ctx context.Context, policy *gatewayTypes.MarketRegisterPolicy) (<-chan *gatewayTypes.RequestEvent, error) {
 	return m.IMarketServiceProvider.ListenMarketEvent(ctx, policy)
 }
 
-func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
+func (m *MarketNodeImpl) ActorUpsert(ctx context.Context, user types.User) (bool, error) {
+	err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, user.Addr)
+	if err != nil {
+		return false, err
+	}
+
+	bAdd, err := m.UserMgr.ActorUpsert(ctx, user)
+	if err != nil {
+		return false, err
+	}
+
+	if bAdd {
+		m.Config.Miners = append(m.Config.Miners, &config.MinerConfig{
+			Addr:    config.Address(user.Addr),
+			Account: user.Account,
+		})
+	} else {
+		for idx := range m.Config.Miners {
+			if m.Config.Miners[idx].Addr == config.Address(user.Addr) {
+				m.Config.Miners[idx].Account = user.Account
+				break
+			}
+		}
+	}
+	err = config.SaveConfig(m.Config)
+	if err != nil {
+		return bAdd, err
+	}
+
+	return bAdd, nil
+}
+
+func (m *MarketNodeImpl) ActorDelete(ctx context.Context, mAddr address.Address) error {
+	err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr)
+	if err != nil {
+		return err
+	}
+
+	err = m.UserMgr.ActorDelete(ctx, mAddr)
+	if err != nil {
+		return err
+	}
+
+	for idx := range m.Config.Miners {
+		if m.Config.Miners[idx].Addr == config.Address(mAddr) {
+			m.Config.Miners = append(m.Config.Miners[:idx], m.Config.Miners[idx+1:]...)
+			break
+		}
+	}
+
+	err = config.SaveConfig(m.Config)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
 	actors, err := m.UserMgr.ActorList(ctx)
 	if err != nil {
 		return nil, err
 	}
-	ret := []types.User{}
+	ret := make([]types.User, 0)
 	for _, actor := range actors {
 		if err := jwtclient.CheckPermissionByName(ctx, actor.Account); err == nil {
 			ret = append(ret, actor)
@@ -143,14 +193,14 @@ func (m MarketNodeImpl) ActorList(ctx context.Context) ([]types.User, error) {
 	return ret, nil
 }
 
-func (m MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {
+func (m *MarketNodeImpl) ActorExist(ctx context.Context, addr address.Address) (bool, error) {
 	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr); err != nil {
 		return false, err
 	}
 	return m.UserMgr.Has(ctx, addr), nil
 }
 
-func (m MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
+func (m *MarketNodeImpl) ActorSectorSize(ctx context.Context, addr address.Address) (abi.SectorSize, error) {
 	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr); err != nil {
 		return 0, err
 	}
@@ -192,7 +242,7 @@ func (m *MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Ad
 	return m.listDeals(ctx, addrs)
 }
 
-// todo add user isolate when is available to get miner from retrieve deal
+// MarketListRetrievalDeals todo add user isolate when is available to get miner from retrieve deal
 // 检索订单没法按 `miner address` 过滤
 func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]types.ProviderDealState, error) {
 	var out []types.ProviderDealState
@@ -381,7 +431,7 @@ func (m *MarketNodeImpl) MarketPendingDeals(ctx context.Context) ([]types.Pendin
 	return ret, nil
 }
 
-func (m *MarketNodeImpl) MarketPublishPendingDeals(ctx context.Context) error {
+func (m *MarketNodeImpl) MarketPublishPendingDeals(_ context.Context) error {
 	m.DealPublisher.ForcePublishPendingDeals()
 	return nil
 }
@@ -687,7 +737,7 @@ func (m *MarketNodeImpl) ID(context.Context) (peer.ID, error) {
 	return m.Host.ID(), nil
 }
 
-func (m *MarketNodeImpl) DagstoreListShards(ctx context.Context) ([]types.DagstoreShardInfo, error) {
+func (m *MarketNodeImpl) DagstoreListShards(_ context.Context) ([]types.DagstoreShardInfo, error) {
 	info := m.DAGStore.AllShardsInfo()
 	ret := make([]types.DagstoreShardInfo, 0, len(info))
 	for k, i := range info {
@@ -982,11 +1032,11 @@ func (m *MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.
 	return m.DealAssigner.UpdateDealOnPacking(ctx, miner, dealId, sectorid, offset)
 }
 
-func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, status types.PieceStatus) error {
+func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, pieceStatus types.PieceStatus, dealStatus storagemarket.StorageDealStatus) error {
 	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return err
 	}
-	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, status)
+	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, pieceStatus, dealStatus)
 }
 
 func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {
@@ -1024,7 +1074,7 @@ func (m *MarketNodeImpl) PaychVoucherList(ctx context.Context, pch address.Addre
 	return m.PaychAPI.PaychVoucherList(ctx, pch)
 }
 
-func (m *MarketNodeImpl) AddFsPieceStorage(ctx context.Context, name string, path string, readonly bool) error {
+func (m *MarketNodeImpl) AddFsPieceStorage(_ context.Context, name string, path string, readonly bool) error {
 	ifs := &config.FsPieceStorage{ReadOnly: readonly, Path: path, Name: name}
 	fsps, err := piecestorage.NewFsPieceStorage(ifs)
 	if err != nil {
@@ -1040,7 +1090,7 @@ func (m *MarketNodeImpl) AddFsPieceStorage(ctx context.Context, name string, pat
 	return m.Config.AddFsPieceStorage(ifs)
 }
 
-func (m *MarketNodeImpl) AddS3PieceStorage(ctx context.Context, name, endpoit, bucket, subdir, accessKeyID, secretAccessKey, token string, readonly bool) error {
+func (m *MarketNodeImpl) AddS3PieceStorage(_ context.Context, name, endpoit, bucket, subdir, accessKeyID, secretAccessKey, token string, readonly bool) error {
 	ifs := &config.S3PieceStorage{
 		ReadOnly:  readonly,
 		EndPoint:  endpoit,
@@ -1065,11 +1115,11 @@ func (m *MarketNodeImpl) AddS3PieceStorage(ctx context.Context, name, endpoit, b
 	return m.Config.AddS3PieceStorage(ifs)
 }
 
-func (m *MarketNodeImpl) ListPieceStorageInfos(ctx context.Context) types.PieceStorageInfos {
+func (m *MarketNodeImpl) ListPieceStorageInfos(_ context.Context) types.PieceStorageInfos {
 	return m.PieceStorageMgr.ListStorageInfos()
 }
 
-func (m *MarketNodeImpl) RemovePieceStorage(ctx context.Context, name string) error {
+func (m *MarketNodeImpl) RemovePieceStorage(_ context.Context, name string) error {
 	err := m.PieceStorageMgr.RemovePieceStorage(name)
 	if err != nil {
 		return err
@@ -1085,7 +1135,7 @@ func (m *MarketNodeImpl) OfflineDealImport(ctx context.Context, deal types.Miner
 	return m.StorageProvider.ImportOfflineDeal(ctx, deal)
 }
 
-func (m *MarketNodeImpl) Version(ctx context.Context) (vTypes.Version, error) {
+func (m *MarketNodeImpl) Version(_ context.Context) (vTypes.Version, error) {
 	return vTypes.Version{Version: version.UserVersion()}, nil
 }
 
