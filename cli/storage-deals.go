@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -42,6 +43,7 @@ var storageDealsCmds = &cli.Command{
 	Usage: "Manage storage deals and related configuration",
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
+		dealsBatchImportDataCmd,
 		importOfflineDealCmd,
 		dealsListCmd,
 		updateStorageDealStateCmd,
@@ -94,6 +96,57 @@ var dealsImportDataCmd = &cli.Command{
 		}
 
 		return api.DealsImportData(ctx, propCid, fpath, skipCommP)
+	},
+}
+
+var dealsBatchImportDataCmd = &cli.Command{
+	Name:      "batch-import-data",
+	Usage:     "Batch import data for deals",
+	ArgsUsage: "<car dir> <miner>",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 2 {
+			return fmt.Errorf("must specify car dir and miner")
+		}
+
+		api, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := DaemonContext(cctx)
+		carDir := cctx.Args().First()
+		miner := cctx.Args().Get(1)
+		proposals, err := LoadMinerProposalFromCSV(filepath.Join(carDir, miner+".csv"))
+		if err != nil {
+			return err
+		}
+		refs := make([]*market.ImportDataRef, 0, len(proposals))
+		for proCidStr, payloadCid := range proposals {
+			proCid, err := cid.Decode(proCidStr)
+			if err != nil {
+				return err
+			}
+			refs = append(refs, &market.ImportDataRef{
+				ProposalCid: proCid,
+				File:        filepath.Join(carDir, payloadCid+".car"),
+			})
+		}
+
+		res, err := api.DealsBatchImportData(ctx, refs)
+		if err != nil {
+			return err
+		}
+
+		for _, r := range res {
+			if len(r.Message) == 0 {
+				fmt.Printf("import data for deal %s success\n", r.ProposalCid)
+			} else {
+				fmt.Printf("import data for deal %s failed: %s\n", r.ProposalCid, r.Message)
+			}
+		}
+
+		return nil
 	},
 }
 

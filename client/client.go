@@ -121,15 +121,39 @@ func (a *API) importManager() *imports.Manager {
 	return a.Imports
 }
 
-func (a *API) ClientStartDeal(ctx context.Context, params *types.StartDealParams) (*cid.Cid, error) {
+func (a *API) ClientBatchDeal(ctx context.Context, dealsParams *types.DealsParams) (*types.DealResults, error) {
+	if len(dealsParams.Params) == 0 {
+		return &types.DealResults{}, nil
+	}
+
+	var res types.DealResults
+	isStateless := dealsParams.Params[0].Data.TransferType == storagemarket.TTManual
+	for _, param := range dealsParams.Params {
+		proposalCid, err := a.dealStarter(ctx, param, isStateless)
+		if err != nil {
+			res.Results = append(res.Results, &types.DealResult{
+				ProposalCID: cid.Undef,
+				Message:     err.Error(),
+			})
+			continue
+		}
+		res.Results = append(res.Results, &types.DealResult{
+			ProposalCID: *proposalCid,
+		})
+	}
+
+	return &res, nil
+}
+
+func (a *API) ClientStartDeal(ctx context.Context, params *types.DealParams) (*cid.Cid, error) {
 	return a.dealStarter(ctx, params, false)
 }
 
-func (a *API) ClientStatelessDeal(ctx context.Context, params *types.StartDealParams) (*cid.Cid, error) {
+func (a *API) ClientStatelessDeal(ctx context.Context, params *types.DealParams) (*cid.Cid, error) {
 	return a.dealStarter(ctx, params, true)
 }
 
-func (a *API) dealStarter(ctx context.Context, params *types.StartDealParams, isStateless bool) (*cid.Cid, error) {
+func (a *API) dealStarter(ctx context.Context, params *types.DealParams, isStateless bool) (*cid.Cid, error) {
 	if isStateless {
 		if params.Data.TransferType != storagemarket.TTManual {
 			return nil, fmt.Errorf("invalid transfer type %s for stateless storage deal", params.Data.TransferType)
