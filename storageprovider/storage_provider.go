@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"time"
 
 	"github.com/ipfs-force-community/metrics"
@@ -21,6 +22,7 @@ import (
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/go-fil-markets/filestore"
@@ -109,8 +111,8 @@ type StorageProvider interface {
 	// GetStorageCollateral returns the current collateral balance
 	GetStorageCollateral(ctx context.Context, mAddr address.Address) (storagemarket.Balance, error)
 
-	// ImportDataForDeal manually imports data for an offline storage deal
-	ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader, skipCommP bool) error
+	// ImportDataForDeals manually batch imports data for an offline storage deals
+	ImportDataForDeals(ctx context.Context, refs []*types.ImportDataRef, skipCommP bool) ([]*types.ImportDataResult, error)
 
 	// ImportPublishedDeal manually import published deals to storage deals
 	ImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error
@@ -261,17 +263,72 @@ func (p *StorageProviderImpl) Stop() error {
 	return p.net.StopHandlingRequests()
 }
 
-// ImportDataForDeal manually imports data for an offline storage deal
-// It will verify that the data in the passed io.Reader matches the expected piece
-// cid for the given deal or it will error
-// If can find the car file from the piece store, read it directly without copying the car file to the local directory.
-// If skipCommP is true, do not compare piece cid.
-func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader, skipCommP bool) error {
+// ImportDataForDeals manually batch imports data for offline storage deals
+func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*types.ImportDataRef, skipCommP bool) ([]*types.ImportDataResult, error) {
 	// TODO: be able to check if we have enough disk space
-	d, err := p.dealStore.GetDeal(ctx, propCid)
-	if err != nil {
-		return fmt.Errorf("failed getting deal %s: %w", propCid, err)
+	results := make([]*types.ImportDataResult, 0, len(refs))
+	validDeals := make([]*types.MinerDeal, 0, len(refs))
+	for _, ref := range refs {
+		d, err := p.dealStore.GetDeal(ctx, ref.ProposalCid)
+		if err != nil {
+			results = append(results, &types.ImportDataResult{
+				ProposalCid: ref.ProposalCid,
+				Message:     fmt.Errorf("failed getting deal: %v", err).Error(),
+			})
+			continue
+		}
+		if err := p.importDataForDeal(ctx, ref, d); err != nil {
+			results = append(results, &types.ImportDataResult{
+				ProposalCid: ref.ProposalCid,
+				Message:     err.Error(),
+			})
+			continue
+		}
+		validDeals = append(validDeals, d)
 	}
+
+	dealGroup := make(map[address.Address][]*types.MinerDeal)
+	for _, d := range validDeals {
+		dealGroup[d.Proposal.Provider] = append(dealGroup[d.Proposal.Provider], d)
+	}
+
+	for provider, deals := range dealGroup {
+		err := p.batchReserverFunds(ctx, deals)
+		if err != nil {
+			log.Errorf("batch reserver funds for %s failed: %v", provider, err)
+		}
+
+		for _, deal := range deals {
+			if err != nil {
+				results = append(results, &types.ImportDataResult{
+					ProposalCid: deal.ProposalCid,
+					Message:     err.Error(),
+				})
+				continue
+			}
+			results = append(results, &types.ImportDataResult{
+				ProposalCid: deal.ProposalCid,
+			})
+
+			go func(deal *types.MinerDeal) {
+				err := p.dealProcess.HandleOff(context.TODO(), deal)
+				if err != nil {
+					log.Errorf("deal %s handle off err: %s", deal.ProposalCid, err)
+				}
+			}(deal)
+		}
+	}
+
+	return results, nil
+}
+
+func (p *StorageProviderImpl) importDataForDeal(ctx context.Context, ref *types.ImportDataRef, d *types.MinerDeal) error {
+	propCid := ref.ProposalCid
+	fi, err := os.Open(ref.File)
+	if err != nil {
+		return fmt.Errorf("failed to open given file: %w", err)
+	}
+	defer fi.Close() //nolint:errcheck
 
 	if isTerminateState(d) {
 		return fmt.Errorf("deal %s is terminate state", propCid)
@@ -399,14 +456,81 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 	if err := p.dealStore.SaveDeal(ctx, d); err != nil {
 		return fmt.Errorf("save deal(%d) failed:%w", d.DealID, err)
 	}
+
 	p.eventPublisher.Publish(storagemarket.ProviderEventManualDataReceived, d)
-	go func() {
-		err := p.dealProcess.HandleOff(context.TODO(), d)
-		if err != nil {
-			log.Errorf("deal %s handle off err: %s", propCid, err)
-		}
-	}()
+
 	return nil
+}
+
+// batchReserverFunds batch reserver funds for deals
+func (p *StorageProviderImpl) batchReserverFunds(ctx context.Context, deals []*types.MinerDeal) error {
+	if len(deals) == 0 {
+		return nil
+	}
+	handleError := func(deals []*types.MinerDeal, evt storagemarket.ProviderEvent, srcErr error) error {
+		var firstErr error
+		for _, deal := range deals {
+			p.eventPublisher.Publish(evt, deal)
+			if err := p.dealProcess.HandleError(ctx, deal, srcErr); err != nil && firstErr == nil {
+				firstErr = err
+			}
+		}
+
+		return firstErr
+	}
+
+	provider := deals[0].Proposal.Provider
+	allFunds := big.NewInt(0)
+	fundList := make([]big.Int, 0, len(deals))
+	for _, d := range deals {
+		big.Add(allFunds, d.Proposal.ProviderCollateral)
+		fundList = append(fundList, d.Proposal.ProviderCollateral)
+	}
+
+	tok, _, err := p.spn.GetChainHead(ctx)
+	if err != nil {
+		return handleError(deals, storagemarket.ProviderEventNodeErrored, fmt.Errorf("acquiring chain head: %v", err))
+	}
+
+	waddr, err := p.spn.GetMinerWorkerAddress(ctx, provider, tok)
+	if err != nil {
+		return handleError(deals, storagemarket.ProviderEventNodeErrored, fmt.Errorf("looking up miner worker: %v", err))
+	}
+
+	mcid, err := p.spn.ReserveFunds(ctx, waddr, provider, allFunds)
+	if err != nil {
+		return handleError(deals, storagemarket.ProviderEventNodeErrored, fmt.Errorf("reserving funds: %v", err))
+	}
+
+	var firstErr error
+	for i, deal := range deals {
+		p.eventPublisher.Publish(storagemarket.ProviderEventFundsReserved, deal)
+
+		if deal.FundsReserved.Nil() {
+			deal.FundsReserved = fundList[i]
+		} else {
+			deal.FundsReserved = big.Add(deal.FundsReserved, fundList[i])
+		}
+
+		// if no message was sent, and there was no error, funds were already available
+		if mcid != cid.Undef {
+			deal.AddFundsCid = &mcid
+			deal.State = storagemarket.StorageDealProviderFunding
+		} else {
+			p.eventPublisher.Publish(storagemarket.ProviderEventFunded, deal)
+			deal.State = storagemarket.StorageDealPublish // PublishDeal
+		}
+
+		p.eventPublisher.Publish(storagemarket.ProviderEventFundingInitiated, deal)
+		err = p.dealStore.SaveDeal(ctx, deal)
+		if err != nil {
+			if err := p.dealProcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database")); err != nil && firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+
+	return firstErr
 }
 
 // ImportPublishedDeal manually import published deals for an storage deal

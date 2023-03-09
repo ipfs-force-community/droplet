@@ -1100,13 +1100,20 @@ func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Ci
 	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
 		return err
 	}
-	fi, err := os.Open(fname)
-	if err != nil {
-		return fmt.Errorf("failed to open given file: %w", err)
-	}
-	defer fi.Close() //nolint:errcheck
 
-	return m.StorageProvider.ImportDataForDeal(ctx, dealPropCid, fi, skipCommP)
+	ref := &types.ImportDataRef{
+		ProposalCid: dealPropCid,
+		File:        file,
+	}
+	res, err := m.DealsBatchImportData(ctx, []*types.ImportDataRef{ref})
+	if err != nil {
+		return err
+	}
+	if len(res[0].Message) > 0 {
+		return fmt.Errorf(res[0].Message)
+	}
+
+	return nil
 }
 
 func (m *MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error) {
@@ -1249,4 +1256,36 @@ func (m *MarketNodeImpl) MarketGetReserved(ctx context.Context, addr address.Add
 		return vTypes.BigInt{}, err
 	}
 	return m.FundAPI.MarketGetReserved(ctx, addr)
+}
+
+func (m *MarketNodeImpl) DealsBatchImportData(ctx context.Context, refs []*types.ImportDataRef) ([]*types.ImportDataResult, error) {
+	refLen := len(refs)
+	results := make([]*types.ImportDataResult, 0, refLen)
+	validRefs := make([]*types.ImportDataRef, 0, refLen)
+	for _, ref := range refs {
+		deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, ref.ProposalCid)
+		if err != nil {
+			results = append(results, &types.ImportDataResult{
+				ProposalCid: ref.ProposalCid,
+				Message:     err.Error(),
+			})
+			continue
+		}
+		if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
+			results = append(results, &types.ImportDataResult{
+				ProposalCid: ref.ProposalCid,
+				Message:     err.Error(),
+			})
+			continue
+		}
+		validRefs = append(validRefs, ref)
+	}
+
+	res, err := m.StorageProvider.ImportDataForDeals(ctx, validRefs)
+	if err != nil {
+		return nil, err
+	}
+	results = append(results, res...)
+
+	return results, nil
 }

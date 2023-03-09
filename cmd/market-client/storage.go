@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,6 +27,7 @@ import (
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
@@ -374,9 +377,10 @@ var storageAsksListCmd = &cli.Command{
 
 var storageDealsCmd = &cli.Command{
 	Name:  "deals",
-	Usage: "query storage asks",
+	Usage: "storage deals",
 	Subcommands: []*cli.Command{
 		storageDealsInitCmd,
+		storageDelesBatchCmd,
 		storageDealsListCmd,
 		storageDealsStatsCmd,
 		storageDealsGetCmd,
@@ -458,56 +462,14 @@ The minimum value is 518400 (6 months).`,
 		}
 
 		// [data, miner, price, dur]
-
-		data, err := cid.Parse(cctx.Args().Get(0))
+		p, err := dealParamsFromContext(cctx, api, fapi)
 		if err != nil {
 			return err
 		}
 
-		miner, err := address.NewFromString(cctx.Args().Get(1))
+		data, err := cid.Parse(p.firstArg)
 		if err != nil {
 			return err
-		}
-
-		price, err := types.ParseFIL(cctx.Args().Get(2))
-		if err != nil {
-			return err
-		}
-
-		dur, err := strconv.ParseInt(cctx.Args().Get(3), 10, 32)
-		if err != nil {
-			return err
-		}
-
-		var provCol big.Int
-		if pcs := cctx.String("provider-collateral"); pcs != "" {
-			pc, err := big.FromString(pcs)
-			if err != nil {
-				return fmt.Errorf("failed to parse provider-collateral: %w", err)
-			}
-			provCol = pc
-		}
-
-		if abi.ChainEpoch(dur) < MinDealDuration {
-			return fmt.Errorf("minimum deal duration is %d blocks", MinDealDuration)
-		}
-		if abi.ChainEpoch(dur) > MaxDealDuration {
-			return fmt.Errorf("maximum deal duration is %d blocks", MaxDealDuration)
-		}
-
-		var a address.Address
-		if from := cctx.String("from"); from != "" {
-			faddr, err := address.NewFromString(from)
-			if err != nil {
-				return fmt.Errorf("failed to parse 'from' address: %w", err)
-			}
-			a = faddr
-		} else {
-			def, err := api.DefaultAddress(ctx)
-			if err != nil {
-				return err
-			}
-			a = def
 		}
 
 		ref := &storagemarket.DataRef{
@@ -533,42 +495,21 @@ The minimum value is 518400 (6 months).`,
 			ref.TransferType = storagemarket.TTManual
 		}
 
-		// Check if the address is a verified client
-		dcap, err := fapi.StateVerifiedClientStatus(ctx, a, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		isVerified := dcap != nil
-
-		// If the user has explicitly set the --verified-deal flag
-		if cctx.IsSet("verified-deal") {
-			// If --verified-deal is true, but the address is not a verified
-			// client, return an error
-			verifiedDealParam := cctx.Bool("verified-deal")
-			if verifiedDealParam && !isVerified {
-				return fmt.Errorf("address %s does not have verified client status", a)
-			}
-
-			// Override the default
-			isVerified = verifiedDealParam
-		}
-
-		sdParams := &client.StartDealParams{
+		sdParams := &client.DealParams{
 			Data:               ref,
-			Wallet:             a,
-			Miner:              miner,
-			EpochPrice:         types.BigInt(price),
-			MinBlocksDuration:  uint64(dur),
+			Wallet:             p.from,
+			Miner:              p.miner,
+			EpochPrice:         types.BigInt(p.price),
+			MinBlocksDuration:  uint64(p.dur),
 			DealStartEpoch:     abi.ChainEpoch(cctx.Int64("start-epoch")),
 			FastRetrieval:      cctx.Bool("fast-retrieval"),
-			VerifiedDeal:       isVerified,
-			ProviderCollateral: provCol,
+			VerifiedDeal:       p.isVerified,
+			ProviderCollateral: p.provCol,
 		}
 
 		var proposal *cid.Cid
-		if cctx.Bool("manual-stateless-deal") {
-			if ref.TransferType != storagemarket.TTManual || price.Int64() != 0 {
+		if p.statelessDeal {
+			if ref.TransferType != storagemarket.TTManual || p.price.Int64() != 0 {
 				return errors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
 			}
 			proposal, err = api.ClientStatelessDeal(ctx, sdParams)
@@ -1027,7 +968,7 @@ uiLoop:
 			color.Blue(".. executing\n")
 
 			for i, maddr := range maddrs {
-				proposal, err := api.ClientStartDeal(ctx, &client.StartDealParams{
+				proposal, err := api.ClientStartDeal(ctx, &client.DealParams{
 					Data: &storagemarket.DataRef{
 						TransferType: storagemarket.TTGraphsync,
 						Root:         data,
@@ -1537,4 +1478,310 @@ var storageDealsInspectCmd = &cli.Command{
 		ctx := cli2.ReqContext(cctx)
 		return inspectDealCmd(ctx, api, cctx.String("proposal-cid"), cctx.Int("deal-id"))
 	},
+}
+
+type params struct {
+	firstArg      string // may data cid or car dir
+	from          address.Address
+	miner         address.Address
+	price         types.FIL
+	dur           int64
+	provCol       big.Int
+	statelessDeal bool
+	isVerified    bool
+	dcap          *abi.StoragePower
+}
+
+func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi v1api.FullNode) (*params, error) {
+	miner, err := address.NewFromString(cctx.Args().Get(1))
+	if err != nil {
+		return nil, err
+	}
+	price, err := types.ParseFIL(cctx.Args().Get(2))
+	if err != nil {
+		return nil, err
+	}
+	dur, err := strconv.ParseInt(cctx.Args().Get(3), 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	var provCol big.Int
+	if pcs := cctx.String("provider-collateral"); pcs != "" {
+		pc, err := big.FromString(pcs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse provider-collateral: %w", err)
+		}
+		provCol = pc
+	}
+
+	if abi.ChainEpoch(dur) < MinDealDuration {
+		return nil, fmt.Errorf("minimum deal duration is %d blocks", MinDealDuration)
+	}
+	if abi.ChainEpoch(dur) > MaxDealDuration {
+		return nil, fmt.Errorf("maximum deal duration is %d blocks", MaxDealDuration)
+	}
+
+	var a address.Address
+	if from := cctx.String("from"); from != "" {
+		faddr, err := address.NewFromString(from)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse 'from' address: %w", err)
+		}
+		a = faddr
+	} else {
+		def, err := api.DefaultAddress(cctx.Context)
+		if err != nil {
+			return nil, err
+		}
+		a = def
+	}
+
+	// Check if the address is a verified client
+	dcap, err := fapi.StateVerifiedClientStatus(cctx.Context, a, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	isVerified := dcap != nil
+
+	// If the user has explicitly set the --verified-deal flag
+	if cctx.IsSet("verified-deal") {
+		// If --verified-deal is true, but the address is not a verified
+		// client, return an error
+		verifiedDealParam := cctx.Bool("verified-deal")
+		if verifiedDealParam && !isVerified {
+			return nil, fmt.Errorf("address %s does not have verified client status", a)
+		}
+
+		// Override the default
+		isVerified = verifiedDealParam
+	}
+
+	return &params{
+		firstArg:      cctx.Args().Get(0),
+		miner:         miner,
+		from:          a,
+		price:         price,
+		dur:           dur,
+		provCol:       provCol,
+		statelessDeal: cctx.Bool("manual-stateless-deal"),
+		isVerified:    isVerified,
+		dcap:          dcap,
+	}, nil
+}
+
+var storageDelesBatchCmd = &cli.Command{
+	Name:  "batch",
+	Usage: "Batch storage deals with a miner",
+	Description: `Make deals with a miner.
+miner is the address of the miner you wish to make a deal with.
+price is measured in FIL/Epoch. Miners usually don't accept a bid
+lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
+with './market-client storage asks query <miner address>'.
+duration is how long the miner should store the data for, in blocks.
+The minimum value is 518400 (6 months).`,
+	ArgsUsage: "[car-dir miner price duration]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "manifest",
+			Value: "manifest.csv",
+		},
+		&cli.BoolFlag{
+			Name:  "manual-stateless-deal",
+			Usage: "instructs the node to send an offline deal without registering it with the deallist/fsm",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "specify address to fund the deal with",
+		},
+		&cli.Int64Flag{
+			Name:  "start-epoch",
+			Usage: "specify the epoch that the deal should start at",
+			Value: -1,
+		},
+		&cli.BoolFlag{
+			Name:  "fast-retrieval",
+			Usage: "indicates that data should be available for fast retrieval",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:        "verified-deal",
+			Usage:       "indicate that the deal counts towards verified client total",
+			DefaultText: "true if client is verified, false otherwise",
+		},
+		&cli.StringFlag{
+			Name:  "provider-collateral",
+			Usage: "specify the requested provider collateral the miner should put up",
+		},
+		&cli2.CidBaseFlag,
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 4 {
+			return fmt.Errorf("must pass three arguments")
+		}
+
+		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer fcloser()
+
+		api, closer, err := cli2.NewMarketClientNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := cli2.ReqContext(cctx)
+
+		p, err := dealParamsFromContext(cctx, api, fapi)
+		if err != nil {
+			return err
+		}
+
+		carDir, err := homedir.Expand(p.firstArg)
+		if err != nil {
+			return err
+		}
+
+		transferType := storagemarket.TTGraphsync
+		if p.statelessDeal {
+			if p.price.Int64() != 0 {
+				return errors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
+			}
+			transferType = storagemarket.TTManual
+		}
+
+		fillDealParams := func(ref *storagemarket.DataRef) *client.DealParams {
+			return &client.DealParams{
+				Data:               ref,
+				Wallet:             p.from,
+				Miner:              p.miner,
+				EpochPrice:         types.BigInt(p.price),
+				MinBlocksDuration:  uint64(p.dur),
+				DealStartEpoch:     abi.ChainEpoch(cctx.Int64("start-epoch")),
+				FastRetrieval:      cctx.Bool("fast-retrieval"),
+				VerifiedDeal:       p.isVerified,
+				ProviderCollateral: p.provCol,
+			}
+		}
+
+		manifests, err := loadManifests(filepath.Join(carDir, cctx.String("manifest")))
+		if err != nil {
+			return fmt.Errorf("load manifest error: %v", err)
+		}
+		minerPorposal, err := cli2.LoadMinerProposalFromCSV(filepath.Join(carDir, p.miner.String()+".csv"))
+		if err != nil {
+			return err
+		}
+		payloadMap := make(map[string]string, len(minerPorposal))
+		for k, v := range minerPorposal {
+			payloadMap[v] = k
+		}
+
+		var params client.DealsParams
+		for _, manifest := range manifests {
+			if proposalCid, ok := payloadMap[manifest.PayloadCid]; ok && len(proposalCid) != 0 {
+				fmt.Printf("alrealy had a deal %s with the same playload cid %s \n", proposalCid, manifest.PayloadCid)
+				continue
+			}
+
+			carPath, err := filepath.Abs(filepath.Join(carDir, manifest.PayloadCid+".car"))
+			if err != nil {
+				return err
+			}
+
+			ref := client.FileRef{
+				Path:  carPath,
+				IsCAR: true,
+			}
+			res, err := api.ClientImport(ctx, ref)
+			if err != nil {
+				return err
+			}
+			encoder, err := cli2.GetCidEncoder(cctx)
+			if err != nil {
+				return err
+			}
+			root := encoder.Encode(res.Root)
+
+			if root != manifest.PayloadCid {
+				return fmt.Errorf("root not match, expect %s, actual %s", manifest.PayloadCid, root)
+			}
+			fmt.Printf("import %s success, import id: %d \n", manifest.PayloadCid, res.ImportID)
+
+			ds, err := api.ClientDealPieceCID(ctx, res.Root)
+			if err != nil {
+				return err
+			}
+
+			dataRef := &storagemarket.DataRef{
+				TransferType: transferType,
+				Root:         res.Root,
+				PieceSize:    ds.PieceSize.Unpadded(),
+				PieceCid:     &ds.PieceCID,
+				RawBlockSize: uint64(ds.PayloadSize),
+			}
+
+			// todo: check datacap
+			params.Params = append(params.Params, fillDealParams(dataRef))
+		}
+
+		res, err := api.ClientBatchDeal(ctx, &params)
+		if err != nil {
+			return err
+		}
+
+		for i, r := range res.Results {
+			root := params.Params[i].Data.Root.String()
+			if len(r.Message) == 0 {
+				minerPorposal[r.ProposalCID.String()] = root
+				fmt.Printf("create deal success, proposal cid: %v, playload cid: %v\n", r.ProposalCID, root)
+			} else {
+				fmt.Printf("create deal failed, playload cid: %v, error: %v\n", root, r.Message)
+			}
+		}
+
+		if len(minerPorposal) > 0 {
+			if err := cli2.SaveMinerProposalToCSV(filepath.Join(carDir, p.miner.String()+".csv"), minerPorposal); err != nil {
+				return fmt.Errorf("save deal proposal error: %v", err)
+			}
+		}
+
+		return nil
+	},
+}
+
+type manifest struct {
+	PayloadCid string
+}
+
+func loadManifests(path string) ([]*manifest, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	lines := bytes.Split(data, []byte("\n"))
+	manifests := make([]*manifest, 0, len(lines))
+	for i, line := range lines {
+		// skip title
+		if i == 0 {
+			continue
+		}
+		list := bytes.Split(line, []byte(","))
+		if len(list) > 0 && len(list[0]) > 0 {
+			manifests = append(manifests, &manifest{
+				PayloadCid: string(list[0]),
+			})
+		}
+	}
+
+	return manifests, nil
 }

@@ -109,7 +109,7 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, msg *types.Messa
 		return cid.Undef, err
 	}
 
-	log.Warnf("push message %s to venus-messager", msgID.String())
+	log.Infof("push message %s to venus-messager", msgID.String())
 
 	return msgID, nil
 }

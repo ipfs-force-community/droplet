@@ -2,12 +2,14 @@ package cli
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -341,4 +343,49 @@ func shouldAddress(s string, checkEmpty bool, allowActor bool) (address.Address,
 	}
 
 	return address.NewFromString(s)
+}
+
+// SaveMinerProposal save the mapping of deal payload cid and proposal cid
+func SaveMinerProposalToCSV(file string, proposals map[string]string) error {
+	filePath := filepath.Join(file)
+	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+
+	records := make([][]string, 0, len(proposals))
+	records = append(records, []string{"proposal_cid", "payload_cid"})
+	for k, v := range proposals {
+		records = append(records, []string{k, v})
+	}
+
+	return csv.NewWriter(f).WriteAll(records)
+}
+
+func LoadMinerProposalFromCSV(file string) (map[string]string, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return map[string]string{}, nil
+		}
+		return nil, err
+	}
+
+	records, err := csv.NewReader(f).ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	m := make(map[string]string, len(records))
+	for i, record := range records {
+		// skip title: proposal_cid,payload_cid
+		if i == 0 {
+			continue
+		}
+		if len(record) == 2 {
+			m[record[0]] = record[1]
+		}
+	}
+
+	return m, nil
 }
