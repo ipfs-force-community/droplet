@@ -15,7 +15,7 @@ The market service of `venus-market` is divided into storage market and retrieva
 Storage process:
 
 | Stages | Steps | Instructions |
-|--------------------------------------|----------- -------------------------------------------------- ------------------------------------------|---------- ----------------------------------------------------------------|
+|--------------------------------------|-------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
 | Start `venus-market` and `market-client` | 1. Configure and start [venus-market](#Configure and Start venus-market) <br> 2. Configure and start [market-client](#Configure and Start market -client) | |
 | Proxy `libp2p` listener service for `miners` | via `venus-market` [`libp2p` listener service for `miners`](#venus-market proxy libp2p listener) | |
 | Post storage ask for `miners` | via `venus-market` [ask](#ask) | |
