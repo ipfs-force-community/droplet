@@ -30,7 +30,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.10.2-0.20230309014040-73746cec80e4
+	github.com/filecoin-project/venus v1.10.2-0.20230316084941-2180049a244b
 	github.com/filecoin-project/venus-auth v1.10.2-0.20230308100319-913815325d5e
 	github.com/filecoin-project/venus-messager v1.10.2-0.20230309071456-7cd8d49c6e9a
 	github.com/golang/mock v1.6.0
@@ -82,7 +82,7 @@ require (
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	go.mongodb.org/mongo-driver v1.8.4
 	go.opencensus.io v0.23.0
-	go.uber.org/fx v1.15.0
+	go.uber.org/fx v1.17.1
 	go.uber.org/multierr v1.8.0
 	golang.org/x/sync v0.0.0-20220907140024-f12130a52804
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
@@ -289,7 +289,7 @@ require (
 	go.opentelemetry.io/otel v1.10.0 // indirect
 	go.opentelemetry.io/otel/trace v1.10.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/dig v1.12.0 // indirect
+	go.uber.org/dig v1.14.1 // indirect
 	go.uber.org/zap v1.23.0 // indirect
 	go4.org v0.0.0-20200411211856-f5505b9728dd // indirect
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
