@@ -45,6 +45,7 @@ var storageDealsCmds = &cli.Command{
 		dealsListCmd,
 		updateStorageDealStateCmd,
 		dealsPendingPublish,
+		getDealCmd,
 	},
 }
 
@@ -362,6 +363,37 @@ var dealsPendingPublish = &cli.Command{
 	},
 }
 
+var getDealCmd = &cli.Command{
+	Name:      "get",
+	Usage:     "Print a storage deal",
+	ArgsUsage: "<proposal cid>",
+	Action: func(cliCtx *cli.Context) error {
+		if cliCtx.NArg() != 1 {
+			return fmt.Errorf("expected 1 arguments")
+		}
+
+		api, closer, err := NewMarketNode(cliCtx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		proposalCid, err := cid.Decode(cliCtx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ctx := ReqContext(cliCtx)
+
+		deal, err := api.MarketGetDeal(ctx, proposalCid)
+		if err != nil {
+			return err
+		}
+
+		return outputStorageDeal(deal)
+	},
+}
+
 func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool) error {
 	sort.Slice(deals, func(i, j int) bool {
 		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
@@ -415,4 +447,77 @@ func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool) e
 	}
 
 	return w.Flush()
+}
+
+type kv struct {
+	k string
+	v interface{}
+}
+
+func outputStorageDeal(deal *market.MinerDeal) error {
+	var err error
+	var transferChannelID, label, addFundsCid, publishCid string
+
+	if deal.TransferChannelID != nil {
+		transferChannelID = deal.TransferChannelID.String()
+	}
+	label, err = deal.Proposal.Label.ToString()
+	if err != nil {
+		return err
+	}
+	if deal.AddFundsCid != nil {
+		addFundsCid = deal.AddFundsCid.String()
+	}
+	if deal.PublishCid != nil {
+		publishCid = deal.PublishCid.String()
+	}
+	fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
+
+	data := []kv{
+		{"Creation", deal.CreationTime.Time().Format(time.RFC3339)},
+		{"State", storagemarket.DealStates[deal.State]},
+		{"VerifiedDeal", deal.Proposal.VerifiedDeal},
+		{"DealID", deal.DealID},
+		{"PieceCID", deal.Proposal.PieceCID},
+		{"PieceStatus", deal.PieceStatus},
+		{"Provider", deal.Proposal.Provider},
+		{"PieceSize", units.BytesSize(float64(deal.Proposal.PieceSize))},
+		{"Price", fil},
+		{"Duration", deal.Proposal.Duration()},
+		{"Offset", deal.Offset},
+		{"Client", deal.Proposal.Client},
+		{"TransferID", transferChannelID},
+		{"AddFundsCid", addFundsCid},
+		{"PublishCid", publishCid},
+		{"Message", deal.Message},
+		{"TransferType", deal.Ref.TransferType},
+		{"PayloadCID", deal.Ref.Root},
+		{"PayloadSize", deal.PayloadSize},
+		{"StartEpoch", deal.Proposal.StartEpoch},
+		{"EndEpoch", deal.Proposal.EndEpoch},
+		{"SlashEpoch", deal.SlashEpoch},
+		{"StoragePricePerEpoch", deal.Proposal.StoragePricePerEpoch},
+		{"ProviderCollateral", deal.Proposal.ProviderCollateral},
+		{"ClientCollateral", deal.Proposal.ClientCollateral},
+		{"Label", label},
+		{"MinerPeerID", deal.Miner.Pretty()},
+		{"ClientPeerID", deal.Client.Pretty()},
+		{"FundsReserved", deal.FundsReserved},
+		{"AvailableForRetrieval", deal.AvailableForRetrieval},
+		{"SectorNumber", deal.SectorNumber},
+		{"PiecePath", deal.PiecePath},
+		{"MetadataPath", deal.MetadataPath},
+		{"FastRetrieval", deal.FastRetrieval},
+		{"InboundCAR", deal.InboundCAR},
+		{"UpdatedAt", time.Unix(int64(deal.UpdatedAt), 0).Format(time.RFC3339)},
+	}
+	maxLen := len("AvailableForRetrieval")
+	for _, d := range data {
+		for i := len(d.k); i < maxLen; i++ {
+			d.k += " "
+		}
+		fmt.Println(d.k, d.v)
+	}
+
+	return nil
 }
