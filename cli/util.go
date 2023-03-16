@@ -30,8 +30,8 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/api"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
-	marketapi "github.com/filecoin-project/venus/venus-shared/api/market"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
+	marketapi "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
