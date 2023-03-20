@@ -242,6 +242,18 @@ func (m *MarketNodeImpl) MarketListDeals(ctx context.Context, addrs []address.Ad
 	return m.listDeals(ctx, addrs)
 }
 
+func (m *MarketNodeImpl) MarketGetDeal(ctx context.Context, dealPropCid cid.Cid) (*types.MinerDeal, error) {
+	deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, dealPropCid)
+	if err != nil {
+		return nil, err
+	}
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
+		return nil, err
+	}
+
+	return deal, nil
+}
+
 // MarketListRetrievalDeals todo add user isolate when is available to get miner from retrieve deal
 // 检索订单没法按 `miner address` 过滤
 func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]types.ProviderDealState, error) {
@@ -260,6 +272,15 @@ func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]types.
 		out = append(out, *deal)
 	}
 	return out, nil
+}
+
+func (m *MarketNodeImpl) MarketGetRetrievalDeal(ctx context.Context, receiver peer.ID, dealID uint64) (*types.ProviderDealState, error) {
+	deal, err := m.Repo.RetrievalDealRepo().GetDeal(ctx, receiver, retrievalmarket.DealID(dealID))
+	if err != nil {
+		return nil, err
+	}
+
+	return deal, nil
 }
 
 func (m *MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan types.MinerDeal, error) {
