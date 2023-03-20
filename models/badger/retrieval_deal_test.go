@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/libp2p/go-libp2p/core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/venus-shared/testutil"
@@ -91,9 +92,19 @@ func TestHasDeal(t *testing.T) {
 func TestListDeals(t *testing.T) {
 	ctx, r, dealCases := prepareRetrievalDealTest(t)
 
-	for _, deal := range dealCases {
-		err := r.SaveDeal(ctx, &deal)
-		assert.NoError(t, err)
+	var peerID peer.ID
+	testutil.Provide(t, &peerID)
+	peers := []peer.ID{dealCases[0].Receiver, peerID}
+	status := []retrievalmarket.DealStatus{
+		retrievalmarket.DealStatusCancelled,
+		retrievalmarket.DealStatusAccepted,
+		retrievalmarket.DealStatusErrored,
+	}
+
+	for i := range dealCases {
+		dealCases[i].Receiver = peers[i%2]
+		dealCases[i].Status = status[i%3]
+		assert.NoError(t, r.SaveDeal(ctx, &dealCases[i]))
 	}
 	// refresh UpdatedAt
 	for i := 0; i < len(dealCases); i++ {
@@ -102,12 +113,62 @@ func TestListDeals(t *testing.T) {
 		dealCases[i].UpdatedAt = res.UpdatedAt
 	}
 
-	res, err := r.ListDeals(ctx, 1, 10)
+	defPage := types.Page{Limit: len(dealCases)}
+
+	// params is empty
+	deals, err := r.ListDeals(ctx, &types.RetrievalDealQueryParams{})
 	assert.NoError(t, err)
-	assert.Equal(t, len(dealCases), len(res))
-	for _, res := range res {
-		assert.Contains(t, dealCases, *res)
+	assert.Len(t, deals, 0)
+
+	// test page
+	deals, err = r.ListDeals(ctx, &types.RetrievalDealQueryParams{
+		Page: types.Page{
+			Limit: 3,
+		},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, deals, 3)
+	deals, err = r.ListDeals(ctx, &types.RetrievalDealQueryParams{
+		Page: types.Page{
+			Offset: len(dealCases) - 3,
+			Limit:  4,
+		},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, deals, 3)
+
+	for i := 0; i < 2; i++ {
+		deals, err = r.ListDeals(ctx, &types.RetrievalDealQueryParams{
+			Receiver: peers[i].Pretty(),
+			Page:     defPage,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, deals, 5)
 	}
+
+	dealStatusAccepted := uint64(retrievalmarket.DealStatusAccepted)
+	deals, err = r.ListDeals(ctx, &types.RetrievalDealQueryParams{
+		Status: &dealStatusAccepted,
+		Page:   defPage,
+	})
+	assert.NoError(t, err)
+	assert.Len(t, deals, 3)
+
+	deals, err = r.ListDeals(ctx, &types.RetrievalDealQueryParams{
+		DiscardFailedDeal: true,
+		Page:              defPage,
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 7, len(deals))
+
+	dealStatusErrored := uint64(retrievalmarket.DealStatusErrored)
+	deals, err = r.ListDeals(ctx, &types.RetrievalDealQueryParams{
+		Status:            &dealStatusErrored,
+		DiscardFailedDeal: true,
+		Page:              defPage,
+	})
+	assert.NoError(t, err)
+	assert.Len(t, deals, 3)
 }
 
 func TestGroupRetrievalDealNumberByStatus(t *testing.T) {

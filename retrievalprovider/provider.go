@@ -2,7 +2,6 @@ package retrievalprovider
 
 import (
 	"context"
-	"math"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -29,7 +28,7 @@ var log = logging.Logger("retrievaladapter")
 type IRetrievalProvider interface {
 	Stop() error
 	Start(ctx context.Context) error
-	ListDeals(ctx context.Context) (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error)
+	ListDeals(ctx context.Context, params *types.RetrievalDealQueryParams) (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error)
 }
 
 var _ IRetrievalProvider = (*RetrievalProvider)(nil)
@@ -145,8 +144,8 @@ func (p *RetrievalProvider) Start(ctx context.Context) error {
 }
 
 // ListDeals lists all known retrieval deals
-func (p *RetrievalProvider) ListDeals(ctx context.Context) (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error) {
-	deals, err := p.retrievalDealRepo.ListDeals(ctx, 1, math.MaxInt32)
+func (p *RetrievalProvider) ListDeals(ctx context.Context, params *types.RetrievalDealQueryParams) (map[retrievalmarket.ProviderDealIdentifier]*types.ProviderDealState, error) {
+	deals, err := p.retrievalDealRepo.ListDeals(ctx, params)
 	if err != nil {
 		return nil, err
 	}

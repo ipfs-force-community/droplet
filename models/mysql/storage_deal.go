@@ -452,11 +452,33 @@ func (sdr *storageDealRepo) ListDealByAddr(ctx context.Context, miner address.Ad
 	return fromDbDeals(storageDeals)
 }
 
-func (sdr *storageDealRepo) ListDeal(ctx context.Context) ([]*types.MinerDeal, error) {
+func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageDealQueryParams) ([]*types.MinerDeal, error) {
 	var storageDeals []*storageDeal
-	if err := sdr.Table(storageDealTableName).Find(&storageDeals).Error; err != nil {
+	discardFailedDeal := params.DiscardFailedDeal
+	if discardFailedDeal && params.State != nil {
+		state := *params.State
+		discardFailedDeal = state != storagemarket.StorageDealFailing && state != storagemarket.StorageDealSlashed &&
+			state != storagemarket.StorageDealExpired && state != storagemarket.StorageDealError
+	}
+	query := sdr.Table(storageDealTableName).Offset(params.Offset).Limit(params.Limit)
+	if !params.Miner.Empty() {
+		query.Where("cdp_provider = ?", DBAddress(params.Miner).String())
+	}
+	if len(params.Client) > 0 {
+		query.Where("client = ?", params.Client)
+	}
+	if params.State != nil {
+		query.Where("state = ?", params.State)
+	}
+	if discardFailedDeal {
+		states := []storagemarket.StorageDealStatus{storagemarket.StorageDealFailing,
+			storagemarket.StorageDealExpired, storagemarket.StorageDealError, storagemarket.StorageDealSlashed}
+		query.Where("state not in ?", states)
+	}
+	if err := query.Find(&storageDeals).Error; err != nil {
 		return nil, err
 	}
+
 	return fromDbDeals(storageDeals)
 }
 

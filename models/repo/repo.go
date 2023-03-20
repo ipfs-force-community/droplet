@@ -42,7 +42,7 @@ type StorageDealRepo interface {
 	GetDealsByPieceCidAndStatus(ctx context.Context, piececid cid.Cid, statues ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
 	GetDealByAddrAndStatus(ctx context.Context, addr address.Address, status ...storagemarket.StorageDealStatus) ([]*types.MinerDeal, error)
 	ListDealByAddr(ctx context.Context, mAddr address.Address) ([]*types.MinerDeal, error)
-	ListDeal(ctx context.Context) ([]*types.MinerDeal, error)
+	ListDeal(ctx context.Context, params *types.StorageDealQueryParams) ([]*types.MinerDeal, error)
 	GroupStorageDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[storagemarket.StorageDealStatus]int64, error)
 
 	GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error)
@@ -55,8 +55,7 @@ type IRetrievalDealRepo interface {
 	GetDeal(context.Context, peer.ID, retrievalmarket.DealID) (*types.ProviderDealState, error)
 	GetDealByTransferId(context.Context, datatransfer.ChannelID) (*types.ProviderDealState, error)
 	HasDeal(context.Context, peer.ID, retrievalmarket.DealID) (bool, error)
-	// ListDeals pageIndex index from 1
-	ListDeals(ctx context.Context, pageIndex int, pageSize int) ([]*types.ProviderDealState, error)
+	ListDeals(ctx context.Context, params *types.RetrievalDealQueryParams) ([]*types.ProviderDealState, error)
 	GroupRetrievalDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[retrievalmarket.DealStatus]int64, error)
 }
 

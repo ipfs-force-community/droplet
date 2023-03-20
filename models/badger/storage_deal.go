@@ -201,14 +201,46 @@ func (sdr *storageDealRepo) ListDealByAddr(ctx context.Context, miner address.Ad
 	return storageDeals, nil
 }
 
-func (sdr *storageDealRepo) ListDeal(ctx context.Context) ([]*types.MinerDeal, error) {
-	storageDeals := make([]*types.MinerDeal, 0)
-	if err := travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (bool, error) {
-		storageDeals = append(storageDeals, deal)
-		return false, nil
+func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageDealQueryParams) ([]*types.MinerDeal, error) {
+	var count int
+	var storageDeals []*types.MinerDeal
+	end := params.Limit + params.Offset
+
+	discardFailedDeal := params.DiscardFailedDeal
+	if discardFailedDeal && params.State != nil {
+		state := *params.State
+		discardFailedDeal = state != storagemarket.StorageDealFailing && state != storagemarket.StorageDealSlashed &&
+			state != storagemarket.StorageDealExpired && state != storagemarket.StorageDealError
+	}
+
+	if err := travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
+		if count >= end {
+			return true, nil
+		}
+
+		if !params.Miner.Empty() && deal.ClientDealProposal.Proposal.Provider != params.Miner {
+			return false, nil
+		}
+		if len(params.Client) != 0 && deal.Client.Pretty() != params.Client {
+			return false, nil
+		}
+		if params.State != nil && deal.State != *params.State {
+			return false, nil
+		}
+		if discardFailedDeal && (deal.State == storagemarket.StorageDealFailing || deal.State == storagemarket.StorageDealSlashed ||
+			deal.State == storagemarket.StorageDealExpired || deal.State == storagemarket.StorageDealError) {
+			return false, nil
+		}
+		if count >= params.Offset && count < end {
+			storageDeals = append(storageDeals, deal)
+		}
+		count++
+
+		return
 	}); err != nil {
 		return nil, err
 	}
+
 	return storageDeals, nil
 }
 

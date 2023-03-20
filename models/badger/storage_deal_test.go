@@ -2,12 +2,14 @@ package badger
 
 import (
 	"context"
+	"math"
 	"math/rand"
 	"testing"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
@@ -78,7 +80,7 @@ func TestListStorageDeal(t *testing.T) {
 		dealCases[i].CreationTime = res.CreationTime
 	}
 
-	res, err := r.ListDeal(ctx)
+	res, err := r.ListDeal(ctx, &markettypes.StorageDealQueryParams{Page: markettypes.Page{Limit: math.MaxInt32}})
 	assert.NoError(t, err)
 	assert.Equal(t, len(dealCases), len(res))
 	for _, deal := range res {
@@ -276,6 +278,101 @@ func TestListStorageDealByAddr(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(res))
 	assert.Equal(t, dealCases[0], *res[0])
+}
+
+func TestListDeal(t *testing.T) {
+	ctx, r, dealCases := prepareStorageDealTest(t)
+
+	var peerID peer.ID
+	testutil.Provide(t, &peerID)
+	miner := []address.Address{dealCases[0].Proposal.Provider, testutil.AddressProvider()(t)}
+	peers := []peer.ID{dealCases[0].Client, peerID}
+	states := []storagemarket.StorageDealStatus{
+		storagemarket.StorageDealAcceptWait,
+		storagemarket.StorageDealAwaitingPreCommit,
+		storagemarket.StorageDealFailing,
+		storagemarket.StorageDealExpired,
+	}
+
+	for i, deal := range dealCases {
+		deal.Proposal.Provider = miner[i%2]
+		deal.Client = peers[i%2]
+		deal.State = states[i%4]
+		err := r.SaveDeal(ctx, &deal)
+		assert.NoError(t, err)
+	}
+
+	// refresh UpdatedAt and CreationTime
+	for i := range dealCases {
+		res, err := r.GetDeal(ctx, dealCases[i].ProposalCid)
+		assert.NoError(t, err)
+		dealCases[i].UpdatedAt = res.UpdatedAt
+		dealCases[i].CreationTime = res.CreationTime
+	}
+
+	defPage := markettypes.Page{Limit: len(dealCases)}
+
+	// params is empty
+	deals, err := r.ListDeal(ctx, &markettypes.StorageDealQueryParams{})
+	assert.NoError(t, err)
+	assert.Len(t, deals, 0)
+
+	// test page
+	deals, err = r.ListDeal(ctx, &markettypes.StorageDealQueryParams{
+		Page: markettypes.Page{
+			Limit: 3,
+		},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, deals, 3)
+	deals, err = r.ListDeal(ctx, &markettypes.StorageDealQueryParams{
+		Page: markettypes.Page{
+			Offset: len(dealCases) - 3,
+			Limit:  4,
+		},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, deals, 3)
+
+	for i := 0; i < 2; i++ {
+		deals, err = r.ListDeal(ctx, &markettypes.StorageDealQueryParams{
+			Miner: miner[i],
+			Page:  defPage,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, deals, 5)
+
+		deals, err = r.ListDeal(ctx, &markettypes.StorageDealQueryParams{
+			Client: peers[i].Pretty(),
+			Page:   defPage,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, 5, len(deals))
+	}
+
+	storageDealAcceptWait := storagemarket.StorageDealAcceptWait
+	deals, err = r.ListDeal(ctx, &markettypes.StorageDealQueryParams{
+		State: &storageDealAcceptWait,
+		Page:  defPage,
+	})
+	assert.NoError(t, err)
+	assert.Len(t, deals, 3)
+
+	deals, err = r.ListDeal(ctx, &markettypes.StorageDealQueryParams{
+		DiscardFailedDeal: true,
+		Page:              defPage,
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 6, len(deals))
+
+	storageDealFailing := storagemarket.StorageDealFailing
+	deals, err = r.ListDeal(ctx, &markettypes.StorageDealQueryParams{
+		State:             &storageDealFailing,
+		DiscardFailedDeal: true,
+		Page:              defPage,
+	})
+	assert.NoError(t, err)
+	assert.Len(t, deals, 2)
 }
 
 func TestGetStoragePieceInfo(t *testing.T) {

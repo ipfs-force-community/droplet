@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -78,35 +77,42 @@ func (r retrievalDealRepo) HasDeal(ctx context.Context, id peer.ID, id2 retrieva
 	}))
 }
 
-func (r retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize int) ([]*types.ProviderDealState, error) {
-	result, err := r.ds.Query(ctx, query.Query{})
+func (r retrievalDealRepo) ListDeals(ctx context.Context, params *types.RetrievalDealQueryParams) ([]*types.ProviderDealState, error) {
+	var count int
+	var retrievalDeals []*types.ProviderDealState
+	end := params.Offset + params.Limit
+
+	discardFailedDeal := params.DiscardFailedDeal
+	if discardFailedDeal && params.Status != nil {
+		discardFailedDeal = *params.Status != uint64(retrievalmarket.DealStatusErrored)
+	}
+
+	err := travelCborAbleDS(ctx, r.ds, func(deal *types.ProviderDealState) (stop bool, err error) {
+		if count >= end {
+			return true, nil
+		}
+
+		if len(params.Receiver) > 0 && deal.Receiver.Pretty() != params.Receiver {
+			return false, nil
+		}
+		if params.DealID > 0 && deal.ID != retrievalmarket.DealID(params.DealID) {
+			return false, nil
+		}
+		if params.Status != nil && deal.Status != retrievalmarket.DealStatus(*params.Status) {
+			return false, nil
+		}
+		if discardFailedDeal && deal.Status == retrievalmarket.DealStatusErrored {
+			return false, nil
+		}
+		if count >= params.Offset && count < end {
+			retrievalDeals = append(retrievalDeals, deal)
+		}
+		count++
+
+		return false, nil
+	})
 	if err != nil {
 		return nil, err
-	}
-	from := (pageIndex - 1) * pageSize
-	to := from + pageSize
-	defer result.Close() //nolint:errcheck
-
-	var retrievalDeals []*types.ProviderDealState
-	index := 0
-	for res := range result.Next() {
-		if index < from {
-			index++
-			continue
-		}
-
-		if index >= to {
-			break
-		}
-		index++
-		if res.Error != nil {
-			return nil, err
-		}
-		var deal types.ProviderDealState
-		if err := cborrpc.ReadCborRPC(bytes.NewReader(res.Value), &deal); err != nil {
-			return nil, err
-		}
-		retrievalDeals = append(retrievalDeals, &deal)
 	}
 
 	return retrievalDeals, nil
