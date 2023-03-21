@@ -223,7 +223,7 @@ PieceCidBlocklist = []
 # 时间字符串是由数字和时间单位组成的字符串，数字包括整数和小数，合法的单位包括 "ns", "us" (or "µs"), "ms", "s", "m", "h".
 ExpectedSealDuration = "24h0m0s"
 
-# 预期订单封装完成时间
+# 预期订单封装开始前等待时间
 # 时间字符串 默认为："336h0m0s"
 MaxDealStartDelay = "336h0m0s"
 
@@ -298,7 +298,7 @@ Account =""
 
 ## venus market 网络配置
 
-这部分的配置决定了venus market 和外界交互的接口
+这部分的配置决定了 venus-market 和外界交互的接口
 
 ### [API]
 market 对外提供服务的接口
@@ -313,10 +313,10 @@ ListenAddress = "/ip4/127.0.0.1/tcp/41235"
 RemoteListenAddress = ""
 
 # 密钥用于加密通信
-#字符串类型 可选项（没有则自动生成）
+# 字符串类型 可选项（没有则自动生成）
 Secret = "878f9c1f88c6f68ee7be17e5f0848c9312897b5d22ff7d89ca386ed0a583da3c"
 
-#保留字段
+# 保留字段
 Timeout = "30s"
 ```
 
@@ -339,8 +339,6 @@ NoAnnounceAddresses = []
 # 字符串 可选（没设置则自动生成）
 PrivateKey = "08011240ae580daabbe087007d2b4db4e880af10d582215d2272669a94c49c854f36f99c35"
 ```
-
-
 
 ## venus 组件服务配置
 
@@ -525,7 +523,7 @@ Debug = false
 ### [[PieceStorage.Fs]]
 
 配置本地文件系统作为扇区存储
-对于大量数据的扇区，建议挂载和venus-sealer或者venus-cluster共用的文件系统进行配置 
+对于大量数据的扇区，建议挂载和`venus-cluster`共用的文件系统进行配置 
 
 ```
 [PieceStorage]
@@ -627,7 +625,7 @@ Transient = ""
 # 字符串类型 可选 不设置则使用RooDir目录下的'index'文件夹
 Index = ""
 
-#不使用本地缓存，直接读取数据源
+# 不使用本地缓存，直接读取数据源
 # 布尔类型 默认为 false
 UseTransient = false
 ```
