@@ -12,13 +12,15 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/dagstore/mount"
+	"github.com/filecoin-project/dagstore/throttle"
 	"github.com/filecoin-project/go-padreader"
-
 	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
+	vSharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 
 	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
+	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	"github.com/filecoin-project/venus-market/v2/utils"
 )
 
@@ -35,17 +37,28 @@ type marketAPI struct {
 	useTransient        bool
 	metricsCtx          metrics.MetricsCtx
 	gatewayMarketClient gatewayAPIV2.IMarketClient
+
+	throttle throttle.Throttler
 }
 
 var _ MarketAPI = (*marketAPI)(nil)
 
-func NewMarketAPI(ctx metrics.MetricsCtx, repo repo.Repo, pieceStorageMgr *piecestorage.PieceStorageManager, gatewayMarketClient gatewayAPIV2.IMarketClient, useTransient bool) MarketAPI {
+func NewMarketAPI(
+	ctx metrics.MetricsCtx,
+	repo repo.Repo,
+	pieceStorageMgr *piecestorage.PieceStorageManager,
+	gatewayMarketClient gatewayAPIV2.IMarketClient,
+	useTransient bool,
+	concurrency int) MarketAPI {
+
 	return &marketAPI{
 		pieceRepo:           repo.StorageDealRepo(),
 		pieceStorageMgr:     pieceStorageMgr,
 		useTransient:        useTransient,
 		metricsCtx:          ctx,
 		gatewayMarketClient: gatewayMarketClient,
+
+		throttle: throttle.Fixed(concurrency),
 	}
 }
 
@@ -56,11 +69,75 @@ func (m *marketAPI) Start(_ context.Context) error {
 func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
 	_, err := m.pieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 	if err != nil {
-		return false, fmt.Errorf("unable to find storage for piece %s %w", pieceCid, err)
+		log.Warnf("unable to find storage for piece %s: %s", pieceCid, err)
+
+		// check it from the SP through venus-gateway
+		deals, err := m.pieceRepo.GetDealsByPieceCidAndStatus(ctx, pieceCid, storageprovider.ReadyRetrievalDealStatus...)
+		if err != nil {
+			return false, fmt.Errorf("get delas for piece %s: %w", pieceCid, err)
+		}
+
+		if len(deals) == 0 {
+			return false, fmt.Errorf("no storage deals found for piece %s", pieceCid)
+		}
+
+		// check if we have an unsealed deal for the given piece in any of the unsealed sectors.
+		for _, deal := range deals {
+			deal := deal
+
+			var isUnsealed bool
+			// Throttle this path to avoid flooding the storage subsystem.
+			err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
+				// todo ProofType can not be passed, SP processes itself?
+				isUnsealed, err = m.gatewayMarketClient.IsUnsealed(ctx, deal.Proposal.Provider, pieceCid,
+					deal.SectorNumber,
+					vSharedTypes.PaddedByteIndex(deal.Offset.Unpadded()),
+					deal.Proposal.PieceSize)
+				if err != nil {
+					return fmt.Errorf("failed to check if sector %d for deal %d was unsealed: %w", deal.SectorNumber, deal.DealID, err)
+				}
+
+				if isUnsealed {
+					// send SectorsUnsealPiece task
+					wps, err := m.pieceStorageMgr.FindStorageForWrite(int64(deal.Proposal.PieceSize))
+					if err != nil {
+						return fmt.Errorf("failed to find storage to write %s: %w", pieceCid, err)
+					}
+
+					pieceTransfer, err := wps.GetPieceTransfer(ctx, pieceCid.String())
+					if err != nil {
+						return fmt.Errorf("get piece transfer for %s: %w", pieceCid, err)
+					}
+
+					return m.gatewayMarketClient.SectorsUnsealPiece(
+						ctx,
+						deal.Proposal.Provider,
+						pieceCid,
+						deal.SectorNumber,
+						vSharedTypes.PaddedByteIndex(deal.Offset.Unpadded()),
+						deal.Proposal.PieceSize,
+						pieceTransfer,
+					)
+				}
+
+				return nil
+			})
+
+			if err != nil {
+				log.Warnf("failed to check/retrieve unsealed sector: %s", err)
+				continue // move on to the next match.
+			}
+
+			if isUnsealed {
+				return true, nil
+			}
+		}
+
+		// we don't have an unsealed sector containing the piece
+		return false, nil
 	}
+
 	return true, nil
-	// todo check isunseal from miner
-	// m.gatewayMarketClient.IsUnsealed()
 }
 
 func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {

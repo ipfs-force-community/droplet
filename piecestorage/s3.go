@@ -2,6 +2,7 @@ package piecestorage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -9,9 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/venus/venus-shared/types/market"
-
 	logging "github.com/ipfs/go-log/v2"
+
+	valid "github.com/asaskevich/govalidator"
+
+	"github.com/filecoin-project/dagstore/mount"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -20,8 +23,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
-	valid "github.com/asaskevich/govalidator"
-	"github.com/filecoin-project/dagstore/mount"
+	"github.com/filecoin-project/venus/venus-shared/types/market"
+
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/utils"
 )
@@ -112,7 +115,7 @@ func NewS3PieceStorage(s3Cfg *config.S3PieceStorage) (IPieceStorage, error) {
 	}, nil
 }
 
-func (s *s3PieceStorage) SaveTo(ctx context.Context, resourceId string, r io.Reader) (int64, error) {
+func (s *s3PieceStorage) SaveTo(_ context.Context, resourceId string, r io.Reader) (int64, error) {
 	if s.s3Cfg.ReadOnly {
 		return 0, fmt.Errorf("do not write to a 'readonly' piece store")
 	}
@@ -130,10 +133,10 @@ func (s *s3PieceStorage) SaveTo(ctx context.Context, resourceId string, r io.Rea
 	return int64(countReader.Count()), nil
 }
 
-func (s *s3PieceStorage) Len(ctx context.Context, piececid string) (int64, error) {
+func (s *s3PieceStorage) Len(_ context.Context, pieceCid string) (int64, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(s.subdirWrapper(piececid)),
+		Key:    aws.String(s.subdirWrapper(pieceCid)),
 	}
 
 	result, err := s.s3Client.GetObject(params)
@@ -143,7 +146,7 @@ func (s *s3PieceStorage) Len(ctx context.Context, piececid string) (int64, error
 	return *result.ContentLength, nil
 }
 
-func (s *s3PieceStorage) ListResourceIds(ctx context.Context) ([]string, error) {
+func (s *s3PieceStorage) ListResourceIds(_ context.Context) ([]string, error) {
 	params := &s3.ListObjectsV2Input{
 		Bucket: aws.String(s.bucket),
 	}
@@ -166,7 +169,7 @@ func (s *s3PieceStorage) ListResourceIds(ctx context.Context) ([]string, error) 
 	return pieces, nil
 }
 
-func (s s3PieceStorage) GetReaderCloser(ctx context.Context, resourceId string) (io.ReadCloser, error) {
+func (s *s3PieceStorage) GetReaderCloser(_ context.Context, resourceId string) (io.ReadCloser, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(s.subdirWrapper(resourceId)),
@@ -179,7 +182,7 @@ func (s s3PieceStorage) GetReaderCloser(ctx context.Context, resourceId string) 
 	return result.Body, nil
 }
 
-func (s s3PieceStorage) GetMountReader(ctx context.Context, resourceId string) (mount.Reader, error) {
+func (s *s3PieceStorage) GetMountReader(ctx context.Context, resourceId string) (mount.Reader, error) {
 	len, err := s.Len(ctx, resourceId)
 	if err != nil {
 		return nil, err
@@ -187,11 +190,11 @@ func (s s3PieceStorage) GetMountReader(ctx context.Context, resourceId string) (
 	return newSeekWraper(s.s3Client, s.bucket, s.subdirWrapper(resourceId), len-1), nil
 }
 
-func (s s3PieceStorage) GetRedirectUrl(ctx context.Context, resourceId string) (string, error) {
+func (s *s3PieceStorage) GetRedirectUrl(ctx context.Context, resourceId string) (string, error) {
 	if has, err := s.Has(ctx, resourceId); err != nil {
-		return "", fmt.Errorf("check object: %s exist error:%w", s.subdirWrapper(resourceId), err)
+		return "", fmt.Errorf("check object %s exist error: %w", s.subdirWrapper(resourceId), err)
 	} else if !has {
-		return "", fmt.Errorf("object: %s not exists", s.subdirWrapper(resourceId))
+		return "", fmt.Errorf("object %s not exists", s.subdirWrapper(resourceId))
 	}
 
 	params := &s3.GetObjectInput{
@@ -203,6 +206,33 @@ func (s s3PieceStorage) GetRedirectUrl(ctx context.Context, resourceId string) (
 	return req.Presign(time.Hour * 24)
 }
 
+func (s *s3PieceStorage) GetPieceTransfer(_ context.Context, pieceCid string) (*market.Transfer, error) {
+	if s.s3Cfg.ReadOnly {
+		return nil, fmt.Errorf("%s id readonly piece store", s.s3Cfg.Name)
+	}
+
+	transfer := market.S3Transfer{
+		EndPoint: s.s3Cfg.EndPoint,
+		Bucket:   s.s3Cfg.Bucket,
+		SubDir:   s.s3Cfg.SubDir,
+
+		AccessKey: s.s3Cfg.AccessKey,
+		SecretKey: s.s3Cfg.SecretKey,
+		Token:     s.s3Cfg.Token,
+
+		Key: pieceCid,
+	}
+	params, err := json.Marshal(&transfer)
+	if err != nil {
+		return nil, fmt.Errorf("construct piece transfer: %w", err)
+	}
+
+	return &market.Transfer{
+		Type:   market.PiecesTransferS3,
+		Params: params,
+	}, nil
+}
+
 func (s *s3PieceStorage) GetStorageStatus() (market.StorageStatus, error) {
 	return market.StorageStatus{
 		Capacity:  0,
@@ -210,7 +240,7 @@ func (s *s3PieceStorage) GetStorageStatus() (market.StorageStatus, error) {
 	}, nil
 }
 
-func (s *s3PieceStorage) Has(ctx context.Context, piececid string) (bool, error) {
+func (s *s3PieceStorage) Has(_ context.Context, piececid string) (bool, error) {
 	params := &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(s.subdirWrapper(piececid)),
@@ -231,7 +261,7 @@ func (s *s3PieceStorage) Has(ctx context.Context, piececid string) (bool, error)
 	return true, nil
 }
 
-func (s *s3PieceStorage) Validate(piececid string) error {
+func (s *s3PieceStorage) Validate(_ string) error {
 	_, err := s.s3Client.GetBucketAcl(&s3.GetBucketAclInput{
 		Bucket: aws.String(s.bucket),
 	})

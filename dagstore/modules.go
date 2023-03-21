@@ -31,7 +31,14 @@ const (
 
 // CreateAndStartMarketAPI creates a new MarketAPI adaptor for the dagstore mounts.
 func CreateAndStartMarketAPI(ctx metrics.MetricsCtx, lc fx.Lifecycle, r *config.DAGStoreConfig, repo repo.Repo, pieceStorage *piecestorage.PieceStorageManager, gatewayMarketClient gatewayAPIV2.IMarketClient) (MarketAPI, error) {
-	mountApi := NewMarketAPI(ctx, repo, pieceStorage, gatewayMarketClient, r.UseTransient)
+	mountApi := NewMarketAPI(
+		ctx,
+		repo,
+		pieceStorage,
+		gatewayMarketClient,
+		r.UseTransient,
+		r.MaxConcurrencyStorageCalls,
+	)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			return mountApi.Start(ctx)
