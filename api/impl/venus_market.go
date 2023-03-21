@@ -1057,6 +1057,22 @@ func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Add
 	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return err
 	}
+
+	if pieceStatus == types.Undefine {
+		head, err := m.FullNode.ChainHead(ctx)
+		if err != nil {
+			log.Errorf("get chain head err: %s", err)
+		}
+
+		dealProposal, err := m.FullNode.StateMarketStorageDeal(ctx, dealId, head.Key())
+		if err != nil {
+			return fmt.Errorf("get market storage deal %d: %w", dealId, err)
+		}
+		if dealProposal.State.SectorStartEpoch > -1 { // include in sector
+			return fmt.Errorf("reject to reset the status of deal %d activated on the chain", dealId)
+		}
+	}
+
 	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, pieceStatus, dealStatus)
 }
 
