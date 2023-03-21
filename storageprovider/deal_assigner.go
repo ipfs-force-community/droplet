@@ -87,6 +87,10 @@ func (ps *dealAssigner) UpdateDealStatus(ctx context.Context, miner address.Addr
 		return fmt.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
 	}
 
+	if md.PieceStatus == types.Proving {
+		return fmt.Errorf("reject update already proving deals")
+	}
+
 	md.PieceStatus = pieceStatus
 	md.State = dealStatus
 	if err := ps.repo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
