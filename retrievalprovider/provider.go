@@ -22,7 +22,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
-var queryTimeout = 5 * time.Second
+var queryTimeout = 5 * time.Minute
 
 var log = logging.Logger("retrievaladapter")
 
