@@ -1058,21 +1058,24 @@ func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Add
 		return err
 	}
 
-	if pieceStatus == types.Undefine {
-		head, err := m.FullNode.ChainHead(ctx)
-		if err != nil {
-			log.Errorf("get chain head err: %s", err)
-		}
-
-		dealProposal, err := m.FullNode.StateMarketStorageDeal(ctx, dealId, head.Key())
-		if err != nil {
-			return fmt.Errorf("get market storage deal %d: %w", dealId, err)
-		}
-		if dealProposal.State.SectorStartEpoch > -1 { // include in sector
-			return fmt.Errorf("reject to reset the status of deal %d activated on the chain", dealId)
-		}
+	// Check the status of the deal on the chain to avoid inconsistencies
+	// between the venus-market database and the on-chain state.
+	head, err := m.FullNode.ChainHead(ctx)
+	if err != nil {
+		log.Errorf("get chain head err: %s", err)
 	}
 
+	dealProposal, err := m.FullNode.StateMarketStorageDeal(ctx, dealId, head.Key())
+	if err != nil {
+		return fmt.Errorf("get market storage deal %d: %w", dealId, err)
+	}
+	dealOnChain := dealProposal.State.SectorStartEpoch > -1
+
+	if dealOnChain && pieceStatus != types.Proving {
+		return fmt.Errorf("refuse to set deal status to `%s` because the deal was on chain: %d", pieceStatus, dealId)
+	} else if !dealOnChain && pieceStatus == types.Proving {
+		return fmt.Errorf("refuse to set deal status to proving because the deal was not found on the chain: %d", dealId)
+	}
 	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, pieceStatus, dealStatus)
 }
 
