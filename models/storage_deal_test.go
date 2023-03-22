@@ -163,7 +163,7 @@ func testStorageDeal(t *testing.T, dealRepo repo.StorageDealRepo) {
 	compareDeal(t, res2, deal2)
 
 	// test list
-	list, err := dealRepo.ListDeal(ctx)
+	list, err := dealRepo.ListDeal(ctx, &types.StorageDealQueryParams{Page: types.Page{Limit: 10}})
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(list))
 

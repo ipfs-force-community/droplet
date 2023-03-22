@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"context"
+	"database/sql/driver"
 	"regexp"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"github.com/stretchr/testify/assert"
@@ -248,17 +250,77 @@ func TestListDeal(t *testing.T) {
 	rows, err := getFullRows(dbStorageDealCases)
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Find(&[]storageDeal{}))
-	assert.NoError(t, err)
-
-	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
-
-	res, err := r.StorageDealRepo().ListDeal(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, len(storageDealCases), len(res))
-	for i := 0; i < len(res); i++ {
-		assert.Equal(t, storageDealCases[i], res[i])
+	var storageDeals []storageDeal
+	ctx := context.Background()
+	caseCount := len(storageDealCases)
+	defPage := types.Page{Limit: caseCount}
+	newQuery := func() *gorm.DB {
+		return db.Table((&storageDeal{}).TableName())
 	}
+
+	// empty params
+	sql, _, err := getSQL(newQuery().Find(&storageDeals))
+	assert.NoError(t, err)
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WillReturnRows(rows)
+	res, err := r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{})
+	assert.NoError(t, err)
+	assert.Len(t, res, 2)
+
+	var vars []driver.Value
+	// test page
+	rows, err = getFullRows(dbStorageDealCases[1:])
+	assert.NoError(t, err)
+	sql, vars, err = getSQL(newQuery().Offset(1).Limit(5).Find(&storageDeals))
+	assert.NoError(t, err)
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: types.Page{Offset: 1, Limit: 5}})
+	assert.NoError(t, err)
+	assert.Len(t, res, 1)
+	assert.Equal(t, storageDealCases[1], res[0])
+
+	// test miner
+	rows, err = getFullRows(dbStorageDealCases[0])
+	assert.NoError(t, err)
+	sql, vars, err = getSQL(newQuery().Where("cdp_provider = ?", dbStorageDealCases[0].Provider.String()).Limit(caseCount).Find(&storageDeals))
+	assert.NoError(t, err)
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: defPage, Miner: address.Address(dbStorageDealCases[0].Provider)})
+	assert.NoError(t, err)
+	assert.Len(t, res, 1)
+
+	// test client
+	client := dbStorageDealCases[0].Client
+	rows, err = getFullRows(dbStorageDealCases[0])
+	assert.NoError(t, err)
+	sql, vars, err = getSQL(newQuery().Where("client = ?", client).Limit(caseCount).Find(&storageDeals))
+	assert.NoError(t, err)
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: defPage, Client: client})
+	assert.NoError(t, err)
+	assert.Len(t, res, 1)
+
+	// test state
+	storageDealActive := storagemarket.StorageDealActive
+	rows, err = getFullRows(dbStorageDealCases)
+	assert.NoError(t, err)
+	sql, vars, err = getSQL(newQuery().Where("state = ?", storageDealActive).Limit(caseCount).Find(&storageDeals))
+	assert.NoError(t, err)
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: defPage, State: &storageDealActive})
+	assert.NoError(t, err)
+	assert.Len(t, res, 2)
+
+	// test state
+	states := []storagemarket.StorageDealStatus{storagemarket.StorageDealFailing,
+		storagemarket.StorageDealExpired, storagemarket.StorageDealError, storagemarket.StorageDealSlashed}
+	rows, err = getFullRows(dbStorageDealCases)
+	assert.NoError(t, err)
+	sql, vars, err = getSQL(newQuery().Where("state not in ?", states).Limit(caseCount).Find(&storageDeals))
+	assert.NoError(t, err)
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: defPage, DiscardFailedDeal: true})
+	assert.NoError(t, err)
+	assert.Len(t, res, 2)
 }
 
 func TestListDealByAddr(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -141,22 +142,55 @@ func TestListRetrievalDeals(t *testing.T) {
 
 	ctx := context.Background()
 
-	rows := mock.NewRows([]string{"cdp_proposal_id", "cdp_payload_cid", "cdp_selector", "cdp_piece_cid", "cdp_price_perbyte", "cdp_payment_interval", "cdp_payment_interval_increase", "cdp_unseal_price", "store_id", "ci_initiator", "ci_responder", "ci_channel_id", "sel_proposal_cid", "status", "receiver", "total_sent", "funds_received", "message", "current_interval", "legacy_protocol", "created_at", "updated_at"})
+	rows, err := getFullRows(dbRetrievalDealCase)
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals`")).WillReturnRows(rows)
+	res, err := r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{})
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res))
+
+	rows = mock.NewRows([]string{"cdp_proposal_id", "cdp_payload_cid", "cdp_selector", "cdp_piece_cid", "cdp_price_perbyte", "cdp_payment_interval", "cdp_payment_interval_increase", "cdp_unseal_price", "store_id", "ci_initiator", "ci_responder", "ci_channel_id", "sel_proposal_cid", "status", "receiver", "total_sent", "funds_received", "message", "current_interval", "legacy_protocol", "created_at", "updated_at"})
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` LIMIT 10 OFFSET 10")).WillReturnRows(rows)
-	res, err := r.RetrievalDealRepo().ListDeals(ctx, 2, 10)
+	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{Page: types.Page{Offset: 10, Limit: 10}})
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(res))
 
+	// test receiver
+	receiver := dbRetrievalDealCase.Receiver
 	rows, err = getFullRows(dbRetrievalDealCase)
 	assert.NoError(t, err)
-
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` LIMIT 10")).WillReturnRows(rows)
-	res2, err := r.RetrievalDealRepo().ListDeals(ctx, 1, 10)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE receiver = ?")).WithArgs(receiver).WillReturnRows(rows)
+	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{Receiver: receiver})
 	assert.Nil(t, err)
-	assert.Equal(t, 1, len(res2))
-	dealState, err := toProviderDealState(dbRetrievalDealCase)
+	assert.Equal(t, 1, len(res))
+
+	// test deal id
+	dealID := dbRetrievalDealCase.ID
+	rows, err = getFullRows(dbRetrievalDealCase)
 	assert.NoError(t, err)
-	assert.Equal(t, res2[0], dealState)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE cdp_proposal_id = ?")).WithArgs(dealID).WillReturnRows(rows)
+	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{DealID: abi.DealID(dealID)})
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res))
+
+	// test status
+	status := dbRetrievalDealCase.Status
+	rows, err = getFullRows(dbRetrievalDealCase)
+	assert.NoError(t, err)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE status = ?")).WithArgs(status).WillReturnRows(rows)
+	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{Status: &status})
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res))
+
+	// test discard failed deal
+	status = uint64(retrievalmarket.DealStatusErrored)
+	rows, err = getFullRows(dbRetrievalDealCase)
+	assert.NoError(t, err)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE status != ?")).WithArgs(status).WillReturnRows(rows)
+	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{DiscardFailedDeal: true})
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res))
 }
 
 func TestGroupRetrievalDealNumberByStatus(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"time"
 
 	"github.com/ipfs-force-community/metrics"
@@ -215,7 +216,7 @@ func (p *StorageProviderImpl) Start(ctx context.Context) error {
 
 func (p *StorageProviderImpl) start(ctx context.Context) error {
 	// Run datastore and DAG store migrations
-	deals, err := p.dealStore.ListDeal(ctx)
+	deals, err := p.dealStore.ListDeal(ctx, &types.StorageDealQueryParams{Page: types.Page{Limit: math.MaxInt32}})
 	if err != nil {
 		return nil
 	}

@@ -18,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
@@ -46,6 +47,7 @@ var storageDealsCmds = &cli.Command{
 		updateStorageDealStateCmd,
 		dealsPendingPublish,
 		getDealCmd,
+		dealStateCmd,
 	},
 }
 
@@ -142,10 +144,46 @@ var importOfflineDealCmd = &cli.Command{
 	},
 }
 
+var offsetFlag = &cli.IntFlag{
+	Name:  "offset",
+	Usage: "Number of skipped items",
+}
+var limitFlag = &cli.IntFlag{
+	Name:  "limit",
+	Value: 20,
+	Usage: "Number of entries per page",
+}
+
 var dealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all deals for this miner",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "miner",
+			Usage: "provider address",
+		},
+		offsetFlag,
+		limitFlag,
+		&cli.Uint64Flag{
+			Name: "state",
+			Usage: `
+deal state, show all deal state: ./venus-market storage deal states.
+part states:
+8  StorageDealExpired
+9  StorageDealSlashed
+10 StorageDealRejecting
+11 StorageDealFailing
+29 StorageDealAwaitingPreCommit
+`,
+		},
+		&cli.StringFlag{
+			Name:  "client",
+			Usage: "client peer id",
+		},
+		&cli.BoolFlag{
+			Name:  "discard-failed",
+			Usage: "filter failed deal, include failing deal, slashed deal, expired deal, error deal",
+		},
 		&cli.BoolFlag{
 			Name:    "verbose",
 			Aliases: []string{"v"},
@@ -154,9 +192,6 @@ var dealsListCmd = &cli.Command{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
-		&cli.StringFlag{
-			Name: "miner",
-		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
@@ -164,16 +199,33 @@ var dealsListCmd = &cli.Command{
 			return err
 		}
 		defer closer()
-		maddr := address.Undef
+
+		mAddr := address.Undef
 		if cctx.IsSet("miner") {
-			maddr, err = address.NewFromString(cctx.String("miner"))
+			mAddr, err = address.NewFromString(cctx.String("miner"))
 			if err != nil {
 				return fmt.Errorf("para `miner` is invalid: %w", err)
 			}
 		}
 
-		ctx := DaemonContext(cctx)
-		deals, err := api.MarketListIncompleteDeals(ctx, maddr)
+		var statePtr *uint64
+		if cctx.IsSet("state") {
+			state := cctx.Uint64("state")
+			statePtr = &state
+		}
+		params := market.StorageDealQueryParams{
+			Miner:             mAddr,
+			State:             statePtr,
+			Client:            cctx.String("client"),
+			DiscardFailedDeal: cctx.Bool("discard-failed"),
+			Page: market.Page{
+				Offset: cctx.Int(offsetFlag.Name),
+				Limit:  cctx.Int(limitFlag.Name),
+			},
+		}
+
+		ctx := ReqContext(cctx)
+		deals, err := api.MarketListIncompleteDeals(ctx, &params)
 		if err != nil {
 			return err
 		}
@@ -394,6 +446,63 @@ var getDealCmd = &cli.Command{
 	},
 }
 
+var dealStateCmd = &cli.Command{
+	Name:  "states",
+	Usage: "Print all storage deal state",
+	Action: func(cliCtx *cli.Context) error {
+		return printStates(storagemarket.DealStates)
+	},
+}
+
+func printStates(data interface{}) error {
+	type item struct {
+		k int
+		v string
+	}
+
+	var items []item
+	var kvs []kv
+	var maxLen int
+
+	switch d := data.(type) {
+	case map[uint64]string:
+		for k, v := range d {
+			items = append(items, item{
+				k: int(k),
+				v: v,
+			})
+		}
+	case map[retrievalmarket.DealStatus]string:
+		for k, v := range d {
+			items = append(items, item{
+				k: int(k),
+				v: v,
+			})
+		}
+	default:
+		return fmt.Errorf("unexpected type %T", data)
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].k < items[j].k
+	})
+
+	for _, item := range items {
+		k := fmt.Sprintf("%d", item.k)
+		kvs = append(kvs, kv{
+			k: k,
+			v: item.v,
+		})
+		if len(k) > maxLen {
+			maxLen = len(k)
+		}
+	}
+
+	fillSpaceAndPrint(kvs, maxLen)
+
+	return nil
+}
+
 func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool) error {
 	sort.Slice(deals, func(i, j int) bool {
 		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
@@ -511,13 +620,17 @@ func outputStorageDeal(deal *market.MinerDeal) error {
 		{"InboundCAR", deal.InboundCAR},
 		{"UpdatedAt", time.Unix(int64(deal.UpdatedAt), 0).Format(time.RFC3339)},
 	}
-	maxLen := len("AvailableForRetrieval")
+
+	fillSpaceAndPrint(data, len("AvailableForRetrieval"))
+
+	return nil
+}
+
+func fillSpaceAndPrint(data []kv, maxLen int) {
 	for _, d := range data {
 		for i := len(d.k); i < maxLen; i++ {
 			d.k += " "
 		}
 		fmt.Println(d.k, d.v)
 	}
-
-	return nil
 }

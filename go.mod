@@ -30,7 +30,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.10.2-0.20230320061738-c105ca752826
+	github.com/filecoin-project/venus v1.10.2-0.20230321024212-c947977469d1
 	github.com/filecoin-project/venus-auth v1.10.2-0.20230308100319-913815325d5e
 	github.com/filecoin-project/venus-messager v1.10.2-0.20230309071456-7cd8d49c6e9a
 	github.com/golang/mock v1.6.0

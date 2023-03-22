@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
@@ -29,12 +30,40 @@ var retrievalDealsCmds = &cli.Command{
 	Subcommands: []*cli.Command{
 		retrievalDealsListCmd,
 		getRetrievalDealCmd,
+		retrievalDealStateCmd,
 	},
 }
 
 var retrievalDealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all active retrieval deals for this miner",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "receiver",
+			Usage: "client peer id",
+		},
+		&cli.Int64Flag{
+			Name:  "deal-id",
+			Usage: "deal id",
+		},
+		&cli.Uint64Flag{
+			Name: "status",
+			Usage: `
+deal status, show all deal status: ./venus-market retrieval deal statuses.
+part statuses:
+6  DealStatusAccepted
+15 DealStatusCompleted
+16 DealStatusDealNotFound
+17 DealStatusErrored
+`,
+		},
+		offsetFlag,
+		limitFlag,
+		&cli.BoolFlag{
+			Name:  "discard-failed",
+			Usage: "filter errored deal",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
@@ -42,7 +71,21 @@ var retrievalDealsListCmd = &cli.Command{
 		}
 		defer closer()
 
-		deals, err := api.MarketListRetrievalDeals(DaemonContext(cctx))
+		params := market.RetrievalDealQueryParams{
+			Receiver: cctx.String("receiver"),
+			DealID:   abi.DealID(cctx.Int64("deal-id")),
+			Page: market.Page{
+				Offset: cctx.Int(offsetFlag.Name),
+				Limit:  cctx.Int(limitFlag.Name),
+			},
+			DiscardFailedDeal: cctx.Bool("discard-failed"),
+		}
+		if cctx.IsSet("status") {
+			status := cctx.Uint64("status")
+			params.Status = &status
+		}
+
+		deals, err := api.MarketListRetrievalDeals(ReqContext(cctx), &params)
 		if err != nil {
 			return err
 		}
@@ -105,6 +148,14 @@ var getRetrievalDealCmd = &cli.Command{
 	},
 }
 
+var retrievalDealStateCmd = &cli.Command{
+	Name:  "statuses",
+	Usage: "Print all retrieval deal status",
+	Action: func(cliCtx *cli.Context) error {
+		return printStates(retrievalmarket.DealStatuses)
+	},
+}
+
 func outputRetrievalDeal(deal *market.ProviderDealState) error {
 	var channelID, pieceCID string
 	var raw []byte
@@ -138,13 +189,7 @@ func outputRetrievalDeal(deal *market.ProviderDealState) error {
 		{"UpdatedAt", time.Unix(int64(deal.UpdatedAt), 0).Format(time.RFC3339)},
 	}
 
-	maxLen := len("PaymentIntervalIncrease")
-	for _, d := range data {
-		for i := len(d.k); i < maxLen; i++ {
-			d.k += " "
-		}
-		fmt.Println(d.k, d.v)
-	}
+	fillSpaceAndPrint(data, len("PaymentIntervalIncrease"))
 
 	return nil
 }

@@ -180,15 +180,32 @@ func (rdr *retrievalDealRepo) HasDeal(ctx context.Context, id peer.ID, id2 rm.De
 	return count > 0, nil
 }
 
-func (rdr *retrievalDealRepo) ListDeals(ctx context.Context, pageIndex, pageSize int) ([]*types.ProviderDealState, error) {
-	query := rdr.DB.Table(retrievalDealTableName).Offset((pageIndex - 1) * pageSize).Limit(pageSize)
-
+func (rdr *retrievalDealRepo) ListDeals(ctx context.Context, params *types.RetrievalDealQueryParams) ([]*types.ProviderDealState, error) {
 	var sqlMsgs []*retrievalDeal
-	err := query.Find(&sqlMsgs).Error
-	if err != nil {
+	discardFailedDeal := params.DiscardFailedDeal
+	if discardFailedDeal && params.Status != nil {
+		discardFailedDeal = *params.Status != uint64(rm.DealStatusErrored)
+	}
+
+	query := rdr.DB.Table(retrievalDealTableName).Offset(params.Offset).Limit(params.Limit)
+	if len(params.Receiver) > 0 {
+		query.Where("receiver = ?", params.Receiver)
+	}
+	if params.DealID > 0 {
+		query.Where("cdp_proposal_id = ?", params.DealID)
+	}
+	if params.Status != nil {
+		query.Where("status = ?", params.Status)
+	}
+	if discardFailedDeal {
+		query.Where("status != ?", rm.DealStatusErrored)
+	}
+
+	if err := query.Find(&sqlMsgs).Error; err != nil {
 		return nil, err
 	}
 
+	var err error
 	result := make([]*types.ProviderDealState, len(sqlMsgs))
 	for index, sqlMsg := range sqlMsgs {
 		result[index], err = toProviderDealState(sqlMsg)

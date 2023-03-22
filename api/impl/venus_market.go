@@ -256,9 +256,13 @@ func (m *MarketNodeImpl) MarketGetDeal(ctx context.Context, dealPropCid cid.Cid)
 
 // MarketListRetrievalDeals todo add user isolate when is available to get miner from retrieve deal
 // 检索订单没法按 `miner address` 过滤
-func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context) ([]types.ProviderDealState, error) {
+func (m *MarketNodeImpl) MarketListRetrievalDeals(ctx context.Context, params *types.RetrievalDealQueryParams) ([]types.ProviderDealState, error) {
+	if params == nil {
+		return nil, fmt.Errorf("params is empty")
+	}
+
 	var out []types.ProviderDealState
-	deals, err := m.RetrievalProvider.ListDeals(ctx)
+	deals, err := m.RetrievalProvider.ListDeals(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -299,22 +303,21 @@ func (m *MarketNodeImpl) MarketGetDealUpdates(ctx context.Context) (<-chan types
 	return results, nil
 }
 
-func (m *MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, mAddr address.Address) ([]types.MinerDeal, error) {
-	var deals []*types.MinerDeal
-	var err error
-	if err = jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
-		return nil, err
+func (m *MarketNodeImpl) MarketListIncompleteDeals(ctx context.Context, params *types.StorageDealQueryParams) ([]types.MinerDeal, error) {
+	if params == nil {
+		return nil, fmt.Errorf("params is nil")
 	}
-	if mAddr == address.Undef {
-		deals, err = m.Repo.StorageDealRepo().ListDeal(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("get deal: %s", err)
+
+	var err error
+	if !params.Miner.Empty() {
+		if err = jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, params.Miner); err != nil {
+			return nil, err
 		}
-	} else {
-		deals, err = m.Repo.StorageDealRepo().ListDealByAddr(ctx, mAddr)
-		if err != nil {
-			return nil, fmt.Errorf("get deal for %s: %s", mAddr.String(), err)
-		}
+	}
+
+	deals, err := m.Repo.StorageDealRepo().ListDeal(ctx, params)
+	if err != nil {
+		return nil, err
 	}
 
 	resDeals := make([]types.MinerDeal, len(deals))
