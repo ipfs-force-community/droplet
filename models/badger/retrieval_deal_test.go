@@ -92,8 +92,8 @@ func TestHasDeal(t *testing.T) {
 func TestListDeals(t *testing.T) {
 	ctx, r, dealCases := prepareRetrievalDealTest(t)
 
-	var peerID peer.ID
-	testutil.Provide(t, &peerID)
+	peerID, err := peer.Decode("12D3KooWCj14HxjJZch7ANeVzmfhPBgZm492euXzoCHiBBEtRsSn")
+	assert.NoError(t, err)
 	peers := []peer.ID{dealCases[0].Receiver, peerID}
 	status := []retrievalmarket.DealStatus{
 		retrievalmarket.DealStatusCancelled,
