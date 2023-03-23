@@ -191,8 +191,8 @@ func (rdr *retrievalDealRepo) ListDeals(ctx context.Context, params *types.Retri
 	if len(params.Receiver) > 0 {
 		query.Where("receiver = ?", params.Receiver)
 	}
-	if params.DealID > 0 {
-		query.Where("cdp_proposal_id = ?", params.DealID)
+	if len(params.PayloadCID) > 0 {
+		query.Where("cdp_payload_cid = ?", params.PayloadCID)
 	}
 	if params.Status != nil {
 		query.Where("status = ?", params.Status)
