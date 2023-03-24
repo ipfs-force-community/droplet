@@ -1042,6 +1042,14 @@ func (m *MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, sid abi.Sector
 	return m.DealAssigner.AssignUnPackedDeals(ctx, sid, ssize, spec)
 }
 
+// ReleaseDeals is used to release the deals that have been assigned by AssignUnPackedDeals method.
+func (m *MarketNodeImpl) ReleaseDeals(ctx context.Context, miner address.Address, deals []abi.DealID) error {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
+		return err
+	}
+	return m.DealAssigner.ReleaseDeals(ctx, miner, deals)
+}
+
 func (m *MarketNodeImpl) MarkDealsAsPacking(ctx context.Context, miner address.Address, deals []abi.DealID) error {
 	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return err
