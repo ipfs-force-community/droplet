@@ -9,9 +9,9 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
+	"github.com/filecoin-project/venus/venus-shared/testutil"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
@@ -150,7 +150,7 @@ func TestListRetrievalDeals(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res))
 
-	rows = mock.NewRows([]string{"cdp_proposal_id", "cdp_payload_cid", "cdp_selector", "cdp_piece_cid", "cdp_price_perbyte", "cdp_payment_interval", "cdp_payment_interval_increase", "cdp_unseal_price", "store_id", "ci_initiator", "ci_responder", "ci_channel_id", "sel_proposal_cid", "status", "receiver", "total_sent", "funds_received", "message", "current_interval", "legacy_protocol", "created_at", "updated_at"})
+	rows = mock.NewRows([]string{"cdp_payload_cid", "cdp_payload_cid", "cdp_selector", "cdp_piece_cid", "cdp_price_perbyte", "cdp_payment_interval", "cdp_payment_interval_increase", "cdp_unseal_price", "store_id", "ci_initiator", "ci_responder", "ci_channel_id", "sel_proposal_cid", "status", "receiver", "total_sent", "funds_received", "message", "current_interval", "legacy_protocol", "created_at", "updated_at"})
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` LIMIT 10 OFFSET 10")).WillReturnRows(rows)
 	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{Page: types.Page{Offset: 10, Limit: 10}})
 	assert.Nil(t, err)
@@ -166,11 +166,11 @@ func TestListRetrievalDeals(t *testing.T) {
 	assert.Equal(t, 1, len(res))
 
 	// test deal id
-	dealID := dbRetrievalDealCase.ID
+	payloadCID := testutil.CidProvider(32)(t)
 	rows, err = getFullRows(dbRetrievalDealCase)
 	assert.NoError(t, err)
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE cdp_proposal_id = ?")).WithArgs(dealID).WillReturnRows(rows)
-	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{DealID: abi.DealID(dealID)})
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE cdp_payload_cid = ?")).WithArgs(payloadCID.String()).WillReturnRows(rows)
+	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{PayloadCID: payloadCID.String()})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res))
 

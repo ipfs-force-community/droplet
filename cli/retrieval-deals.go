@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
@@ -42,9 +41,9 @@ var retrievalDealsListCmd = &cli.Command{
 			Name:  "receiver",
 			Usage: "client peer id",
 		},
-		&cli.Int64Flag{
-			Name:  "deal-id",
-			Usage: "deal id",
+		&cli.StringFlag{
+			Name:  "data-cid",
+			Usage: "deal root cid",
 		},
 		&cli.Uint64Flag{
 			Name: "status",
@@ -72,8 +71,8 @@ part statuses:
 		defer closer()
 
 		params := market.RetrievalDealQueryParams{
-			Receiver: cctx.String("receiver"),
-			DealID:   abi.DealID(cctx.Int64("deal-id")),
+			Receiver:   cctx.String("receiver"),
+			PayloadCID: cctx.String("data-cid"),
 			Page: market.Page{
 				Offset: cctx.Int(offsetFlag.Name),
 				Limit:  cctx.Int(limitFlag.Name),

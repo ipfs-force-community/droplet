@@ -22,6 +22,7 @@ type DealAssiger interface {
 	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error)
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
 	AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
+	ReleaseDeals(ctx context.Context, miner address.Address, deals []abi.DealID) error
 }
 
 var _ DealAssiger = (*dealAssigner)(nil)
@@ -263,6 +264,27 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 	}
 
 	return pieces, nil
+}
+
+func (ps *dealAssigner) ReleaseDeals(ctx context.Context, miner address.Address, deals []abi.DealID) error {
+	return ps.repo.Transaction(func(txRepo repo.TxRepo) error {
+		storageDealRepo := txRepo.StorageDealRepo()
+		for _, dealID := range deals {
+			deal, err := storageDealRepo.GetDealByDealID(ctx, miner, dealID)
+			if err != nil {
+				return fmt.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
+			}
+			if deal.PieceStatus == types.Proving {
+				return fmt.Errorf("cannot release a deal that has been proving. miner: %s, deal: %d", miner.String(), dealID)
+			}
+			deal.PieceStatus = types.Undefine
+			deal.State = storagemarket.StorageDealAwaitingPreCommit
+			if err := storageDealRepo.SaveDeal(ctx, deal); err != nil {
+				return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
+			}
+		}
+		return nil
+	})
 }
 
 type CombinedPieces struct {
