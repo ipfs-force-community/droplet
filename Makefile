@@ -73,3 +73,7 @@ docker: $(BUILD_DEPS)
 	docker tag venus-market filvenus/venus-market:$(TAG)
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=market-client -t market-client .
 	docker tag market-client filvenus/market-client:$(TAG)
+
+docker-push: docker
+	docker push filvenus/venus-market:$(TAG)
+	docker push filvenus/market-client:$(TAG)
