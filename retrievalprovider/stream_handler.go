@@ -82,7 +82,7 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	if err != nil {
 		answer.Status = retrievalmarket.QueryResponseError
 		if errors.Is(err, repo.ErrNotFound) {
-			answer.Message = fmt.Sprintf("retrieve piece(%s) or payload(%s) failed, not found",
+			answer.Message = fmt.Sprintf("retrieve piece(%v) or payload(%s) failed, not found",
 				query.PieceCID, query.PayloadCID)
 		} else {
 			answer.Message = fmt.Sprintf("failed to fetch piece to retrieve from: %s", err)
@@ -91,38 +91,57 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		return
 	}
 
-	selectDeal := minerDeals[0]
+	var validDealCount int
+	answers := make([]retrievalmarket.QueryResponse, len(minerDeals))
+	for i, deal := range minerDeals {
+		answers[i] = answer
+		answers[i].Status = retrievalmarket.QueryResponseAvailable
+		// todo payload size maybe different with real piece size.
+		answers[i].Size = uint64(deal.Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
+		answers[i].PieceCIDFound = retrievalmarket.QueryItemAvailable
 
-	answer.Status = retrievalmarket.QueryResponseAvailable
-	// todo payload size maybe different with real piece size.
-	answer.Size = uint64(selectDeal.Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
-	answer.PieceCIDFound = retrievalmarket.QueryItemAvailable
-	minerCfg, err := p.cfg.MinerProviderConfig(selectDeal.Proposal.Provider, true)
-	if err != nil {
-		answer.Status = retrievalmarket.QueryResponseError
-		answer.Message = err.Error()
-		sendResp(answer)
+		minerCfg, err := p.cfg.MinerProviderConfig(deal.Proposal.Provider, true)
+		if err != nil {
+			answer.Status = retrievalmarket.QueryResponseError
+			answer.Message = err.Error()
+			sendResp(answer)
+		}
+		paymentAddr := minerCfg.RetrievalPaymentAddress.Unwrap()
+		if paymentAddr == address.Undef {
+			answers[i].Status = retrievalmarket.QueryResponseError
+			answers[i].Message = "must specify payment address"
+			continue
+		}
+		answers[i].PaymentAddress = paymentAddr
+		validDealCount++
 	}
-	paymentAddr := address.Address(minerCfg.RetrievalPaymentAddress)
-	if paymentAddr == address.Undef {
-		answer.Status = retrievalmarket.QueryResponseError
-		answer.Message = "must specific payment address in venus-market"
-		sendResp(answer)
+	if validDealCount == 0 {
+		sendResp(answers[0])
 		return
 	}
-	answer.PaymentAddress = paymentAddr
 
-	ask, err := p.askRepo.GetAsk(ctx, selectDeal.Proposal.Provider)
-	if err != nil {
-		answer.Status = retrievalmarket.QueryResponseError
-		answer.Message = fmt.Sprintf("failed to price deal: %s", err)
-		sendResp(answer)
-		return
+	validAnswers := make([]*retrievalmarket.QueryResponse, 0, validDealCount)
+	for i, deal := range minerDeals {
+		if len(answers[i].Message) != 0 {
+			continue
+		}
+		ask, err := p.askRepo.GetAsk(ctx, deal.Proposal.Provider)
+		if err != nil {
+			answer.Status = retrievalmarket.QueryResponseError
+			answer.Message = fmt.Sprintf("failed to got deal price: %s, %s", deal.Proposal.Provider, err)
+			continue
+		}
+
+		answers[i].MinPricePerByte = ask.PricePerByte
+		answers[i].MaxPaymentInterval = ask.PaymentInterval
+		answers[i].MaxPaymentIntervalIncrease = ask.PaymentIntervalIncrease
+		answers[i].UnsealPrice = ask.UnsealPrice
+		validAnswers = append(validAnswers, &answers[i])
 	}
 
-	answer.MinPricePerByte = ask.PricePerByte
-	answer.MaxPaymentInterval = ask.PaymentInterval
-	answer.MaxPaymentIntervalIncrease = ask.PaymentIntervalIncrease
-	answer.UnsealPrice = ask.UnsealPrice
-	sendResp(answer)
+	if len(validAnswers) == 0 {
+		sendResp(answers[0])
+	} else {
+		sendResp(*validAnswers[0])
+	}
 }

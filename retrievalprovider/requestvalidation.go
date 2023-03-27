@@ -182,7 +182,7 @@ func (rv *ProviderRequestValidator) runDealDecisionLogic(ctx context.Context, de
 }
 
 func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.ProviderDealState) (retrievalmarket.DealStatus, error) {
-	minerdeals, err := rv.pieceInfo.GetPieceInfoFromCid(ctx, deal.PayloadCID, deal.PieceCID)
+	minerDeals, err := rv.pieceInfo.GetPieceInfoFromCid(ctx, deal.PayloadCID, deal.PieceCID)
 	if err != nil {
 		if errors.Is(err, repo.ErrNotFound) {
 			return retrievalmarket.DealStatusDealNotFound, err
@@ -194,10 +194,24 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 	defer cancel()
 
 	//todo this deal may not match with query ask, no way to get miner id in current protocol
-	selectDeal := minerdeals[0]
-	deal.SelStorageProposalCid = selectDeal.ProposalCid
-	ask, err := rv.retrievalAsk.GetAsk(ctx, selectDeal.Proposal.Provider)
-	if err != nil {
+	var ask *types.RetrievalAsk
+	for _, minerDeal := range minerDeals {
+		minerCfg, err := rv.cfg.MinerProviderConfig(minerDeal.Proposal.Provider, true)
+		if err != nil {
+			return retrievalmarket.DealStatusErrored, err
+		}
+		if minerCfg.RetrievalPaymentAddress.Unwrap().Empty() {
+			continue
+		}
+		deal.SelStorageProposalCid = minerDeal.ProposalCid
+		ask, err = rv.retrievalAsk.GetAsk(ctx, minerDeal.Proposal.Provider)
+		if err != nil {
+			log.Warnf("got %s ask failed: %v", minerDeal.Proposal.Provider, err)
+		} else {
+			break
+		}
+	}
+	if ask == nil {
 		return retrievalmarket.DealStatusErrored, err
 	}
 
