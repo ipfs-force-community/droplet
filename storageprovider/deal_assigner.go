@@ -267,6 +267,13 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 }
 
 func (ps *dealAssigner) ReleaseDeals(ctx context.Context, miner address.Address, deals []abi.DealID) error {
+	canBeRelease := func(deal *types.MinerDeal) error {
+		if deal.State != storagemarket.StorageDealAwaitingPreCommit &&
+			deal.State != storagemarket.StorageDealSealing {
+			return fmt.Errorf("cannot release a deal that is activated or not ready. miner: %s, deal: %d", deal.Miner, deal.DealID)
+		}
+		return nil
+	}
 	return ps.repo.Transaction(func(txRepo repo.TxRepo) error {
 		storageDealRepo := txRepo.StorageDealRepo()
 		for _, dealID := range deals {
@@ -274,8 +281,8 @@ func (ps *dealAssigner) ReleaseDeals(ctx context.Context, miner address.Address,
 			if err != nil {
 				return fmt.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
 			}
-			if deal.PieceStatus == types.Proving {
-				return fmt.Errorf("cannot release a deal that has been proving. miner: %s, deal: %d", miner.String(), dealID)
+			if err := canBeRelease(deal); err != nil {
+				return err
 			}
 			deal.PieceStatus = types.Undefine
 			deal.State = storagemarket.StorageDealAwaitingPreCommit
