@@ -13,7 +13,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/etherlabsio/healthcheck/v2 v2.0.0
 	github.com/fatih/color v1.13.0
-	github.com/filecoin-project/dagstore v0.5.2
+	github.com/filecoin-project/dagstore v0.6.0
 	github.com/filecoin-project/go-address v1.1.0
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
@@ -30,7 +30,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.10.2-0.20230323084520-c7cd25dffe48
+	github.com/filecoin-project/venus v1.10.2-0.20230327054644-931bc77297de
 	github.com/filecoin-project/venus-auth v1.10.2-0.20230308100319-913815325d5e
 	github.com/filecoin-project/venus-messager v1.10.2-0.20230309071456-7cd8d49c6e9a
 	github.com/golang/mock v1.6.0
@@ -41,7 +41,7 @@ require (
 	github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
 	github.com/ipfs-force-community/venus-gateway v1.10.2-0.20230320070449-17b514ccd356
-	github.com/ipfs/go-blockservice v0.4.0
+	github.com/ipfs/go-blockservice v0.5.0
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-cidutil v0.1.0
 	github.com/ipfs/go-datastore v0.6.0
@@ -171,6 +171,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/influxdata/influxdb-client-go/v2 v2.2.2 // indirect

@@ -79,6 +79,9 @@ func TestWrapperAcquireRecoveryDestroy(t *testing.T) {
 	dr := make(chan dagstore.ShardResult, 1)
 	err = w.DestroyShard(ctx, pieceCid, dr)
 	require.NoError(t, err)
+	res := <-dr
+	require.NoError(t, res.Error)
+	require.Equal(t, shard.KeyFromCID(pieceCid), res.Key)
 
 	dctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
