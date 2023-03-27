@@ -895,11 +895,9 @@ func (m *MarketNodeImpl) DagstoreDestroyShard(ctx context.Context, key string) e
 		return fmt.Errorf("query shard failed: %v", err)
 	}
 
-	go func() {
-		if err := m.DAGStore.DestroyShard(ctx, shardKey, sr, opts); err != nil {
-			sr <- dagstore.ShardResult{Error: err}
-		}
-	}()
+	if err := m.DAGStore.DestroyShard(ctx, shardKey, sr, opts); err != nil {
+		return err
+	}
 
 	select {
 	case <-ctx.Done():

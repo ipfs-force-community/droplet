@@ -35,6 +35,20 @@ var dagstoreListShardsCmd = &cli.Command{
 			Usage:       "use color in display output",
 			DefaultText: "depends on output being a TTY",
 		},
+		&cli.StringSliceFlag{
+			Name: "filter",
+			Usage: `Filter shards in specific states,
+eg. ./venus-market dagstore list-shards --filter=ShardStateErrored --filter=ShardStateAvailable, will ignore Errored and Available shards.
+all shard states:
+ShardStateAvailable
+ShardStateServing
+ShardStateErrored
+ShardStateNew
+ShardStateInitializing
+ShardStateRecovering
+ShardStateUnknown
+`,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.IsSet("color") {
@@ -57,6 +71,11 @@ var dagstoreListShardsCmd = &cli.Command{
 			return nil
 		}
 
+		filterStates := make(map[string]struct{})
+		for _, state := range cctx.StringSlice("filter") {
+			filterStates[state] = struct{}{}
+		}
+
 		tw := tablewriter.New(
 			tablewriter.Col("Key"),
 			tablewriter.Col("State"),
@@ -71,6 +90,9 @@ var dagstoreListShardsCmd = &cli.Command{
 		}
 
 		for _, s := range shards {
+			if _, ok := filterStates[s.State]; ok {
+				continue
+			}
 			m := map[string]interface{}{
 				"Key": s.Key,
 				"State": func() string {
@@ -339,7 +361,7 @@ var dagstoreGcCmd = &cli.Command{
 }
 
 var dagStoreDestroyShardCmd = &cli.Command{
-	Name:  "destroy",
+	Name:  "destroy-shard",
 	Usage: "Destroy shard",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
