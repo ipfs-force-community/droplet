@@ -70,10 +70,10 @@ TAG:=test
 docker: $(BUILD_DEPS)
 	curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/docker/dockerfile
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=venus-market -t venus-market .
-	docker tag venus-market filvenus/venus-market:$(TAG)
+	docker tag venus-market $(PRIVATE_REGISTRY)/filvenus/venus-market:$(TAG)
 	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=market-client -t market-client .
-	docker tag market-client filvenus/market-client:$(TAG)
+	docker tag market-client $(PRIVATE_REGISTRY)/filvenus/market-client:$(TAG)
 
 docker-push: docker
-	docker push filvenus/venus-market:$(TAG)
-	docker push filvenus/market-client:$(TAG)
+	docker push $(PRIVATE_REGISTRY)/filvenus/venus-market:$(TAG)
+	docker push $(PRIVATE_REGISTRY)/filvenus/market-client:$(TAG)
