@@ -75,7 +75,7 @@ func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, 
 	if err != nil {
 		return nil, nil, err
 	}
-	fmt.Println(homePath)
+
 	apiUrl, err := ioutil.ReadFile(path.Join(homePath, "api"))
 	if err != nil {
 		return nil, nil, err
