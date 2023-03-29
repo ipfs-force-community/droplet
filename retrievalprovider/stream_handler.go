@@ -97,7 +97,13 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	// todo payload size maybe different with real piece size.
 	answer.Size = uint64(selectDeal.Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
 	answer.PieceCIDFound = retrievalmarket.QueryItemAvailable
-	paymentAddr := address.Address(p.cfg.MinerProviderConfig(selectDeal.Proposal.Provider, true).RetrievalPaymentAddress)
+	minerCfg, err := p.cfg.MinerProviderConfig(selectDeal.Proposal.Provider, true)
+	if err != nil {
+		answer.Status = retrievalmarket.QueryResponseError
+		answer.Message = err.Error()
+		sendResp(answer)
+	}
+	paymentAddr := address.Address(minerCfg.RetrievalPaymentAddress)
 	if paymentAddr == address.Undef {
 		answer.Status = retrievalmarket.QueryResponseError
 		answer.Message = "must specific payment address in venus-market"

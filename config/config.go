@@ -6,6 +6,8 @@ import (
 	"github.com/ipfs-force-community/metrics"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/venus/venus-shared/types"
 )
 
 const (
@@ -187,18 +189,87 @@ func (m *MarketConfig) AddS3PieceStorage(fsps *S3PieceStorage) error {
 	return SaveConfig(m)
 }
 
-func (m *MarketConfig) MinerProviderConfig(mAddr address.Address, useCommon bool) *ProviderConfig {
+// MinerProviderConfig returns provider config. if mAddr is empty, returns global provider config.
+func (m *MarketConfig) MinerProviderConfig(mAddr address.Address, useCommon bool) (*ProviderConfig, error) {
+	if mAddr.Empty() {
+		return m.CommonProvider, nil
+	}
+
+	var found bool
+	var minerCfg *ProviderConfig
 	for i := range m.Miners {
-		if m.Miners[i].Addr == Address(mAddr) && m.Miners[i].ProviderConfig != nil {
-			return m.Miners[i].ProviderConfig
+		if m.Miners[i].Addr == Address(mAddr) {
+			found = true
+			minerCfg = m.Miners[i].ProviderConfig
+			break
 		}
 	}
-
-	if useCommon {
-		return m.CommonProvider
+	if !found {
+		return nil, fmt.Errorf("not found miner(%s) config", mAddr)
 	}
 
-	return nil
+	if minerCfg == nil {
+		if useCommon {
+			return m.CommonProvider, nil
+		}
+
+		return minerCfg, nil
+	}
+
+	// minerCfg not nil
+	if !useCommon {
+		return minerCfg, nil
+	}
+
+	mergeProviderConfig(minerCfg, m.CommonProvider)
+
+	return minerCfg, nil
+}
+
+func mergeProviderConfig(providerCfg, commonCfg *ProviderConfig) {
+	nilOrZero := func(val types.FIL) bool {
+		return val.Int == nil || val.Int.Cmp(big.Zero().Int) == 0
+	}
+
+	if len(providerCfg.PieceCidBlocklist) == 0 && len(commonCfg.PieceCidBlocklist) != 0 {
+		providerCfg.PieceCidBlocklist = commonCfg.PieceCidBlocklist
+	}
+	if providerCfg.ExpectedSealDuration == 0 && commonCfg.ExpectedSealDuration != 0 {
+		providerCfg.ExpectedSealDuration = commonCfg.ExpectedSealDuration
+	}
+	if providerCfg.MaxDealStartDelay == 0 && commonCfg.MaxDealStartDelay != 0 {
+		providerCfg.MaxDealStartDelay = commonCfg.MaxDealStartDelay
+	}
+	if providerCfg.PublishMsgPeriod == 0 && commonCfg.PublishMsgPeriod != 0 {
+		providerCfg.PublishMsgPeriod = commonCfg.PublishMsgPeriod
+	}
+	if providerCfg.MaxDealsPerPublishMsg == 0 && commonCfg.MaxDealsPerPublishMsg != 0 {
+		providerCfg.MaxDealsPerPublishMsg = commonCfg.MaxDealsPerPublishMsg
+	}
+	if len(providerCfg.Filter) == 0 && len(commonCfg.Filter) != 0 {
+		providerCfg.Filter = commonCfg.Filter
+	}
+	if len(providerCfg.RetrievalFilter) == 0 && len(commonCfg.RetrievalFilter) != 0 {
+		providerCfg.RetrievalFilter = commonCfg.RetrievalFilter
+	}
+	if len(providerCfg.TransferPath) == 0 && len(commonCfg.TransferPath) != 0 {
+		providerCfg.TransferPath = commonCfg.TransferPath
+	}
+	if providerCfg.RetrievalPricing == nil && commonCfg.RetrievalPricing != nil {
+		providerCfg.RetrievalFilter = commonCfg.RetrievalFilter
+	}
+	if nilOrZero(providerCfg.MaxPublishDealsFee) && !nilOrZero(commonCfg.MaxPublishDealsFee) {
+		providerCfg.MaxPublishDealsFee.Int = commonCfg.MaxPublishDealsFee.Int
+	}
+	if nilOrZero(providerCfg.MaxMarketBalanceAddFee) && !nilOrZero(commonCfg.MaxMarketBalanceAddFee) {
+		providerCfg.MaxMarketBalanceAddFee.Int = commonCfg.MaxMarketBalanceAddFee.Int
+	}
+	if address.Address(providerCfg.RetrievalPaymentAddress).Empty() {
+		providerCfg.RetrievalPaymentAddress = commonCfg.RetrievalPaymentAddress
+	}
+	if len(providerCfg.DealPublishAddress) == 0 && len(commonCfg.DealPublishAddress) != 0 {
+		providerCfg.DealPublishAddress = commonCfg.DealPublishAddress
+	}
 }
 
 func (m *MarketConfig) SetMinerProviderConfig(mAddr address.Address, pCfg *ProviderConfig) {
@@ -211,11 +282,5 @@ func (m *MarketConfig) SetMinerProviderConfig(mAddr address.Address, pCfg *Provi
 				return
 			}
 		}
-
-		// create
-		m.Miners = append(m.Miners, &MinerConfig{
-			Addr:           Address(mAddr),
-			ProviderConfig: pCfg,
-		})
 	}
 }
