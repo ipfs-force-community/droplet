@@ -16,7 +16,10 @@ import (
 
 func CliStorageDealFilter(cfg *config.MarketConfig) config.StorageDealFilter {
 	return func(ctx context.Context, mAddr address.Address, deal *types.MinerDeal) (bool, string, error) {
-		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		pCfg, err := cfg.MinerProviderConfig(mAddr, true)
+		if err != nil {
+			return false, "", err
+		}
 		if pCfg == nil || len(pCfg.Filter) == 0 {
 			return true, "", nil
 		}
@@ -43,7 +46,10 @@ func CliStorageDealFilter(cfg *config.MarketConfig) config.StorageDealFilter {
 
 func CliRetrievalDealFilter(cfg *config.MarketConfig) config.RetrievalDealFilter {
 	return func(ctx context.Context, mAddr address.Address, deal types.ProviderDealState) (bool, string, error) {
-		pCfg := cfg.MinerProviderConfig(mAddr, true)
+		pCfg, err := cfg.MinerProviderConfig(mAddr, true)
+		if err != nil {
+			return false, "", err
+		}
 		if pCfg == nil || len(pCfg.Filter) == 0 {
 			return true, "", nil
 		}

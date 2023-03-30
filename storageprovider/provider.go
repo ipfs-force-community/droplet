@@ -210,7 +210,10 @@ func (pna *ProviderNodeAdapter) ReleaseFunds(ctx context.Context, addr address.A
 // Adds funds with the StorageMinerActor for a piecestorage participant.  Used by both providers and clients.
 func (pna *ProviderNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
-	pCfg := pna.cfg.MinerProviderConfig(addr, true)
+	pCfg, err := pna.cfg.MinerProviderConfig(addr, true)
+	if err != nil {
+		return cid.Undef, err
+	}
 	msgId, err := pna.msgClient.PushMessage(ctx,
 		&types.Message{
 			To:     marketactor.Address,
@@ -249,7 +252,10 @@ func (pna *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context
 
 	// The maximum amount of collateral that the provider will put into escrow
 	// for a deal is calculated as a multiple of the minimum bounded amount
-	pCfg := pna.cfg.MinerProviderConfig(provider, true)
+	pCfg, err := pna.cfg.MinerProviderConfig(provider, true)
+	if err != nil {
+		return abi.TokenAmount{}, abi.TokenAmount{}, err
+	}
 	max := types.BigMul(bounds.Min, types.NewInt(pCfg.MaxProviderCollateralMultiplier))
 
 	return bounds.Min, max, nil
