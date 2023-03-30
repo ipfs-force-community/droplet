@@ -52,6 +52,10 @@ func (addr Address) MarshalText() ([]byte, error) {
 	return []byte(address.Address(addr).String()), nil
 }
 
+func (addr Address) Unwrap() address.Address {
+	return address.Address(addr)
+}
+
 func CfgAddrArrToNative(addrs []Address) []address.Address {
 	nativeAddrs := make([]address.Address, len(addrs))
 	for _, addr := range addrs {
