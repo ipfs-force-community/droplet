@@ -102,9 +102,9 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 
 		minerCfg, err := p.cfg.MinerProviderConfig(deal.Proposal.Provider, true)
 		if err != nil {
-			answer.Status = retrievalmarket.QueryResponseError
-			answer.Message = err.Error()
-			sendResp(answer)
+			answers[i].Status = retrievalmarket.QueryResponseError
+			answers[i].Message = err.Error()
+			continue
 		}
 		paymentAddr := minerCfg.RetrievalPaymentAddress.Unwrap()
 		if paymentAddr == address.Undef {
@@ -120,15 +120,13 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		return
 	}
 
-	validAnswers := make([]*retrievalmarket.QueryResponse, 0, validDealCount)
+	var validAnswer *retrievalmarket.QueryResponse
 	for i, deal := range minerDeals {
 		if len(answers[i].Message) != 0 {
 			continue
 		}
 		ask, err := p.askRepo.GetAsk(ctx, deal.Proposal.Provider)
 		if err != nil {
-			answer.Status = retrievalmarket.QueryResponseError
-			answer.Message = fmt.Sprintf("failed to got deal price: %s, %s", deal.Proposal.Provider, err)
 			continue
 		}
 
@@ -136,12 +134,16 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		answers[i].MaxPaymentInterval = ask.PaymentInterval
 		answers[i].MaxPaymentIntervalIncrease = ask.PaymentIntervalIncrease
 		answers[i].UnsealPrice = ask.UnsealPrice
-		validAnswers = append(validAnswers, &answers[i])
+		validAnswer = &answers[i]
+		break
 	}
 
-	if len(validAnswers) == 0 {
-		sendResp(answers[0])
+	if validAnswer == nil {
+		sendResp(retrievalmarket.QueryResponse{
+			Status:  retrievalmarket.QueryResponseError,
+			Message: "failed to got deal price",
+		})
 	} else {
-		sendResp(*validAnswers[0])
+		sendResp(*validAnswer)
 	}
 }

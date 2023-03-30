@@ -198,7 +198,7 @@ func (rv *ProviderRequestValidator) acceptDeal(ctx context.Context, deal *types.
 	for _, minerDeal := range minerDeals {
 		minerCfg, err := rv.cfg.MinerProviderConfig(minerDeal.Proposal.Provider, true)
 		if err != nil {
-			return retrievalmarket.DealStatusErrored, err
+			continue
 		}
 		if minerCfg.RetrievalPaymentAddress.Unwrap().Empty() {
 			continue
