@@ -91,59 +91,41 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		return
 	}
 
-	var validDealCount int
-	answers := make([]retrievalmarket.QueryResponse, len(minerDeals))
-	for i, deal := range minerDeals {
-		answers[i] = answer
-		answers[i].Status = retrievalmarket.QueryResponseAvailable
+	log := log.With("payload cid", query.PayloadCID)
+	for _, deal := range minerDeals {
+		answer.Status = retrievalmarket.QueryResponseAvailable
 		// todo payload size maybe different with real piece size.
-		answers[i].Size = uint64(deal.Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
-		answers[i].PieceCIDFound = retrievalmarket.QueryItemAvailable
+		answer.Size = uint64(deal.Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
+		answer.PieceCIDFound = retrievalmarket.QueryItemAvailable
 
 		minerCfg, err := p.cfg.MinerProviderConfig(deal.Proposal.Provider, true)
 		if err != nil {
-			answers[i].Status = retrievalmarket.QueryResponseError
-			answers[i].Message = err.Error()
+			log.Warn(err)
 			continue
 		}
 		paymentAddr := minerCfg.RetrievalPaymentAddress.Unwrap()
 		if paymentAddr == address.Undef {
-			answers[i].Status = retrievalmarket.QueryResponseError
-			answers[i].Message = "must specify payment address"
+			log.Warnf("must specify payment address")
 			continue
 		}
-		answers[i].PaymentAddress = paymentAddr
-		validDealCount++
-	}
-	if validDealCount == 0 {
-		sendResp(answers[0])
+		answer.PaymentAddress = paymentAddr
+
+		ask, err := p.askRepo.GetAsk(ctx, deal.Proposal.Provider)
+		if err != nil {
+			log.Warnf("got %s ask failed: %v", deal.Proposal.Provider, err)
+			continue
+		}
+		answer.MinPricePerByte = ask.PricePerByte
+		answer.MaxPaymentInterval = ask.PaymentInterval
+		answer.MaxPaymentIntervalIncrease = ask.PaymentIntervalIncrease
+		answer.UnsealPrice = ask.UnsealPrice
+
+		sendResp(answer)
 		return
 	}
 
-	var validAnswer *retrievalmarket.QueryResponse
-	for i, deal := range minerDeals {
-		if len(answers[i].Message) != 0 {
-			continue
-		}
-		ask, err := p.askRepo.GetAsk(ctx, deal.Proposal.Provider)
-		if err != nil {
-			continue
-		}
-
-		answers[i].MinPricePerByte = ask.PricePerByte
-		answers[i].MaxPaymentInterval = ask.PaymentInterval
-		answers[i].MaxPaymentIntervalIncrease = ask.PaymentIntervalIncrease
-		answers[i].UnsealPrice = ask.UnsealPrice
-		validAnswer = &answers[i]
-		break
-	}
-
-	if validAnswer == nil {
-		sendResp(retrievalmarket.QueryResponse{
-			Status:  retrievalmarket.QueryResponseError,
-			Message: "failed to got deal price",
-		})
-	} else {
-		sendResp(*validAnswer)
-	}
+	sendResp(retrievalmarket.QueryResponse{
+		Status:  retrievalmarket.QueryResponseError,
+		Message: "failed to query deal",
+	})
 }
