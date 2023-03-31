@@ -2,7 +2,6 @@ package piecestorage
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -91,22 +90,15 @@ func (f *fsPieceStorage) GetRedirectUrl(_ context.Context, _ string) (string, er
 	return "", ErrUnsupportRedirect
 }
 
-func (f *fsPieceStorage) GetPieceTransfer(_ context.Context, pieceCid string) (*market.Transfer, error) {
+func (f *fsPieceStorage) GetPieceTransfer(_ context.Context, pieceCid string) (string, error) {
 	if f.fsCfg.ReadOnly {
-		return nil, fmt.Errorf("%s id readonly piece store", f.fsCfg.Name)
+		return "", fmt.Errorf("%s id readonly piece store", f.fsCfg.Name)
 	}
 
-	dstPath := path.Join(f.baseUrl, pieceCid)
-	transfer := market.FsTransfer{Path: dstPath}
-	params, err := json.Marshal(&transfer)
-	if err != nil {
-		return nil, fmt.Errorf("construct piece transfer: %w", err)
-	}
+	// url example: http://market/resource?resource-id=xxx&store=xxx
+	url := fmt.Sprintf("/resource?resource-id=%s&store=%s", pieceCid, f.fsCfg.Name)
 
-	return &market.Transfer{
-		Type:   market.PiecesTransferFs,
-		Params: params,
-	}, nil
+	return url, nil
 }
 
 func (f *fsPieceStorage) Has(_ context.Context, resourceId string) (bool, error) {

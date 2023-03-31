@@ -2,7 +2,6 @@ package piecestorage
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -206,31 +205,27 @@ func (s *s3PieceStorage) GetRedirectUrl(ctx context.Context, resourceId string) 
 	return req.Presign(time.Hour * 24)
 }
 
-func (s *s3PieceStorage) GetPieceTransfer(_ context.Context, pieceCid string) (*market.Transfer, error) {
+func (s *s3PieceStorage) GetPutObjectUrl(ctx context.Context, resourceId string) (string, error) {
+	params := &s3.PutObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(s.subdirWrapper(resourceId)),
+	}
+
+	req, _ := s.s3Client.PutObjectRequest(params)
+	return req.Presign(time.Hour * 24)
+}
+
+func (s *s3PieceStorage) GetPieceTransfer(ctx context.Context, pieceCid string) (string, error) {
 	if s.s3Cfg.ReadOnly {
-		return nil, fmt.Errorf("%s id readonly piece store", s.s3Cfg.Name)
+		return "", fmt.Errorf("%s is readonly piece store", s.s3Cfg.Name)
 	}
 
-	transfer := market.S3Transfer{
-		EndPoint: s.s3Cfg.EndPoint,
-		Bucket:   s.s3Cfg.Bucket,
-		SubDir:   s.s3Cfg.SubDir,
-
-		AccessKey: s.s3Cfg.AccessKey,
-		SecretKey: s.s3Cfg.SecretKey,
-		Token:     s.s3Cfg.Token,
-
-		Key: pieceCid,
-	}
-	params, err := json.Marshal(&transfer)
+	url, err := s.GetPutObjectUrl(ctx, pieceCid)
 	if err != nil {
-		return nil, fmt.Errorf("construct piece transfer: %w", err)
+		return "", err
 	}
 
-	return &market.Transfer{
-		Type:   market.PiecesTransferS3,
-		Params: params,
-	}, nil
+	return url, nil
 }
 
 func (s *s3PieceStorage) GetStorageStatus() (market.StorageStatus, error) {
