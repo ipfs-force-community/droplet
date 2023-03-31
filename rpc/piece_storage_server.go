@@ -90,25 +90,36 @@ func (p *PieceStorageServer) handleGet(res http.ResponseWriter, req *http.Reques
 // handlePut save resource to piece storage
 // url example: http://market/resource?resource-id=xxx&store=xxx or http://market/resource?resource-id=xxx&size=xxx
 func (p *PieceStorageServer) handlePut(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	resourceID := req.URL.Query().Get("resource-id")
 	if len(resourceID) == 0 {
 		logErrorAndResonse(res, "resource is empty", http.StatusBadRequest)
 		return
 	}
 
-	storeName := req.URL.Query().Get("store")
-	ctx := req.Context()
+	if req.Body == nil {
+		logErrorAndResonse(res, "body is empty", http.StatusBadRequest)
+		return
+	}
 
-	// find target store and write into it
-	store, err := p.pieceStorageMgr.GetPieceStorageByName(storeName)
-	if err != nil {
-		logErrorAndResonse(res, fmt.Sprintf("store %s not found", storeName), http.StatusNotFound)
-		// try to find one store to save
-		sizeStr := req.URL.Query().Get("size")
-		if len(sizeStr) == 0 {
-			logErrorAndResonse(res, "both store and size is empty", http.StatusBadRequest)
+	if !req.URL.Query().Has("store") && !req.URL.Query().Has("size") {
+		logErrorAndResonse(res, "both store and size is empty", http.StatusBadRequest)
+		return
+	}
+
+	var store piecestorage.IPieceStorage
+	if req.URL.Query().Has("store") {
+		storeName := req.URL.Query().Get("store")
+
+		var err error
+		store, err = p.pieceStorageMgr.GetPieceStorageByName(storeName)
+		if err != nil {
+			logErrorAndResonse(res, fmt.Sprintf("fail to get store %s: %s", storeName, err), http.StatusInternalServerError)
 			return
 		}
+	}
+	if store == nil && req.URL.Query().Has("size") {
+		sizeStr := req.URL.Query().Get("size")
 		size, err := strconv.ParseInt(sizeStr, 10, 64)
 		if err != nil {
 			logErrorAndResonse(res, fmt.Sprintf("size %s is invalid", sizeStr), http.StatusBadRequest)
@@ -121,9 +132,9 @@ func (p *PieceStorageServer) handlePut(res http.ResponseWriter, req *http.Reques
 		}
 	}
 
-	_, err = store.SaveTo(ctx, resourceID, req.Body)
+	_, err := store.SaveTo(ctx, resourceID, req.Body)
 	if err != nil {
-		logErrorAndResonse(res, fmt.Sprintf("fail to save resource %s to store %s: %s", resourceID, storeName, err), http.StatusInternalServerError)
+		logErrorAndResonse(res, fmt.Sprintf("fail to save resource %s to store %s: %s", resourceID, store.GetName(), err), http.StatusInternalServerError)
 		return
 	}
 
