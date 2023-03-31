@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus-market/v2/config"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 )
+
+var fakePaymentAddress = types.MustParseAddress("t00")
 
 type IRetrievalStream interface {
 	HandleQueryStream(stream rmnet.RetrievalQueryStream)
@@ -65,6 +68,11 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	sendResp := func(resp retrievalmarket.QueryResponse) {
 		if resp.Status == retrievalmarket.QueryResponseError {
 			log.Errorf(resp.Message)
+		}
+		if resp.PaymentAddress.Empty() {
+			// If PaymentAddress is not defined, MarshalCBOR will fail, so a fake payment address is used.
+			// ref: https://github.com/filecoin-project/go-address/blob/v1.1.0/address.go#L480
+			resp.PaymentAddress = fakePaymentAddress
 		}
 		if err := stream.WriteQueryResponse(resp); err != nil {
 			log.Errorf("Retrieval query: writing query response: %s", err)
