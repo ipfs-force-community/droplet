@@ -23,11 +23,19 @@ func NewPieceStorageServer(pieceStorageMgr *piecestorage.PieceStorageManager) *P
 }
 
 func (p *PieceStorageServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet {
+	switch req.Method {
+	case http.MethodGet:
+		p.handleGet(res, req)
+	case http.MethodPut:
+		p.handlePut(res, req)
+	default:
+		// handle error
 		logErrorAndResonse(res, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
+}
 
+func (p *PieceStorageServer) handleGet(res http.ResponseWriter, req *http.Request) {
 	resourceID := req.URL.Query().Get("resource-id")
 	if len(resourceID) == 0 {
 		logErrorAndResonse(res, "resource is empty", http.StatusBadRequest)
@@ -77,6 +85,48 @@ func (p *PieceStorageServer) ServeHTTP(res http.ResponseWriter, req *http.Reques
 	// as we can not override http response headers after body transfer has began
 	// we can only log the error info here
 	_, _ = io.Copy(res, r)
+}
+
+// handlePut save resource to piece storage
+// url example: http://market/resource?resource-id=xxx&store=xxx or http://market/resource?resource-id=xxx&size=xxx
+func (p *PieceStorageServer) handlePut(res http.ResponseWriter, req *http.Request) {
+	resourceID := req.URL.Query().Get("resource-id")
+	if len(resourceID) == 0 {
+		logErrorAndResonse(res, "resource is empty", http.StatusBadRequest)
+		return
+	}
+
+	storeName := req.URL.Query().Get("store")
+	ctx := req.Context()
+
+	// find target store and write into it
+	store, err := p.pieceStorageMgr.GetPieceStorageByName(storeName)
+	if err != nil {
+		logErrorAndResonse(res, fmt.Sprintf("store %s not found", storeName), http.StatusNotFound)
+		// try to find one store to save
+		sizeStr := req.URL.Query().Get("size")
+		if len(sizeStr) == 0 {
+			logErrorAndResonse(res, "both store and size is empty", http.StatusBadRequest)
+			return
+		}
+		size, err := strconv.ParseInt(sizeStr, 10, 64)
+		if err != nil {
+			logErrorAndResonse(res, fmt.Sprintf("size %s is invalid", sizeStr), http.StatusBadRequest)
+			return
+		}
+		store, err = p.pieceStorageMgr.FindStorageForWrite(size)
+		if err != nil {
+			logErrorAndResonse(res, fmt.Sprintf("fail to find store for write: %s", err), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	_, err = store.SaveTo(ctx, resourceID, req.Body)
+	if err != nil {
+		logErrorAndResonse(res, fmt.Sprintf("fail to save resource %s to store %s: %s", resourceID, storeName, err), http.StatusInternalServerError)
+	}
+
+	res.WriteHeader(http.StatusOK)
 }
 
 func logErrorAndResonse(res http.ResponseWriter, err string, code int) {
