@@ -124,6 +124,7 @@ func (p *PieceStorageServer) handlePut(res http.ResponseWriter, req *http.Reques
 	_, err = store.SaveTo(ctx, resourceID, req.Body)
 	if err != nil {
 		logErrorAndResonse(res, fmt.Sprintf("fail to save resource %s to store %s: %s", resourceID, storeName, err), http.StatusInternalServerError)
+		return
 	}
 
 	res.WriteHeader(http.StatusOK)
