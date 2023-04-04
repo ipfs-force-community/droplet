@@ -886,6 +886,27 @@ func (m *MarketNodeImpl) DagstoreInitializeStorage(ctx context.Context, storageN
 	return m.dagstoreLoadShards(ctx, toInitialize, params.MaxConcurrency)
 }
 
+func (m *MarketNodeImpl) DagstoreDestroyShard(ctx context.Context, key string) error {
+	opts := dagstore.DestroyOpts{}
+	sr := make(chan dagstore.ShardResult, 1)
+
+	shardKey := shard.KeyFromString(key)
+	if _, err := m.DAGStore.GetShardInfo(shardKey); err != nil {
+		return fmt.Errorf("query shard failed: %v", err)
+	}
+
+	if err := m.DAGStore.DestroyShard(ctx, shardKey, sr, opts); err != nil {
+		return err
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case r := <-sr:
+		return r.Error
+	}
+}
+
 func (m *MarketNodeImpl) dagstoreLoadShards(ctx context.Context, toInitialize []string, concurrency int) (<-chan types.DagstoreInitializeAllEvent, error) {
 	// prepare the thottler tokens.
 	var throttle chan struct{}

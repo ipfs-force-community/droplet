@@ -22,6 +22,7 @@ var DagstoreCmd = &cli.Command{
 		dagstoreInitializeAllCmd,
 		dagstoreInitializeStorageCmd,
 		dagstoreGcCmd,
+		dagStoreDestroyShardCmd,
 	},
 }
 
@@ -33,6 +34,20 @@ var dagstoreListShardsCmd = &cli.Command{
 			Name:        "color",
 			Usage:       "use color in display output",
 			DefaultText: "depends on output being a TTY",
+		},
+		&cli.StringSliceFlag{
+			Name: "filter",
+			Usage: `Filter shards in specific states,
+eg. ./venus-market dagstore list-shards --filter=ShardStateErrored --filter=ShardStateAvailable, will ignore Errored and Available shards.
+all shard states:
+ShardStateAvailable
+ShardStateServing
+ShardStateErrored
+ShardStateNew
+ShardStateInitializing
+ShardStateRecovering
+ShardStateUnknown
+`,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -56,6 +71,11 @@ var dagstoreListShardsCmd = &cli.Command{
 			return nil
 		}
 
+		filterStates := make(map[string]struct{})
+		for _, state := range cctx.StringSlice("filter") {
+			filterStates[state] = struct{}{}
+		}
+
 		tw := tablewriter.New(
 			tablewriter.Col("Key"),
 			tablewriter.Col("State"),
@@ -63,13 +83,16 @@ var dagstoreListShardsCmd = &cli.Command{
 		)
 
 		colors := map[string]color.Attribute{
-			"ShardStateAvailable": color.FgGreen,
-			"ShardStateServing":   color.FgBlue,
-			"ShardStateErrored":   color.FgRed,
-			"ShardStateNew":       color.FgYellow,
+			types.ShardStateAvailable: color.FgGreen,
+			types.ShardStateServing:   color.FgBlue,
+			types.ShardStateErrored:   color.FgRed,
+			types.ShardStateNew:       color.FgYellow,
 		}
 
 		for _, s := range shards {
+			if _, ok := filterStates[s.State]; ok {
+				continue
+			}
 			m := map[string]interface{}{
 				"Key": s.Key,
 				"State": func() string {
@@ -331,6 +354,55 @@ var dagstoreGcCmd = &cli.Command{
 			} else {
 				_, _ = fmt.Fprintln(os.Stdout, e.Key, color.New(color.FgRed).Sprint("ERROR"), e.Error)
 			}
+		}
+
+		return nil
+	},
+}
+
+var dagStoreDestroyShardCmd = &cli.Command{
+	Name:  "destroy-shard",
+	Usage: "Destroy shard",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "errored",
+			Usage: "Destroy all errored shards",
+		},
+	},
+	ArgsUsage: "[keys]",
+	Action: func(cliCtx *cli.Context) error {
+		marketsApi, closer, err := NewMarketNode(cliCtx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cliCtx)
+		args := cliCtx.Args().Slice()
+		if len(args) == 0 && !cliCtx.IsSet("errored") {
+			return fmt.Errorf("must pass shard key or set --errored flag")
+		}
+
+		keys := args
+		if cliCtx.Bool("errored") {
+			shards, err := marketsApi.DagstoreListShards(ctx)
+			if err != nil {
+				return err
+			}
+			for _, shardInfo := range shards {
+				if shardInfo.State == types.ShardStateErrored {
+					keys = append(keys, shardInfo.Key)
+				}
+			}
+		}
+
+		fmt.Printf("Have %d shard need to destroy\n", len(keys))
+
+		for _, key := range keys {
+			if err := marketsApi.DagstoreDestroyShard(ctx, key); err != nil {
+				return fmt.Errorf("destroy %s failed: %v", key, err)
+			}
+			fmt.Printf("destroy %s success\n", key)
 		}
 
 		return nil

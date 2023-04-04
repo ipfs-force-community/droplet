@@ -38,5 +38,5 @@ type IPieceStorage interface {
 	Has(context.Context, string) (bool, error)
 	Validate(string) error
 	GetStorageStatus() (market.StorageStatus, error)
-	GetPieceTransfer(context.Context, string) (*market.Transfer, error)
+	GetPieceTransfer(context.Context, string) (string, error)
 }

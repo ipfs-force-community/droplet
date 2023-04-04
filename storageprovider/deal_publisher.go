@@ -110,7 +110,10 @@ func (p *DealPublisher) Publish(ctx context.Context, deal types.ClientDealPropos
 	providerAddr := deal.Proposal.Provider
 	publisher, ok := p.publishers[providerAddr]
 	if !ok {
-		pCfg := p.cfg.MinerProviderConfig(providerAddr, true)
+		pCfg, err := p.cfg.MinerProviderConfig(providerAddr, true)
+		if err != nil {
+			return cid.Undef, err
+		}
 		addrs := config.CfgAddrArrToNative(pCfg.DealPublishAddress)
 
 		publisher = newDealPublisher(

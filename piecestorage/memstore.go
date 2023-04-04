@@ -109,8 +109,8 @@ func (m *MemPieceStore) GetRedirectUrl(_ context.Context, resourceId string) (st
 	return "", ErrUnsupportRedirect
 }
 
-func (m *MemPieceStore) GetPieceTransfer(context.Context, string) (*market.Transfer, error) {
-	return &market.Transfer{}, nil
+func (m *MemPieceStore) GetPieceTransfer(context.Context, string) (string, error) {
+	return "", nil
 }
 
 func (m *MemPieceStore) Validate(s string) error {

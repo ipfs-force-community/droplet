@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/venus/venus-shared/types"
 
 	"github.com/filecoin-project/venus-market/v2/config"
 
@@ -14,6 +15,8 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 )
+
+var fakePaymentAddress = types.MustParseAddress("t00")
 
 type IRetrievalStream interface {
 	HandleQueryStream(stream rmnet.RetrievalQueryStream)
@@ -66,6 +69,11 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		if resp.Status == retrievalmarket.QueryResponseError {
 			log.Errorf(resp.Message)
 		}
+		if resp.PaymentAddress.Empty() {
+			// If PaymentAddress is not defined, MarshalCBOR will fail, so a fake payment address is used.
+			// ref: https://github.com/filecoin-project/go-address/blob/v1.1.0/address.go#L480
+			resp.PaymentAddress = fakePaymentAddress
+		}
 		if err := stream.WriteQueryResponse(resp); err != nil {
 			log.Errorf("Retrieval query: writing query response: %s", err)
 		}
@@ -82,7 +90,7 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 	if err != nil {
 		answer.Status = retrievalmarket.QueryResponseError
 		if errors.Is(err, repo.ErrNotFound) {
-			answer.Message = fmt.Sprintf("retrieve piece(%s) or payload(%s) failed, not found",
+			answer.Message = fmt.Sprintf("retrieve piece(%v) or payload(%s) failed, not found",
 				query.PieceCID, query.PayloadCID)
 		} else {
 			answer.Message = fmt.Sprintf("failed to fetch piece to retrieve from: %s", err)
@@ -91,32 +99,41 @@ func (p *RetrievalStreamHandler) HandleQueryStream(stream rmnet.RetrievalQuerySt
 		return
 	}
 
-	selectDeal := minerDeals[0]
+	log := log.With("payload cid", query.PayloadCID)
+	for _, deal := range minerDeals {
+		answer.Status = retrievalmarket.QueryResponseAvailable
+		// todo payload size maybe different with real piece size.
+		answer.Size = uint64(deal.Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
+		answer.PieceCIDFound = retrievalmarket.QueryItemAvailable
 
-	answer.Status = retrievalmarket.QueryResponseAvailable
-	// todo payload size maybe different with real piece size.
-	answer.Size = uint64(selectDeal.Proposal.PieceSize.Unpadded()) // TODO: verify on intermediate
-	answer.PieceCIDFound = retrievalmarket.QueryItemAvailable
-	paymentAddr := address.Address(p.cfg.MinerProviderConfig(selectDeal.Proposal.Provider, true).RetrievalPaymentAddress)
-	if paymentAddr == address.Undef {
-		answer.Status = retrievalmarket.QueryResponseError
-		answer.Message = "must specific payment address in venus-market"
+		minerCfg, err := p.cfg.MinerProviderConfig(deal.Proposal.Provider, true)
+		if err != nil {
+			log.Warn(err)
+			continue
+		}
+		paymentAddr := minerCfg.RetrievalPaymentAddress.Unwrap()
+		if paymentAddr == address.Undef {
+			log.Warnf("must specify payment address")
+			continue
+		}
+		answer.PaymentAddress = paymentAddr
+
+		ask, err := p.askRepo.GetAsk(ctx, deal.Proposal.Provider)
+		if err != nil {
+			log.Warnf("got %s ask failed: %v", deal.Proposal.Provider, err)
+			continue
+		}
+		answer.MinPricePerByte = ask.PricePerByte
+		answer.MaxPaymentInterval = ask.PaymentInterval
+		answer.MaxPaymentIntervalIncrease = ask.PaymentIntervalIncrease
+		answer.UnsealPrice = ask.UnsealPrice
+
 		sendResp(answer)
 		return
 	}
-	answer.PaymentAddress = paymentAddr
 
-	ask, err := p.askRepo.GetAsk(ctx, selectDeal.Proposal.Provider)
-	if err != nil {
-		answer.Status = retrievalmarket.QueryResponseError
-		answer.Message = fmt.Sprintf("failed to price deal: %s", err)
-		sendResp(answer)
-		return
-	}
-
-	answer.MinPricePerByte = ask.PricePerByte
-	answer.MaxPaymentInterval = ask.PaymentInterval
-	answer.MaxPaymentIntervalIncrease = ask.PaymentIntervalIncrease
-	answer.UnsealPrice = ask.UnsealPrice
-	sendResp(answer)
+	sendResp(retrievalmarket.QueryResponse{
+		Status:  retrievalmarket.QueryResponseError,
+		Message: "failed to query deal",
+	})
 }

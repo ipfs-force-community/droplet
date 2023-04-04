@@ -23,11 +23,19 @@ func NewPieceStorageServer(pieceStorageMgr *piecestorage.PieceStorageManager) *P
 }
 
 func (p *PieceStorageServer) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet {
+	switch req.Method {
+	case http.MethodGet:
+		p.handleGet(res, req)
+	case http.MethodPut:
+		p.handlePut(res, req)
+	default:
+		// handle error
 		logErrorAndResonse(res, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
+}
 
+func (p *PieceStorageServer) handleGet(res http.ResponseWriter, req *http.Request) {
 	resourceID := req.URL.Query().Get("resource-id")
 	if len(resourceID) == 0 {
 		logErrorAndResonse(res, "resource is empty", http.StatusBadRequest)
@@ -77,6 +85,60 @@ func (p *PieceStorageServer) ServeHTTP(res http.ResponseWriter, req *http.Reques
 	// as we can not override http response headers after body transfer has began
 	// we can only log the error info here
 	_, _ = io.Copy(res, r)
+}
+
+// handlePut save resource to piece storage
+// url example: http://market/resource?resource-id=xxx&store=xxx or http://market/resource?resource-id=xxx&size=xxx
+func (p *PieceStorageServer) handlePut(res http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	resourceID := req.URL.Query().Get("resource-id")
+	if len(resourceID) == 0 {
+		logErrorAndResonse(res, "resource is empty", http.StatusBadRequest)
+		return
+	}
+
+	if req.Body == nil {
+		logErrorAndResonse(res, "body is empty", http.StatusBadRequest)
+		return
+	}
+
+	if !req.URL.Query().Has("store") && !req.URL.Query().Has("size") {
+		logErrorAndResonse(res, "both store and size is empty", http.StatusBadRequest)
+		return
+	}
+
+	var store piecestorage.IPieceStorage
+	if req.URL.Query().Has("store") {
+		storeName := req.URL.Query().Get("store")
+
+		var err error
+		store, err = p.pieceStorageMgr.GetPieceStorageByName(storeName)
+		if err != nil {
+			logErrorAndResonse(res, fmt.Sprintf("fail to get store %s: %s", storeName, err), http.StatusInternalServerError)
+			return
+		}
+	}
+	if store == nil && req.URL.Query().Has("size") {
+		sizeStr := req.URL.Query().Get("size")
+		size, err := strconv.ParseInt(sizeStr, 10, 64)
+		if err != nil {
+			logErrorAndResonse(res, fmt.Sprintf("size %s is invalid", sizeStr), http.StatusBadRequest)
+			return
+		}
+		store, err = p.pieceStorageMgr.FindStorageForWrite(size)
+		if err != nil {
+			logErrorAndResonse(res, fmt.Sprintf("fail to find store for write: %s", err), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	_, err := store.SaveTo(ctx, resourceID, req.Body)
+	if err != nil {
+		logErrorAndResonse(res, fmt.Sprintf("fail to save resource %s to store %s: %s", resourceID, store.GetName(), err), http.StatusInternalServerError)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
 }
 
 func logErrorAndResonse(res http.ResponseWriter, err string, code int) {

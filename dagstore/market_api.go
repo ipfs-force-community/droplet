@@ -85,52 +85,36 @@ func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, err
 		for _, deal := range deals {
 			deal := deal
 
-			var isUnsealed bool
 			// Throttle this path to avoid flooding the storage subsystem.
 			err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
-				// todo ProofType can not be passed, SP processes itself?
-				isUnsealed, err = m.gatewayMarketClient.IsUnsealed(ctx, deal.Proposal.Provider, pieceCid,
+
+				// send SectorsUnsealPiece task
+				wps, err := m.pieceStorageMgr.FindStorageForWrite(int64(deal.Proposal.PieceSize))
+				if err != nil {
+					return fmt.Errorf("failed to find storage to write %s: %w", pieceCid, err)
+				}
+
+				pieceTransfer, err := wps.GetPieceTransfer(ctx, pieceCid.String())
+				if err != nil {
+					return fmt.Errorf("get piece transfer for %s: %w", pieceCid, err)
+				}
+
+				return m.gatewayMarketClient.SectorsUnsealPiece(
+					ctx,
+					deal.Proposal.Provider,
+					pieceCid,
 					deal.SectorNumber,
 					vSharedTypes.PaddedByteIndex(deal.Offset.Unpadded()),
-					deal.Proposal.PieceSize)
-				if err != nil {
-					return fmt.Errorf("failed to check if sector %d for deal %d was unsealed: %w", deal.SectorNumber, deal.DealID, err)
-				}
-
-				if isUnsealed {
-					// send SectorsUnsealPiece task
-					wps, err := m.pieceStorageMgr.FindStorageForWrite(int64(deal.Proposal.PieceSize))
-					if err != nil {
-						return fmt.Errorf("failed to find storage to write %s: %w", pieceCid, err)
-					}
-
-					pieceTransfer, err := wps.GetPieceTransfer(ctx, pieceCid.String())
-					if err != nil {
-						return fmt.Errorf("get piece transfer for %s: %w", pieceCid, err)
-					}
-
-					return m.gatewayMarketClient.SectorsUnsealPiece(
-						ctx,
-						deal.Proposal.Provider,
-						pieceCid,
-						deal.SectorNumber,
-						vSharedTypes.PaddedByteIndex(deal.Offset.Unpadded()),
-						deal.Proposal.PieceSize,
-						pieceTransfer,
-					)
-				}
-
-				return nil
+					deal.Proposal.PieceSize,
+					pieceTransfer,
+				)
 			})
 
 			if err != nil {
 				log.Warnf("failed to check/retrieve unsealed sector: %s", err)
 				continue // move on to the next match.
 			}
-
-			if isUnsealed {
-				return true, nil
-			}
+			return true, nil
 		}
 
 		// we don't have an unsealed sector containing the piece
