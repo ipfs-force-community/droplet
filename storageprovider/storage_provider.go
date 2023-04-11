@@ -109,7 +109,7 @@ type StorageProvider interface {
 	GetStorageCollateral(ctx context.Context, mAddr address.Address) (storagemarket.Balance, error)
 
 	// ImportDataForDeal manually imports data for an offline storage deal
-	ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error
+	ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader, skipCommP bool) error
 
 	// ImportPublishedDeal manually import published deals to storage deals
 	ImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error
@@ -261,7 +261,7 @@ func (p *StorageProviderImpl) Stop() error {
 // ImportDataForDeal manually imports data for an offline storage deal
 // It will verify that the data in the passed io.Reader matches the expected piece
 // cid for the given deal or it will error
-func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader) error {
+func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader, skipCommP bool) error {
 	// TODO: be able to check if we have enough disk space
 	d, err := p.dealStore.GetDeal(ctx, propCid)
 	if err != nil {
@@ -305,46 +305,50 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 
 	_ = n // TODO: verify n?
 
-	carSize := uint64(tempfi.Size())
+	if !skipCommP {
+		log.Debugf("will calculate piece cid")
 
-	_, err = tempfi.Seek(0, io.SeekStart)
-	if err != nil {
-		cleanup()
-		return fmt.Errorf("failed to seek through temp imported file: %w", err)
-	}
+		carSize := uint64(tempfi.Size())
 
-	proofType, err := p.spn.GetProofType(ctx, d.Proposal.Provider, nil) // TODO: 判断是不是属于此矿池?
-	if err != nil {
-		p.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, d)
-		cleanup()
-		return fmt.Errorf("failed to determine proof type: %w", err)
-	}
-	log.Debugw("fetched proof type", "propCid", propCid)
-
-	pieceCid, err := utils.GeneratePieceCommitment(proofType, tempfi, carSize)
-	if err != nil {
-		cleanup()
-		return fmt.Errorf("failed to generate commP: %w", err)
-	}
-	if carSizePadded := padreader.PaddedSize(carSize).Padded(); carSizePadded < d.Proposal.PieceSize {
-		// need to pad up!
-		rawPaddedCommp, err := commp.PadCommP(
-			// we know how long a pieceCid "hash" is, just blindly extract the trailing 32 bytes
-			pieceCid.Hash()[len(pieceCid.Hash())-32:],
-			uint64(carSizePadded),
-			uint64(d.Proposal.PieceSize),
-		)
+		_, err = tempfi.Seek(0, io.SeekStart)
 		if err != nil {
 			cleanup()
-			return err
+			return fmt.Errorf("failed to seek through temp imported file: %w", err)
 		}
-		pieceCid, _ = commcid.DataCommitmentV1ToCID(rawPaddedCommp)
-	}
 
-	// Verify CommP matches
-	if !pieceCid.Equals(d.Proposal.PieceCID) {
-		cleanup()
-		return fmt.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, d.Proposal.PieceCID)
+		proofType, err := p.spn.GetProofType(ctx, d.Proposal.Provider, nil) // TODO: 判断是不是属于此矿池?
+		if err != nil {
+			p.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, d)
+			cleanup()
+			return fmt.Errorf("failed to determine proof type: %w", err)
+		}
+		log.Debugw("fetched proof type", "propCid", propCid)
+
+		pieceCid, err := utils.GeneratePieceCommitment(proofType, tempfi, carSize)
+		if err != nil {
+			cleanup()
+			return fmt.Errorf("failed to generate commP: %w", err)
+		}
+		if carSizePadded := padreader.PaddedSize(carSize).Padded(); carSizePadded < d.Proposal.PieceSize {
+			// need to pad up!
+			rawPaddedCommp, err := commp.PadCommP(
+				// we know how long a pieceCid "hash" is, just blindly extract the trailing 32 bytes
+				pieceCid.Hash()[len(pieceCid.Hash())-32:],
+				uint64(carSizePadded),
+				uint64(d.Proposal.PieceSize),
+			)
+			if err != nil {
+				cleanup()
+				return err
+			}
+			pieceCid, _ = commcid.DataCommitmentV1ToCID(rawPaddedCommp)
+		}
+
+		// Verify CommP matches
+		if !pieceCid.Equals(d.Proposal.PieceCID) {
+			cleanup()
+			return fmt.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, d.Proposal.PieceCID)
+		}
 	}
 
 	log.Debugw("will fire ReserveProviderFunds for imported file", "propCid", propCid)

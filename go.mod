@@ -29,8 +29,8 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.10.0
-	github.com/filecoin-project/venus-auth v1.10.0
+	github.com/filecoin-project/venus v1.10.1-0.20230411032001-b461e8d735ae
+	github.com/filecoin-project/venus-auth v1.10.1
 	github.com/filecoin-project/venus-messager v1.10.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0

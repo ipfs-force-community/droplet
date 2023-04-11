@@ -49,8 +49,14 @@ var storageDealsCmds = &cli.Command{
 }
 
 var dealsImportDataCmd = &cli.Command{
-	Name:      "import-data",
-	Usage:     "Manually import data for a deal",
+	Name:  "import-data",
+	Usage: "Manually import data for a deal",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "skip-commp",
+			Usage: "skip calculate the piece-cid ",
+		},
+	},
 	ArgsUsage: "<proposal CID> <file>",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
@@ -72,7 +78,7 @@ var dealsImportDataCmd = &cli.Command{
 
 		fpath := cctx.Args().Get(1)
 
-		return api.DealsImportData(ctx, propCid, fpath)
+		return api.DealsImportData(ctx, propCid, fpath, cctx.Bool("skip-commp"))
 	},
 }
 
