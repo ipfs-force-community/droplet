@@ -223,7 +223,7 @@ func (m *MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.C
 	}
 	defer fi.Close() //nolint:errcheck
 
-	return m.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
+	return m.StorageProvider.ImportDataForDeal(ctx, propCid, fi, true)
 }
 
 func (m *MarketNodeImpl) MarketImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error {
@@ -1092,7 +1092,7 @@ func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Add
 	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, pieceStatus, dealStatus)
 }
 
-func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string) error {
+func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string, skipCommP bool) error {
 	deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, dealPropCid)
 	if err != nil {
 		return err
@@ -1106,7 +1106,7 @@ func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Ci
 	}
 	defer fi.Close() //nolint:errcheck
 
-	return m.StorageProvider.ImportDataForDeal(ctx, dealPropCid, fi)
+	return m.StorageProvider.ImportDataForDeal(ctx, dealPropCid, fi, skipCommP)
 }
 
 func (m *MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error) {
