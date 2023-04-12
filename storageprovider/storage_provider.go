@@ -307,7 +307,7 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 			}
 		}()
 	} else {
-		log.Debugf("found piece storage failed: %v, %v", d.Proposal.PieceCID, err)
+		log.Debugf("not found %s in piece storage", d.Proposal.PieceCID)
 
 		fs, err := p.tf(d.Proposal.Provider)
 		if err != nil {

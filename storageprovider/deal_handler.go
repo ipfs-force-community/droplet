@@ -466,7 +466,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			deal.PayloadSize = uint64(file.Size())
 			err = storageDealPorcess.deals.SaveDeal(ctx, deal)
 			if err != nil {
-				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database"))
+				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err))
 			}
 			err = storageDealPorcess.savePieceFile(ctx, deal, file, uint64(file.Size()))
 			if err := file.Close(); err != nil {
@@ -489,7 +489,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			deal.PayloadSize = v2r.Header.DataSize
 			err = storageDealPorcess.deals.SaveDeal(ctx, deal)
 			if err != nil {
-				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database"))
+				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err))
 			}
 			dr, err := v2r.DataReader()
 			if err != nil {
@@ -515,6 +515,17 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 				return storageDealPorcess.HandleError(ctx, deal, err)
 			}
 			log.Debugf("found %s in piece storage", deal.Proposal.PieceCID)
+
+			l, err := pieceStore.Len(ctx, deal.Proposal.PieceCID.String())
+			if err != nil {
+				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to got payload size: %v", err))
+			}
+
+			deal.PayloadSize = uint64(l)
+			err = storageDealPorcess.deals.SaveDeal(ctx, deal)
+			if err != nil {
+				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err))
+			}
 
 			// An index can be created even if carFilePath is empty
 			carFilePath, err = pieceStore.Path(ctx, deal.Proposal.PieceCID.String())
