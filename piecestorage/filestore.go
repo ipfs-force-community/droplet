@@ -151,6 +151,18 @@ func (f *fsPieceStorage) GetName() string {
 	return f.fsCfg.Name
 }
 
+func (f *fsPieceStorage) Path(ctx context.Context, resourceId string) (string, error) {
+	has, err := f.Has(ctx, resourceId)
+	if err != nil {
+		return "", err
+	}
+	if !has {
+		return "", fmt.Errorf("not found: %s", resourceId)
+	}
+
+	return path.Join(f.baseUrl, resourceId), nil
+}
+
 func NewFsPieceStorage(fsCfg *config.FsPieceStorage) (IPieceStorage, error) {
 	fs := &fsPieceStorage{baseUrl: fsCfg.Path, fsCfg: fsCfg}
 	if err := fs.Validate(fsCfg.Path); err != nil {

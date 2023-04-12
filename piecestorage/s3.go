@@ -205,6 +205,10 @@ func (s *s3PieceStorage) GetRedirectUrl(ctx context.Context, resourceId string) 
 	return req.Presign(time.Hour * 24)
 }
 
+func (s *s3PieceStorage) Path(_ context.Context, _ string) (string, error) {
+	return "", ErrPathNotExist
+}
+
 func (s *s3PieceStorage) GetPutObjectUrl(ctx context.Context, resourceId string) (string, error) {
 	params := &s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),

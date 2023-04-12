@@ -140,6 +140,7 @@ type StorageProviderImpl struct {
 	transferProcess IDatatransferHandler
 	storageReceiver smnet.StorageReceiver
 	minerMgr        minermgr.IMinerMgr
+	pieceStorageMgr *piecestorage.PieceStorageManager
 }
 
 // NewStorageProvider returns a new storage provider
@@ -173,7 +174,8 @@ func NewStorageProvider(
 
 		dealStore: repo.StorageDealRepo(),
 
-		minerMgr: minerMgr,
+		minerMgr:        minerMgr,
+		pieceStorageMgr: pieceStorageMgr,
 	}
 
 	dealProcess, err := NewStorageDealProcessImpl(mCtx, spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, tf, minerMgr, pieceStorageMgr, dataTransfer, dagStore, sdf, pb)
@@ -262,6 +264,8 @@ func (p *StorageProviderImpl) Stop() error {
 // ImportDataForDeal manually imports data for an offline storage deal
 // It will verify that the data in the passed io.Reader matches the expected piece
 // cid for the given deal or it will error
+// If can find the car file from the piece store, read it directly without copying the car file to the local directory.
+// If skipCommP is true, do not compare piece cid.
 func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid.Cid, data io.Reader, skipCommP bool) error {
 	// TODO: be able to check if we have enough disk space
 	d, err := p.dealStore.GetDeal(ctx, propCid)
@@ -277,45 +281,76 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 		return fmt.Errorf("deal %s does not support offline data", propCid)
 	}
 
-	fs, err := p.tf(d.Proposal.Provider)
-	if err != nil {
-		return fmt.Errorf("failed to create temp filestore for provider %s: %w", d.Proposal.Provider.String(), err)
-	}
+	var r io.Reader
+	var carSize int64
+	var piecePath filestore.Path
+	var cleanup = func() {}
 
-	tempfi, err := fs.CreateTemp()
-	if err != nil {
-		return fmt.Errorf("failed to create temp file for data import: %w", err)
-	}
-	defer func() {
-		if err := tempfi.Close(); err != nil {
-			log.Errorf("unable to close stream %v", err)
+	pieceStore, err := p.pieceStorageMgr.FindStorageForRead(ctx, d.Proposal.PieceCID.String())
+	if err == nil {
+		log.Debugf("found %v already in piece storage", d.Proposal.PieceCID)
+
+		// In order to avoid errors in the deal, the files in the piece store were deleted.
+		piecePath = filestore.Path("")
+		if carSize, err = pieceStore.Len(ctx, d.Proposal.PieceCID.String()); err != nil {
+			return fmt.Errorf("got piece size from piece store failed: %v", err)
 		}
-	}()
-	cleanup := func() {
-		_ = tempfi.Close()
-		_ = fs.Delete(tempfi.Path())
-	}
+		readerCloser, err := pieceStore.GetReaderCloser(ctx, d.Proposal.PieceCID.String())
+		if err != nil {
+			return fmt.Errorf("got reader from piece store failed: %v", err)
+		}
+		r = readerCloser
 
-	log.Debugw("will copy imported file to local file", "propCid", propCid)
-	n, err := io.Copy(tempfi, data)
-	if err != nil {
-		cleanup()
-		return fmt.Errorf("importing deal data failed: %w", err)
-	}
-	log.Debugw("finished copying imported file to local file", "propCid", propCid)
+		defer func() {
+			if err = readerCloser.Close(); err != nil {
+				log.Errorf("unable to close piece storage: %v, %v", d.Proposal.PieceCID, err)
+			}
+		}()
+	} else {
+		log.Debugf("found piece storage failed: %v, %v", d.Proposal.PieceCID, err)
 
-	_ = n // TODO: verify n?
+		fs, err := p.tf(d.Proposal.Provider)
+		if err != nil {
+			return fmt.Errorf("failed to create temp filestore for provider %s: %w", d.Proposal.Provider.String(), err)
+		}
 
-	if !skipCommP {
-		log.Debugf("will calculate piece cid")
+		tempfi, err := fs.CreateTemp()
+		if err != nil {
+			return fmt.Errorf("failed to create temp file for data import: %w", err)
+		}
+		defer func() {
+			if err := tempfi.Close(); err != nil {
+				log.Errorf("unable to close stream %v", err)
+			}
+		}()
+		cleanup = func() {
+			_ = tempfi.Close()
+			_ = fs.Delete(tempfi.Path())
+		}
 
-		carSize := uint64(tempfi.Size())
+		log.Debugw("will copy imported file to local file", "propCid", propCid)
+		n, err := io.Copy(tempfi, data)
+		if err != nil {
+			cleanup()
+			return fmt.Errorf("importing deal data failed: %w", err)
+		}
+		log.Debugw("finished copying imported file to local file", "propCid", propCid)
 
+		_ = n // TODO: verify n?
+
+		carSize = tempfi.Size()
+		piecePath = tempfi.Path()
 		_, err = tempfi.Seek(0, io.SeekStart)
 		if err != nil {
 			cleanup()
 			return fmt.Errorf("failed to seek through temp imported file: %w", err)
 		}
+
+		r = tempfi
+	}
+
+	if !skipCommP {
+		log.Debugf("will calculate piece cid")
 
 		proofType, err := p.spn.GetProofType(ctx, d.Proposal.Provider, nil) // TODO: 判断是不是属于此矿池?
 		if err != nil {
@@ -325,12 +360,12 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 		}
 		log.Debugw("fetched proof type", "propCid", propCid)
 
-		pieceCid, err := utils.GeneratePieceCommitment(proofType, tempfi, carSize)
+		pieceCid, err := utils.GeneratePieceCommitment(proofType, r, uint64(carSize))
 		if err != nil {
 			cleanup()
 			return fmt.Errorf("failed to generate commP: %w", err)
 		}
-		if carSizePadded := padreader.PaddedSize(carSize).Padded(); carSizePadded < d.Proposal.PieceSize {
+		if carSizePadded := padreader.PaddedSize(uint64(carSize)).Padded(); carSizePadded < d.Proposal.PieceSize {
 			// need to pad up!
 			rawPaddedCommp, err := commp.PadCommP(
 				// we know how long a pieceCid "hash" is, just blindly extract the trailing 32 bytes
@@ -355,7 +390,7 @@ func (p *StorageProviderImpl) ImportDataForDeal(ctx context.Context, propCid cid
 	log.Debugw("will fire ReserveProviderFunds for imported file", "propCid", propCid)
 
 	// "will fire VerifiedData for imported file
-	d.PiecePath = tempfi.Path()
+	d.PiecePath = piecePath
 	d.MetadataPath = filestore.Path("")
 	log.Infof("deal %s piece path: %s", propCid, d.PiecePath)
 

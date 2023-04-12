@@ -2,6 +2,7 @@ package storageprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -476,7 +477,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 				err = fmt.Errorf("packing piece at path %s: %w", deal.PiecePath, err)
 				return storageDealPorcess.HandleError(ctx, deal, err)
 			}
-		} else {
+		} else if len(deal.InboundCAR) != 0 {
 			carFilePath = deal.InboundCAR
 
 			v2r, err := storageDealPorcess.ReadCAR(deal.InboundCAR)
@@ -506,6 +507,19 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			if packingErr != nil {
 				err = fmt.Errorf("packing piece %s: %w", deal.Ref.PieceCid, packingErr)
 				return storageDealPorcess.HandleError(ctx, deal, err)
+			}
+		} else {
+			// carfile may already in piece storage, verify it
+			pieceStore, err := storageDealPorcess.pieceStorageMgr.FindStorageForRead(ctx, deal.Proposal.PieceCID.String())
+			if err != nil {
+				return storageDealPorcess.HandleError(ctx, deal, err)
+			}
+			log.Debugf("found %s in piece storage", deal.Proposal.PieceCID)
+
+			// An index can be created even if carFilePath is empty
+			carFilePath, err = pieceStore.Path(ctx, deal.Proposal.PieceCID.String())
+			if err != nil && !errors.Is(err, piecestorage.ErrPathNotExist) {
+				log.Errorf("found storage path error: %v", deal.Proposal.PieceCID, err)
 			}
 		}
 
