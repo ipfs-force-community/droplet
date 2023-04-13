@@ -465,7 +465,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			deal.PayloadSize = uint64(file.Size())
 			err = storageDealPorcess.deals.SaveDeal(ctx, deal)
 			if err != nil {
-				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database"))
+				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err))
 			}
 			err = storageDealPorcess.savePieceFile(ctx, deal, file, uint64(file.Size()))
 			if err := file.Close(); err != nil {
@@ -476,7 +476,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 				err = fmt.Errorf("packing piece at path %s: %w", deal.PiecePath, err)
 				return storageDealPorcess.HandleError(ctx, deal, err)
 			}
-		} else {
+		} else if len(deal.InboundCAR) != 0 {
 			carFilePath = deal.InboundCAR
 
 			v2r, err := storageDealPorcess.ReadCAR(deal.InboundCAR)
@@ -488,7 +488,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			deal.PayloadSize = v2r.Header.DataSize
 			err = storageDealPorcess.deals.SaveDeal(ctx, deal)
 			if err != nil {
-				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database"))
+				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err))
 			}
 			dr, err := v2r.DataReader()
 			if err != nil {
@@ -506,6 +506,26 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			if packingErr != nil {
 				err = fmt.Errorf("packing piece %s: %w", deal.Ref.PieceCid, packingErr)
 				return storageDealPorcess.HandleError(ctx, deal, err)
+			}
+		} else {
+			// An index can be created even if carFilePath is empty
+			carFilePath = ""
+			// carfile may already in piece storage, verify it
+			pieceStore, err := storageDealPorcess.pieceStorageMgr.FindStorageForRead(ctx, deal.Proposal.PieceCID.String())
+			if err != nil {
+				return storageDealPorcess.HandleError(ctx, deal, err)
+			}
+			log.Debugf("found %s in piece storage", deal.Proposal.PieceCID)
+
+			l, err := pieceStore.Len(ctx, deal.Proposal.PieceCID.String())
+			if err != nil {
+				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to got payload size: %v", err))
+			}
+
+			deal.PayloadSize = uint64(l)
+			err = storageDealPorcess.deals.SaveDeal(ctx, deal)
+			if err != nil {
+				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err))
 			}
 		}
 
