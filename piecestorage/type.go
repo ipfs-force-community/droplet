@@ -11,7 +11,6 @@ import (
 )
 
 var ErrUnsupportRedirect = fmt.Errorf("this storage unsupport redirect url")
-var ErrPathNotExist = fmt.Errorf("this storage does not have an actual storage path")
 
 type Protocol string
 
@@ -36,8 +35,6 @@ type IPieceStorage interface {
 	GetMountReader(context.Context, string) (mount.Reader, error)
 	// GetRedirectUrl get url if storage support redirect
 	GetRedirectUrl(context.Context, string) (string, error)
-	// Path returns the actual storage path, only available for file store
-	Path(context.Context, string) (string, error)
 	Has(context.Context, string) (bool, error)
 	Validate(string) error
 	GetStorageStatus() (market.StorageStatus, error)

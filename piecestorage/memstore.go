@@ -109,10 +109,6 @@ func (m *MemPieceStore) GetRedirectUrl(_ context.Context, resourceId string) (st
 	return "", ErrUnsupportRedirect
 }
 
-func (m *MemPieceStore) Path(_ context.Context, _ string) (string, error) {
-	return "", ErrPathNotExist
-}
-
 func (m *MemPieceStore) GetPieceTransfer(context.Context, string) (string, error) {
 	return "", nil
 }

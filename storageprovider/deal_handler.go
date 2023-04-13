@@ -2,7 +2,6 @@ package storageprovider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -509,6 +508,8 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 				return storageDealPorcess.HandleError(ctx, deal, err)
 			}
 		} else {
+			// An index can be created even if carFilePath is empty
+			carFilePath = ""
 			// carfile may already in piece storage, verify it
 			pieceStore, err := storageDealPorcess.pieceStorageMgr.FindStorageForRead(ctx, deal.Proposal.PieceCID.String())
 			if err != nil {
@@ -525,12 +526,6 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			err = storageDealPorcess.deals.SaveDeal(ctx, deal)
 			if err != nil {
 				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err))
-			}
-
-			// An index can be created even if carFilePath is empty
-			carFilePath, err = pieceStore.Path(ctx, deal.Proposal.PieceCID.String())
-			if err != nil && !errors.Is(err, piecestorage.ErrPathNotExist) {
-				log.Errorf("found storage path error: %v", deal.Proposal.PieceCID, err)
 			}
 		}
 
