@@ -49,8 +49,18 @@ var storageDealsCmds = &cli.Command{
 }
 
 var dealsImportDataCmd = &cli.Command{
-	Name:      "import-data",
-	Usage:     "Manually import data for a deal",
+	Name:  "import-data",
+	Usage: "Manually import data for a deal",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "skip-commp",
+			Usage: "skip calculate the piece-cid, please use with caution",
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+		},
+	},
 	ArgsUsage: "<proposal CID> <file>",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
@@ -72,7 +82,15 @@ var dealsImportDataCmd = &cli.Command{
 
 		fpath := cctx.Args().Get(1)
 
-		return api.DealsImportData(ctx, propCid, fpath)
+		var skipCommP bool
+		if cctx.IsSet("skip-commp") {
+			if !cctx.IsSet("really-do-it") {
+				return fmt.Errorf("pass --really-do-it to actually execute this action")
+			}
+			skipCommP = true
+		}
+
+		return api.DealsImportData(ctx, propCid, fpath, skipCommP)
 	},
 }
 
