@@ -68,11 +68,21 @@ build: $(BUILD_DEPS)
 
 TAG:=test
 docker: $(BUILD_DEPS)
+ifdef DOCKERFILE
+	cp $(DOCKERFILE) .
+else
 	curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/docker/dockerfile
-	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=venus-market -t venus-market .
+endif
+	docker build --build-arg HTTPS_PROXY=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=venus-market -t venus-market .
+	docker build --build-arg HTTPS_PROXY=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=market-client -t market-client .
+	docker tag venus-market filvenus/venus-market:$(TAG)
+	docker tag market-client filvenus/market-client:$(TAG)
+ifdef PRIVATE_REGISTRY
 	docker tag venus-market $(PRIVATE_REGISTRY)/filvenus/venus-market:$(TAG)
-	docker build --build-arg https_proxy=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=market-client -t market-client .
 	docker tag market-client $(PRIVATE_REGISTRY)/filvenus/market-client:$(TAG)
+endif
+
+
 
 docker-push: docker
 	docker push $(PRIVATE_REGISTRY)/filvenus/venus-market:$(TAG)
