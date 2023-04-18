@@ -1,6 +1,6 @@
 # venus-market changelog
 
-## v2.7.0
+## v2.7.0-rc1
 
 ### New Features
 
