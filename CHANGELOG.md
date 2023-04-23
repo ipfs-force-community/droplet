@@ -1,4 +1,8 @@
 # venus-market changelog
+## v2.7.0
+
+* update venus dependency to v1.11.0
+* bump up version to v2.7.0
 
 ## v2.7.0-rc1
 
