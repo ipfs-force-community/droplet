@@ -1,4 +1,9 @@
 # venus-market changelog
+
+## v2.7.1
+
+* update ffi
+
 ## v2.7.0
 
 * update venus dependency to v1.11.0
