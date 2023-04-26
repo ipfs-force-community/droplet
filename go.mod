@@ -160,7 +160,6 @@ require (
 	github.com/goccy/go-json v0.10.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -311,6 +310,7 @@ require (
 )
 
 replace (
+	github.com/dgraph-io/ristretto => github.com/dgraph-io/ristretto v0.0.4-0.20210122082011-bb5d392ed82d
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.7
 )
