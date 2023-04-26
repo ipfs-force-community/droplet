@@ -1,7 +1,12 @@
 package types
 
 import (
+	"time"
+
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/pkg/clock"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/ipfs/go-cid"
 )
 
 // Clock is the global clock for the system. In standard builds,
@@ -14,3 +19,14 @@ var Clock = clock.NewSystemClock()
 // ShutdownChan is a channel to which you send a value if you intend to shut
 // down the daemon (or miner), including the node and RPC server.
 type ShutdownChan chan struct{}
+
+type ClientOfflineDeal struct {
+	types.ClientDealProposal
+
+	ProposalCID cid.Cid
+	Message     string
+	State       int
+	SlashEpoch  abi.ChainEpoch
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}

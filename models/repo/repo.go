@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	fbig "github.com/filecoin-project/go-state-types/big"
+	mtypes "github.com/filecoin-project/venus-market/v2/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -111,6 +112,12 @@ type Repo interface {
 
 type TxRepo interface {
 	StorageDealRepo() StorageDealRepo
+}
+
+type ClientOfflineDealRepo interface {
+	SaveDeal(ctx context.Context, deal *mtypes.ClientOfflineDeal) error
+	GetDeal(ctx context.Context, proposalCid cid.Cid) (*mtypes.ClientOfflineDeal, error)
+	ListDeal(ctx context.Context) ([]*mtypes.ClientOfflineDeal, error)
 }
 
 var ErrNotFound = errors.New("record not found")

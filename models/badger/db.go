@@ -33,6 +33,7 @@ const (
 	// client
 	dealClient      = "/deals/client"
 	dealLocal       = "/deals/local"
+	offlineDeal     = "/deals/offline"
 	retrievalClient = "/retrievals/client"
 	clientTransfer  = "/datatransfer/client/transfers"
 )
@@ -88,6 +89,9 @@ type ClientDatastore datastore.Batching
 
 // /metadata/deals/local
 type ClientDealsDS datastore.Batching
+
+// /metadata/deals/offline
+type ClientOfflineDealsDS datastore.Batching
 
 // /metadata/retrievals/client
 type RetrievalClientDS datastore.Batching
@@ -163,6 +167,11 @@ func NewPayChanMsgDs(ds PayChanDS) PayChanMsgDs {
 // NewClientDatastore creates a datastore for the client to store its deals
 func NewClientDatastore(ds MetadataDS) ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey(dealClient))
+}
+
+// NewClientOfflineDealStore creates a datastore for the client to store its offline deals
+func NewClientOfflineDealStore(ds MetadataDS) ClientOfflineDealsDS {
+	return namespace.Wrap(ds, datastore.NewKey(offlineDeal))
 }
 
 // for discover

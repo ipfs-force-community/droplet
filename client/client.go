@@ -61,6 +61,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/api/clients/signer"
 	"github.com/filecoin-project/venus-market/v2/config"
 	"github.com/filecoin-project/venus-market/v2/imports"
+	"github.com/filecoin-project/venus-market/v2/models/repo"
 	marketNetwork "github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/retrievalprovider"
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
@@ -68,6 +69,7 @@ import (
 
 	"github.com/filecoin-project/venus-auth/log"
 
+	mtypes "github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -100,6 +102,8 @@ type API struct {
 	Cfg          *config.MarketClientConfig
 
 	Signer signer.ISigner
+
+	dealRepo repo.ClientOfflineDealRepo
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -303,38 +307,72 @@ func (a *API) dealStarter(ctx context.Context, params *types.DealParams, isState
 		return nil, fmt.Errorf("opening dealstream to %s/%s failed: %w", params.Miner, *mi.PeerId, err)
 	}
 
-	if err = dStream.WriteDealProposal(network.Proposal{
-		FastRetrieval: true,
-		DealProposal:  dealProposalSigned,
-		Piece: &storagemarket.DataRef{
-			TransferType: storagemarket.TTManual,
-			Root:         params.Data.Root,
-			PieceCid:     params.Data.PieceCid,
-			PieceSize:    params.Data.PieceSize,
-		},
-	}); err != nil {
-		return nil, fmt.Errorf("sending deal proposal failed: %w", err)
-	}
-
-	resp, _, err := dStream.ReadDealResponse()
-	if err != nil {
-		return nil, fmt.Errorf("reading proposal response failed: %w", err)
-	}
-
 	dealProposalIpld, err := cborutil.AsIpld(dealProposalSigned)
 	if err != nil {
 		return nil, fmt.Errorf("serializing proposal node failed: %w", err)
 	}
+	dealProposalCID := dealProposalIpld.Cid()
 
-	if !dealProposalIpld.Cid().Equals(resp.Response.Proposal) {
-		return nil, fmt.Errorf("provider returned proposal cid %s but we expected %s", resp.Response.Proposal, dealProposalIpld.Cid())
+	offlineDeal := &mtypes.ClientOfflineDeal{
+		ClientDealProposal: *dealProposalSigned,
+		ProposalCID:        dealProposalCID,
+		State:              int(storagemarket.StorageDealUnknown),
+		SlashEpoch:         -1,
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
 	}
 
-	if resp.Response.State != storagemarket.StorageDealWaitingForData {
-		return nil, fmt.Errorf("provider returned unexpected state %d for proposal %s, with message: %s", resp.Response.State, resp.Response.Proposal, resp.Response.Message)
+	saveDeal := func(state storagemarket.StorageDealStatus, msg string) error {
+		offlineDeal.State = int(state)
+		offlineDeal.Message = msg
+		if err := a.dealRepo.SaveDeal(ctx, offlineDeal); err != nil {
+			return fmt.Errorf("save offline deal failed: %v", err)
+		}
+		return nil
+	}
+	if err := saveDeal(storagemarket.StorageDealUnknown, ""); err != nil {
+		return nil, err
 	}
 
-	return &resp.Response.Proposal, nil
+	// send request and check response
+	err = func() error {
+		if err = dStream.WriteDealProposal(network.Proposal{
+			FastRetrieval: true,
+			DealProposal:  dealProposalSigned,
+			Piece: &storagemarket.DataRef{
+				TransferType: storagemarket.TTManual,
+				Root:         params.Data.Root,
+				PieceCid:     params.Data.PieceCid,
+				PieceSize:    params.Data.PieceSize,
+			},
+		}); err != nil {
+			return fmt.Errorf("sending deal proposal failed: %w", err)
+		}
+
+		resp, _, err := dStream.ReadDealResponse()
+		if err != nil {
+			return fmt.Errorf("reading proposal response failed: %w", err)
+		}
+
+		if !dealProposalCID.Equals(resp.Response.Proposal) {
+			return fmt.Errorf("provider returned proposal cid %s but we expected %s", resp.Response.Proposal, dealProposalIpld.Cid())
+		}
+
+		if resp.Response.State != storagemarket.StorageDealWaitingForData {
+			return fmt.Errorf("provider returned unexpected state %d for proposal %s, with message: %s", resp.Response.State, resp.Response.Proposal, resp.Response.Message)
+		}
+
+		return nil
+	}()
+
+	var msg string
+	state := storagemarket.StorageDealWaitingForData
+	if err != nil {
+		state = storagemarket.StorageDealError
+		msg = err.Error()
+	}
+
+	return &dealProposalCID, saveDeal(state, msg)
 }
 
 func (a *API) ClientListDeals(ctx context.Context) ([]types.DealInfo, error) {
