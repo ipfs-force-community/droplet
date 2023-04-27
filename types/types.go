@@ -24,8 +24,10 @@ type ClientOfflineDeal struct {
 	types.ClientDealProposal
 
 	ProposalCID cid.Cid
+	DataRoot    cid.Cid
 	Message     string
 	State       int
+	DealID      uint64
 	SlashEpoch  abi.ChainEpoch
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

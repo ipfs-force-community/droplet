@@ -316,6 +316,7 @@ func (a *API) dealStarter(ctx context.Context, params *types.DealParams, isState
 	offlineDeal := &mtypes.ClientOfflineDeal{
 		ClientDealProposal: *dealProposalSigned,
 		ProposalCID:        dealProposalCID,
+		DataRoot:           params.Data.Root,
 		State:              int(storagemarket.StorageDealUnknown),
 		SlashEpoch:         -1,
 		CreatedAt:          time.Now(),
