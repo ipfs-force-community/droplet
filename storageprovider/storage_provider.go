@@ -231,9 +231,9 @@ func (p *StorageProviderImpl) start(ctx context.Context) error {
 	return nil
 }
 
-func isTerminateState(deal *types.MinerDeal) bool {
-	if deal.State == storagemarket.StorageDealSlashed || deal.State == storagemarket.StorageDealExpired ||
-		deal.State == storagemarket.StorageDealError || deal.State == storagemarket.StorageDealFailing {
+func IsTerminateState(state storagemarket.StorageDealStatus) bool {
+	if state == storagemarket.StorageDealSlashed || state == storagemarket.StorageDealExpired ||
+		state == storagemarket.StorageDealError || state == storagemarket.StorageDealFailing {
 		return true
 	}
 
@@ -242,7 +242,7 @@ func isTerminateState(deal *types.MinerDeal) bool {
 
 func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.MinerDeal) error {
 	for _, deal := range deals {
-		if isTerminateState(deal) {
+		if IsTerminateState(deal.State) {
 			continue
 		}
 
@@ -330,7 +330,7 @@ func (p *StorageProviderImpl) importDataForDeal(ctx context.Context, ref *types.
 	}
 	defer fi.Close() //nolint:errcheck
 
-	if isTerminateState(d) {
+	if IsTerminateState(d.State) {
 		return fmt.Errorf("deal %s is terminate state", propCid)
 	}
 

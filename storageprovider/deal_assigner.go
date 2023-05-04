@@ -107,7 +107,7 @@ func (ps *dealAssigner) GetDeals(ctx context.Context, mAddr address.Address, pag
 
 	for _, md := range mds {
 		// TODO: 要排除不可密封状态的订单?
-		if md.DealID > 0 && !isTerminateState(md) {
+		if md.DealID > 0 && !IsTerminateState(md.State) {
 			dis = append(dis, &types.DealInfo{
 				DealInfo: piecestore.DealInfo{
 					DealID:   md.DealID,
@@ -157,7 +157,7 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 
 	for _, md := range mds {
 		// TODO: 要排除不可密封状态的订单?
-		if md.DealID == 0 || isTerminateState(md) {
+		if md.DealID == 0 || IsTerminateState(md.State) {
 			continue
 		}
 		if ((spec.MaxPieceSize > 0 && uint64(md.Proposal.PieceSize)+curPieceSize < spec.MaxPieceSize) || spec.MaxPieceSize == 0) && numberPiece+1 < spec.MaxPiece {

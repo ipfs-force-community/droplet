@@ -171,7 +171,7 @@ func (dealTracker *DealTracker) checkSlash(ctx metrics.MetricsCtx, addr address.
 		if err != nil {
 			return fmt.Errorf("get market deal info for sector %d of miner %s %w", deal.SectorNumber, addr, err)
 		}
-		if dealProposal.State.SlashEpoch > -1 { // include in sector
+		if dealProposal.State.SlashEpoch > -1 {
 			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealSlashed, "")
 			if err != nil {
 				return fmt.Errorf("update deal status to slash for sector %d of miner %s %w", deal.SectorNumber, addr, err)
