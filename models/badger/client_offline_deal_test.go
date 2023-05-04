@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,13 +15,16 @@ func TestClientOfflineDeal(t *testing.T) {
 	assert.NoError(t, err)
 	r := NewBadgerClientOfflineDealRepo(ds)
 
-	var deals []*types.ClientOfflineDeal
+	deals := make([]*types.ClientOfflineDeal, 10)
 	testutil.Provide(t, &deals)
 
 	ctx := context.Background()
 
 	t.Run("save deal", func(t *testing.T) {
-		for _, deal := range deals {
+		for i, deal := range deals {
+			if i%2 == 0 {
+				deals[i].AddFundsCid = nil
+			}
 			assert.NoError(t, r.SaveDeal(ctx, deal))
 		}
 	})
