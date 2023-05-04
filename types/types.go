@@ -23,12 +23,17 @@ type ShutdownChan chan struct{}
 type ClientOfflineDeal struct {
 	types.ClientDealProposal
 
-	ProposalCID cid.Cid
-	DataRoot    cid.Cid
-	Message     string
-	State       uint64
-	DealID      uint64
-	SlashEpoch  abi.ChainEpoch
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ProposalCID    cid.Cid
+	DataRoot       cid.Cid
+	Message        string
+	State          uint64
+	DealID         uint64
+	AddFundsCid    *cid.Cid
+	PublishMessage *cid.Cid
+	FastRetrieval  bool
+	SlashEpoch     abi.ChainEpoch
+	// todo: get SectorNumber
+	// SectorNumber   abi.SectorNumber
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

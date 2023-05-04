@@ -103,8 +103,7 @@ type API struct {
 
 	Signer signer.ISigner
 
-	DealRepo           repo.ClientOfflineDealRepo
-	OfflineDealManager *OfflineDealManager
+	OfflineDealRepo repo.ClientOfflineDealRepo
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -311,10 +310,11 @@ func (a *API) dealStarter(ctx context.Context, params *types.DealParams, isState
 		DataRoot:           params.Data.Root,
 		State:              storagemarket.StorageDealUnknown,
 		SlashEpoch:         -1,
+		FastRetrieval:      params.FastRetrieval,
 		CreatedAt:          time.Now(),
 		UpdatedAt:          time.Now(),
 	}
-	if err := a.DealRepo.SaveDeal(ctx, offlineDeal); err != nil {
+	if err := a.OfflineDealRepo.SaveDeal(ctx, offlineDeal); err != nil {
 		return nil, fmt.Errorf("save offline deal failed: %v", err)
 	}
 
@@ -324,10 +324,8 @@ func (a *API) dealStarter(ctx context.Context, params *types.DealParams, isState
 	if err != nil {
 		offlineDeal.State = storagemarket.StorageDealError
 		offlineDeal.Message = err.Error()
-	} else {
-		a.OfflineDealManager.addDeal(offlineDeal)
 	}
-	if dbErr := a.DealRepo.SaveDeal(ctx, offlineDeal); dbErr != nil {
+	if dbErr := a.OfflineDealRepo.SaveDeal(ctx, offlineDeal); dbErr != nil {
 		log.Errorf("save deal %s failed: %v", proposalCID, dbErr)
 	}
 
@@ -1563,8 +1561,20 @@ func (a *API) DefaultAddress(ctx context.Context) (address.Address, error) {
 }
 
 func (a *API) ClientGetVerifiedDealDistribution(ctx context.Context) (*DealDistribution, error) {
+	var verifiedDealProposals []*vTypes.ClientDealProposal
 	dealStat := newDealStat()
-	verifiedDealProposals := a.OfflineDealManager.VerifiedDealProposals()
+
+	// offline deal
+	offlineDeals, err := a.OfflineDealRepo.ListDeal(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i, deal := range offlineDeals {
+		if !storageprovider.IsTerminateState(deal.State) && deal.Proposal.VerifiedDeal {
+			verifiedDealProposals = append(verifiedDealProposals, &offlineDeals[i].ClientDealProposal)
+		}
+	}
+
 	deals, err := a.SMDealClient.ListLocalDeals(ctx)
 	if err != nil {
 		return nil, err
@@ -1576,4 +1586,33 @@ func (a *API) ClientGetVerifiedDealDistribution(ctx context.Context) (*DealDistr
 	}
 
 	return dealStat.dealDistribution(verifiedDealProposals), nil
+}
+
+func (a *API) ClientListOfflineDeals(ctx context.Context) ([]types.DealInfo, error) {
+	deals, err := a.OfflineDealRepo.ListDeal(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]types.DealInfo, 0, len(deals))
+	for _, deal := range deals {
+		res = append(res, types.DealInfo{
+			ProposalCid: deal.ProposalCID,
+			State:       deal.State,
+			Message:     deal.Message,
+			Provider:    deal.Proposal.Provider,
+			DataRef: &storagemarket.DataRef{
+				Root: deal.DataRoot,
+			},
+			PieceCID:      deal.Proposal.PieceCID,
+			Size:          uint64(deal.Proposal.PieceSize.Unpadded()),
+			PricePerEpoch: deal.Proposal.StoragePricePerEpoch,
+			Verified:      deal.Proposal.VerifiedDeal,
+			Duration:      uint64(deal.Proposal.Duration()),
+			DealID:        abi.DealID(deal.DealID),
+			CreationTime:  deal.CreatedAt,
+		})
+	}
+
+	return res, nil
 }

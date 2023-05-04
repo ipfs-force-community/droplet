@@ -15,13 +15,16 @@ func TestClientOfflineDeal(t *testing.T) {
 	assert.NoError(t, err)
 	r := NewBadgerClientOfflineDealRepo(ds)
 
-	var deals []*types.ClientOfflineDeal
+	deals := make([]*types.ClientOfflineDeal, 10)
 	testutil.Provide(t, &deals)
 
 	ctx := context.Background()
 
 	t.Run("save deal", func(t *testing.T) {
-		for _, deal := range deals {
+		for i, deal := range deals {
+			if i%2 == 0 {
+				deals[i].AddFundsCid = nil
+			}
 			assert.NoError(t, r.SaveDeal(ctx, deal))
 		}
 	})
