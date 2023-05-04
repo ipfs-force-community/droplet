@@ -103,7 +103,8 @@ type API struct {
 
 	Signer signer.ISigner
 
-	dealRepo repo.ClientOfflineDealRepo
+	DealRepo           repo.ClientOfflineDealRepo
+	OfflineDealManager *OfflineDealManager
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -298,82 +299,85 @@ func (a *API) dealStarter(ctx context.Context, params *types.DealParams, isState
 		Proposal:        *dealProposal,
 		ClientSignature: *dealProposalSig,
 	}
-	dStream, err := network.NewFromLibp2pHost(a.Host,
-		// params duplicated from .../node/modules/client.go
-		// https://github.com/filecoin-project/lotus/pull/5961#discussion_r629768011
-		network.RetryParameters(time.Second, 5*time.Minute, 15, 5),
-	).NewDealStream(ctx, *mi.PeerId)
-	if err != nil {
-		return nil, fmt.Errorf("opening dealstream to %s/%s failed: %w", params.Miner, *mi.PeerId, err)
-	}
 
-	dealProposalIpld, err := cborutil.AsIpld(dealProposalSigned)
+	dealProposalIpld, err := cborutil.AsIpld(dealProposal)
 	if err != nil {
 		return nil, fmt.Errorf("serializing proposal node failed: %w", err)
 	}
-	dealProposalCID := dealProposalIpld.Cid()
 
 	offlineDeal := &mtypes.ClientOfflineDeal{
 		ClientDealProposal: *dealProposalSigned,
-		ProposalCID:        dealProposalCID,
+		ProposalCID:        dealProposalIpld.Cid(),
 		DataRoot:           params.Data.Root,
-		State:              int(storagemarket.StorageDealUnknown),
+		State:              storagemarket.StorageDealUnknown,
 		SlashEpoch:         -1,
 		CreatedAt:          time.Now(),
 		UpdatedAt:          time.Now(),
 	}
-
-	saveDeal := func(state storagemarket.StorageDealStatus, msg string) error {
-		offlineDeal.State = int(state)
-		offlineDeal.Message = msg
-		if err := a.dealRepo.SaveDeal(ctx, offlineDeal); err != nil {
-			return fmt.Errorf("save offline deal failed: %v", err)
-		}
-		return nil
-	}
-	if err := saveDeal(storagemarket.StorageDealUnknown, ""); err != nil {
-		return nil, err
+	if err := a.DealRepo.SaveDeal(ctx, offlineDeal); err != nil {
+		return nil, fmt.Errorf("save offline deal failed: %v", err)
 	}
 
-	// send request and check response
-	err = func() error {
-		if err = dStream.WriteDealProposal(network.Proposal{
-			FastRetrieval: true,
-			DealProposal:  dealProposalSigned,
-			Piece: &storagemarket.DataRef{
-				TransferType: storagemarket.TTManual,
-				Root:         params.Data.Root,
-				PieceCid:     params.Data.PieceCid,
-				PieceSize:    params.Data.PieceSize,
-			},
-		}); err != nil {
-			return fmt.Errorf("sending deal proposal failed: %w", err)
-		}
-
-		resp, _, err := dStream.ReadDealResponse()
-		if err != nil {
-			return fmt.Errorf("reading proposal response failed: %w", err)
-		}
-
-		if !dealProposalCID.Equals(resp.Response.Proposal) {
-			return fmt.Errorf("provider returned proposal cid %s but we expected %s", resp.Response.Proposal, dealProposalIpld.Cid())
-		}
-
-		if resp.Response.State != storagemarket.StorageDealWaitingForData {
-			return fmt.Errorf("provider returned unexpected state %d for proposal %s, with message: %s", resp.Response.State, resp.Response.Proposal, resp.Response.Message)
-		}
-
-		return nil
-	}()
-
-	var msg string
-	state := storagemarket.StorageDealWaitingForData
+	offlineDeal.State = storagemarket.StorageDealWaitingForData
+	offlineDeal.UpdatedAt = time.Now()
+	proposalCID, err := a.sendOfflineDealProposal(ctx, params.Miner, *mi.PeerId, dealProposalSigned, params.Data, params.Wallet)
 	if err != nil {
-		state = storagemarket.StorageDealError
-		msg = err.Error()
+		offlineDeal.State = storagemarket.StorageDealError
+		offlineDeal.Message = err.Error()
+	} else {
+		a.OfflineDealManager.addDeal(offlineDeal)
+	}
+	if dbErr := a.DealRepo.SaveDeal(ctx, offlineDeal); dbErr != nil {
+		log.Errorf("save deal %s failed: %v", proposalCID, dbErr)
 	}
 
-	return &dealProposalCID, saveDeal(state, msg)
+	return proposalCID, err
+}
+
+func (a *API) sendOfflineDealProposal(ctx context.Context,
+	miner address.Address,
+	minerPeerID peer.ID,
+	dealProposal *vTypes.ClientDealProposal,
+	dataRef *storagemarket.DataRef,
+	signAddr address.Address,
+) (*cid.Cid, error) {
+	stream, err := network.NewFromLibp2pHost(a.Host,
+		// params duplicated from .../node/modules/client.go
+		// https://github.com/filecoin-project/lotus/pull/5961#discussion_r629768011
+		network.RetryParameters(time.Second, 5*time.Minute, 15, 5),
+	).NewDealStream(ctx, minerPeerID)
+	if err != nil {
+		return nil, fmt.Errorf("opening dealstream to %s/%v failed: %w", miner, minerPeerID, err)
+	}
+
+	if err = stream.WriteDealProposal(network.Proposal{
+		FastRetrieval: true,
+		DealProposal:  dealProposal,
+		Piece:         dataRef,
+	}); err != nil {
+		return nil, fmt.Errorf("sending deal proposal failed: %w", err)
+	}
+
+	resp, _, err := stream.ReadDealResponse()
+	if err != nil {
+		return nil, fmt.Errorf("reading proposal response failed: %w", err)
+	}
+
+	dealProposalIpld, err := cborutil.AsIpld(dealProposal)
+	if err != nil {
+		return nil, fmt.Errorf("serializing proposal node failed: %w", err)
+	}
+	proposalCID := dealProposalIpld.Cid()
+
+	if !proposalCID.Equals(resp.Response.Proposal) {
+		return nil, fmt.Errorf("provider returned proposal cid %s but we expected %s", resp.Response.Proposal, dealProposalIpld.Cid())
+	}
+
+	if resp.Response.State != storagemarket.StorageDealWaitingForData {
+		return nil, fmt.Errorf("provider returned unexpected state %d for proposal %s, with message: %s", resp.Response.State, resp.Response.Proposal, resp.Response.Message)
+	}
+
+	return &proposalCID, nil
 }
 
 func (a *API) ClientListDeals(ctx context.Context) ([]types.DealInfo, error) {
@@ -1556,4 +1560,20 @@ func (a *API) dealBlockstore(root cid.Cid) (bstore.Blockstore, func(), error) {
 
 func (a *API) DefaultAddress(ctx context.Context) (address.Address, error) {
 	return address.Address(a.Cfg.DefaultMarketAddress), nil
+}
+
+func (a *API) ClientGetVerifiedDealDistribution(ctx context.Context) (*DealDistribution, error) {
+	dealStat := newDealStat()
+	verifiedDealProposals := a.OfflineDealManager.VerifiedDealProposals()
+	deals, err := a.SMDealClient.ListLocalDeals(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i, deal := range deals {
+		if !storageprovider.IsTerminateState(deal.State) && deal.Proposal.VerifiedDeal {
+			verifiedDealProposals = append(verifiedDealProposals, &deals[i].ClientDealProposal)
+		}
+	}
+
+	return dealStat.dealDistribution(verifiedDealProposals), nil
 }
