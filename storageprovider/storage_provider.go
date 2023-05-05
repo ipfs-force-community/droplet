@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs-force-community/metrics"
 
 	"github.com/hannahhoward/go-pubsub"
@@ -269,17 +270,17 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 	results := make([]*types.ImportDataResult, 0, len(refs))
 	validDeals := make([]*types.MinerDeal, 0, len(refs))
 	for _, ref := range refs {
-		d, err := p.dealStore.GetDeal(ctx, ref.ProposalCid)
+		d, err := p.dealStore.GetDeal(ctx, ref.ProposalCID)
 		if err != nil {
 			results = append(results, &types.ImportDataResult{
-				ProposalCid: ref.ProposalCid,
+				ProposalCID: ref.ProposalCID,
 				Message:     fmt.Errorf("failed getting deal: %v", err).Error(),
 			})
 			continue
 		}
-		if err := p.importDataForDeal(ctx, ref, d); err != nil {
+		if err := p.importDataForDeal(ctx, d, ref, skipCommP); err != nil {
 			results = append(results, &types.ImportDataResult{
-				ProposalCid: ref.ProposalCid,
+				ProposalCID: ref.ProposalCID,
 				Message:     err.Error(),
 			})
 			continue
@@ -287,12 +288,12 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 		validDeals = append(validDeals, d)
 	}
 
-	dealGroup := make(map[address.Address][]*types.MinerDeal)
+	minerDeals := make(map[address.Address][]*types.MinerDeal)
 	for _, d := range validDeals {
-		dealGroup[d.Proposal.Provider] = append(dealGroup[d.Proposal.Provider], d)
+		minerDeals[d.Proposal.Provider] = append(minerDeals[d.Proposal.Provider], d)
 	}
 
-	for provider, deals := range dealGroup {
+	for provider, deals := range minerDeals {
 		err := p.batchReserverFunds(ctx, deals)
 		if err != nil {
 			log.Errorf("batch reserver funds for %s failed: %v", provider, err)
@@ -301,13 +302,13 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 		for _, deal := range deals {
 			if err != nil {
 				results = append(results, &types.ImportDataResult{
-					ProposalCid: deal.ProposalCid,
+					ProposalCID: deal.ProposalCid,
 					Message:     err.Error(),
 				})
 				continue
 			}
 			results = append(results, &types.ImportDataResult{
-				ProposalCid: deal.ProposalCid,
+				ProposalCID: deal.ProposalCid,
 			})
 
 			go func(deal *types.MinerDeal) {
@@ -322,8 +323,8 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 	return results, nil
 }
 
-func (p *StorageProviderImpl) importDataForDeal(ctx context.Context, ref *types.ImportDataRef, d *types.MinerDeal) error {
-	propCid := ref.ProposalCid
+func (p *StorageProviderImpl) importDataForDeal(ctx context.Context, d *types.MinerDeal, ref *types.ImportDataRef, skipCommP bool) error {
+	propCid := ref.ProposalCID
 	fi, err := os.Open(ref.File)
 	if err != nil {
 		return fmt.Errorf("failed to open given file: %w", err)
@@ -365,6 +366,11 @@ func (p *StorageProviderImpl) importDataForDeal(ctx context.Context, ref *types.
 		}()
 	} else {
 		log.Debugf("not found %s in piece storage", d.Proposal.PieceCID)
+
+		data, err := os.Open(ref.File)
+		if err != nil {
+			return err
+		}
 
 		fs, err := p.tf(d.Proposal.Provider)
 		if err != nil {
@@ -468,15 +474,15 @@ func (p *StorageProviderImpl) batchReserverFunds(ctx context.Context, deals []*t
 		return nil
 	}
 	handleError := func(deals []*types.MinerDeal, evt storagemarket.ProviderEvent, srcErr error) error {
-		var firstErr error
+		var multiErr *multierror.Error
 		for _, deal := range deals {
 			p.eventPublisher.Publish(evt, deal)
-			if err := p.dealProcess.HandleError(ctx, deal, srcErr); err != nil && firstErr == nil {
-				firstErr = err
+			if err := p.dealProcess.HandleError(ctx, deal, srcErr); err != nil {
+				multiErr = multierror.Append(multiErr, err)
 			}
 		}
 
-		return firstErr
+		return multiErr.ErrorOrNil()
 	}
 
 	provider := deals[0].Proposal.Provider
@@ -502,7 +508,7 @@ func (p *StorageProviderImpl) batchReserverFunds(ctx context.Context, deals []*t
 		return handleError(deals, storagemarket.ProviderEventNodeErrored, fmt.Errorf("reserving funds: %v", err))
 	}
 
-	var firstErr error
+	var multiErr *multierror.Error
 	for i, deal := range deals {
 		p.eventPublisher.Publish(storagemarket.ProviderEventFundsReserved, deal)
 
@@ -524,13 +530,13 @@ func (p *StorageProviderImpl) batchReserverFunds(ctx context.Context, deals []*t
 		p.eventPublisher.Publish(storagemarket.ProviderEventFundingInitiated, deal)
 		err = p.dealStore.SaveDeal(ctx, deal)
 		if err != nil {
-			if err := p.dealProcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database")); err != nil && firstErr == nil {
-				firstErr = err
+			if err := p.dealProcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err)); err != nil {
+				multiErr = multierror.Append(multiErr, err)
 			}
 		}
 	}
 
-	return firstErr
+	return multiErr.ErrorOrNil()
 }
 
 // ImportPublishedDeal manually import published deals for an storage deal

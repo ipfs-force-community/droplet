@@ -7,14 +7,15 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
-	"github.com/filecoin-project/venus/venus-shared/types"
+	shared "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStat(t *testing.T) {
 	pieceCIDs := make([]cid.Cid, 10)
-	deals := make([]*types.ClientDealProposal, 20)
+	deals := make([]*shared.ClientDealProposal, 20)
 	providers := make([]address.Address, 10)
 	clients := make([]address.Address, 4)
 	pieceSize := abi.PaddedPieceSize(10000)
@@ -24,8 +25,8 @@ func TestStat(t *testing.T) {
 	testutil.Provide(t, &providers)
 	testutil.Provide(t, &clients)
 
-	var expect DealDistribution
-	var verifiedDeal []*types.ClientDealProposal
+	var expect types.DealDistribution
+	var verifiedDeal []*shared.ClientDealProposal
 	for i := 0; i < len(deals); i++ {
 		deal := deals[i]
 		deal.Proposal.PieceCID = pieceCIDs[i%len(pieceCIDs)]
@@ -48,11 +49,11 @@ func TestStat(t *testing.T) {
 				}
 			}
 
-			pd := &ProviderDistribution{
+			pd := &types.ProviderDistribution{
 				Provider: deal.Proposal.Provider,
 				Total:    uint64(deal.Proposal.PieceSize) * 2,
 				Uniq:     uint64(deal.Proposal.PieceSize),
-				uniqPieces: map[string]uint64{
+				UniqPieces: map[string]uint64{
 					deal.Proposal.PieceCID.String(): uint64(pieceSize),
 				},
 			}
@@ -70,12 +71,12 @@ func TestStat(t *testing.T) {
 			}
 
 			if !found {
-				rd := &ReplicaDistribution{
+				rd := &types.ReplicaDistribution{
 					Client:                deal.Proposal.Client,
 					Total:                 uint64(len(deals) / len(clients) * int(pieceSize)),
 					DuplicationPercentage: 0,
 					ReplicasPercentage:    map[string]float64{},
-					ReplicasDistribution:  []*ProviderDistribution{pd},
+					ReplicasDistribution:  []*types.ProviderDistribution{pd},
 				}
 				rd.ReplicasPercentage[deal.Proposal.Provider.String()] = float64(pieceSize) / float64(rd.Total)
 				expect.ReplicasDistribution = append(expect.ReplicasDistribution, rd)
@@ -87,8 +88,8 @@ func TestStat(t *testing.T) {
 						for _, pd := range rd.ReplicasDistribution {
 							if pd.Provider == deal.Proposal.Provider {
 								pd.Total += uint64(deal.Proposal.PieceSize)
-								if _, ok := pd.uniqPieces[deal.Proposal.PieceCID.String()]; !ok {
-									pd.uniqPieces[deal.Proposal.PieceCID.String()] = uint64(deal.Proposal.PieceSize)
+								if _, ok := pd.UniqPieces[deal.Proposal.PieceCID.String()]; !ok {
+									pd.UniqPieces[deal.Proposal.PieceCID.String()] = uint64(deal.Proposal.PieceSize)
 									pd.Uniq += uint64(deal.Proposal.PieceSize)
 								}
 								pd.DuplicationPercentage = float64(pd.Total-pd.Uniq) / float64(pd.Total)
@@ -114,7 +115,7 @@ func TestStat(t *testing.T) {
 	dealStat := newDealStat()
 	dd := dealStat.dealDistribution(verifiedDeal)
 
-	sorted := func(pds []*ProviderDistribution) {
+	sorted := func(pds []*types.ProviderDistribution) {
 		sort.Slice(pds, func(i, j int) bool {
 			return pds[i].Provider.String() < pds[j].Provider.String()
 		})
@@ -128,7 +129,7 @@ func TestStat(t *testing.T) {
 
 	assert.Equal(t, len(expect.ReplicasDistribution), len(expect.ReplicasDistribution))
 	for i := 0; i < len(dd.ReplicasDistribution); i++ {
-		var erd *ReplicaDistribution
+		var erd *types.ReplicaDistribution
 		ard := dd.ReplicasDistribution[i]
 		for _, rd := range expect.ReplicasDistribution {
 			if rd.Client == ard.Client {

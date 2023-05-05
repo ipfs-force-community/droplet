@@ -9,9 +9,9 @@ import (
 	"github.com/filecoin-project/venus-auth/log"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
-	"github.com/filecoin-project/venus-market/v2/types"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	shared "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"go.uber.org/fx"
 )
 

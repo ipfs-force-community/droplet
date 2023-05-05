@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/filecoin-project/venus-market/v2/models/repo"
-	"github.com/filecoin-project/venus-market/v2/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"

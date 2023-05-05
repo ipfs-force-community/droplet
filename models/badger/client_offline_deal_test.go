@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
+	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/stretchr/testify/assert"
 )
 

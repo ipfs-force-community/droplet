@@ -69,7 +69,6 @@ import (
 
 	"github.com/filecoin-project/venus-auth/log"
 
-	mtypes "github.com/filecoin-project/venus-market/v2/types"
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -304,10 +303,10 @@ func (a *API) dealStarter(ctx context.Context, params *types.DealParams, isState
 		return nil, fmt.Errorf("serializing proposal node failed: %w", err)
 	}
 
-	offlineDeal := &mtypes.ClientOfflineDeal{
+	offlineDeal := &types.ClientOfflineDeal{
 		ClientDealProposal: *dealProposalSigned,
 		ProposalCID:        dealProposalIpld.Cid(),
-		DataRoot:           params.Data.Root,
+		DataRef:            params.Data,
 		State:              storagemarket.StorageDealUnknown,
 		SlashEpoch:         -1,
 		FastRetrieval:      params.FastRetrieval,
@@ -1560,7 +1559,7 @@ func (a *API) DefaultAddress(ctx context.Context) (address.Address, error) {
 	return address.Address(a.Cfg.DefaultMarketAddress), nil
 }
 
-func (a *API) ClientGetVerifiedDealDistribution(ctx context.Context) (*DealDistribution, error) {
+func (a *API) ClientGetVerifiedDealDistribution(ctx context.Context) (*types.DealDistribution, error) {
 	var verifiedDealProposals []*vTypes.ClientDealProposal
 	dealStat := newDealStat()
 
@@ -1597,13 +1596,11 @@ func (a *API) ClientListOfflineDeals(ctx context.Context) ([]types.DealInfo, err
 	res := make([]types.DealInfo, 0, len(deals))
 	for _, deal := range deals {
 		res = append(res, types.DealInfo{
-			ProposalCid: deal.ProposalCID,
-			State:       deal.State,
-			Message:     deal.Message,
-			Provider:    deal.Proposal.Provider,
-			DataRef: &storagemarket.DataRef{
-				Root: deal.DataRoot,
-			},
+			ProposalCid:   deal.ProposalCID,
+			State:         deal.State,
+			Message:       deal.Message,
+			Provider:      deal.Proposal.Provider,
+			DataRef:       deal.DataRef,
 			PieceCID:      deal.Proposal.PieceCID,
 			Size:          uint64(deal.Proposal.PieceSize.Unpadded()),
 			PricePerEpoch: deal.Proposal.StoragePricePerEpoch,

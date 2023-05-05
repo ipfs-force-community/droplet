@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -100,14 +99,27 @@ var dealsImportDataCmd = &cli.Command{
 }
 
 var dealsBatchImportDataCmd = &cli.Command{
-	Name:      "batch-import-data",
-	Usage:     "Batch import data for deals",
-	ArgsUsage: "<car dir> <miner>",
+	Name:  "batch-import-data",
+	Usage: "Batch import data for deals",
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:  "proposals",
+			Usage: "proposal cid and car file, eg. <proposal_cid>:<path_to_car_file>",
+		},
+		&cli.StringFlag{
+			Name:  "manifest",
+			Usage: "A file containing proposal cid and car information",
+		},
+		&cli.BoolFlag{
+			Name:  "skip-commp",
+			Usage: "skip calculate the piece-cid, please use with caution",
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 2 {
-			return fmt.Errorf("must specify car dir and miner")
-		}
-
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
 			return err
@@ -115,34 +127,58 @@ var dealsBatchImportDataCmd = &cli.Command{
 		defer closer()
 
 		ctx := DaemonContext(cctx)
-		carDir := cctx.Args().First()
-		miner := cctx.Args().Get(1)
-		proposals, err := LoadMinerProposalFromCSV(filepath.Join(carDir, miner+".csv"))
-		if err != nil {
-			return err
-		}
-		refs := make([]*market.ImportDataRef, 0, len(proposals))
-		for proCidStr, payloadCid := range proposals {
-			proCid, err := cid.Decode(proCidStr)
+
+		var proposalFiles []string
+		var refs []*market.ImportDataRef
+		if cctx.IsSet("proposals") {
+			proposalFiles = cctx.StringSlice("proposals")
+		} else {
+			manifest := cctx.String("manifest")
+			if len(manifest) == 0 {
+				return fmt.Errorf("must pass proposals or manifest")
+			}
+			data, err := os.ReadFile(manifest)
 			if err != nil {
 				return err
 			}
+			proposalFiles = strings.Split(string(data), "\n")
+		}
+		for _, proposalFile := range proposalFiles {
+			arr := strings.Split(proposalFile, ":")
+			if len(arr) != 2 {
+				continue
+			}
+			proposalCID, err := cid.Parse(arr[0])
+			if err != nil {
+				fmt.Printf("parse %s failed: %v\n", arr[0], err)
+				continue
+			}
 			refs = append(refs, &market.ImportDataRef{
-				ProposalCid: proCid,
-				File:        filepath.Join(carDir, payloadCid+".car"),
+				ProposalCID: proposalCID,
+				File:        arr[1],
 			})
 		}
 
-		res, err := api.DealsBatchImportData(ctx, refs)
+		var skipCommP bool
+		if cctx.IsSet("skip-commp") {
+			if !cctx.IsSet("really-do-it") {
+				return fmt.Errorf("pass --really-do-it to actually execute this action")
+			}
+			skipCommP = true
+		}
+		res, err := api.DealsBatchImportData(ctx, market.ImportDataRefs{
+			Refs:      refs,
+			SkipCommP: skipCommP,
+		})
 		if err != nil {
 			return err
 		}
 
 		for _, r := range res {
 			if len(r.Message) == 0 {
-				fmt.Printf("import data for deal %s success\n", r.ProposalCid)
+				fmt.Printf("import data success: %s\n", r.ProposalCID)
 			} else {
-				fmt.Printf("import data for deal %s failed: %s\n", r.ProposalCid, r.Message)
+				fmt.Printf("import data failed: %s %s\n", r.ProposalCID, r.Message)
 			}
 		}
 
