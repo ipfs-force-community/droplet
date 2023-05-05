@@ -1,5 +1,9 @@
 # venus-market changelog
 
+## v2.7.2
+
+* 修复订单卡在 StorageDealStaged 状态 [[#324](https://github.com/filecoin-project/venus-market/pull/324)]
+
 ## v2.7.1
 
 * update ffi
