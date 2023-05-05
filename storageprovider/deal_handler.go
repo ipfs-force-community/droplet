@@ -529,13 +529,11 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			}
 		}
 
+		log.Infof("register shard. deal:%d, proposalCid:%s, pieceCid:%s", deal.DealID, deal.ProposalCid, deal.Proposal.PieceCID)
 		// Register the deal data as a "shard" with the DAG store. Later it can be
 		// fetched from the DAG store during retrieval.
-		if err := stores.RegisterShardSync(ctx, storageDealPorcess.dagStore, deal.Proposal.PieceCID, carFilePath, true); err != nil {
-			err = fmt.Errorf("failed to activate shard: %w", err)
-			log.Error(err)
-		} else {
-			log.Infof("register shard successfully. deal:%d, proposalCid:%s, pieceCid:%s", deal.DealID, deal.ProposalCid, deal.Proposal.PieceCID)
+		if err := storageDealPorcess.dagStore.RegisterShard(ctx, deal.Proposal.PieceCID, carFilePath, true, nil); err != nil {
+			log.Errorf("failed to register shard: %v", err)
 		}
 
 		log.Infow("successfully handed off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
