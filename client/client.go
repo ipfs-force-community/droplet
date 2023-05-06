@@ -130,8 +130,8 @@ func (a *API) ClientBatchDeal(ctx context.Context, dealsParams *types.DealsParam
 	}
 
 	var res types.DealResults
-	isStateless := dealsParams.Params[0].Data.TransferType == storagemarket.TTManual
-	for _, param := range dealsParams.Params {
+	for i, param := range dealsParams.Params {
+		isStateless := dealsParams.Params[i].Data.TransferType == storagemarket.TTManual
 		proposalCid, err := a.dealStarter(ctx, param, isStateless)
 		if err != nil {
 			res.Results = append(res.Results, &types.DealResult{

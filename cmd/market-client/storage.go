@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -385,6 +386,7 @@ var storageDealsCmd = &cli.Command{
 		storageDealsStatsCmd,
 		storageDealsGetCmd,
 		storageDealsInspectCmd,
+		verifiedDealStatsCmd,
 	},
 }
 
@@ -1489,7 +1491,7 @@ type params struct {
 	provCol       big.Int
 	statelessDeal bool
 	isVerified    bool
-	dcap          *abi.StoragePower
+	dcap          int64
 }
 
 func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi v1api.FullNode) (*params, error) {
@@ -1558,7 +1560,7 @@ func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi 
 		isVerified = verifiedDealParam
 	}
 
-	return &params{
+	p := &params{
 		firstArg:      cctx.Args().Get(0),
 		miner:         miner,
 		from:          a,
@@ -1567,7 +1569,80 @@ func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi 
 		provCol:       provCol,
 		statelessDeal: cctx.Bool("manual-stateless-deal"),
 		isVerified:    isVerified,
-		dcap:          dcap,
+	}
+	if dcap != nil {
+		p.dcap = dcap.Int64()
+	}
+
+	return p, nil
+}
+
+func fillDealParams(cctx *cli.Context, p *params, ref *storagemarket.DataRef) *client.DealParams {
+	return &client.DealParams{
+		Data:               ref,
+		Wallet:             p.from,
+		Miner:              p.miner,
+		EpochPrice:         types.BigInt(p.price),
+		MinBlocksDuration:  uint64(p.dur),
+		DealStartEpoch:     abi.ChainEpoch(cctx.Int64("start-epoch")),
+		FastRetrieval:      cctx.Bool("fast-retrieval"),
+		VerifiedDeal:       p.isVerified,
+		ProviderCollateral: p.provCol,
+	}
+}
+
+func fillDataRef(cctx *cli.Context,
+	api clientapi.IMarketClient,
+	carDir string,
+	m *manifest,
+	transferType string,
+) (*storagemarket.DataRef, error) {
+	if m.pieceCID.Defined() {
+		return &storagemarket.DataRef{
+			TransferType: transferType,
+			Root:         m.payloadCID,
+			PieceCid:     &m.pieceCID,
+			PieceSize:    m.pieceSize,
+			RawBlockSize: m.payloadSize,
+		}, nil
+	}
+
+	carPath, err := filepath.Abs(filepath.Join(carDir, m.payloadCID.String()+".car"))
+	if err != nil {
+		return nil, err
+	}
+
+	ref := client.FileRef{
+		Path:  carPath,
+		IsCAR: true,
+	}
+	ctx := cctx.Context
+
+	res, err := api.ClientImport(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+	encoder, err := cli2.GetCidEncoder(cctx)
+	if err != nil {
+		return nil, err
+	}
+	root := encoder.Encode(res.Root)
+
+	if root != m.payloadCID.String() {
+		return nil, fmt.Errorf("root not match, expect %s, actual %s", m.payloadCID, root)
+	}
+
+	ds, err := api.ClientDealPieceCID(ctx, res.Root)
+	if err != nil {
+		return nil, err
+	}
+
+	return &storagemarket.DataRef{
+		TransferType: transferType,
+		Root:         res.Root,
+		PieceSize:    ds.PieceSize.Unpadded(),
+		PieceCid:     &ds.PieceCID,
+		RawBlockSize: uint64(ds.PayloadSize),
 	}, nil
 }
 
@@ -1575,6 +1650,7 @@ var storageDelesBatchCmd = &cli.Command{
 	Name:  "batch",
 	Usage: "Batch storage deals with a miner",
 	Description: `Make deals with a miner.
+car-dir is directory of the car file.
 miner is the address of the miner you wish to make a deal with.
 price is measured in FIL/Epoch. Miners usually don't accept a bid
 lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
@@ -1585,11 +1661,7 @@ The minimum value is 518400 (6 months).`,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "manifest",
-			Value: "manifest.csv",
-		},
-		&cli.BoolFlag{
-			Name:  "manual-stateless-deal",
-			Usage: "instructs the node to send an offline deal without registering it with the deallist/fsm",
+			Value: "Path to the manifest file",
 		},
 		&cli.StringFlag{
 			Name:  "from",
@@ -1614,11 +1686,19 @@ The minimum value is 518400 (6 months).`,
 			Name:  "provider-collateral",
 			Usage: "specify the requested provider collateral the miner should put up",
 		},
+		&cli.IntFlag{
+			Name:  "start-index",
+			Usage: "",
+		},
+		&cli.IntFlag{
+			Name:  "end-index",
+			Usage: "",
+		},
 		&cli2.CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 4 {
-			return fmt.Errorf("must pass three arguments")
+			return fmt.Errorf("must pass four arguments")
 		}
 
 		fapi, fcloser, err := cli2.NewFullNode(cctx)
@@ -1645,88 +1725,44 @@ The minimum value is 518400 (6 months).`,
 			return err
 		}
 
-		transferType := storagemarket.TTGraphsync
-		if p.statelessDeal {
-			if p.price.Int64() != 0 {
-				return errors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
-			}
-			transferType = storagemarket.TTManual
+		transferType := storagemarket.TTManual
+		if p.price.Int64() != 0 {
+			return fmt.Errorf("you must provide a 'price' of 0")
 		}
 
-		fillDealParams := func(ref *storagemarket.DataRef) *client.DealParams {
-			return &client.DealParams{
-				Data:               ref,
-				Wallet:             p.from,
-				Miner:              p.miner,
-				EpochPrice:         types.BigInt(p.price),
-				MinBlocksDuration:  uint64(p.dur),
-				DealStartEpoch:     abi.ChainEpoch(cctx.Int64("start-epoch")),
-				FastRetrieval:      cctx.Bool("fast-retrieval"),
-				VerifiedDeal:       p.isVerified,
-				ProviderCollateral: p.provCol,
-			}
-		}
-
-		manifests, err := loadManifests(filepath.Join(carDir, cctx.String("manifest")))
+		manifests, err := loadManifest(cctx.String("manifest"))
 		if err != nil {
 			return fmt.Errorf("load manifest error: %v", err)
 		}
-		minerPorposal, err := cli2.LoadMinerProposalFromCSV(filepath.Join(carDir, p.miner.String()+".csv"))
-		if err != nil {
-			return err
-		}
-		payloadMap := make(map[string]string, len(minerPorposal))
-		for k, v := range minerPorposal {
-			payloadMap[v] = k
-		}
 
 		var params client.DealsParams
-		for _, manifest := range manifests {
-			if proposalCid, ok := payloadMap[manifest.PayloadCid]; ok && len(proposalCid) != 0 {
-				fmt.Printf("alrealy had a deal %s with the same playload cid %s \n", proposalCid, manifest.PayloadCid)
+		startIdx := cctx.Int("start-index")
+		endIdx := cctx.Int("end-index")
+		currDatacap := p.dcap
+
+		for i, manifest := range manifests {
+			if i < startIdx {
 				continue
 			}
+			if endIdx > 0 && i >= endIdx {
+				break
+			}
 
-			carPath, err := filepath.Abs(filepath.Join(carDir, manifest.PayloadCid+".car"))
+			dataRef, err := fillDataRef(cctx, api, carDir, manifest, transferType)
 			if err != nil {
 				return err
 			}
 
-			ref := client.FileRef{
-				Path:  carPath,
-				IsCAR: true,
+			if p.isVerified {
+				if currDatacap < int64(dataRef.PieceSize) {
+					fmt.Printf("datacap %d less than piece size %d\n", currDatacap, dataRef.PieceSize)
+					break
+				}
+				currDatacap -= int64(dataRef.PieceSize)
 			}
-			res, err := api.ClientImport(ctx, ref)
-			if err != nil {
-				return err
-			}
-			encoder, err := cli2.GetCidEncoder(cctx)
-			if err != nil {
-				return err
-			}
-			root := encoder.Encode(res.Root)
-
-			if root != manifest.PayloadCid {
-				return fmt.Errorf("root not match, expect %s, actual %s", manifest.PayloadCid, root)
-			}
-			fmt.Printf("import %s success, import id: %d \n", manifest.PayloadCid, res.ImportID)
-
-			ds, err := api.ClientDealPieceCID(ctx, res.Root)
-			if err != nil {
-				return err
-			}
-
-			dataRef := &storagemarket.DataRef{
-				TransferType: transferType,
-				Root:         res.Root,
-				PieceSize:    ds.PieceSize.Unpadded(),
-				PieceCid:     &ds.PieceCID,
-				RawBlockSize: uint64(ds.PayloadSize),
-			}
-
-			// todo: check datacap
-			params.Params = append(params.Params, fillDealParams(dataRef))
+			params.Params = append(params.Params, fillDealParams(cctx, p, dataRef))
 		}
+		fmt.Printf("has %d deals need to publish\n", len(params.Params))
 
 		res, err := api.ClientBatchDeal(ctx, &params)
 		if err != nil {
@@ -1736,16 +1772,9 @@ The minimum value is 518400 (6 months).`,
 		for i, r := range res.Results {
 			root := params.Params[i].Data.Root.String()
 			if len(r.Message) == 0 {
-				minerPorposal[r.ProposalCID.String()] = root
-				fmt.Printf("create deal success, proposal cid: %v, playload cid: %v\n", r.ProposalCID, root)
+				fmt.Printf("create deal success, proposal cid: %v\n", r.ProposalCID)
 			} else {
 				fmt.Printf("create deal failed, playload cid: %v, error: %v\n", root, r.Message)
-			}
-		}
-
-		if len(minerPorposal) > 0 {
-			if err := cli2.SaveMinerProposalToCSV(filepath.Join(carDir, p.miner.String()+".csv"), minerPorposal); err != nil {
-				return fmt.Errorf("save deal proposal error: %v", err)
 			}
 		}
 
@@ -1754,34 +1783,152 @@ The minimum value is 518400 (6 months).`,
 }
 
 type manifest struct {
-	PayloadCid string
+	payloadCID  cid.Cid
+	payloadSize uint64
+	pieceCID    cid.Cid
+	pieceSize   abi.UnpaddedPieceSize
 }
 
-func loadManifests(path string) ([]*manifest, error) {
+func loadManifest(path string) ([]*manifest, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := io.ReadAll(f)
+	records, err := csv.NewReader(f).ReadAll()
 	if err != nil {
 		return nil, err
 	}
 
-	lines := bytes.Split(data, []byte("\n"))
-	manifests := make([]*manifest, 0, len(lines))
-	for i, line := range lines {
-		// skip title
+	manifests := make([]*manifest, 0, len(records))
+	for i, record := range records {
+		// skip title: payload_cid,filename,piece_cid,payload_size,piece_size,detail or payload_cid,filename,detail
 		if i == 0 {
 			continue
 		}
-		list := bytes.Split(line, []byte(","))
-		if len(list) > 0 && len(list[0]) > 0 {
-			manifests = append(manifests, &manifest{
-				PayloadCid: string(list[0]),
-			})
+
+		if len(record) == 3 {
+			payloadCID, err := cid.Parse(record[0])
+			if err == nil {
+				manifests = append(manifests, &manifest{payloadCID: payloadCID})
+			}
+		} else if len(record) == 6 {
+			payloadCID, err := cid.Parse(record[0])
+			if err != nil {
+				continue
+			}
+			pieceCID, err := cid.Parse(record[2])
+			if err != nil {
+				continue
+			}
+			payloadSize, err := strconv.ParseUint(record[3], 10, 64)
+			if err != nil {
+				continue
+			}
+			pieceSize, err := strconv.Atoi(record[4])
+			if err == nil {
+				manifests = append(manifests, &manifest{payloadCID: payloadCID, payloadSize: payloadSize,
+					pieceCID: pieceCID, pieceSize: abi.UnpaddedPieceSize(pieceSize)})
+			}
 		}
 	}
 
 	return manifests, nil
+}
+
+var verifiedDealStatsCmd = &cli.Command{
+	Name:  "verified-deal-stat",
+	Usage: "",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "addr",
+			Usage: "datacap address or provider address",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := cli2.NewMarketClientNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := cli2.ReqContext(cctx)
+
+		dd, err := api.ClientGetVerifiedDealDistribution(ctx)
+		if err != nil {
+			return err
+		}
+
+		newProviderWriter := func() *tablewriter.TableWriter {
+			return tablewriter.New(
+				tablewriter.Col("Provider"),
+				tablewriter.Col("Total"),
+				tablewriter.Col("Percentage"),
+				tablewriter.Col("Uniq"),
+				tablewriter.Col("DuplicationPercentage"),
+			)
+		}
+
+		writeProviderDistribution := func(writer *tablewriter.TableWriter, pd *client.ProviderDistribution, percentage float64) {
+			rows := map[string]interface{}{
+				"Provider":              pd.Provider,
+				"Total":                 pd.Total,
+				"Uniq":                  pd.Uniq,
+				"DuplicationPercentage": fmt.Sprintf("0.2%f%s", 100*pd.DuplicationPercentage, "%"),
+			}
+			if percentage != 0 {
+				rows["Percentage"] = fmt.Sprintf("0.2%f%s", 100*percentage, "%")
+			}
+		}
+
+		writeReplicasDistribution := func(buf *bytes.Buffer, rd *client.ReplicaDistribution) {
+			writer := newProviderWriter()
+			fmt.Fprint(buf, "Client: ", rd.Client)
+			fmt.Fprint(buf, "Total: ", rd.Total)
+			fmt.Fprintf(buf, "DuplicationPercentage: 0.2%f%s\n", rd.DuplicationPercentage*100, "%")
+			for _, pd := range rd.ReplicasDistribution {
+				writeProviderDistribution(writer, pd, rd.ReplicasPercentage[pd.Provider.String()])
+			}
+			_ = writer.Flush(buf)
+			buf.WriteString("\n")
+		}
+
+		if cctx.IsSet("addr") {
+			addr := cctx.String("addr")
+			for _, pd := range dd.ProvidersDistribution {
+				if pd.Provider.String() == addr {
+					writer := newProviderWriter()
+					writeProviderDistribution(writer, pd, 0)
+
+					return writer.Flush(os.Stdout)
+				}
+			}
+
+			buf := new(bytes.Buffer)
+			for _, rd := range dd.ReplicasDistribution {
+				if rd.Client.String() == addr {
+					writeReplicasDistribution(buf, rd)
+					break
+				}
+			}
+			fmt.Print(buf)
+
+			return nil
+		}
+
+		pdWriter := newProviderWriter()
+		for _, pd := range dd.ProvidersDistribution {
+			writeProviderDistribution(pdWriter, pd, 0)
+		}
+		_ = pdWriter.Flush(os.Stdout)
+		fmt.Println()
+
+		buf := new(bytes.Buffer)
+		for _, rd := range dd.ReplicasDistribution {
+			writeReplicasDistribution(buf, rd)
+		}
+		fmt.Print(buf)
+
+		return nil
+	},
 }

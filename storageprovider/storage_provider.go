@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs-force-community/metrics"
 
 	"github.com/hannahhoward/go-pubsub"
@@ -268,7 +267,7 @@ func (p *StorageProviderImpl) Stop() error {
 func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*types.ImportDataRef, skipCommP bool) ([]*types.ImportDataResult, error) {
 	// TODO: be able to check if we have enough disk space
 	results := make([]*types.ImportDataResult, 0, len(refs))
-	validDeals := make([]*types.MinerDeal, 0, len(refs))
+	minerDeals := make(map[address.Address][]*types.MinerDeal)
 	for _, ref := range refs {
 		d, err := p.dealStore.GetDeal(ctx, ref.ProposalCID)
 		if err != nil {
@@ -285,22 +284,24 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 			})
 			continue
 		}
-		validDeals = append(validDeals, d)
-	}
-
-	minerDeals := make(map[address.Address][]*types.MinerDeal)
-	for _, d := range validDeals {
 		minerDeals[d.Proposal.Provider] = append(minerDeals[d.Proposal.Provider], d)
 	}
 
 	for provider, deals := range minerDeals {
-		err := p.batchReserverFunds(ctx, deals)
+		res, err := p.batchReserverFunds(ctx, deals)
 		if err != nil {
 			log.Errorf("batch reserver funds for %s failed: %v", provider, err)
+			for _, deal := range deals {
+				results = append(results, &types.ImportDataResult{
+					ProposalCID: deal.ProposalCid,
+					Message:     err.Error(),
+				})
+			}
+			continue
 		}
 
 		for _, deal := range deals {
-			if err != nil {
+			if err := res[deal.ProposalCid]; err != nil {
 				results = append(results, &types.ImportDataResult{
 					ProposalCID: deal.ProposalCid,
 					Message:     err.Error(),
@@ -324,13 +325,7 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 }
 
 func (p *StorageProviderImpl) importDataForDeal(ctx context.Context, d *types.MinerDeal, ref *types.ImportDataRef, skipCommP bool) error {
-	propCid := ref.ProposalCID
-	fi, err := os.Open(ref.File)
-	if err != nil {
-		return fmt.Errorf("failed to open given file: %w", err)
-	}
-	defer fi.Close() //nolint:errcheck
-
+	propCid := d.ProposalCid
 	if IsTerminateState(d.State) {
 		return fmt.Errorf("deal %s is terminate state", propCid)
 	}
@@ -469,22 +464,16 @@ func (p *StorageProviderImpl) importDataForDeal(ctx context.Context, d *types.Mi
 }
 
 // batchReserverFunds batch reserver funds for deals
-func (p *StorageProviderImpl) batchReserverFunds(ctx context.Context, deals []*types.MinerDeal) error {
-	if len(deals) == 0 {
-		return nil
-	}
-	handleError := func(deals []*types.MinerDeal, evt storagemarket.ProviderEvent, srcErr error) error {
-		var multiErr *multierror.Error
+func (p *StorageProviderImpl) batchReserverFunds(ctx context.Context, deals []*types.MinerDeal) (map[cid.Cid]error, error) {
+	handleError := func(deals []*types.MinerDeal, evt storagemarket.ProviderEvent, err error) (map[cid.Cid]error, error) {
 		for _, deal := range deals {
 			p.eventPublisher.Publish(evt, deal)
-			if err := p.dealProcess.HandleError(ctx, deal, srcErr); err != nil {
-				multiErr = multierror.Append(multiErr, err)
-			}
+			_ = p.dealProcess.HandleError(ctx, deal, err)
 		}
-
-		return multiErr.ErrorOrNil()
+		return nil, err
 	}
 
+	res := make(map[cid.Cid]error, len(deals))
 	provider := deals[0].Proposal.Provider
 	allFunds := big.NewInt(0)
 	fundList := make([]big.Int, 0, len(deals))
@@ -508,9 +497,9 @@ func (p *StorageProviderImpl) batchReserverFunds(ctx context.Context, deals []*t
 		return handleError(deals, storagemarket.ProviderEventNodeErrored, fmt.Errorf("reserving funds: %v", err))
 	}
 
-	var multiErr *multierror.Error
 	for i, deal := range deals {
 		p.eventPublisher.Publish(storagemarket.ProviderEventFundsReserved, deal)
+		res[deal.ProposalCid] = nil
 
 		if deal.FundsReserved.Nil() {
 			deal.FundsReserved = fundList[i]
@@ -530,13 +519,12 @@ func (p *StorageProviderImpl) batchReserverFunds(ctx context.Context, deals []*t
 		p.eventPublisher.Publish(storagemarket.ProviderEventFundingInitiated, deal)
 		err = p.dealStore.SaveDeal(ctx, deal)
 		if err != nil {
-			if err := p.dealProcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err)); err != nil {
-				multiErr = multierror.Append(multiErr, err)
-			}
+			_ = p.dealProcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err))
+			res[deal.ProposalCid] = err
 		}
 	}
 
-	return multiErr.ErrorOrNil()
+	return res, nil
 }
 
 // ImportPublishedDeal manually import published deals for an storage deal
