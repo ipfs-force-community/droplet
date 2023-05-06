@@ -385,6 +385,7 @@ var storageDealsCmd = &cli.Command{
 		storageDealsStatsCmd,
 		storageDealsGetCmd,
 		storageDealsInspectCmd,
+		verifiedDealStatsCmd,
 	},
 }
 
@@ -1575,6 +1576,7 @@ var storageDelesBatchCmd = &cli.Command{
 	Name:  "batch",
 	Usage: "Batch storage deals with a miner",
 	Description: `Make deals with a miner.
+car-dir is directory of the car file.
 miner is the address of the miner you wish to make a deal with.
 price is measured in FIL/Epoch. Miners usually don't accept a bid
 lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
@@ -1585,11 +1587,7 @@ The minimum value is 518400 (6 months).`,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "manifest",
-			Value: "manifest.csv",
-		},
-		&cli.BoolFlag{
-			Name:  "manual-stateless-deal",
-			Usage: "instructs the node to send an offline deal without registering it with the deallist/fsm",
+			Value: "Path to the manifest file",
 		},
 		&cli.StringFlag{
 			Name:  "from",
@@ -1604,6 +1602,10 @@ The minimum value is 518400 (6 months).`,
 			Name:  "fast-retrieval",
 			Usage: "indicates that data should be available for fast retrieval",
 			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "manual-stateless-deal",
+			Usage: "instructs the node to send an offline deal without registering it with the deallist/fsm",
 		},
 		&cli.BoolFlag{
 			Name:        "verified-deal",
@@ -1648,7 +1650,7 @@ The minimum value is 518400 (6 months).`,
 		transferType := storagemarket.TTGraphsync
 		if p.statelessDeal {
 			if p.price.Int64() != 0 {
-				return errors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
+				return errors.New("when manual-stateless-deal is enabled, you must provide a 'price' of 0")
 			}
 			transferType = storagemarket.TTManual
 		}
@@ -1667,27 +1669,14 @@ The minimum value is 518400 (6 months).`,
 			}
 		}
 
-		manifests, err := loadManifests(filepath.Join(carDir, cctx.String("manifest")))
+		manifests, err := loadManifests(cctx.String("manifest"))
 		if err != nil {
 			return fmt.Errorf("load manifest error: %v", err)
-		}
-		minerPorposal, err := cli2.LoadMinerProposalFromCSV(filepath.Join(carDir, p.miner.String()+".csv"))
-		if err != nil {
-			return err
-		}
-		payloadMap := make(map[string]string, len(minerPorposal))
-		for k, v := range minerPorposal {
-			payloadMap[v] = k
 		}
 
 		var params client.DealsParams
 		for _, manifest := range manifests {
-			if proposalCid, ok := payloadMap[manifest.PayloadCid]; ok && len(proposalCid) != 0 {
-				fmt.Printf("alrealy had a deal %s with the same playload cid %s \n", proposalCid, manifest.PayloadCid)
-				continue
-			}
-
-			carPath, err := filepath.Abs(filepath.Join(carDir, manifest.PayloadCid+".car"))
+			carPath, err := filepath.Abs(filepath.Join(carDir, manifest.PayloadCID.String()+".car"))
 			if err != nil {
 				return err
 			}
@@ -1706,10 +1695,9 @@ The minimum value is 518400 (6 months).`,
 			}
 			root := encoder.Encode(res.Root)
 
-			if root != manifest.PayloadCid {
-				return fmt.Errorf("root not match, expect %s, actual %s", manifest.PayloadCid, root)
+			if root != manifest.PayloadCID.String() {
+				return fmt.Errorf("root not match, expect %s, actual %s", manifest.PayloadCID, root)
 			}
-			fmt.Printf("import %s success, import id: %d \n", manifest.PayloadCid, res.ImportID)
 
 			ds, err := api.ClientDealPieceCID(ctx, res.Root)
 			if err != nil {
@@ -1736,16 +1724,9 @@ The minimum value is 518400 (6 months).`,
 		for i, r := range res.Results {
 			root := params.Params[i].Data.Root.String()
 			if len(r.Message) == 0 {
-				minerPorposal[r.ProposalCID.String()] = root
 				fmt.Printf("create deal success, proposal cid: %v, playload cid: %v\n", r.ProposalCID, root)
 			} else {
 				fmt.Printf("create deal failed, playload cid: %v, error: %v\n", root, r.Message)
-			}
-		}
-
-		if len(minerPorposal) > 0 {
-			if err := cli2.SaveMinerProposalToCSV(filepath.Join(carDir, p.miner.String()+".csv"), minerPorposal); err != nil {
-				return fmt.Errorf("save deal proposal error: %v", err)
 			}
 		}
 
@@ -1754,34 +1735,125 @@ The minimum value is 518400 (6 months).`,
 }
 
 type manifest struct {
-	PayloadCid string
+	PayloadCID cid.Cid
 }
 
 func loadManifests(path string) ([]*manifest, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := io.ReadAll(f)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
 	lines := bytes.Split(data, []byte("\n"))
 	manifests := make([]*manifest, 0, len(lines))
-	for i, line := range lines {
-		// skip title
-		if i == 0 {
-			continue
-		}
+	for _, line := range lines {
 		list := bytes.Split(line, []byte(","))
 		if len(list) > 0 && len(list[0]) > 0 {
-			manifests = append(manifests, &manifest{
-				PayloadCid: string(list[0]),
-			})
+			c, err := cid.Parse(list[0])
+			if err == nil {
+				manifests = append(manifests, &manifest{
+					PayloadCID: c,
+				})
+			}
 		}
 	}
 
 	return manifests, nil
+}
+
+var verifiedDealStatsCmd = &cli.Command{
+	Name:  "verified-deal-stat",
+	Usage: "",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "addr",
+			Usage: "datacap address or provider address",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := cli2.NewMarketClientNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := cli2.ReqContext(cctx)
+
+		dd, err := api.ClientGetVerifiedDealDistribution(ctx)
+		if err != nil {
+			return err
+		}
+
+		newProviderWriter := func() *tablewriter.TableWriter {
+			return tablewriter.New(
+				tablewriter.Col("Provider"),
+				tablewriter.Col("Total"),
+				tablewriter.Col("Percentage"),
+				tablewriter.Col("Uniq"),
+				tablewriter.Col("DuplicationPercentage"),
+			)
+		}
+
+		writeProviderDistribution := func(writer *tablewriter.TableWriter, pd *client.ProviderDistribution, percentage float64) {
+			rows := map[string]interface{}{
+				"Provider":              pd.Provider,
+				"Total":                 pd.Total,
+				"Uniq":                  pd.Uniq,
+				"DuplicationPercentage": fmt.Sprintf("0.2%f%s", 100*pd.DuplicationPercentage, "%"),
+			}
+			if percentage != 0 {
+				rows["Percentage"] = fmt.Sprintf("0.2%f%s", 100*percentage, "%")
+			}
+		}
+
+		writeReplicasDistribution := func(buf *bytes.Buffer, rd *client.ReplicaDistribution) {
+			writer := newProviderWriter()
+			fmt.Fprint(buf, "Client: ", rd.Client)
+			fmt.Fprint(buf, "Total: ", rd.Total)
+			fmt.Fprintf(buf, "DuplicationPercentage: 0.2%f%s\n", rd.DuplicationPercentage*100, "%")
+			for _, pd := range rd.ReplicasDistribution {
+				writeProviderDistribution(writer, pd, rd.ReplicasPercentage[pd.Provider.String()])
+			}
+			_ = writer.Flush(buf)
+			buf.WriteString("\n")
+		}
+
+		if cctx.IsSet("addr") {
+			addr := cctx.String("addr")
+			for _, pd := range dd.ProvidersDistribution {
+				if pd.Provider.String() == addr {
+					writer := newProviderWriter()
+					writeProviderDistribution(writer, pd, 0)
+
+					return writer.Flush(os.Stdout)
+				}
+			}
+
+			buf := new(bytes.Buffer)
+			for _, rd := range dd.ReplicasDistribution {
+				if rd.Client.String() == addr {
+					writeReplicasDistribution(buf, rd)
+					break
+				}
+			}
+			fmt.Print(buf)
+
+			return nil
+		}
+
+		pdWriter := newProviderWriter()
+		for _, pd := range dd.ProvidersDistribution {
+			writeProviderDistribution(pdWriter, pd, 0)
+		}
+		_ = pdWriter.Flush(os.Stdout)
+		fmt.Println()
+
+		buf := new(bytes.Buffer)
+		for _, rd := range dd.ReplicasDistribution {
+			writeReplicasDistribution(buf, rd)
+		}
+		fmt.Print(buf)
+
+		return nil
+	},
 }
