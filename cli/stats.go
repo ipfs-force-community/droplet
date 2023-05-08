@@ -125,6 +125,10 @@ var StatsPowerCmd = &cli.Command{
 				return nil
 			default:
 			}
+			if !info.Power.RawBytePower.GreaterThan(big.Zero()) {
+				log.Println("Skipping SP with no power: ", maddr)
+				continue
+			}
 			err := func() error {
 				log.Println("Checking SP: ", maddr)
 
