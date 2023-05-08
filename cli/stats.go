@@ -2,11 +2,13 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 	"sync"
+	"text/tabwriter"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
@@ -36,6 +38,14 @@ var StatsPowerCmd = &cli.Command{
 			Usage:   "verbose output",
 			Aliases: []string{"v", "debug"},
 		},
+		&cli.BoolFlag{
+			Name:  "list",
+			Usage: "list all miners with minPower ",
+		},
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "list all miners with minPower output as json",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := ReqContext(cctx)
@@ -61,9 +71,15 @@ var StatsPowerCmd = &cli.Command{
 		var wg sync.WaitGroup
 		wg.Add(len(miners))
 		var lk sync.Mutex
-		var withMinPower []address.Address
-		minerToMinerPower := make(map[address.Address]power.Claim)
-		minerToTotalPower := make(map[address.Address]power.Claim)
+
+		type minerInfo struct {
+			Agent       string
+			Power       power.Claim
+			HasMinPower bool
+		}
+
+		minerInfos := make(map[address.Address]*minerInfo)
+		minerWithMinPowerCount := 0
 
 		throttle := make(chan struct{}, 50)
 		for _, miner := range miners {
@@ -79,19 +95,19 @@ var StatsPowerCmd = &cli.Command{
 					panic(err)
 				}
 
-				if power.HasMinPower {
-					lk.Lock()
-					withMinPower = append(withMinPower, miner)
-					minerToMinerPower[miner] = power.MinerPower
-					minerToTotalPower[miner] = power.TotalPower
-					lk.Unlock()
+				info := &minerInfo{
+					HasMinPower: power.HasMinPower,
+					Power:       power.MinerPower,
+					Agent:       "unknown",
 				}
+
+				lk.Lock()
+				minerInfos[miner] = info
+				lk.Unlock()
 			}(miner)
 		}
 
 		wg.Wait()
-
-		log.Println("Total SPs with minimum power: ", len(withMinPower))
 
 		var venusNodes int
 
@@ -103,7 +119,7 @@ var StatsPowerCmd = &cli.Command{
 			return err
 		}
 
-		for _, maddr := range withMinPower {
+		for maddr, info := range minerInfos {
 			select {
 			case <-ctx.Done():
 				return nil
@@ -152,15 +168,16 @@ var StatsPowerCmd = &cli.Command{
 				}
 				log.Println("User agent: ", userAgent)
 
-				if strings.Contains(userAgent, "venus") {
+				info.Agent = userAgent
 
+				if strings.Contains(userAgent, "venus") {
 					log.Println("Provider %s is running venus" + maddr.String())
-					log.Println("venus provider ", maddr.String(), "raw power:", minerToMinerPower[maddr].RawBytePower)
-					log.Println("venus provider ", maddr.String(), "quality adj power:", minerToMinerPower[maddr].QualityAdjPower)
+					log.Println("venus provider ", maddr.String(), "raw power:", info.Power.RawBytePower)
+					log.Println("venus provider ", maddr.String(), "quality adj power:", info.Power.QualityAdjPower)
 
 					venusNodes++
-					QualityAdjPower = big.Add(QualityAdjPower, minerToMinerPower[maddr].QualityAdjPower)
-					RawBytePower = big.Add(RawBytePower, minerToMinerPower[maddr].RawBytePower)
+					QualityAdjPower = big.Add(QualityAdjPower, info.Power.QualityAdjPower)
+					RawBytePower = big.Add(RawBytePower, info.Power.RawBytePower)
 				}
 
 				return nil
@@ -171,11 +188,41 @@ var StatsPowerCmd = &cli.Command{
 			}
 		}
 
-		fmt.Println()
-		fmt.Println("Total venus nodes:", venusNodes)
-		fmt.Println("Total venus raw power:", types.DeciStr(RawBytePower))
-		fmt.Println("Total venus quality adj power:", types.DeciStr(QualityAdjPower))
-		fmt.Println("Total SPs with minimum power: ", len(withMinPower))
+		fmt.Println(minerInfos)
+
+		if cctx.Bool("list") {
+			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+			fmt.Fprintln(w, "Miner\tAgent\tQualityAdjPower\tRawBytePower\tHasMinPower")
+			for maddr, info := range minerInfos {
+				if info.HasMinPower {
+					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%t\n", maddr, info.Agent, info.Power.QualityAdjPower, info.Power.RawBytePower, info.HasMinPower)
+				}
+			}
+			for maddr, info := range minerInfos {
+				if !info.HasMinPower {
+					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%t\n", maddr, info.Agent, info.Power.QualityAdjPower, info.Power.RawBytePower, info.HasMinPower)
+				}
+			}
+			w.Flush()
+		} else if cctx.Bool("json") {
+			minerInfosMarshallable := make(map[string]*minerInfo)
+			for maddr, info := range minerInfos {
+				minerInfosMarshallable[maddr.String()] = info
+			}
+
+			out, err := json.MarshalIndent(minerInfosMarshallable, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(out))
+		} else {
+			fmt.Println()
+			fmt.Println("Total venus nodes:", venusNodes)
+			fmt.Println("Total venus raw power:", types.DeciStr(RawBytePower))
+			fmt.Println("Total venus quality adj power:", types.DeciStr(QualityAdjPower))
+			fmt.Println("Total SPs with minimum power: ", minerWithMinPowerCount)
+		}
+		os.Stdout.Sync()
 
 		return nil
 	},
