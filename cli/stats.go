@@ -46,6 +46,10 @@ var StatsPowerCmd = &cli.Command{
 			Name:  "json",
 			Usage: "list all miners with minPower output as json",
 		},
+		&cli.BoolFlag{
+			Name:  "min-power",
+			Usage: "include miners without minPower",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := ReqContext(cctx)
@@ -129,6 +133,11 @@ var StatsPowerCmd = &cli.Command{
 				log.Println("Skipping SP with no power: ", maddr)
 				continue
 			}
+			if !info.HasMinPower && !cctx.Bool("min-power") {
+				log.Println("Skipping SP with no min power: ", maddr)
+				continue
+			}
+
 			err := func() error {
 				log.Println("Checking SP: ", maddr)
 
