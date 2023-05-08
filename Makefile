@@ -62,6 +62,10 @@ build: $(BUILD_DEPS)
 	go build -o ./market-client $(GOFLAGS) ./cmd/market-client
 	go build -o ./venus-market $(GOFLAGS) ./cmd/venus-market
 
+add-debug-flag:
+GOFLAGS+=-gcflags="all=-N -l"
+
+debug: add-debug-flag build
 
 # docker
 .PHONY: docker
