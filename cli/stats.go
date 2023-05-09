@@ -123,85 +123,95 @@ var StatsPowerCmd = &cli.Command{
 			return err
 		}
 
+		wg.Add(len(minerInfos))
 		for maddr, info := range minerInfos {
 			select {
 			case <-ctx.Done():
 				return nil
 			default:
 			}
-			if !info.Power.RawBytePower.GreaterThan(big.Zero()) {
-				log.Println("Skipping SP with no power: ", maddr)
-				continue
-			}
-			if !info.HasMinPower && !cctx.Bool("min-power") {
-				log.Println("Skipping SP with no min power: ", maddr)
-				continue
-			}
+			go func(mAddr address.Address, info *minerInfo) {
+				throttle <- struct{}{}
+				defer func() {
+					wg.Done()
+					<-throttle
+				}()
 
-			err := func() error {
-				log.Println("Checking SP: ", maddr)
-
-				minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-				if err != nil {
-					return err
+				if !info.Power.RawBytePower.GreaterThan(big.Zero()) {
+					log.Println("Skipping SP with no power: ", mAddr)
+					return
 				}
-				if minfo.PeerId == nil {
-					return fmt.Errorf("storage provider %s has no peer ID set on-chain", maddr)
+				if !info.HasMinPower && !cctx.Bool("min-power") {
+					log.Println("Skipping SP with no min power: ", mAddr)
+					return
 				}
 
-				var maddrs []multiaddr.Multiaddr
-				for _, mma := range minfo.Multiaddrs {
-					ma, err := multiaddr.NewMultiaddrBytes(mma)
+				err := func() error {
+					log.Println("Checking SP: ", mAddr)
+
+					mInfo, err := api.StateMinerInfo(ctx, mAddr, types.EmptyTSK)
 					if err != nil {
-						return fmt.Errorf("storage provider %s had invalid multiaddrs in their info: %w", maddr, err)
+						return err
 					}
-					maddrs = append(maddrs, ma)
-				}
-				if len(maddrs) == 0 {
-					return fmt.Errorf("storage provider %s has no multiaddrs set on-chain", maddr)
-				}
+					if mInfo.PeerId == nil {
+						return fmt.Errorf("storage provider %s has no peer ID set on-chain", mAddr)
+					}
 
-				addrInfo := peer.AddrInfo{
-					ID:    *minfo.PeerId,
-					Addrs: maddrs,
-				}
+					var mAddrs []multiaddr.Multiaddr
+					for _, mma := range mInfo.Multiaddrs {
+						ma, err := multiaddr.NewMultiaddrBytes(mma)
+						if err != nil {
+							return fmt.Errorf("storage provider %s had invalid multiaddrs in their info: %w", mAddr, err)
+						}
+						mAddrs = append(mAddrs, ma)
+					}
+					if len(mAddrs) == 0 {
+						return fmt.Errorf("storage provider %s has no multiaddrs set on-chain", mAddr)
+					}
 
-				if err := host.Connect(ctx, addrInfo); err != nil {
-					return fmt.Errorf("connecting to peer %s: %w", addrInfo.ID, err)
-				}
+					addrInfo := peer.AddrInfo{
+						ID:    *mInfo.PeerId,
+						Addrs: mAddrs,
+					}
 
-				userAgentI, err := host.Peerstore().Get(addrInfo.ID, "AgentVersion")
+					if err := host.Connect(ctx, addrInfo); err != nil {
+						return fmt.Errorf("connecting to peer %s: %w", addrInfo.ID, err)
+					}
+
+					userAgentI, err := host.Peerstore().Get(addrInfo.ID, "AgentVersion")
+					if err != nil {
+						return fmt.Errorf("getting user agent for peer %s: %w", addrInfo.ID, err)
+					}
+
+					userAgent, ok := userAgentI.(string)
+					if !ok {
+						return fmt.Errorf("user agent for peer %s was not a string", addrInfo.ID)
+					}
+					log.Println("User agent: ", userAgent)
+
+					info.Agent = userAgent
+
+					if strings.Contains(userAgent, "venus") {
+						log.Println("Provider %s is running venus" + mAddr.String())
+						log.Println("venus provider ", mAddr.String(), "raw power:", info.Power.RawBytePower)
+						log.Println("venus provider ", mAddr.String(), "quality adj power:", info.Power.QualityAdjPower)
+
+						venusNodes++
+						QualityAdjPower = big.Add(QualityAdjPower, info.Power.QualityAdjPower)
+						RawBytePower = big.Add(RawBytePower, info.Power.RawBytePower)
+					}
+
+					return nil
+				}()
 				if err != nil {
-					return fmt.Errorf("getting user agent for peer %s: %w", addrInfo.ID, err)
+					log.Println("warn: ", err)
+					return
 				}
 
-				userAgent, ok := userAgentI.(string)
-				if !ok {
-					return fmt.Errorf("user agent for peer %s was not a string", addrInfo.ID)
-				}
-				log.Println("User agent: ", userAgent)
+			}(maddr, info)
 
-				info.Agent = userAgent
-
-				if strings.Contains(userAgent, "venus") {
-					log.Println("Provider %s is running venus" + maddr.String())
-					log.Println("venus provider ", maddr.String(), "raw power:", info.Power.RawBytePower)
-					log.Println("venus provider ", maddr.String(), "quality adj power:", info.Power.QualityAdjPower)
-
-					venusNodes++
-					QualityAdjPower = big.Add(QualityAdjPower, info.Power.QualityAdjPower)
-					RawBytePower = big.Add(RawBytePower, info.Power.RawBytePower)
-				}
-
-				return nil
-			}()
-			if err != nil {
-				log.Println("warn: ", err)
-				continue
-			}
 		}
-
-		fmt.Println(minerInfos)
+		wg.Wait()
 
 		if cctx.Bool("list") {
 			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
