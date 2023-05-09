@@ -192,7 +192,7 @@ var StatsPowerCmd = &cli.Command{
 					info.Agent = userAgent
 
 					if strings.Contains(userAgent, "venus") {
-						log.Println("Provider %s is running venus" + mAddr.String())
+						log.Printf("Provider %s is running venus", mAddr.String())
 						log.Println("venus provider ", mAddr.String(), "raw power:", info.Power.RawBytePower)
 						log.Println("venus provider ", mAddr.String(), "quality adj power:", info.Power.QualityAdjPower)
 
