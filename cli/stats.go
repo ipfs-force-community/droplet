@@ -222,7 +222,7 @@ var StatsPowerCmd = &cli.Command{
 				}
 			}
 			for maddr, info := range minerInfos {
-				if !info.HasMinPower {
+				if !info.HasMinPower && info.Power.RawBytePower.GreaterThan(big.Zero()) && cctx.Bool("min-power") {
 					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%t\n", maddr, info.Agent, info.Power.QualityAdjPower, info.Power.RawBytePower, info.HasMinPower)
 				}
 			}
@@ -230,7 +230,9 @@ var StatsPowerCmd = &cli.Command{
 		} else if cctx.Bool("json") {
 			minerInfosMarshallable := make(map[string]*minerInfo)
 			for maddr, info := range minerInfos {
-				minerInfosMarshallable[maddr.String()] = info
+				if info.HasMinPower || !cctx.Bool("min-power") && info.Power.RawBytePower.GreaterThan(big.Zero()) {
+					minerInfosMarshallable[maddr.String()] = info
+				}
 			}
 
 			out, err := json.MarshalIndent(minerInfosMarshallable, "", "  ")
