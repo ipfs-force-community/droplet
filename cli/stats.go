@@ -2,11 +2,13 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 	"sync"
+	"text/tabwriter"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
@@ -36,6 +38,18 @@ var StatsPowerCmd = &cli.Command{
 			Usage:   "verbose output",
 			Aliases: []string{"v", "debug"},
 		},
+		&cli.BoolFlag{
+			Name:  "list",
+			Usage: "list all miners with minPower ",
+		},
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "list all miners with minPower output as json",
+		},
+		&cli.BoolFlag{
+			Name:  "min-power",
+			Usage: "include miners without minPower",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := ReqContext(cctx)
@@ -61,9 +75,15 @@ var StatsPowerCmd = &cli.Command{
 		var wg sync.WaitGroup
 		wg.Add(len(miners))
 		var lk sync.Mutex
-		var withMinPower []address.Address
-		minerToMinerPower := make(map[address.Address]power.Claim)
-		minerToTotalPower := make(map[address.Address]power.Claim)
+
+		type minerInfo struct {
+			Agent       string
+			Power       power.Claim
+			HasMinPower bool
+		}
+
+		minerInfos := make(map[address.Address]*minerInfo)
+		minerWithMinPowerCount := 0
 
 		throttle := make(chan struct{}, 50)
 		for _, miner := range miners {
@@ -79,19 +99,19 @@ var StatsPowerCmd = &cli.Command{
 					panic(err)
 				}
 
-				if power.HasMinPower {
-					lk.Lock()
-					withMinPower = append(withMinPower, miner)
-					minerToMinerPower[miner] = power.MinerPower
-					minerToTotalPower[miner] = power.TotalPower
-					lk.Unlock()
+				info := &minerInfo{
+					HasMinPower: power.HasMinPower,
+					Power:       power.MinerPower,
+					Agent:       "unknown",
 				}
+
+				lk.Lock()
+				minerInfos[miner] = info
+				lk.Unlock()
 			}(miner)
 		}
 
 		wg.Wait()
-
-		log.Println("Total SPs with minimum power: ", len(withMinPower))
 
 		var venusNodes int
 
@@ -103,80 +123,133 @@ var StatsPowerCmd = &cli.Command{
 			return err
 		}
 
-		for _, maddr := range withMinPower {
+		wg.Add(len(minerInfos))
+		for maddr, info := range minerInfos {
 			select {
 			case <-ctx.Done():
 				return nil
 			default:
 			}
-			err := func() error {
-				log.Println("Checking SP: ", maddr)
+			go func(mAddr address.Address, info *minerInfo) {
+				throttle <- struct{}{}
+				defer func() {
+					wg.Done()
+					<-throttle
+				}()
 
-				minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-				if err != nil {
-					return err
+				if !info.Power.RawBytePower.GreaterThan(big.Zero()) {
+					log.Println("Skipping SP with no power: ", mAddr)
+					return
 				}
-				if minfo.PeerId == nil {
-					return fmt.Errorf("storage provider %s has no peer ID set on-chain", maddr)
+				if !info.HasMinPower && !cctx.Bool("min-power") {
+					log.Println("Skipping SP with no min power: ", mAddr)
+					return
 				}
 
-				var maddrs []multiaddr.Multiaddr
-				for _, mma := range minfo.Multiaddrs {
-					ma, err := multiaddr.NewMultiaddrBytes(mma)
+				err := func() error {
+					log.Println("Checking SP: ", mAddr)
+
+					mInfo, err := api.StateMinerInfo(ctx, mAddr, types.EmptyTSK)
 					if err != nil {
-						return fmt.Errorf("storage provider %s had invalid multiaddrs in their info: %w", maddr, err)
+						return err
 					}
-					maddrs = append(maddrs, ma)
-				}
-				if len(maddrs) == 0 {
-					return fmt.Errorf("storage provider %s has no multiaddrs set on-chain", maddr)
-				}
+					if mInfo.PeerId == nil {
+						return fmt.Errorf("storage provider %s has no peer ID set on-chain", mAddr)
+					}
 
-				addrInfo := peer.AddrInfo{
-					ID:    *minfo.PeerId,
-					Addrs: maddrs,
-				}
+					var mAddrs []multiaddr.Multiaddr
+					for _, mma := range mInfo.Multiaddrs {
+						ma, err := multiaddr.NewMultiaddrBytes(mma)
+						if err != nil {
+							return fmt.Errorf("storage provider %s had invalid multiaddrs in their info: %w", mAddr, err)
+						}
+						mAddrs = append(mAddrs, ma)
+					}
+					if len(mAddrs) == 0 {
+						return fmt.Errorf("storage provider %s has no multiaddrs set on-chain", mAddr)
+					}
 
-				if err := host.Connect(ctx, addrInfo); err != nil {
-					return fmt.Errorf("connecting to peer %s: %w", addrInfo.ID, err)
-				}
+					addrInfo := peer.AddrInfo{
+						ID:    *mInfo.PeerId,
+						Addrs: mAddrs,
+					}
 
-				userAgentI, err := host.Peerstore().Get(addrInfo.ID, "AgentVersion")
+					if err := host.Connect(ctx, addrInfo); err != nil {
+						return fmt.Errorf("connecting to peer %s: %w", addrInfo.ID, err)
+					}
+
+					userAgentI, err := host.Peerstore().Get(addrInfo.ID, "AgentVersion")
+					if err != nil {
+						return fmt.Errorf("getting user agent for peer %s: %w", addrInfo.ID, err)
+					}
+
+					userAgent, ok := userAgentI.(string)
+					if !ok {
+						return fmt.Errorf("user agent for peer %s was not a string", addrInfo.ID)
+					}
+					log.Println("User agent: ", userAgent)
+
+					info.Agent = userAgent
+
+					if strings.Contains(userAgent, "venus") {
+						log.Printf("Provider %s is running venus", mAddr.String())
+						log.Println("venus provider ", mAddr.String(), "raw power:", info.Power.RawBytePower)
+						log.Println("venus provider ", mAddr.String(), "quality adj power:", info.Power.QualityAdjPower)
+
+						venusNodes++
+						QualityAdjPower = big.Add(QualityAdjPower, info.Power.QualityAdjPower)
+						RawBytePower = big.Add(RawBytePower, info.Power.RawBytePower)
+					}
+
+					return nil
+				}()
 				if err != nil {
-					return fmt.Errorf("getting user agent for peer %s: %w", addrInfo.ID, err)
+					log.Println("warn: ", err)
+					return
 				}
 
-				userAgent, ok := userAgentI.(string)
-				if !ok {
-					return fmt.Errorf("user agent for peer %s was not a string", addrInfo.ID)
-				}
-				log.Println("User agent: ", userAgent)
+			}(maddr, info)
 
-				if strings.Contains(userAgent, "venus") {
-
-					log.Println("Provider %s is running venus" + maddr.String())
-					log.Println("venus provider ", maddr.String(), "raw power:", minerToMinerPower[maddr].RawBytePower)
-					log.Println("venus provider ", maddr.String(), "quality adj power:", minerToMinerPower[maddr].QualityAdjPower)
-
-					venusNodes++
-					QualityAdjPower = big.Add(QualityAdjPower, minerToMinerPower[maddr].QualityAdjPower)
-					RawBytePower = big.Add(RawBytePower, minerToMinerPower[maddr].RawBytePower)
-				}
-
-				return nil
-			}()
-			if err != nil {
-				log.Println("warn: ", err)
-				continue
-			}
 		}
+		wg.Wait()
 
-		fmt.Println()
-		fmt.Println("Total venus nodes:", venusNodes)
-		fmt.Println("Total venus raw power:", types.DeciStr(RawBytePower))
-		fmt.Println("Total venus quality adj power:", types.DeciStr(QualityAdjPower))
-		fmt.Println("Total SPs with minimum power: ", len(withMinPower))
+		if cctx.Bool("list") {
+			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+			fmt.Fprintln(w, "Miner\tAgent\tQualityAdjPower\tRawBytePower\tHasMinPower")
+			for maddr, info := range minerInfos {
+				if info.HasMinPower {
+					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%t\n", maddr, info.Agent, info.Power.QualityAdjPower, info.Power.RawBytePower, info.HasMinPower)
+				}
+			}
+			for maddr, info := range minerInfos {
+				if !info.HasMinPower && info.Power.RawBytePower.GreaterThan(big.Zero()) && cctx.Bool("min-power") {
+					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%t\n", maddr, info.Agent, info.Power.QualityAdjPower, info.Power.RawBytePower, info.HasMinPower)
+				}
+			}
+			err := w.Flush()
+			if err != nil {
+				return err
+			}
+		} else if cctx.Bool("json") {
+			minerInfosMarshallable := make(map[string]*minerInfo)
+			for maddr, info := range minerInfos {
+				if info.HasMinPower || !cctx.Bool("min-power") && info.Power.RawBytePower.GreaterThan(big.Zero()) {
+					minerInfosMarshallable[maddr.String()] = info
+				}
+			}
 
+			out, err := json.MarshalIndent(minerInfosMarshallable, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(out))
+		} else {
+			fmt.Println()
+			fmt.Println("Total venus nodes:", venusNodes)
+			fmt.Println("Total venus raw power:", types.DeciStr(RawBytePower))
+			fmt.Println("Total venus quality adj power:", types.DeciStr(QualityAdjPower))
+			fmt.Println("Total SPs with minimum power: ", minerWithMinPowerCount)
+		}
 		return nil
 	},
 }

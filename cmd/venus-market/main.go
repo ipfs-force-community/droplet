@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -107,6 +106,6 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		mainLog.Fatal(err)
 	}
 }
