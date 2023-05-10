@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -107,8 +106,6 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		// output error for cli
-		fmt.Println(err)
 		mainLog.Fatal(err)
 	}
 }

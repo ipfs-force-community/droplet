@@ -226,7 +226,10 @@ var StatsPowerCmd = &cli.Command{
 					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%t\n", maddr, info.Agent, info.Power.QualityAdjPower, info.Power.RawBytePower, info.HasMinPower)
 				}
 			}
-			w.Flush()
+			err := w.Flush()
+			if err != nil {
+				return err
+			}
 		} else if cctx.Bool("json") {
 			minerInfosMarshallable := make(map[string]*minerInfo)
 			for maddr, info := range minerInfos {
@@ -247,8 +250,6 @@ var StatsPowerCmd = &cli.Command{
 			fmt.Println("Total venus quality adj power:", types.DeciStr(QualityAdjPower))
 			fmt.Println("Total SPs with minimum power: ", minerWithMinPowerCount)
 		}
-		os.Stdout.Sync()
-
 		return nil
 	},
 }
