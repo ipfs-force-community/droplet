@@ -30,15 +30,21 @@ func CliStorageDealFilter(cfg *config.MarketConfig) config.StorageDealFilter {
 		}
 
 		d := struct {
-			IsOffline bool
-			vsTypes.ClientDealProposal
-			DealType string
-			Agent    string
+			FormatVersion      string
+			IsOffline          bool
+			ClientDealProposal vsTypes.ClientDealProposal
+			FastRetrieval      bool
+			TransferType       string
+			DealType           string
+			Agent              string
 		}{
 			IsOffline:          isOffline,
 			ClientDealProposal: deal.ClientDealProposal,
 			DealType:           "storage",
 			Agent:              "venus-market",
+			FormatVersion:      "1.0.0",
+			FastRetrieval:      deal.FastRetrieval,
+			TransferType:       deal.Ref.TransferType,
 		}
 		return runDealFilter(ctx, pCfg.Filter, d)
 	}
