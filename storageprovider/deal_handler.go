@@ -602,6 +602,8 @@ func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context
 // StorageDealRejecting(RejectDeal)->StorageDealFailing(FailDeal)
 func (storageDealPorcess *StorageDealProcessImpl) HandleReject(ctx context.Context, deal *types.MinerDeal, event storagemarket.StorageDealStatus, err error) error {
 	storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDealRejected, deal)
+	log.Infof("deal %d rejected: %s", deal.DealID, err)
+
 	deal.State = event
 	deal.Message = err.Error()
 
