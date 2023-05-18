@@ -95,8 +95,8 @@ func (f *fsPieceStorage) GetPieceTransfer(_ context.Context, pieceCid string) (s
 		return "", fmt.Errorf("%s id readonly piece store", f.fsCfg.Name)
 	}
 
-	// url example: http://market/resource?resource-id=xxx&store=xxx
-	url := fmt.Sprintf("/resource?resource-id=%s&store=%s", pieceCid, f.fsCfg.Name)
+	// url example: market://store_name/piece_cid => http://market_ip/resource?resource-id=piece_cid&store=store_name
+	url := fmt.Sprintf("market://%s/%s", f.fsCfg.Name, pieceCid)
 
 	return url, nil
 }
