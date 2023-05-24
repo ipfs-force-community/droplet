@@ -170,6 +170,18 @@ func (pna *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*cr
 
 func (pna *ProviderNodeAdapter) SignWithGivenMiner(mAddr address.Address) network.ResigningFunc {
 	return func(ctx context.Context, data interface{}) (*crypto.Signature, error) {
+		//mt := types.MTUnknown
+		//switch data.(type) {
+		//case *migrations.StorageAsk0:
+		//
+		//case *migrations.ProviderDealState0:
+		//
+		//case *migrations.Response0:
+		//
+		//default:
+		//	return nil, fmt.Errorf("not supported signature data")
+		//}
+
 		msgBytes, err := cborutil.Dump(data)
 		if err != nil {
 			return nil, fmt.Errorf("serializing: %w", err)

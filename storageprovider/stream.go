@@ -94,7 +94,8 @@ func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAsk
 		Ask: ask.ToChainAsk(),
 	}
 
-	if err := s.WriteAskResponse(resp, storageDealStream.spn.SignWithGivenMiner(ar.Miner)); err != nil {
+	// if err := s.WriteAskResponse(resp, storageDealStream.spn.SignWithGivenMiner(ar.Miner)); err != nil {
+	if err := s.WriteAskResponse(resp, nil); err != nil {
 		log.Errorf("failed to write ask response: %s", err)
 		return
 	}
@@ -229,7 +230,7 @@ func (storageDealStream *StorageDealStream) HandleDealStatusStream(s network.Dea
 
 	signature, err := storageDealStream.spn.Sign(ctx, &types.SignInfo{
 		Data: dealState,
-		Type: vTypes.MTUnknown,
+		Type: vTypes.MTProviderDealState,
 		Addr: mAddr,
 	})
 	if err != nil {
@@ -242,7 +243,7 @@ func (storageDealStream *StorageDealStream) HandleDealStatusStream(s network.Dea
 		Signature: *signature,
 	}
 
-	if err := s.WriteDealStatusResponse(response, storageDealStream.spn.SignWithGivenMiner(mAddr)); err != nil {
+	if err := s.WriteDealStatusResponse(response, nil); err != nil {
 		log.Warnf("failed to write deal status response: %s", err)
 		return
 	}
@@ -252,7 +253,7 @@ func (storageDealStream *StorageDealStream) resendProposalResponse(s network.Sto
 	resp := &network.Response{State: md.State, Message: md.Message, Proposal: md.ProposalCid}
 	sig, err := storageDealStream.spn.Sign(context.TODO(), &types.SignInfo{
 		Data: resp,
-		Type: vTypes.MTUnknown,
+		Type: vTypes.MTNetWorkResponse,
 		Addr: md.Proposal.Provider,
 	})
 	if err != nil {
@@ -260,7 +261,7 @@ func (storageDealStream *StorageDealStream) resendProposalResponse(s network.Sto
 		return fmt.Errorf("failed to sign response message: %w", err)
 	}
 
-	return s.WriteDealResponse(network.SignedResponse{Response: *resp, Signature: sig}, storageDealStream.spn.SignWithGivenMiner(md.Proposal.Provider))
+	return s.WriteDealResponse(network.SignedResponse{Response: *resp, Signature: sig}, nil)
 }
 
 func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context.Context, request *network.DealStatusRequest) (*storagemarket.ProviderDealState, address.Address, error) {

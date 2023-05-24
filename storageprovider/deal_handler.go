@@ -578,7 +578,7 @@ func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context
 
 	respEx := &types.SignInfo{
 		Data: resp,
-		Type: vTypes.MTUnknown,
+		Type: vTypes.MTNetWorkResponse,
 		Addr: mAddr,
 	}
 	sig, err := storageDealPorcess.spn.Sign(ctx, respEx)
@@ -591,7 +591,7 @@ func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context
 		Signature: sig,
 	}
 
-	err = s.WriteDealResponse(signedResponse, storageDealPorcess.spn.SignWithGivenMiner(mAddr))
+	err = s.WriteDealResponse(signedResponse, nil)
 	if err != nil {
 		// Assume client disconnected
 		_ = storageDealPorcess.conns.Disconnect(resp.Proposal)
