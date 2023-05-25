@@ -30,8 +30,8 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.11.0
-	github.com/filecoin-project/venus-auth v1.11.0
+	github.com/filecoin-project/venus v1.11.2-0.20230525071843-ab19674dd7b3
+	github.com/filecoin-project/venus-auth v1.11.1-0.20230511013901-7829b3effbcd
 	github.com/filecoin-project/venus-messager v1.11.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
@@ -40,7 +40,7 @@ require (
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
-	github.com/ipfs-force-community/venus-gateway v1.11.0
+	github.com/ipfs-force-community/venus-gateway v1.11.2-0.20230525072131-90ce0561276b
 	github.com/ipfs/go-blockservice v0.5.0
 	github.com/ipfs/go-cid v0.3.2
 	github.com/ipfs/go-cidutil v0.1.0

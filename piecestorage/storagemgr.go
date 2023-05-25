@@ -10,6 +10,8 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
+var ErrorNotFoundForRead = fmt.Errorf("not found for read")
+
 type PieceStorageManager struct {
 	lk       sync.RWMutex
 	storages map[string]IPieceStorage
@@ -74,7 +76,7 @@ func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) 
 	})
 
 	if len(storages) == 0 {
-		return nil, fmt.Errorf("unable to find piece %s in storage", s)
+		return nil, fmt.Errorf("unable to find piece %s: %w", s, ErrorNotFoundForRead)
 	}
 
 	return randStorageSelector(storages)
