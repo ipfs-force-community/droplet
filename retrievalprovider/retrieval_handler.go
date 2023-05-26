@@ -64,7 +64,7 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, providerDeal *mkt
 	}
 
 	pieceCid := deal.Proposal.PieceCID
-	log.With("pieceCid", pieceCid)
+	log = log.With("pieceCid", pieceCid)
 
 	// check piece exist
 
@@ -95,10 +95,13 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, providerDeal *mkt
 		log.Info("try to unseal")
 		// should block util unseal finish or error, because it will resume transfer later
 		state := gtypes.UnsealStateFailed
-		checkUnsealInterval := 5 * time.Second
+		checkUnsealInterval := 5 * time.Minute
 		tick := time.Tick(checkUnsealInterval)
 		timeOutCtx, cancel := context.WithTimeout(ctx, 12*time.Hour)
 		defer cancel()
+
+		errRetry, errRetryCount := 5, 0
+
 		for state != gtypes.UnsealStateFinished {
 			state, err = p.gatewayMarketClient.SectorsUnsealPiece(
 				ctx,
@@ -111,13 +114,20 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, providerDeal *mkt
 			)
 			if err != nil {
 				err = fmt.Errorf("unseal piece %s: %w", pieceCid, err)
-				return
-			}
-			if state == gtypes.UnsealStateFailed {
-				err = fmt.Errorf("unseal piece %s fail: %w", pieceCid, err)
-				return
+				errRetryCount++
+				log.Warnf("unseal piece %s fail, retry (%d/%d): %w", pieceCid, errRetryCount, errRetry, err)
+				if errRetryCount > errRetry {
+					return
+				}
 			}
 			log.Debugf("unseal piece %s: %s", pieceCid, state)
+			switch state {
+			case gtypes.UnsealStateFailed:
+				err = fmt.Errorf("unseal piece %s fail: %w", pieceCid, err)
+				return
+			case gtypes.UnsealStateFinished:
+				break
+			}
 			select {
 			case <-tick:
 			case <-timeOutCtx.Done():
@@ -129,7 +139,7 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, providerDeal *mkt
 	}
 
 	if err = p.env.PrepareBlockstore(ctx, providerDeal.ID, deal.Proposal.PieceCID); err != nil {
-		log.Errorf("unable to load shard %s  %w", deal.Proposal.PieceCID, err)
+		log.Errorf("unable to load shard %s  %s", deal.Proposal.PieceCID, err.Error())
 		err = p.CancelDeal(ctx, providerDeal)
 		return
 	}
