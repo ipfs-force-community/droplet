@@ -45,12 +45,6 @@ func NewRetrievalDealHandler(env ProviderDealEnvironment, retrievalDealStore rep
 }
 
 func (p *RetrievalDealHandler) UnsealData(ctx context.Context, providerDeal *mktypes.ProviderDealState) (err error) {
-	defer func() {
-		if err != nil {
-			log.Errorf("unseal data fail: %w", err)
-		}
-	}()
-
 	log := log.With("dealId", providerDeal.ID)
 	providerDeal.Status = rm.DealStatusUnsealing
 	err = p.retrievalDealStore.SaveDeal(ctx, providerDeal)
@@ -97,6 +91,7 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, providerDeal *mkt
 		state := gtypes.UnsealStateFailed
 		checkUnsealInterval := 5 * time.Minute
 		ticker := time.NewTicker(checkUnsealInterval)
+		defer ticker.Stop()
 		timeOutCtx, cancel := context.WithTimeout(ctx, 12*time.Hour)
 		defer cancel()
 
@@ -132,7 +127,6 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, providerDeal *mkt
 			select {
 			case <-ticker.C:
 			case <-timeOutCtx.Done():
-				ticker.Stop()
 				err = ctx.Err()
 				return
 			}

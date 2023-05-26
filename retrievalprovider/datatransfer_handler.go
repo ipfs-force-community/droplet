@@ -55,7 +55,12 @@ func (d *DataTransferHandler) HandleAcceptFor(ctx context.Context, identifier rm
 	case rm.DealStatusFundsNeededUnseal: // nothing needs to do.
 		return nil
 	case rm.DealStatusNew:
-		return d.retrievalDealHandler.UnsealData(ctx, deal)
+		err := d.retrievalDealHandler.UnsealData(ctx, deal)
+		if err != nil {
+			log.Errorf("unseal data error: %s", err.Error())
+			return err
+		}
+		return nil
 	default:
 		return fmt.Errorf("invalid state transition, state `%+v`, event `%+v`", deal.Status, rm.ProviderEventDealAccepted)
 	}
