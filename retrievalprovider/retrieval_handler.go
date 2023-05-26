@@ -96,12 +96,13 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, providerDeal *mkt
 		// should block util unseal finish or error, because it will resume transfer later
 		state := gtypes.UnsealStateFailed
 		checkUnsealInterval := 5 * time.Minute
-		tick := time.Tick(checkUnsealInterval)
+		ticker := time.NewTicker(checkUnsealInterval)
 		timeOutCtx, cancel := context.WithTimeout(ctx, 12*time.Hour)
 		defer cancel()
 
 		errRetry, errRetryCount := 5, 0
 
+	CheckLoop:
 		for state != gtypes.UnsealStateFinished {
 			state, err = p.gatewayMarketClient.SectorsUnsealPiece(
 				ctx,
@@ -126,11 +127,12 @@ func (p *RetrievalDealHandler) UnsealData(ctx context.Context, providerDeal *mkt
 				err = fmt.Errorf("unseal piece %s fail: %w", pieceCid, err)
 				return
 			case gtypes.UnsealStateFinished:
-				break
+				break CheckLoop
 			}
 			select {
-			case <-tick:
+			case <-ticker.C:
 			case <-timeOutCtx.Done():
+				ticker.Stop()
 				err = ctx.Err()
 				return
 			}
