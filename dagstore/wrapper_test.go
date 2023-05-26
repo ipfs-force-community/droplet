@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	mh "github.com/multiformats/go-multihash"
 
 	"github.com/filecoin-project/venus-market/v2/config"
+	mock_dagstore "github.com/filecoin-project/venus-market/v2/dagstore/mocks"
 	carindex "github.com/ipld/go-car/v2/index"
 
 	"github.com/filecoin-project/dagstore"
@@ -21,9 +23,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestWrapperAcquireRecoveryDestroy verifies that if acquire shard returns a "not found"
+//go:generate go run github.com/golang/mock/mockgen -destination=./mocks/mock_dagstore_interface.go -package=mock_dagstore  -mock_names Interface=MockDagStoreInterface github.com/filecoin-project/dagstore Interface
+
+// TestWrapperLoadShard verifies that if acquire shard returns a "not found"
 // error, the wrapper will attempt to register the shard then reacquire
-func TestWrapperAcquireRecoveryDestroy(t *testing.T) {
+func TestWrapperLoadShard(t *testing.T) {
 	ctx := context.Background()
 	pieceCid, err := cid.Parse("bafkqaaa")
 	require.NoError(t, err)
@@ -41,64 +45,52 @@ func TestWrapperAcquireRecoveryDestroy(t *testing.T) {
 	acquireShardErr := make(chan error, 1)
 	acquireShardErr <- fmt.Errorf("unknown shard: %w", dagstore.ErrShardUnknown)
 
-	// Create a mock DAG store in place of the real DAG store
-	mock := &mockDagStore{
-		acquireShardErr: acquireShardErr,
-		acquireShardRes: dagstore.ShardResult{
-			Accessor: getShardAccessor(t),
-		},
-		register: make(chan shard.Key, 1),
-		destroy:  make(chan shard.Key, 1),
-	}
-	w.dagst = mock
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	mybs, err := w.LoadShard(ctx, pieceCid)
-	require.NoError(t, err)
+	t.Run("re-register shard when not found", func(t *testing.T) {
+		dagMock := mock_dagstore.NewMockDagStoreInterface(ctrl)
+		w.dagst = dagMock
 
-	// Expect the wrapper to try to recover from the error returned from
-	// acquire shard by calling register shard with the same key
-	tctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-	select {
-	case <-tctx.Done():
-		require.Fail(t, "failed to call register")
-	case k := <-mock.register:
-		require.Equal(t, k.String(), pieceCid.String())
-	}
+		dagMock.EXPECT().GetShardInfo(gomock.Any()).Return(dagstore.ShardInfo{}, dagstore.ErrShardUnknown)
+		dagMock.EXPECT().RegisterShard(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, key shard.Key, mnt mount.Mount, out chan dagstore.ShardResult, opts dagstore.RegisterOpts) error {
+			out <- dagstore.ShardResult{}
+			return nil
+		})
+		dagMock.EXPECT().GetShardInfo(gomock.Any()).Return(dagstore.ShardInfo{
+			ShardState: dagstore.ShardStateAvailable,
+		}, nil)
+		dagMock.EXPECT().AcquireShard(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.AcquireOpts) error {
+			out <- dagstore.ShardResult{
+				Accessor: getShardAccessor(t),
+			}
+			return nil
+		})
 
-	// Verify that we can get things from the acquired blockstore
-	var count int
-	ch, err := mybs.AllKeysChan(ctx)
-	require.NoError(t, err)
-	for range ch {
-		count++
-	}
-	require.Greater(t, count, 0)
+		_, err = w.LoadShard(ctx, pieceCid)
+		require.NoError(t, err)
+	})
 
-	// Destroy the shard
-	dr := make(chan dagstore.ShardResult, 1)
-	err = w.DestroyShard(ctx, pieceCid, dr)
-	require.NoError(t, err)
-	res := <-dr
-	require.NoError(t, res.Error)
-	require.Equal(t, shard.KeyFromCID(pieceCid), res.Key)
+	t.Run("recover shard when shard state error", func(t *testing.T) {
+		dagMock := mock_dagstore.NewMockDagStoreInterface(ctrl)
+		w.dagst = dagMock
 
-	dctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-	select {
-	case <-dctx.Done():
-		require.Fail(t, "failed to call destroy")
-	case k := <-mock.destroy:
-		require.Equal(t, k.String(), pieceCid.String())
-	}
+		dagMock.EXPECT().GetShardInfo(gomock.Any()).Return(dagstore.ShardInfo{ShardState: dagstore.ShardStateErrored}, nil)
+		dagMock.EXPECT().RecoverShard(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.RecoverOpts) error {
+			out <- dagstore.ShardResult{}
+			return nil
+		})
+		dagMock.EXPECT().AcquireShard(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.AcquireOpts) error {
+			out <- dagstore.ShardResult{
+				Accessor: getShardAccessor(t),
+			}
+			return nil
+		})
 
-	var dcount int
-	dch, err := mybs.AllKeysChan(ctx)
-	require.NoError(t, err)
-	for range dch {
-		count++
-	}
-	require.Equal(t, dcount, 0)
+		_, err = w.LoadShard(ctx, pieceCid)
+		require.NoError(t, err)
+
+	})
 }
 
 // TestWrapperBackground verifies the behaviour of the background go routine

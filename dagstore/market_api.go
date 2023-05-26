@@ -2,6 +2,7 @@ package dagstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -15,12 +16,10 @@ import (
 	"github.com/filecoin-project/dagstore/throttle"
 	"github.com/filecoin-project/go-padreader"
 	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
-	vSharedTypes "github.com/filecoin-project/venus/venus-shared/types"
 
 	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
-	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	"github.com/filecoin-project/venus-market/v2/utils"
 )
 
@@ -70,55 +69,10 @@ func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, err
 	_, err := m.pieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 	if err != nil {
 		log.Warnf("unable to find storage for piece %s: %s", pieceCid, err)
-
-		// check it from the SP through venus-gateway
-		deals, err := m.pieceRepo.GetDealsByPieceCidAndStatus(ctx, pieceCid, storageprovider.ReadyRetrievalDealStatus...)
-		if err != nil {
-			return false, fmt.Errorf("get delas for piece %s: %w", pieceCid, err)
+		if errors.Is(err, piecestorage.ErrorNotFoundForRead) {
+			return false, nil
 		}
-
-		if len(deals) == 0 {
-			return false, fmt.Errorf("no storage deals found for piece %s", pieceCid)
-		}
-
-		// check if we have an unsealed deal for the given piece in any of the unsealed sectors.
-		for _, deal := range deals {
-			deal := deal
-
-			// Throttle this path to avoid flooding the storage subsystem.
-			err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
-
-				// send SectorsUnsealPiece task
-				wps, err := m.pieceStorageMgr.FindStorageForWrite(int64(deal.Proposal.PieceSize))
-				if err != nil {
-					return fmt.Errorf("failed to find storage to write %s: %w", pieceCid, err)
-				}
-
-				pieceTransfer, err := wps.GetPieceTransfer(ctx, pieceCid.String())
-				if err != nil {
-					return fmt.Errorf("get piece transfer for %s: %w", pieceCid, err)
-				}
-
-				return m.gatewayMarketClient.SectorsUnsealPiece(
-					ctx,
-					deal.Proposal.Provider,
-					pieceCid,
-					deal.SectorNumber,
-					vSharedTypes.PaddedByteIndex(deal.Offset.Unpadded()),
-					deal.Proposal.PieceSize,
-					pieceTransfer,
-				)
-			})
-
-			if err != nil {
-				log.Warnf("failed to check/retrieve unsealed sector: %s", err)
-				continue // move on to the next match.
-			}
-			return true, nil
-		}
-
-		// we don't have an unsealed sector containing the piece
-		return false, nil
+		return false, err
 	}
 
 	return true, nil
@@ -132,8 +86,9 @@ func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid)
 
 	pieceStorage, err := m.pieceStorageMgr.FindStorageForRead(ctx, pieceCid.String())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find piece for read: %w", err)
 	}
+
 	storageName := pieceStorage.GetName()
 	size, err := pieceStorage.Len(ctx, pieceCid.String())
 	if err != nil {

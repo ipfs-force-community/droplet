@@ -124,7 +124,12 @@ func (pr *ProviderRevalidator) processPayment(ctx context.Context, deal *types.P
 		// pay for unseal goto unseal
 		deal.Status = retrievalmarket.DealStatusUnsealing
 		defer func() {
-			go pr.retrievalDealHandler.UnsealData(ctx, deal) //nolint
+			go func() {
+				err := pr.retrievalDealHandler.UnsealData(ctx, deal) //nolint
+				if err != nil {
+					log.Errorf("provider: unable to unseal data %v", err)
+				}
+			}()
 		}()
 		err = nil
 	case retrievalmarket.DealStatusUnsealing:

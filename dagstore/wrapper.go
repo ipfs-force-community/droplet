@@ -211,34 +211,61 @@ func (w *Wrapper) gcLoop() {
 }
 
 func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (stores.ClosableBlockstore, error) {
-	log.Debugf("acquiring shard for piece CID %s", pieceCid)
+	log := log.With("piece-cid", pieceCid)
+	log.Debug("acquiring shard")
 
 	key := shard.KeyFromCID(pieceCid)
-	resch := make(chan dagstore.ShardResult, 1)
-	err := w.dagst.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{})
+
+	// get shard info
+	var sInfo dagstore.ShardInfo
+	var err error
+	retryCount := 5
+	for i := retryCount; i >= 0; i-- {
+		if i == 0 {
+			return nil, fmt.Errorf("failed to get shard info for piece CID  %s, after %d retry : %w", pieceCid, i, err)
+		}
+
+		sInfo, err = w.dagst.GetShardInfo(key)
+		if err != nil {
+			if errors.Is(err, dagstore.ErrShardUnknown) {
+				log.Warn("shard not found, try to re-register")
+				if err := stores.RegisterShardSync(ctx, w, pieceCid, "", false); err != nil {
+					return nil, fmt.Errorf("failed to re-register shard during loading pieceCID %s: %w", pieceCid, err)
+				}
+				continue
+			} else {
+				return nil, fmt.Errorf("failed to get shard info for piece CID %s: %w", pieceCid, err)
+			}
+		}
+		break
+	}
+
+	// check state
+	log.Infof("shard state: %s", sInfo.ShardState.String())
+	switch sInfo.ShardState {
+	case dagstore.ShardStateErrored:
+		// try to recover
+		log.Warn("shard is in errored state, try to recover")
+		recoverRes := make(chan dagstore.ShardResult, 1)
+		if err := w.dagst.RecoverShard(ctx, key, recoverRes, dagstore.RecoverOpts{}); err != nil {
+			return nil, fmt.Errorf("failed to recover shard for piece CID %s: %w", pieceCid, err)
+		}
+		select {
+		case res := <-recoverRes:
+			if res.Error != nil {
+				return nil, fmt.Errorf("failed to recover shard for piece CID %s: %w", pieceCid, res.Error)
+			}
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	resCh := make(chan dagstore.ShardResult, 1)
+	err = w.dagst.AcquireShard(ctx, key, resCh, dagstore.AcquireOpts{})
 	log.Debugf("sent message to acquire shard for piece CID %s", pieceCid)
 
 	if err != nil {
-		if !errors.Is(err, dagstore.ErrShardUnknown) {
-			return nil, fmt.Errorf("failed to schedule acquire shard for piece CID %s: %w", pieceCid, err)
-		}
-
-		// if the DAGStore does not know about the Shard -> register it and then try to acquire it again.
-		log.Warnw("failed to load shard as shard is not registered, will re-register", "pieceCID", pieceCid)
-		// The path of a transient file that we can ask the DAG Store to use
-		// to perform the Indexing rather than fetching it via the Mount if
-		// we already have a transient file. However, we don't have it here
-		// and therefore we pass an empty file path.
-		carPath := ""
-		if err := stores.RegisterShardSync(ctx, w, pieceCid, carPath, false); err != nil {
-			return nil, fmt.Errorf("failed to re-register shard during loading piece CID %s: %w", pieceCid, err)
-		}
-		log.Warnw("successfully re-registered shard", "pieceCID", pieceCid)
-
-		resch = make(chan dagstore.ShardResult, 1)
-		if err := w.dagst.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{}); err != nil {
-			return nil, fmt.Errorf("failed to acquire Shard for piece CID %s after re-registering: %w", pieceCid, err)
-		}
+		return nil, fmt.Errorf("failed to acquire shard for piece CID %s: %w", pieceCid, err)
 	}
 
 	// TODO: The context is not yet being actively monitored by the DAG store,
@@ -249,7 +276,7 @@ func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (stores.Closa
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case res = <-resch:
+	case res = <-resCh:
 		if res.Error != nil {
 			return nil, fmt.Errorf("failed to acquire shard for piece CID %s: %w", pieceCid, res.Error)
 		}

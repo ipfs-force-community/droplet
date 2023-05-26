@@ -16,8 +16,10 @@ import (
 	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-market/v2/network"
 	"github.com/filecoin-project/venus-market/v2/paychmgr"
+	"github.com/filecoin-project/venus-market/v2/piecestorage"
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	"github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -59,6 +61,8 @@ func NewProvider(
 	repo repo.Repo,
 	cfg *config.MarketConfig,
 	rdf config.RetrievalDealFilter,
+	pieceStorageMgr *piecestorage.PieceStorageManager,
+	gatewayMarketClient gateway.IMarketClient,
 ) (*RetrievalProvider, error) {
 	storageDealsRepo := repo.StorageDealRepo()
 	retrievalDealRepo := repo.RetrievalDealRepo()
@@ -75,7 +79,7 @@ func NewProvider(
 		retrievalStreamHandler: NewRetrievalStreamHandler(cfg, retrievalAskRepo, retrievalDealRepo, storageDealsRepo, pieceInfo),
 	}
 
-	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo, storageDealsRepo)
+	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo, storageDealsRepo, gatewayMarketClient, pieceStorageMgr)
 	p.requestValidator = NewProviderRequestValidator(cfg, storageDealsRepo, retrievalDealRepo, retrievalAskRepo, pieceInfo, rdf)
 	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{retrievalDealRepo, p.stores})
 	p.reValidator = NewProviderRevalidator(fullNode, payAPI, retrievalDealRepo, retrievalHandler)
