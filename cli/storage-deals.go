@@ -104,7 +104,7 @@ var dealsBatchImportDataCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:  "proposals",
-			Usage: "proposal cid and car file, eg. <proposal_cid>:<path_to_car_file>",
+			Usage: "proposal cid and car file, eg. --proposals <proposal_cid>,<car_file>  --proposals <proposal_cid>,<car_file>",
 		},
 		&cli.StringFlag{
 			Name:  "manifest",
@@ -144,19 +144,17 @@ var dealsBatchImportDataCmd = &cli.Command{
 			proposalFiles = strings.Split(string(data), "\n")
 		}
 		for _, proposalFile := range proposalFiles {
-			arr := strings.Split(proposalFile, ":")
+			arr := strings.Split(proposalFile, ",")
 			if len(arr) != 2 {
 				continue
 			}
 			proposalCID, err := cid.Parse(arr[0])
-			if err != nil {
-				fmt.Printf("parse %s failed: %v\n", arr[0], err)
-				continue
+			if err == nil && len(arr[1]) != 0 {
+				refs = append(refs, &market.ImportDataRef{
+					ProposalCID: proposalCID,
+					File:        arr[1],
+				})
 			}
-			refs = append(refs, &market.ImportDataRef{
-				ProposalCID: proposalCID,
-				File:        arr[1],
-			})
 		}
 
 		var skipCommP bool

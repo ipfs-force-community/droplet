@@ -422,7 +422,11 @@ func (a *API) transfersByID(ctx context.Context) (map[datatransfer.ChannelID]typ
 func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*types.DealInfo, error) {
 	v, err := a.SMDealClient.GetLocalDeal(ctx, d)
 	if err != nil {
-		return nil, err
+		deal, err := a.OfflineDealRepo.GetDeal(ctx, d)
+		if err != nil {
+			return nil, err
+		}
+		return deal.DealInfo(), nil
 	}
 
 	di := a.newDealInfo(ctx, v)
@@ -1595,20 +1599,7 @@ func (a *API) ClientListOfflineDeals(ctx context.Context) ([]types.DealInfo, err
 
 	res := make([]types.DealInfo, 0, len(deals))
 	for _, deal := range deals {
-		res = append(res, types.DealInfo{
-			ProposalCid:   deal.ProposalCID,
-			State:         deal.State,
-			Message:       deal.Message,
-			Provider:      deal.Proposal.Provider,
-			DataRef:       deal.DataRef,
-			PieceCID:      deal.Proposal.PieceCID,
-			Size:          uint64(deal.Proposal.PieceSize.Unpadded()),
-			PricePerEpoch: deal.Proposal.StoragePricePerEpoch,
-			Verified:      deal.Proposal.VerifiedDeal,
-			Duration:      uint64(deal.Proposal.Duration()),
-			DealID:        abi.DealID(deal.DealID),
-			CreationTime:  deal.CreatedAt,
-		})
+		res = append(res, *deal.DealInfo())
 	}
 
 	return res, nil

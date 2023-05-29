@@ -28,7 +28,6 @@ import (
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
@@ -387,6 +386,7 @@ var storageDealsCmd = &cli.Command{
 		storageDealsGetCmd,
 		storageDealsInspectCmd,
 		verifiedDealStatsCmd,
+		storageDealsExportCmd,
 	},
 }
 
@@ -1027,6 +1027,10 @@ var storageDealsListCmd = &cli.Command{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
+		&cli.BoolFlag{
+			Name:  "offline",
+			Usage: "only print offline deals",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.IsSet("color") {
@@ -1050,42 +1054,50 @@ var storageDealsListCmd = &cli.Command{
 		watch := cctx.Bool("watch")
 		showFailed := cctx.Bool("show-failed")
 
-		localDeals, err := api.ClientListDeals(ctx)
-		if err != nil {
-			return err
-		}
-
-		if watch {
-			updates, err := api.ClientGetDealUpdates(ctx)
+		var localDeals []client.DealInfo
+		if cctx.Bool("offline") {
+			localDeals, err = api.ClientListOfflineDeals(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			localDeals, err = api.ClientListDeals(ctx)
 			if err != nil {
 				return err
 			}
 
-			for {
-				tm.Clear()
-				tm.MoveCursor(1, 1)
-
-				err = outputClientStorageDeals(ctx, tm.Screen, fapi, localDeals, verbose, showFailed)
+			if watch {
+				updates, err := api.ClientGetDealUpdates(ctx)
 				if err != nil {
 					return err
 				}
 
-				tm.Flush()
+				for {
+					tm.Clear()
+					tm.MoveCursor(1, 1)
 
-				select {
-				case <-ctx.Done():
-					return nil
-				case updated := <-updates:
-					var found bool
-					for i, existing := range localDeals {
-						if existing.ProposalCid.Equals(updated.ProposalCid) {
-							localDeals[i] = updated
-							found = true
-							break
-						}
+					err = outputClientStorageDeals(ctx, tm.Screen, fapi, localDeals, verbose, showFailed)
+					if err != nil {
+						return err
 					}
-					if !found {
-						localDeals = append(localDeals, updated)
+
+					tm.Flush()
+
+					select {
+					case <-ctx.Done():
+						return nil
+					case updated := <-updates:
+						var found bool
+						for i, existing := range localDeals {
+							if existing.ProposalCid.Equals(updated.ProposalCid) {
+								localDeals[i] = updated
+								found = true
+								break
+							}
+						}
+						if !found {
+							localDeals = append(localDeals, updated)
+						}
 					}
 				}
 			}
@@ -1495,15 +1507,19 @@ type params struct {
 }
 
 func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi v1api.FullNode) (*params, error) {
-	miner, err := address.NewFromString(cctx.Args().Get(1))
+	var start int
+	if cctx.Args().Len() == 4 {
+		start = 1
+	}
+	miner, err := address.NewFromString(cctx.Args().Get(start))
 	if err != nil {
 		return nil, err
 	}
-	price, err := types.ParseFIL(cctx.Args().Get(2))
+	price, err := types.ParseFIL(cctx.Args().Get(start + 1))
 	if err != nil {
 		return nil, err
 	}
-	dur, err := strconv.ParseInt(cctx.Args().Get(3), 10, 32)
+	dur, err := strconv.ParseInt(cctx.Args().Get(start+2), 10, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -1593,7 +1609,8 @@ func fillDealParams(cctx *cli.Context, p *params, ref *storagemarket.DataRef) *c
 
 func fillDataRef(cctx *cli.Context,
 	api clientapi.IMarketClient,
-	carDir string,
+	cardir string,
+	filetype string,
 	m *manifest,
 	transferType string,
 ) (*storagemarket.DataRef, error) {
@@ -1607,13 +1624,13 @@ func fillDataRef(cctx *cli.Context,
 		}, nil
 	}
 
-	carPath, err := filepath.Abs(filepath.Join(carDir, m.payloadCID.String()+".car"))
-	if err != nil {
-		return nil, err
+	fileName := m.payloadCID.String() + ".car"
+	if filetype == "piececid" {
+		fileName = m.pieceCID.String() + ".car"
 	}
 
 	ref := client.FileRef{
-		Path:  carPath,
+		Path:  filepath.Join(cardir, fileName),
 		IsCAR: true,
 	}
 	ctx := cctx.Context
@@ -1657,7 +1674,7 @@ lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a min
 with './market-client storage asks query <miner address>'.
 duration is how long the miner should store the data for, in blocks.
 The minimum value is 518400 (6 months).`,
-	ArgsUsage: "[car-dir miner price duration]",
+	ArgsUsage: "[miner price duration]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "manifest",
@@ -1694,10 +1711,19 @@ The minimum value is 518400 (6 months).`,
 			Name:  "end-index",
 			Usage: "",
 		},
+		&cli.StringFlag{
+			Name:  "carfile-type",
+			Usage: "Car file naming format, one named after payloadcid and the other named after piececid, use payloadcid or piececid",
+			Value: "payloadcid",
+		},
+		&cli.StringFlag{
+			Name:  "cardir",
+			Usage: "Directory of car files",
+		},
 		&cli2.CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 4 {
+		if cctx.NArg() != 3 {
 			return fmt.Errorf("must pass four arguments")
 		}
 
@@ -1720,11 +1746,7 @@ The minimum value is 518400 (6 months).`,
 			return err
 		}
 
-		carDir, err := homedir.Expand(p.firstArg)
-		if err != nil {
-			return err
-		}
-
+		carDir := cctx.String("cardir")
 		transferType := storagemarket.TTManual
 		if p.price.Int64() != 0 {
 			return fmt.Errorf("you must provide a 'price' of 0")
@@ -1748,7 +1770,7 @@ The minimum value is 518400 (6 months).`,
 				break
 			}
 
-			dataRef, err := fillDataRef(cctx, api, carDir, manifest, transferType)
+			dataRef, err := fillDataRef(cctx, api, carDir, cctx.String("carfile-type"), manifest, transferType)
 			if err != nil {
 				return err
 			}
@@ -1930,5 +1952,59 @@ var verifiedDealStatsCmd = &cli.Command{
 		fmt.Print(buf)
 
 		return nil
+	},
+}
+
+var storageDealsExportCmd = &cli.Command{
+	Name:  "export",
+	Usage: "Export deal proposal cid and piece cid when the deal status is StorageDealWaitingForData",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "output",
+			Usage: "output result to file",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := cli2.NewMarketClientNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := cli2.ReqContext(cctx)
+
+		var deals []*client.DealInfo
+		res, err := api.ClientListOfflineDeals(ctx)
+		if err != nil {
+			return err
+		}
+		for i := range res {
+			if res[i].State == storagemarket.StorageDealWaitingForData {
+				deals = append(deals, &res[i])
+			}
+		}
+		if len(deals) == 0 {
+			fmt.Println("not found deal")
+			return nil
+		}
+
+		if cctx.IsSet("output") {
+			buf := &bytes.Buffer{}
+			buf.WriteString("proposalCID,pieceCID\n")
+			for _, deal := range deals {
+				buf.WriteString(fmt.Sprintf("%s,%s\n", deal.ProposalCid.String(), deal.PieceCID.String()))
+			}
+
+			return os.WriteFile(cctx.String("output"), buf.Bytes(), 0o755)
+		}
+		writer := tablewriter.New(tablewriter.Col("ProposalCID"), tablewriter.Col("PieceCID"))
+		for _, deal := range deals {
+			writer.Write(map[string]interface{}{
+				"ProposalCID": deal.ProposalCid.String(),
+				"PieceCID":    deal.PieceCID.String(),
+			})
+		}
+
+		return writer.Flush(os.Stdout)
 	},
 }
