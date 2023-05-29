@@ -10,6 +10,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/fx/fxtest"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/filestore"
@@ -114,6 +115,7 @@ func TestStorageProviderImpl_ImportOfflineDeal(t *testing.T) {
 }
 
 func setup(t *testing.T) StorageProvider {
+	lc := fxtest.NewLifecycle(t)
 	ctx := context.Background()
 	spn := newMockProviderNode()
 
@@ -152,7 +154,7 @@ func setup(t *testing.T) StorageProvider {
 		}
 		return store, nil
 	}
-	provider, err := NewStorageProvider(ctx, ask, h, tf, psManager, dt, spn, nil, r, addrMgr, nil, nil, NewEventPublishAdapter(r))
+	provider, err := NewStorageProvider(ctx, lc, ask, h, tf, psManager, dt, spn, nil, r, addrMgr, nil, nil, NewEventPublishAdapter(r))
 	if err != nil {
 		t.Error(err)
 	}

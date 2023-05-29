@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ipfs-force-community/metrics"
+	"go.uber.org/fx"
 
 	"github.com/hannahhoward/go-pubsub"
 	"github.com/ipfs/go-cid"
@@ -125,6 +126,8 @@ type StorageProvider interface {
 }
 
 type StorageProviderImpl struct {
+	ctx context.Context
+
 	net smnet.StorageMarketNetwork
 
 	tf config.TransferFileStoreConfigFunc
@@ -148,6 +151,7 @@ type StorageProviderImpl struct {
 // NewStorageProvider returns a new storage provider
 func NewStorageProvider(
 	mCtx metrics.MetricsCtx,
+	lc fx.Lifecycle,
 	storedAsk IStorageAsk,
 	h host.Host,
 	tf config.TransferFileStoreConfigFunc,
@@ -164,6 +168,8 @@ func NewStorageProvider(
 	net := smnet.NewFromLibp2pHost(h)
 
 	spV2 := &StorageProviderImpl{
+		ctx: metrics.LifecycleCtx(mCtx, lc),
+
 		net: net,
 
 		tf: tf,
@@ -288,7 +294,7 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 	}
 
 	for provider, deals := range minerDeals {
-		res, err := p.batchReserverFunds(ctx, deals)
+		res, err := p.batchReserverFunds(p.ctx, deals)
 		if err != nil {
 			log.Errorf("batch reserver funds for %s failed: %v", provider, err)
 			for _, deal := range deals {
@@ -313,7 +319,7 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 			})
 
 			go func(deal *types.MinerDeal) {
-				err := p.dealProcess.HandleOff(context.TODO(), deal)
+				err := p.dealProcess.HandleOff(p.ctx, deal)
 				if err != nil {
 					log.Errorf("deal %s handle off err: %s", deal.ProposalCid, err)
 				}

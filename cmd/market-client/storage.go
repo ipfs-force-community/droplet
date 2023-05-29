@@ -1626,7 +1626,7 @@ func fillDataRef(cctx *cli.Context,
 
 	fileName := m.payloadCID.String() + ".car"
 	if filetype == "piececid" {
-		fileName = m.pieceCID.String() + ".car"
+		fileName = m.pieceCID.String()
 	}
 
 	ref := client.FileRef{
@@ -1712,13 +1712,15 @@ The minimum value is 518400 (6 months).`,
 			Usage: "",
 		},
 		&cli.StringFlag{
-			Name:  "carfile-type",
-			Usage: "Car file naming format, one named after payloadcid and the other named after piececid, use payloadcid or piececid",
-			Value: "payloadcid",
+			Name:   "carfile-type",
+			Usage:  "Car file naming format, one named after payloadcid and the other named after piececid, use payloadcid or piececid",
+			Value:  "payloadcid",
+			Hidden: true,
 		},
 		&cli.StringFlag{
-			Name:  "cardir",
-			Usage: "Directory of car files",
+			Name:   "cardir",
+			Usage:  "Directory of car files",
+			Hidden: true,
 		},
 		&cli2.CidBaseFlag,
 	},
@@ -1963,6 +1965,10 @@ var storageDealsExportCmd = &cli.Command{
 			Name:  "output",
 			Usage: "output result to file",
 		},
+		&cli.IntFlag{
+			Name:  "count",
+			Usage: "number of exported deals",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := cli2.NewMarketClientNode(cctx)
@@ -1984,14 +1990,18 @@ var storageDealsExportCmd = &cli.Command{
 			}
 		}
 		if len(deals) == 0 {
-			fmt.Println("not found deal")
+			fmt.Println("no deals need export")
 			return nil
 		}
 
 		if cctx.IsSet("output") {
+			count := cctx.Int("count")
 			buf := &bytes.Buffer{}
 			buf.WriteString("proposalCID,pieceCID\n")
-			for _, deal := range deals {
+			for i, deal := range deals {
+				if count > 0 && i >= count {
+					continue
+				}
 				buf.WriteString(fmt.Sprintf("%s,%s\n", deal.ProposalCid.String(), deal.PieceCID.String()))
 			}
 

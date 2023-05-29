@@ -298,7 +298,7 @@ func (a *API) dealStarter(ctx context.Context, params *types.DealParams, isState
 		ClientSignature: *dealProposalSig,
 	}
 
-	dealProposalIpld, err := cborutil.AsIpld(dealProposal)
+	dealProposalIpld, err := cborutil.AsIpld(dealProposalSigned)
 	if err != nil {
 		return nil, fmt.Errorf("serializing proposal node failed: %w", err)
 	}

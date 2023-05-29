@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -104,11 +105,15 @@ var dealsBatchImportDataCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:  "proposals",
-			Usage: "proposal cid and car file, eg. --proposals <proposal_cid>,<car_file>  --proposals <proposal_cid>,<car_file>",
+			Usage: "proposal cid and car file, eg. --proposals <proposal_cid>,<path_to_car_file>  --proposals <proposal_cid>,<path_to_car_file>",
 		},
 		&cli.StringFlag{
-			Name:  "manifest",
-			Usage: "A file containing proposal cid and car information",
+			Name: "manifest",
+			Usage: `A file containing proposal cid and piece cid, eg.
+proposalCID,pieceCID
+baadfdxxx,badddxxx
+basdefxxx,baefaxxx
+`,
 		},
 		&cli.BoolFlag{
 			Name:  "skip-commp",
@@ -117,6 +122,10 @@ var dealsBatchImportDataCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "really-do-it",
 			Usage: "Actually send transaction performing the action",
+		},
+		&cli.StringFlag{
+			Name:  "car-dir",
+			Usage: "Directory of car files",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -143,6 +152,7 @@ var dealsBatchImportDataCmd = &cli.Command{
 			}
 			proposalFiles = strings.Split(string(data), "\n")
 		}
+		carDir := cctx.String("car-dir")
 		for _, proposalFile := range proposalFiles {
 			arr := strings.Split(proposalFile, ",")
 			if len(arr) != 2 {
@@ -150,10 +160,15 @@ var dealsBatchImportDataCmd = &cli.Command{
 			}
 			proposalCID, err := cid.Parse(arr[0])
 			if err == nil && len(arr[1]) != 0 {
-				refs = append(refs, &market.ImportDataRef{
+				ref := &market.ImportDataRef{
 					ProposalCID: proposalCID,
 					File:        arr[1],
-				})
+				}
+				if len(carDir) != 0 {
+					ref.File = filepath.Join(carDir, ref.File)
+				}
+
+				refs = append(refs, ref)
 			}
 		}
 
