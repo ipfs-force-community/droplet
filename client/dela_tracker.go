@@ -65,6 +65,9 @@ func (dt *DealTracker) loadDeals(ctx context.Context) ([]*types.ClientOfflineDea
 }
 
 func (dt *DealTracker) loopRefreshDealState(ctx context.Context) {
+	dt.refreshDealState(ctx)
+	dt.checkSlash(ctx)
+
 	ticker := time.NewTicker(time.Minute * 3)
 	defer ticker.Stop()
 

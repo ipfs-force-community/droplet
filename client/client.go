@@ -103,6 +103,7 @@ type API struct {
 	Signer signer.ISigner
 
 	OfflineDealRepo repo.ClientOfflineDealRepo
+	DealTracker     *DealTracker
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -1563,7 +1564,7 @@ func (a *API) DefaultAddress(ctx context.Context) (address.Address, error) {
 	return address.Address(a.Cfg.DefaultMarketAddress), nil
 }
 
-func (a *API) ClientGetVerifiedDealDistribution(ctx context.Context) (*types.DealDistribution, error) {
+func (a *API) ClientGetVerifiedDealDistribution(ctx context.Context, providers []address.Address, client address.Address) (*types.DealDistribution, error) {
 	var verifiedDealProposals []*vTypes.ClientDealProposal
 	dealStat := newDealStat()
 
@@ -1588,7 +1589,23 @@ func (a *API) ClientGetVerifiedDealDistribution(ctx context.Context) (*types.Dea
 		}
 	}
 
-	return dealStat.dealDistribution(verifiedDealProposals), nil
+	dd := dealStat.dealDistribution(verifiedDealProposals)
+	res := &types.DealDistribution{}
+	for _, pd := range dd.ProvidersDistribution {
+		for _, provider := range providers {
+			if pd.Provider == provider {
+				res.ProvidersDistribution = append(res.ProvidersDistribution, pd)
+			}
+		}
+	}
+	for _, rd := range dd.ReplicasDistribution {
+		if rd.Client == client {
+			res.ReplicasDistribution = append(res.ReplicasDistribution, rd)
+			break
+		}
+	}
+
+	return res, nil
 }
 
 func (a *API) ClientListOfflineDeals(ctx context.Context) ([]types.DealInfo, error) {
