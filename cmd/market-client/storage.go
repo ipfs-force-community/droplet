@@ -1770,7 +1770,7 @@ The minimum value is 518400 (6 months).`,
 
 var verifiedDealStatsCmd = &cli.Command{
 	Name:  "verified-deal-stat",
-	Usage: "",
+	Usage: "Print the distribution of verified deals",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "provider",

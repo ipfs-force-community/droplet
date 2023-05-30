@@ -239,5 +239,6 @@ var MarketClientOpts = builder.Options(
 	builder.Override(new(retrievalmarket.BlockstoreAccessor), RetrievalBlockstoreAccessor),
 	builder.Override(new(retrievalmarket.RetrievalClient), RetrievalClient),
 	builder.Override(new(storagemarket.StorageClient), StorageClient),
+	builder.Override(new(*ClientStream), NewClientStream),
 	builder.Override(new(*DealTracker), NewDealTracker),
 )

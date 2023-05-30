@@ -191,7 +191,7 @@ basdefxxx,baefaxxx
 			if len(r.Message) == 0 {
 				fmt.Printf("import data success: %s\n", r.ProposalCID)
 			} else {
-				fmt.Printf("import data failed: %s %s\n", r.ProposalCID, r.Message)
+				fmt.Printf("import data failed, deal: %s, error: %s\n", r.ProposalCID, r.Message)
 			}
 		}
 
