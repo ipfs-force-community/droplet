@@ -1607,16 +1607,15 @@ func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi 
 
 var storageDelesBatchCmd = &cli.Command{
 	Name:  "batch",
-	Usage: "Batch storage deals with a miner",
+	Usage: "Batch storage deals with miners",
 	Description: `Make deals with a miner.
-car-dir is directory of the car file.
-miner is the address of the miner you wish to make a deal with.
+miners is the address of the miners you wish to make a deal with, eg. t010001,t010003,t010004.
 price is measured in FIL/Epoch. Miners usually don't accept a bid
 lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
 with './market-client storage asks query <miner address>'.
 duration is how long the miner should store the data for, in blocks.
 The minimum value is 518400 (6 months).`,
-	ArgsUsage: "[miner price duration]",
+	ArgsUsage: "[miners price duration]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "manifest",
@@ -1647,22 +1646,11 @@ The minimum value is 518400 (6 months).`,
 		},
 		&cli.IntFlag{
 			Name:  "start-index",
-			Usage: "",
+			Usage: "Starting from the nth deal",
 		},
 		&cli.IntFlag{
 			Name:  "end-index",
-			Usage: "",
-		},
-		&cli.StringFlag{
-			Name:   "carfile-type",
-			Usage:  "Car file naming format, one named after payloadcid and the other named after piececid, use payloadcid or piececid",
-			Value:  "payloadcid",
-			Hidden: true,
-		},
-		&cli.StringFlag{
-			Name:   "cardir",
-			Usage:  "Directory of car files",
-			Hidden: true,
+			Usage: "At the end of the nth deal",
 		},
 		&cli.BoolFlag{
 			Name:  "filter",
@@ -1707,18 +1695,18 @@ The minimum value is 518400 (6 months).`,
 		var selector *selector
 		startIdx := cctx.Int("start-index")
 		endIdx := cctx.Int("end-index")
-		carDir := cctx.String("cardir")
 		currDatacap := p.dcap
+		minerDeal := make(map[address.Address]int)
 
 		if p.isVerified {
 			dd, err := api.ClientGetVerifiedDealDistribution(ctx, p.miner, p.from)
 			if err != nil {
 				return err
 			}
-			selector = newSelector(dd, p.miner)
+			selector = newSelector(dd, p.from, p.miner)
 		}
 
-		for i, manifest := range manifests {
+		for i, m := range manifests {
 			if i < startIdx {
 				continue
 			}
@@ -1726,29 +1714,43 @@ The minimum value is 518400 (6 months).`,
 				break
 			}
 
-			dataRef, err := fillDataRef(cctx, api, carDir, cctx.String("carfile-type"), manifest, transferType)
-			if err != nil {
-				return err
+			dataRef := &storagemarket.DataRef{
+				TransferType: transferType,
+				Root:         m.payloadCID,
+				PieceCid:     &m.pieceCID,
+				PieceSize:    m.pieceSize,
+				RawBlockSize: m.payloadSize,
 			}
 
-			miner := p.miner[0]
+			miner := p.miner[i%len(p.miner)]
 			if p.isVerified {
-				paddePiecedSize := uint64(manifest.pieceSize.Padded())
-				if currDatacap < paddePiecedSize {
-					fmt.Printf("datacap %d less than piece size %d\n", currDatacap, paddePiecedSize)
+				paddedPiecedSize := uint64(m.pieceSize.Padded())
+				if currDatacap < paddedPiecedSize {
+					fmt.Printf("datacap %d less than piece size %d\n", currDatacap, paddedPiecedSize)
 					break
 				}
 
-				miner = selector.selectMiner(p.from, manifest.pieceCID, paddePiecedSize)
-				if miner.Empty() {
-					selector.printError()
-					break
+				if cctx.IsSet("filter") {
+					miner = selector.selectMiner(m.pieceCID, paddedPiecedSize)
+					if miner.Empty() {
+						selector.printError()
+						break
+					}
 				}
-				currDatacap -= paddePiecedSize
+				currDatacap -= paddedPiecedSize
 			}
 			params.Params = append(params.Params, fillDealParams(cctx, p, dataRef, miner))
+			minerDeal[miner]++
 		}
-		fmt.Printf("has %d deals need to publish\n", len(params.Params))
+		fmt.Printf("has %d deals need to publish", len(params.Params))
+		if len(params.Params) == 0 {
+			fmt.Println()
+			return nil
+		}
+		for miner, count := range minerDeal {
+			fmt.Printf(", %s: %d ", miner, count)
+		}
+		fmt.Println()
 
 		res, err := api.ClientBatchDeal(ctx, &params)
 		if err != nil {
@@ -1819,26 +1821,32 @@ var verifiedDealStatsCmd = &cli.Command{
 			)
 		}
 
+		sizeStr := func(v uint64) string {
+			return fmt.Sprintf("%s (%d B)", types.SizeStr(types.NewInt(v)), v)
+		}
+
 		writeProviderDistribution := func(writer *tablewriter.TableWriter, pd *client.ProviderDistribution, percentage float64) {
 			rows := map[string]interface{}{
 				"Provider":              pd.Provider,
-				"Total":                 pd.Total,
-				"Uniq":                  pd.Uniq,
-				"DuplicationPercentage": fmt.Sprintf("0.2%f%s", 100*pd.DuplicationPercentage, "%"),
+				"Total":                 sizeStr(pd.Total),
+				"Uniq":                  sizeStr(pd.Uniq),
+				"DuplicationPercentage": fmt.Sprintf("%.2f%s", 100*pd.DuplicationPercentage, "%"),
 			}
 			if percentage != 0 {
-				rows["Percentage"] = fmt.Sprintf("0.2%f%s", 100*percentage, "%")
+				rows["Percentage"] = fmt.Sprintf("%.2f%s", 100*percentage, "%")
 			}
+			writer.Write(rows)
 		}
 
 		writeReplicasDistribution := func(buf *bytes.Buffer, rd *client.ReplicaDistribution) {
 			writer := newProviderWriter()
-			fmt.Fprint(buf, "Client: ", rd.Client)
-			fmt.Fprint(buf, "Total: ", rd.Total)
-			fmt.Fprintf(buf, "DuplicationPercentage: 0.2%f%s\n", rd.DuplicationPercentage*100, "%")
 			for _, pd := range rd.ReplicasDistribution {
 				writeProviderDistribution(writer, pd, rd.ReplicasPercentage[pd.Provider.String()])
 			}
+			fmt.Fprintf(buf, "Client: %s\n", rd.Client)
+			fmt.Fprintf(buf, "Total:  %s\n", sizeStr(rd.Total))
+			fmt.Fprintf(buf, "Uniq:   %s\n", sizeStr(rd.Uniq))
+			fmt.Fprintf(buf, "DuplicationPercentage: %.2f%s\n", rd.DuplicationPercentage*100, "%")
 			_ = writer.Flush(buf)
 			buf.WriteString("\n")
 		}
@@ -1859,7 +1867,7 @@ var verifiedDealStatsCmd = &cli.Command{
 				break
 			}
 		}
-		fmt.Println(buf)
+		fmt.Fprint(os.Stdout, buf.String())
 
 		return nil
 	},

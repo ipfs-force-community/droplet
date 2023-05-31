@@ -4,14 +4,11 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	cli2 "github.com/filecoin-project/venus-market/v2/cli"
-	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/ipfs/go-cid"
@@ -30,62 +27,6 @@ func fillDealParams(cctx *cli.Context, p *params, ref *storagemarket.DataRef, mi
 		VerifiedDeal:       p.isVerified,
 		ProviderCollateral: p.provCol,
 	}
-}
-
-func fillDataRef(cctx *cli.Context,
-	api clientapi.IMarketClient,
-	cardir string,
-	filetype string,
-	m *manifest,
-	transferType string,
-) (*storagemarket.DataRef, error) {
-	if m.pieceCID.Defined() {
-		return &storagemarket.DataRef{
-			TransferType: transferType,
-			Root:         m.payloadCID,
-			PieceCid:     &m.pieceCID,
-			PieceSize:    m.pieceSize,
-			RawBlockSize: m.payloadSize,
-		}, nil
-	}
-
-	fileName := m.payloadCID.String() + ".car"
-	if filetype == "piececid" {
-		fileName = m.pieceCID.String()
-	}
-
-	ref := client.FileRef{
-		Path:  filepath.Join(cardir, fileName),
-		IsCAR: true,
-	}
-	ctx := cctx.Context
-
-	res, err := api.ClientImport(ctx, ref)
-	if err != nil {
-		return nil, err
-	}
-	encoder, err := cli2.GetCidEncoder(cctx)
-	if err != nil {
-		return nil, err
-	}
-	root := encoder.Encode(res.Root)
-
-	if root != m.payloadCID.String() {
-		return nil, fmt.Errorf("root not match, expect %s, actual %s", m.payloadCID, root)
-	}
-
-	ds, err := api.ClientDealPieceCID(ctx, res.Root)
-	if err != nil {
-		return nil, err
-	}
-
-	return &storagemarket.DataRef{
-		TransferType: transferType,
-		Root:         res.Root,
-		PieceSize:    ds.PieceSize.Unpadded(),
-		PieceCid:     &ds.PieceCID,
-		RawBlockSize: uint64(ds.PayloadSize),
-	}, nil
 }
 
 type manifest struct {
@@ -143,39 +84,63 @@ func loadManifest(path string) ([]*manifest, error) {
 }
 
 type selector struct {
-	pds    map[address.Address]*client.ProviderDistribution
-	rds    map[address.Address]*client.ReplicaDistribution
-	miners []address.Address
+	pds        map[address.Address]*client.ProviderDistribution
+	rds        map[address.Address]*client.ReplicaDistribution
+	miners     []address.Address
+	clientAddr address.Address
 
 	errs map[address.Address]error
 }
 
-func newSelector(dd *client.DealDistribution, miners []address.Address) *selector {
+func newSelector(dd *client.DealDistribution, clientAddr address.Address, miners []address.Address) *selector {
 	s := &selector{
-		pds:    make(map[address.Address]*client.ProviderDistribution, len(dd.ProvidersDistribution)),
-		rds:    make(map[address.Address]*client.ReplicaDistribution, len(dd.ReplicasDistribution)),
-		miners: miners,
+		pds:        make(map[address.Address]*client.ProviderDistribution, len(dd.ProvidersDistribution)),
+		rds:        make(map[address.Address]*client.ReplicaDistribution, len(dd.ReplicasDistribution)),
+		miners:     miners,
+		clientAddr: clientAddr,
 
 		errs: make(map[address.Address]error, len(miners)),
 	}
-	for _, pd := range dd.ProvidersDistribution {
-		s.pds[pd.Provider] = pd
-	}
-	for _, rd := range dd.ReplicasDistribution {
-		s.rds[rd.Client] = rd
-	}
+	s.init(dd)
 
 	return s
 }
 
-func (s *selector) selectMiner(clientAddr address.Address, pieceCID cid.Cid, pieceSize uint64) address.Address {
+func (s *selector) init(dd *client.DealDistribution) {
+	for _, pd := range dd.ProvidersDistribution {
+		s.pds[pd.Provider] = pd
+	}
+	for _, miner := range s.miners {
+		if _, ok := s.pds[miner]; !ok {
+			s.pds[miner] = &client.ProviderDistribution{
+				Provider:   miner,
+				UniqPieces: make(map[string]uint64),
+			}
+		}
+	}
+
+	for _, rd := range dd.ReplicasDistribution {
+		s.rds[rd.Client] = rd
+	}
+	if _, ok := s.rds[s.clientAddr]; !ok {
+		s.rds[s.clientAddr] = &client.ReplicaDistribution{
+			Client:             s.clientAddr,
+			ReplicasPercentage: map[string]float64{},
+		}
+	}
+}
+
+func (s *selector) selectMiner(pieceCID cid.Cid, pieceSize uint64) address.Address {
+	// clean error
+	s.errs = make(map[address.Address]error)
+
 	var foundMiner address.Address
 	for _, miner := range s.miners {
 		err := s.checkDuplication(miner, pieceCID, pieceSize)
 		if err == nil {
-			err = s.checkRatio(miner, clientAddr, pieceSize)
+			err = s.checkRatio(miner, s.clientAddr, pieceSize)
 		}
-		if err != nil {
+		if err == nil {
 			foundMiner = miner
 			break
 		}
@@ -183,7 +148,7 @@ func (s *selector) selectMiner(clientAddr address.Address, pieceCID cid.Cid, pie
 	}
 
 	if !foundMiner.Empty() {
-		s.update(clientAddr, foundMiner, pieceCID, pieceSize)
+		s.update(s.clientAddr, foundMiner, pieceCID, pieceSize)
 	}
 
 	return foundMiner
@@ -193,14 +158,7 @@ func (s *selector) selectMiner(clientAddr address.Address, pieceCID cid.Cid, pie
 func (s *selector) checkDuplication(miner address.Address, pieceCID cid.Cid, pieceSize uint64) error {
 	pd, ok := s.pds[miner]
 	if !ok {
-		pd = &client.ProviderDistribution{
-			Provider:   miner,
-			UniqPieces: map[string]uint64{},
-		}
-	}
-
-	if pd.DuplicationPercentage > 0.2 {
-		return fmt.Errorf("duplication percentage %f greater than 0.2", pd.DuplicationPercentage)
+		return fmt.Errorf("not found provider distribution")
 	}
 
 	total := pd.Total + pieceSize
@@ -211,8 +169,8 @@ func (s *selector) checkDuplication(miner address.Address, pieceCID cid.Cid, pie
 	}
 
 	duplicationPercentage := float64(total-uniq) / float64(total)
-	if duplicationPercentage > 0.2 {
-		return fmt.Errorf("duplication percentage %f greater than 0.2", duplicationPercentage)
+	if duplicationPercentage > 0.2 && duplicationPercentage > pd.DuplicationPercentage {
+		return fmt.Errorf("duplication percentage %.2f%s greater than %s", duplicationPercentage*100, "%", "20%")
 	}
 
 	return nil
@@ -222,21 +180,18 @@ func (s *selector) checkDuplication(miner address.Address, pieceCID cid.Cid, pie
 func (s *selector) checkRatio(miner address.Address, clientAddr address.Address, pieceSize uint64) error {
 	rd, ok := s.rds[clientAddr]
 	if !ok {
-		rd = &client.ReplicaDistribution{
-			Client:             clientAddr,
-			ReplicasPercentage: map[string]float64{},
-		}
+		return fmt.Errorf("not found replicas distribution: %v", clientAddr)
 	}
 
-	perc := rd.ReplicasPercentage[miner.String()]
-	if perc > 0.25 {
-		return fmt.Errorf("duplication percentage %f greater than 0.25", perc)
-	}
-
+	oldPercent := rd.ReplicasPercentage[miner.String()]
 	total := rd.Total + pieceSize
-	perc = (float64(rd.Total)*perc + float64(pieceSize)) / float64(total)
-	if perc > 0.25 {
-		return fmt.Errorf("duplication percentage %f greater than 0.25", perc)
+	// Not checking a small number of deals in the front
+	if 10*pieceSize >= total {
+		return nil
+	}
+	percent := (float64(rd.Total)*oldPercent + float64(pieceSize)) / float64(total)
+	if percent > 0.25 && percent > oldPercent {
+		return fmt.Errorf("replicas percentage %0.2f%s greater than %s", percent*100, "%", "25%")
 	}
 
 	return nil
@@ -254,8 +209,8 @@ func (s *selector) update(clientAddr address.Address, miner address.Address, pie
 	rd := s.rds[clientAddr]
 	total := rd.Total
 	rd.Total += pieceSize
-	perc := rd.ReplicasPercentage[miner.String()]
-	rd.ReplicasPercentage[miner.String()] = (float64(total)*perc + float64(pieceSize)) / float64(rd.Total)
+	percent := rd.ReplicasPercentage[miner.String()]
+	rd.ReplicasPercentage[miner.String()] = (float64(total)*percent + float64(pieceSize)) / float64(rd.Total)
 	// todo: Calculate the proportion of each miner ?
 }
 

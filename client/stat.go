@@ -25,19 +25,18 @@ func (ds *dealStat) dealDistribution(deals []*shared.ClientDealProposal) *types.
 		providersDistribution[provider] = fillProviderDistribution(providersDistribution[provider], pieceCID, pieceSize, provider)
 
 		client := deal.Proposal.Client
-		providersDistribution, ok := replicasDistribution[client]
+		tmp, ok := replicasDistribution[client]
 		if !ok {
-			providersDistribution = make(map[address.Address]*types.ProviderDistribution)
+			tmp = make(map[address.Address]*types.ProviderDistribution)
 		}
-		providersDistribution[provider] = fillProviderDistribution(providersDistribution[provider], pieceCID, pieceSize, provider)
-		replicasDistribution[client] = providersDistribution
+		tmp[provider] = fillProviderDistribution(tmp[provider], pieceCID, pieceSize, provider)
+		replicasDistribution[client] = tmp
 		rdTotal[client] += pieceSize
 	}
 
 	var pds []*types.ProviderDistribution
 	for _, pd := range providersDistribution {
-		total := pd.Total
-		pd.DuplicationPercentage = float64(total-pd.Uniq) / float64(total)
+		pd.DuplicationPercentage = float64(pd.Total-pd.Uniq) / float64(pd.Total)
 		pds = append(pds, pd)
 	}
 
@@ -58,9 +57,10 @@ func (ds *dealStat) dealDistribution(deals []*shared.ClientDealProposal) *types.
 					uniq += size
 				}
 			}
+			rd.ReplicasDistribution = append(rd.ReplicasDistribution, pd)
 		}
-		rd.DuplicationPercentage = float64(total-uniq) / float64(total)
-
+		rd.Uniq = uniq
+		rd.DuplicationPercentage = float64(rd.Total-rd.Uniq) / float64(rd.Total)
 		rds = append(rds, rd)
 	}
 
