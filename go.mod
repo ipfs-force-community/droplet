@@ -30,7 +30,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.11.2-0.20230525071843-ab19674dd7b3
+	github.com/filecoin-project/venus v1.11.2-0.20230601015005-b0e1fe8ac52f
 	github.com/filecoin-project/venus-auth v1.11.1-0.20230511013901-7829b3effbcd
 	github.com/filecoin-project/venus-messager v1.11.0
 	github.com/golang/mock v1.6.0
@@ -315,5 +315,4 @@ require (
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.7
-	github.com/filecoin-project/venus => /Users/haoziyan/Desktop/code/github.com/filecoin-project/venus
 )

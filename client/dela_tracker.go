@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -13,8 +15,13 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	shared "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
+)
+
+const (
+	maxEOFCount = 3
 )
 
 var dealTrackerLog = logging.Logger("deal-tracker")
@@ -25,6 +32,7 @@ type DealTracker struct {
 	stream   *ClientStream
 	// todo: loop update miner info?
 	minerInfo map[address.Address]shared.MinerInfo
+	eofErrs   map[cid.Cid]int
 }
 
 func NewDealTracker(lc fx.Lifecycle,
@@ -37,6 +45,7 @@ func NewDealTracker(lc fx.Lifecycle,
 		dealRepo:  offlineDealRepo,
 		stream:    stream,
 		minerInfo: make(map[address.Address]shared.MinerInfo),
+		eofErrs:   make(map[cid.Cid]int),
 	}
 
 	lc.Append(fx.Hook{
@@ -141,8 +150,14 @@ func (dt *DealTracker) refreshDealState(ctx context.Context, infos *dealInfos) {
 			dealTrackerLog.Debugf("deal %s not found miner peer", proposalCID)
 			continue
 		}
+		if dt.eofErrs[proposalCID] >= maxEOFCount {
+			continue
+		}
 		status, err := dt.stream.GetDealState(ctx, deal, minerInfo)
 		if err != nil {
+			if strings.Contains(err.Error(), io.EOF.Error()) {
+				dt.eofErrs[proposalCID]++
+			}
 			dealTrackerLog.Infof("failed to got deal status: %v %v", proposalCID, err)
 			continue
 		}
