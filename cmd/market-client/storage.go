@@ -1608,7 +1608,7 @@ func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi 
 var storageDelesBatchCmd = &cli.Command{
 	Name:  "batch",
 	Usage: "Batch storage deals with miners",
-	Description: `Make deals with a miner.
+	Description: `Make deals with miners.
 miners is the address of the miners you wish to make a deal with, eg. t010001,t010003,t010004.
 price is measured in FIL/Epoch. Miners usually don't accept a bid
 lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
@@ -1618,8 +1618,9 @@ The minimum value is 518400 (6 months).`,
 	ArgsUsage: "[miners price duration]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "manifest",
-			Value: "Path to the manifest file",
+			Name:     "manifest",
+			Usage:    "Path to the manifest file",
+			Required: true,
 		},
 		&cli.StringFlag{
 			Name:  "from",
