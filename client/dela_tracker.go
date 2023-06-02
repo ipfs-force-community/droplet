@@ -89,7 +89,6 @@ func (dt *DealTracker) loadDeals(ctx context.Context) (*dealInfos, error) {
 func (dt *DealTracker) loopRefreshDealState(ctx context.Context) {
 	infos, err := dt.loadDeals(ctx)
 	if err == nil {
-		dt.checkExpired(ctx, infos.inactiveDeals)
 		dt.refreshDealState(ctx, infos)
 		dt.checkSlash(ctx, infos.activeDeals)
 	}
@@ -110,7 +109,6 @@ func (dt *DealTracker) loopRefreshDealState(ctx context.Context) {
 				dealTrackerLog.Infof("list offline deal failed: %v", err)
 				continue
 			}
-			dt.checkExpired(ctx, infos.inactiveDeals)
 			dt.refreshDealState(ctx, infos)
 		case <-slashTicker.C:
 			infos, err := dt.loadDeals(ctx)
@@ -183,20 +181,6 @@ func (dt *DealTracker) refreshDealState(ctx context.Context, infos *dealInfos) {
 			needUpdate = true
 		}
 		if needUpdate {
-			dt.persistDeal(ctx, deal)
-		}
-	}
-}
-
-func (dt *DealTracker) checkExpired(ctx context.Context, deals []*types.ClientOfflineDeal) {
-	head, err := dt.full.ChainHead(ctx)
-	if err != nil {
-		dealTrackerLog.Infof("got chain head failed: %v", err)
-		return
-	}
-	for _, deal := range deals {
-		if deal.Proposal.StartEpoch < head.Height() {
-			deal.State = storagemarket.StorageDealExpired
 			dt.persistDeal(ctx, deal)
 		}
 	}

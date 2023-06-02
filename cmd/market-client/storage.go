@@ -1661,7 +1661,7 @@ The minimum value is 518400 (6 months).`,
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 3 {
-			return fmt.Errorf("must pass four arguments")
+			return fmt.Errorf("must pass three arguments")
 		}
 
 		fapi, fcloser, err := cli2.NewFullNode(cctx)
