@@ -1692,7 +1692,7 @@ The minimum value is 518400 (6 months).`,
 			return fmt.Errorf("load manifest error: %v", err)
 		}
 
-		var params client.DealsParams
+		var params []*client.DealParams
 		var selector *selector
 		startIdx := cctx.Int("start-index")
 		endIdx := cctx.Int("end-index")
@@ -1740,26 +1740,26 @@ The minimum value is 518400 (6 months).`,
 				}
 				currDatacap -= paddedPiecedSize
 			}
-			params.Params = append(params.Params, fillDealParams(cctx, p, dataRef, miner))
+			params = append(params, fillDealParams(cctx, p, dataRef, miner))
 			minerDeal[miner]++
 		}
-		fmt.Printf("has %d deals need to publish", len(params.Params))
-		if len(params.Params) == 0 {
+		fmt.Printf("has %d deals need to publish", len(params))
+		if len(params) == 0 {
 			fmt.Println()
 			return nil
 		}
 		for miner, count := range minerDeal {
-			fmt.Printf(", %s: %d ", miner, count)
+			fmt.Printf(", %s: %d", miner, count)
 		}
 		fmt.Println()
 
-		res, err := api.ClientBatchDeal(ctx, &params)
+		res, err := api.ClientBatchDeal(ctx, params)
 		if err != nil {
 			return err
 		}
 
 		for i, r := range res.Results {
-			root := params.Params[i].Data.Root.String()
+			root := params[i].Data.Root.String()
 			if len(r.Message) == 0 {
 				fmt.Printf("create deal success, proposal cid: %v\n", r.ProposalCID)
 			} else {

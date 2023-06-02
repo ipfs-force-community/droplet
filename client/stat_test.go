@@ -72,8 +72,7 @@ func TestStat(t *testing.T) {
 		expectReplicasDistribution[rd.Client] = rd
 	}
 
-	dealStat := newDealStat()
-	dd := dealStat.dealDistribution(verifiedDeal)
+	dd := statDealDistribution(verifiedDeal)
 
 	assert.Len(t, dd.ProvidersDistribution, 5)
 	for _, pd := range dd.ProvidersDistribution {

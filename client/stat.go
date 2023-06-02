@@ -6,14 +6,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
 )
 
-type dealStat struct {
-}
-
-func newDealStat() *dealStat {
-	return &dealStat{}
-}
-
-func (ds *dealStat) dealDistribution(deals []*shared.ClientDealProposal) *types.DealDistribution {
+func statDealDistribution(deals []*shared.ClientDealProposal) *types.DealDistribution {
 	providersDistribution := make(map[address.Address]*types.ProviderDistribution)
 	replicasDistribution := make(map[address.Address]map[address.Address]*types.ProviderDistribution)
 	rdTotal := make(map[address.Address]uint64)

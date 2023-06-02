@@ -125,15 +125,14 @@ func (a *API) importManager() *imports.Manager {
 	return a.Imports
 }
 
-func (a *API) ClientBatchDeal(ctx context.Context, dealsParams *types.DealsParams) (*types.DealResults, error) {
-	if len(dealsParams.Params) == 0 {
+func (a *API) ClientBatchDeal(ctx context.Context, params []*types.DealParams) (*types.DealResults, error) {
+	if len(params) == 0 {
 		return &types.DealResults{}, nil
 	}
 
 	var res types.DealResults
-	for i, param := range dealsParams.Params {
-		isStateless := dealsParams.Params[i].Data.TransferType == storagemarket.TTManual
-		proposalCid, err := a.dealStarter(ctx, param, isStateless)
+	for _, param := range params {
+		proposalCid, err := a.dealStarter(ctx, param, true)
 		if err != nil {
 			res.Results = append(res.Results, &types.DealResult{
 				ProposalCID: cid.Undef,
@@ -1566,7 +1565,6 @@ func (a *API) DefaultAddress(ctx context.Context) (address.Address, error) {
 
 func (a *API) ClientGetVerifiedDealDistribution(ctx context.Context, providers []address.Address, client address.Address) (*types.DealDistribution, error) {
 	var verifiedDealProposals []*vTypes.ClientDealProposal
-	dealStat := newDealStat()
 
 	// offline deal
 	offlineDeals, err := a.OfflineDealRepo.ListDeal(ctx)
@@ -1589,7 +1587,7 @@ func (a *API) ClientGetVerifiedDealDistribution(ctx context.Context, providers [
 		}
 	}
 
-	dd := dealStat.dealDistribution(verifiedDealProposals)
+	dd := statDealDistribution(verifiedDealProposals)
 	res := &types.DealDistribution{}
 	for _, pd := range dd.ProvidersDistribution {
 		for _, provider := range providers {
