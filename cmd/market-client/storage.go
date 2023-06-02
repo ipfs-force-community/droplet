@@ -462,7 +462,7 @@ The minimum value is 518400 (6 months).`,
 		}
 
 		// [data, miner, price, dur]
-		p, err := dealParamsFromContext(cctx, api, fapi)
+		p, err := dealParamsFromContext(cctx, api, fapi, false)
 		if err != nil {
 			return err
 		}
@@ -530,7 +530,7 @@ The minimum value is 518400 (6 months).`,
 			return err
 		}
 
-		afmt.Println(encoder.Encode(*proposal))
+		afmt.Println("proposal cid: ", encoder.Encode(*proposal))
 
 		return nil
 	},
@@ -1508,16 +1508,21 @@ type params struct {
 	dcap          uint64
 }
 
-func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi v1api.FullNode) (*params, error) {
+func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi v1api.FullNode, isBatch bool) (*params, error) {
 	var start int
+	var addrs []string
 	var miners []address.Address
-	if cctx.Args().Len() == 4 {
-		start = 1
+	if !isBatch {
+		// [data, miner, price, dur]
+		start = 2
+		addrs = []string{cctx.Args().Get(1)}
+	} else {
+		// [price, dur]
+		addrs = cctx.StringSlice("miner")
 	}
 
-	addrs := strings.Split(cctx.Args().Get(start), ",")
 	if len(addrs) == 0 {
-		return nil, fmt.Errorf("invalid miner %s", cctx.Args().Get(start))
+		return nil, fmt.Errorf("must pass miner")
 	}
 	for _, addrStr := range addrs {
 		miner, err := address.NewFromString(addrStr)
@@ -1527,11 +1532,11 @@ func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi 
 		miners = append(miners, miner)
 	}
 
-	price, err := types.ParseFIL(cctx.Args().Get(start + 1))
+	price, err := types.ParseFIL(cctx.Args().Get(start))
 	if err != nil {
 		return nil, err
 	}
-	dur, err := strconv.ParseInt(cctx.Args().Get(start+2), 10, 32)
+	dur, err := strconv.ParseInt(cctx.Args().Get(start+1), 10, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -1609,14 +1614,17 @@ var storageDelesBatchCmd = &cli.Command{
 	Name:  "batch",
 	Usage: "Batch storage deals with miners",
 	Description: `Make deals with miners.
-miners is the address of the miners you wish to make a deal with, eg. t010001,t010003,t010004.
 price is measured in FIL/Epoch. Miners usually don't accept a bid
 lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
 with './market-client storage asks query <miner address>'.
 duration is how long the miner should store the data for, in blocks.
 The minimum value is 518400 (6 months).`,
-	ArgsUsage: "[miners price duration]",
+	ArgsUsage: "[price duration]",
 	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:  "miner",
+			Usage: "The address of the miner you wish to make a deal with, eg. --miner t010001 --miner t010002",
+		},
 		&cli.StringFlag{
 			Name:     "manifest",
 			Usage:    "Path to the manifest file",
@@ -1660,8 +1668,8 @@ The minimum value is 518400 (6 months).`,
 		&cli2.CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 3 {
-			return fmt.Errorf("must pass three arguments")
+		if cctx.NArg() != 2 {
+			return fmt.Errorf("must pass two arguments")
 		}
 
 		fapi, fcloser, err := cli2.NewFullNode(cctx)
@@ -1677,7 +1685,7 @@ The minimum value is 518400 (6 months).`,
 		defer closer()
 
 		ctx := cli2.ReqContext(cctx)
-		p, err := dealParamsFromContext(cctx, api, fapi)
+		p, err := dealParamsFromContext(cctx, api, fapi, true)
 		if err != nil {
 			return err
 		}
