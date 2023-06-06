@@ -223,7 +223,20 @@ func (m *MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.C
 	}
 	defer fi.Close() //nolint:errcheck
 
-	return m.StorageProvider.ImportDataForDeal(ctx, propCid, fi, true)
+	ref := types.ImportDataRef{
+		ProposalCID: propCid,
+		File:        path,
+	}
+
+	res, err := m.StorageProvider.ImportDataForDeals(ctx, []*types.ImportDataRef{&ref}, false)
+	if err != nil {
+		return err
+	}
+	if len(res[0].Message) > 0 {
+		return fmt.Errorf(res[0].Message)
+	}
+
+	return nil
 }
 
 func (m *MarketNodeImpl) MarketImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error {
@@ -1092,7 +1105,7 @@ func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Add
 	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, pieceStatus, dealStatus)
 }
 
-func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, fname string, skipCommP bool) error {
+func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string, skipCommP bool) error {
 	deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, dealPropCid)
 	if err != nil {
 		return err
@@ -1100,13 +1113,23 @@ func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Ci
 	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
 		return err
 	}
-	fi, err := os.Open(fname)
-	if err != nil {
-		return fmt.Errorf("failed to open given file: %w", err)
-	}
-	defer fi.Close() //nolint:errcheck
 
-	return m.StorageProvider.ImportDataForDeal(ctx, dealPropCid, fi, skipCommP)
+	ref := &types.ImportDataRef{
+		ProposalCID: dealPropCid,
+		File:        file,
+	}
+	res, err := m.DealsBatchImportData(ctx, types.ImportDataRefs{
+		Refs:      []*types.ImportDataRef{ref},
+		SkipCommP: skipCommP,
+	})
+	if err != nil {
+		return err
+	}
+	if len(res[0].Message) > 0 {
+		return fmt.Errorf(res[0].Message)
+	}
+
+	return nil
 }
 
 func (m *MarketNodeImpl) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error) {
@@ -1249,4 +1272,36 @@ func (m *MarketNodeImpl) MarketGetReserved(ctx context.Context, addr address.Add
 		return vTypes.BigInt{}, err
 	}
 	return m.FundAPI.MarketGetReserved(ctx, addr)
+}
+
+func (m *MarketNodeImpl) DealsBatchImportData(ctx context.Context, refs types.ImportDataRefs) ([]*types.ImportDataResult, error) {
+	refLen := len(refs.Refs)
+	results := make([]*types.ImportDataResult, 0, refLen)
+	validRefs := make([]*types.ImportDataRef, 0, refLen)
+	for _, ref := range refs.Refs {
+		deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, ref.ProposalCID)
+		if err != nil {
+			results = append(results, &types.ImportDataResult{
+				ProposalCID: ref.ProposalCID,
+				Message:     err.Error(),
+			})
+			continue
+		}
+		if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
+			results = append(results, &types.ImportDataResult{
+				ProposalCID: ref.ProposalCID,
+				Message:     err.Error(),
+			})
+			continue
+		}
+		validRefs = append(validRefs, ref)
+	}
+
+	res, err := m.StorageProvider.ImportDataForDeals(ctx, validRefs, refs.SkipCommP)
+	if err != nil {
+		return nil, err
+	}
+	results = append(results, res...)
+
+	return results, nil
 }

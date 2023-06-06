@@ -134,8 +134,14 @@ func RetrievalBlockstoreAccessor(r *config.HomeDir) (retrievalmarket.BlockstoreA
 	return retrievalprovider.NewCARBlockstoreAccessor(dir), nil
 }
 
-func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer network.ClientDataTransfer, discovery *discoveryimpl.Local,
-	deals badger.ClientDatastore, scn storagemarket.StorageClientNode, accessor storagemarket.BlockstoreAccessor, j journal.Journal,
+func StorageClient(lc fx.Lifecycle,
+	h host.Host,
+	dataTransfer network.ClientDataTransfer,
+	discovery *discoveryimpl.Local,
+	deals badger.ClientDatastore,
+	scn storagemarket.StorageClientNode,
+	accessor storagemarket.BlockstoreAccessor,
+	j journal.Journal,
 ) (storagemarket.StorageClient, error) {
 	// go-fil-markets protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
@@ -233,4 +239,6 @@ var MarketClientOpts = builder.Options(
 	builder.Override(new(retrievalmarket.BlockstoreAccessor), RetrievalBlockstoreAccessor),
 	builder.Override(new(retrievalmarket.RetrievalClient), RetrievalClient),
 	builder.Override(new(storagemarket.StorageClient), StorageClient),
+	builder.Override(new(*ClientStream), NewClientStream),
+	builder.Override(new(*DealTracker), NewDealTracker),
 )

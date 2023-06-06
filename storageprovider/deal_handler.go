@@ -639,22 +639,22 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleError(ctx context.Contex
 	if deal.PiecePath != filestore.Path("") {
 		fs, err := storageDealPorcess.tf(deal.Proposal.Provider)
 		if err != nil {
-			log.Warnf("get temp file store for %s: %w", deal.Proposal.Provider, err)
+			log.Warnf("get temp file store for %s: %v", deal.Proposal.Provider, err)
 		} else {
 			err = fs.Delete(deal.PiecePath)
 			if err != nil {
-				log.Warnf("deleting piece at path %s: %w", deal.PiecePath, err)
+				log.Warnf("deleting piece at path %s: %v", deal.PiecePath, err)
 			}
 		}
 	}
 	if deal.MetadataPath != filestore.Path("") {
 		fs, err := storageDealPorcess.tf(deal.Proposal.Provider)
 		if err != nil {
-			log.Warnf("get temp file store for %s: %w", deal.Proposal.Provider, err)
+			log.Warnf("get temp file store for %s: %v", deal.Proposal.Provider, err)
 		} else {
 			err = fs.Delete(deal.MetadataPath)
 			if err != nil {
-				log.Warnf("deleting piece at path %s: %w", deal.MetadataPath, err)
+				log.Warnf("deleting piece at path %s: %v", deal.MetadataPath, err)
 			}
 		}
 	}

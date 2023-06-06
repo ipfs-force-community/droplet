@@ -25,7 +25,7 @@ var StatsCmds = &cli.Command{
 	Usage: "Stats about deals, sectors, and other things",
 	Subcommands: []*cli.Command{
 		StatsPowerCmd,
-		StatsDealskCmd,
+		StatsDealsCmd,
 	},
 }
 
@@ -254,7 +254,7 @@ var StatsPowerCmd = &cli.Command{
 	},
 }
 
-var StatsDealskCmd = &cli.Command{
+var StatsDealsCmd = &cli.Command{
 	Name:        "deals",
 	Description: "Statistics on active market deals",
 	Action: func(cctx *cli.Context) error {

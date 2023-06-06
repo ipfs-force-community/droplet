@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -374,13 +375,16 @@ var storageAsksListCmd = &cli.Command{
 
 var storageDealsCmd = &cli.Command{
 	Name:  "deals",
-	Usage: "query storage asks",
+	Usage: "storage deals",
 	Subcommands: []*cli.Command{
 		storageDealsInitCmd,
+		storageDelesBatchCmd,
 		storageDealsListCmd,
 		storageDealsStatsCmd,
 		storageDealsGetCmd,
 		storageDealsInspectCmd,
+		verifiedDealStatsCmd,
+		storageDealsExportCmd,
 	},
 }
 
@@ -458,56 +462,14 @@ The minimum value is 518400 (6 months).`,
 		}
 
 		// [data, miner, price, dur]
-
-		data, err := cid.Parse(cctx.Args().Get(0))
+		p, err := dealParamsFromContext(cctx, api, fapi, false)
 		if err != nil {
 			return err
 		}
 
-		miner, err := address.NewFromString(cctx.Args().Get(1))
+		data, err := cid.Parse(p.firstArg)
 		if err != nil {
 			return err
-		}
-
-		price, err := types.ParseFIL(cctx.Args().Get(2))
-		if err != nil {
-			return err
-		}
-
-		dur, err := strconv.ParseInt(cctx.Args().Get(3), 10, 32)
-		if err != nil {
-			return err
-		}
-
-		var provCol big.Int
-		if pcs := cctx.String("provider-collateral"); pcs != "" {
-			pc, err := big.FromString(pcs)
-			if err != nil {
-				return fmt.Errorf("failed to parse provider-collateral: %w", err)
-			}
-			provCol = pc
-		}
-
-		if abi.ChainEpoch(dur) < MinDealDuration {
-			return fmt.Errorf("minimum deal duration is %d blocks", MinDealDuration)
-		}
-		if abi.ChainEpoch(dur) > MaxDealDuration {
-			return fmt.Errorf("maximum deal duration is %d blocks", MaxDealDuration)
-		}
-
-		var a address.Address
-		if from := cctx.String("from"); from != "" {
-			faddr, err := address.NewFromString(from)
-			if err != nil {
-				return fmt.Errorf("failed to parse 'from' address: %w", err)
-			}
-			a = faddr
-		} else {
-			def, err := api.DefaultAddress(ctx)
-			if err != nil {
-				return err
-			}
-			a = def
 		}
 
 		ref := &storagemarket.DataRef{
@@ -533,42 +495,25 @@ The minimum value is 518400 (6 months).`,
 			ref.TransferType = storagemarket.TTManual
 		}
 
-		// Check if the address is a verified client
-		dcap, err := fapi.StateVerifiedClientStatus(ctx, a, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		isVerified := dcap != nil
-
-		// If the user has explicitly set the --verified-deal flag
-		if cctx.IsSet("verified-deal") {
-			// If --verified-deal is true, but the address is not a verified
-			// client, return an error
-			verifiedDealParam := cctx.Bool("verified-deal")
-			if verifiedDealParam && !isVerified {
-				return fmt.Errorf("address %s does not have verified client status", a)
-			}
-
-			// Override the default
-			isVerified = verifiedDealParam
-		}
-
-		sdParams := &client.StartDealParams{
+		sdParams := &client.DealParams{
 			Data:               ref,
-			Wallet:             a,
-			Miner:              miner,
-			EpochPrice:         types.BigInt(price),
-			MinBlocksDuration:  uint64(dur),
+			Wallet:             p.from,
+			Miner:              p.miner[0],
+			EpochPrice:         types.BigInt(p.price),
+			MinBlocksDuration:  uint64(p.dur),
 			DealStartEpoch:     abi.ChainEpoch(cctx.Int64("start-epoch")),
 			FastRetrieval:      cctx.Bool("fast-retrieval"),
-			VerifiedDeal:       isVerified,
-			ProviderCollateral: provCol,
+			VerifiedDeal:       p.isVerified,
+			ProviderCollateral: p.provCol,
+		}
+
+		if p.isVerified && p.dcap < uint64(sdParams.Data.PieceSize.Padded()) {
+			return fmt.Errorf("not enough datacap, need %d, has: %d", p.dcap, sdParams.Data.PieceSize.Padded())
 		}
 
 		var proposal *cid.Cid
-		if cctx.Bool("manual-stateless-deal") {
-			if ref.TransferType != storagemarket.TTManual || price.Int64() != 0 {
+		if p.statelessDeal {
+			if ref.TransferType != storagemarket.TTManual || p.price.Int64() != 0 {
 				return errors.New("when manual-stateless-deal is enabled, you must also provide a 'price' of 0 and specify 'manual-piece-cid' and 'manual-piece-size'")
 			}
 			proposal, err = api.ClientStatelessDeal(ctx, sdParams)
@@ -585,7 +530,7 @@ The minimum value is 518400 (6 months).`,
 			return err
 		}
 
-		afmt.Println(encoder.Encode(*proposal))
+		afmt.Println("proposal cid: ", encoder.Encode(*proposal))
 
 		return nil
 	},
@@ -1027,7 +972,7 @@ uiLoop:
 			color.Blue(".. executing\n")
 
 			for i, maddr := range maddrs {
-				proposal, err := api.ClientStartDeal(ctx, &client.StartDealParams{
+				proposal, err := api.ClientStartDeal(ctx, &client.DealParams{
 					Data: &storagemarket.DataRef{
 						TransferType: storagemarket.TTGraphsync,
 						Root:         data,
@@ -1084,6 +1029,10 @@ var storageDealsListCmd = &cli.Command{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
+		&cli.BoolFlag{
+			Name:  "offline",
+			Usage: "only print offline deals",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.IsSet("color") {
@@ -1107,42 +1056,50 @@ var storageDealsListCmd = &cli.Command{
 		watch := cctx.Bool("watch")
 		showFailed := cctx.Bool("show-failed")
 
-		localDeals, err := api.ClientListDeals(ctx)
-		if err != nil {
-			return err
-		}
-
-		if watch {
-			updates, err := api.ClientGetDealUpdates(ctx)
+		var localDeals []client.DealInfo
+		if cctx.Bool("offline") {
+			localDeals, err = api.ClientListOfflineDeals(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			localDeals, err = api.ClientListDeals(ctx)
 			if err != nil {
 				return err
 			}
 
-			for {
-				tm.Clear()
-				tm.MoveCursor(1, 1)
-
-				err = outputClientStorageDeals(ctx, tm.Screen, fapi, localDeals, verbose, showFailed)
+			if watch {
+				updates, err := api.ClientGetDealUpdates(ctx)
 				if err != nil {
 					return err
 				}
 
-				tm.Flush()
+				for {
+					tm.Clear()
+					tm.MoveCursor(1, 1)
 
-				select {
-				case <-ctx.Done():
-					return nil
-				case updated := <-updates:
-					var found bool
-					for i, existing := range localDeals {
-						if existing.ProposalCid.Equals(updated.ProposalCid) {
-							localDeals[i] = updated
-							found = true
-							break
-						}
+					err = outputClientStorageDeals(ctx, tm.Screen, fapi, localDeals, verbose, showFailed)
+					if err != nil {
+						return err
 					}
-					if !found {
-						localDeals = append(localDeals, updated)
+
+					tm.Flush()
+
+					select {
+					case <-ctx.Done():
+						return nil
+					case updated := <-updates:
+						var found bool
+						for i, existing := range localDeals {
+							if existing.ProposalCid.Equals(updated.ProposalCid) {
+								localDeals[i] = updated
+								found = true
+								break
+							}
+						}
+						if !found {
+							localDeals = append(localDeals, updated)
+						}
 					}
 				}
 			}
@@ -1536,5 +1493,453 @@ var storageDealsInspectCmd = &cli.Command{
 
 		ctx := cli2.ReqContext(cctx)
 		return inspectDealCmd(ctx, api, cctx.String("proposal-cid"), cctx.Int("deal-id"))
+	},
+}
+
+type params struct {
+	firstArg      string // may data cid or car dir
+	from          address.Address
+	miner         []address.Address
+	price         types.FIL
+	dur           int64
+	provCol       big.Int
+	statelessDeal bool
+	isVerified    bool
+	dcap          uint64
+}
+
+func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi v1api.FullNode, isBatch bool) (*params, error) {
+	var start int
+	var addrs []string
+	var miners []address.Address
+	if !isBatch {
+		// [data, miner, price, dur]
+		start = 2
+		addrs = []string{cctx.Args().Get(1)}
+	} else {
+		// [price, dur]
+		addrs = cctx.StringSlice("miner")
+	}
+
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("must pass miner")
+	}
+	for _, addrStr := range addrs {
+		miner, err := address.NewFromString(addrStr)
+		if err != nil {
+			return nil, err
+		}
+		miners = append(miners, miner)
+	}
+
+	price, err := types.ParseFIL(cctx.Args().Get(start))
+	if err != nil {
+		return nil, err
+	}
+	dur, err := strconv.ParseInt(cctx.Args().Get(start+1), 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	var provCol big.Int
+	if pcs := cctx.String("provider-collateral"); pcs != "" {
+		pc, err := big.FromString(pcs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse provider-collateral: %w", err)
+		}
+		provCol = pc
+	}
+
+	if abi.ChainEpoch(dur) < MinDealDuration {
+		return nil, fmt.Errorf("minimum deal duration is %d blocks", MinDealDuration)
+	}
+	if abi.ChainEpoch(dur) > MaxDealDuration {
+		return nil, fmt.Errorf("maximum deal duration is %d blocks", MaxDealDuration)
+	}
+
+	var a address.Address
+	if from := cctx.String("from"); from != "" {
+		faddr, err := address.NewFromString(from)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse 'from' address: %w", err)
+		}
+		a = faddr
+	} else {
+		def, err := api.DefaultAddress(cctx.Context)
+		if err != nil {
+			return nil, err
+		}
+		a = def
+	}
+
+	// Check if the address is a verified client
+	dcap, err := fapi.StateVerifiedClientStatus(cctx.Context, a, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	isVerified := dcap != nil
+
+	// If the user has explicitly set the --verified-deal flag
+	if cctx.IsSet("verified-deal") {
+		// If --verified-deal is true, but the address is not a verified
+		// client, return an error
+		verifiedDealParam := cctx.Bool("verified-deal")
+		if verifiedDealParam && !isVerified {
+			return nil, fmt.Errorf("address %s does not have verified client status", a)
+		}
+
+		// Override the default
+		isVerified = verifiedDealParam
+	}
+
+	p := &params{
+		firstArg:      cctx.Args().Get(0),
+		miner:         miners,
+		from:          a,
+		price:         price,
+		dur:           dur,
+		provCol:       provCol,
+		statelessDeal: cctx.Bool("manual-stateless-deal"),
+		isVerified:    isVerified,
+	}
+	if dcap != nil {
+		p.dcap = uint64(dcap.Int64())
+	}
+
+	return p, nil
+}
+
+var storageDelesBatchCmd = &cli.Command{
+	Name:  "batch",
+	Usage: "Batch storage deals with miners",
+	Description: `Make deals with miners.
+price is measured in FIL/Epoch. Miners usually don't accept a bid
+lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
+with './market-client storage asks query <miner address>'.
+duration is how long the miner should store the data for, in blocks.
+The minimum value is 518400 (6 months).`,
+	ArgsUsage: "[price duration]",
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:  "miner",
+			Usage: "The address of the miner you wish to make a deal with, eg. --miner t010001 --miner t010002",
+		},
+		&cli.StringFlag{
+			Name:     "manifest",
+			Usage:    "Path to the manifest file",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "specify address to fund the deal with",
+		},
+		&cli.Int64Flag{
+			Name:  "start-epoch",
+			Usage: "specify the epoch that the deal should start at",
+			Value: -1,
+		},
+		&cli.BoolFlag{
+			Name:  "fast-retrieval",
+			Usage: "indicates that data should be available for fast retrieval",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:        "verified-deal",
+			Usage:       "indicate that the deal counts towards verified client total",
+			DefaultText: "true if client is verified, false otherwise",
+		},
+		&cli.StringFlag{
+			Name:  "provider-collateral",
+			Usage: "specify the requested provider collateral the miner should put up",
+		},
+		&cli.IntFlag{
+			Name:  "start-index",
+			Usage: "Starting from the nth deal",
+		},
+		&cli.IntFlag{
+			Name:  "end-index",
+			Usage: "At the end of the nth deal",
+		},
+		&cli.BoolFlag{
+			Name:  "filter",
+			Usage: "f+ requirements for LDN",
+		},
+		&cli2.CidBaseFlag,
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 2 {
+			return fmt.Errorf("must pass two arguments")
+		}
+
+		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer fcloser()
+
+		api, closer, err := cli2.NewMarketClientNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := cli2.ReqContext(cctx)
+		p, err := dealParamsFromContext(cctx, api, fapi, true)
+		if err != nil {
+			return err
+		}
+
+		transferType := storagemarket.TTManual
+		if p.price.Int64() != 0 {
+			return fmt.Errorf("you must provide a 'price' of 0")
+		}
+
+		manifests, err := loadManifest(cctx.String("manifest"))
+		if err != nil {
+			return fmt.Errorf("load manifest error: %v", err)
+		}
+
+		var params []*client.DealParams
+		var selector *selector
+		startIdx := cctx.Int("start-index")
+		endIdx := cctx.Int("end-index")
+		currDatacap := p.dcap
+		minerDeal := make(map[address.Address]int)
+
+		if p.isVerified {
+			dd, err := api.ClientGetVerifiedDealDistribution(ctx, p.miner, p.from)
+			if err != nil {
+				return err
+			}
+			selector = newSelector(dd, p.from, p.miner)
+		}
+
+		for i, m := range manifests {
+			if i < startIdx {
+				continue
+			}
+			if endIdx > 0 && i >= endIdx {
+				break
+			}
+
+			dataRef := &storagemarket.DataRef{
+				TransferType: transferType,
+				Root:         m.payloadCID,
+				PieceCid:     &m.pieceCID,
+				PieceSize:    m.pieceSize,
+				RawBlockSize: m.payloadSize,
+			}
+
+			miner := p.miner[i%len(p.miner)]
+			if p.isVerified {
+				paddedPiecedSize := uint64(m.pieceSize.Padded())
+				if currDatacap < paddedPiecedSize {
+					fmt.Printf("datacap %d less than piece size %d\n", currDatacap, paddedPiecedSize)
+					break
+				}
+
+				if cctx.IsSet("filter") {
+					miner = selector.selectMiner(m.pieceCID, paddedPiecedSize)
+					if miner.Empty() {
+						selector.printError()
+						break
+					}
+				}
+				currDatacap -= paddedPiecedSize
+			}
+			params = append(params, fillDealParams(cctx, p, dataRef, miner))
+			minerDeal[miner]++
+		}
+		fmt.Printf("has %d deals need to publish", len(params))
+		if len(params) == 0 {
+			fmt.Println()
+			return nil
+		}
+		for miner, count := range minerDeal {
+			fmt.Printf(", %s: %d", miner, count)
+		}
+		fmt.Println()
+
+		res, err := api.ClientBatchDeal(ctx, params)
+		if err != nil {
+			return err
+		}
+
+		for i, r := range res.Results {
+			root := params[i].Data.Root.String()
+			if len(r.Message) == 0 {
+				fmt.Printf("create deal success, proposal cid: %v\n", r.ProposalCID)
+			} else {
+				fmt.Printf("create deal failed, playload cid: %v, error: %v\n", root, r.Message)
+			}
+		}
+
+		return nil
+	},
+}
+
+var verifiedDealStatsCmd = &cli.Command{
+	Name:  "verified-deal-stat",
+	Usage: "Print the distribution of verified deals",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "provider",
+			Usage: "provider address",
+		},
+		&cli.StringFlag{
+			Name:  "client",
+			Usage: "datacap address",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := cli2.NewMarketClientNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := cli2.ReqContext(cctx)
+		var provider, clientAddr address.Address
+		if cctx.IsSet("provider") {
+			provider, err = address.NewFromString(cctx.String("provider"))
+			if err != nil {
+				return err
+			}
+		} else if cctx.IsSet("client") {
+			clientAddr, err = address.NewFromString(cctx.String("client"))
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("must pass --provider of --client")
+		}
+
+		dd, err := api.ClientGetVerifiedDealDistribution(ctx, []address.Address{provider}, clientAddr)
+		if err != nil {
+			return err
+		}
+
+		newProviderWriter := func() *tablewriter.TableWriter {
+			return tablewriter.New(
+				tablewriter.Col("Provider"),
+				tablewriter.Col("Total"),
+				tablewriter.Col("Percentage"),
+				tablewriter.Col("Uniq"),
+				tablewriter.Col("DuplicationPercentage"),
+			)
+		}
+
+		sizeStr := func(v uint64) string {
+			return fmt.Sprintf("%s (%d B)", types.SizeStr(types.NewInt(v)), v)
+		}
+
+		writeProviderDistribution := func(writer *tablewriter.TableWriter, pd *client.ProviderDistribution, percentage float64) {
+			rows := map[string]interface{}{
+				"Provider":              pd.Provider,
+				"Total":                 sizeStr(pd.Total),
+				"Uniq":                  sizeStr(pd.Uniq),
+				"DuplicationPercentage": fmt.Sprintf("%.2f%s", 100*pd.DuplicationPercentage, "%"),
+			}
+			if percentage != 0 {
+				rows["Percentage"] = fmt.Sprintf("%.2f%s", 100*percentage, "%")
+			}
+			writer.Write(rows)
+		}
+
+		writeReplicasDistribution := func(buf *bytes.Buffer, rd *client.ReplicaDistribution) {
+			writer := newProviderWriter()
+			for _, pd := range rd.ReplicasDistribution {
+				writeProviderDistribution(writer, pd, rd.ReplicasPercentage[pd.Provider.String()])
+			}
+			fmt.Fprintf(buf, "Client: %s\n", rd.Client)
+			fmt.Fprintf(buf, "Total:  %s\n", sizeStr(rd.Total))
+			fmt.Fprintf(buf, "Uniq:   %s\n", sizeStr(rd.Uniq))
+			fmt.Fprintf(buf, "DuplicationPercentage: %.2f%s\n", rd.DuplicationPercentage*100, "%")
+			_ = writer.Flush(buf)
+			buf.WriteString("\n")
+		}
+
+		for _, pd := range dd.ProvidersDistribution {
+			if pd.Provider == provider {
+				writer := newProviderWriter()
+				writeProviderDistribution(writer, pd, 0)
+
+				return writer.Flush(os.Stdout)
+			}
+		}
+
+		buf := new(bytes.Buffer)
+		for _, rd := range dd.ReplicasDistribution {
+			if rd.Client == clientAddr {
+				writeReplicasDistribution(buf, rd)
+				break
+			}
+		}
+		fmt.Fprint(os.Stdout, buf.String())
+
+		return nil
+	},
+}
+
+var storageDealsExportCmd = &cli.Command{
+	Name:  "export",
+	Usage: "Export deal proposal cid and piece cid when the deal status is StorageDealWaitingForData",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "output",
+			Usage: "output result to file",
+		},
+		&cli.IntFlag{
+			Name:  "count",
+			Usage: "number of exported deals",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := cli2.NewMarketClientNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := cli2.ReqContext(cctx)
+
+		var deals []*client.DealInfo
+		res, err := api.ClientListOfflineDeals(ctx)
+		if err != nil {
+			return err
+		}
+		for i := range res {
+			if res[i].State == storagemarket.StorageDealWaitingForData {
+				deals = append(deals, &res[i])
+			}
+		}
+		if len(deals) == 0 {
+			fmt.Println("no deals need export")
+			return nil
+		}
+
+		if cctx.IsSet("output") {
+			count := cctx.Int("count")
+			buf := &bytes.Buffer{}
+			buf.WriteString("proposalCID,pieceCID\n")
+			for i, deal := range deals {
+				if count > 0 && i >= count {
+					continue
+				}
+				buf.WriteString(fmt.Sprintf("%s,%s\n", deal.ProposalCid.String(), deal.PieceCID.String()))
+			}
+
+			return os.WriteFile(cctx.String("output"), buf.Bytes(), 0o755)
+		}
+		writer := tablewriter.New(tablewriter.Col("ProposalCID"), tablewriter.Col("PieceCID"))
+		for _, deal := range deals {
+			writer.Write(map[string]interface{}{
+				"ProposalCID": deal.ProposalCid.String(),
+				"PieceCID":    deal.PieceCID.String(),
+			})
+		}
+
+		return writer.Flush(os.Stdout)
 	},
 }
