@@ -1,4 +1,4 @@
-module github.com/filecoin-project/venus-market/v2
+module github.com/ipfs-force-community/droplet/v2
 
 go 1.18
 

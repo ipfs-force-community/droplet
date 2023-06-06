@@ -15,9 +15,9 @@ import (
 
 	init_ "github.com/filecoin-project/go-state-types/builtin/v10/init"
 
-	"github.com/filecoin-project/venus-market/v2/models/repo"
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 )
 
 // paychFundsRes is the response to a create channel or add funds request

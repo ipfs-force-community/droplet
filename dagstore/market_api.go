@@ -17,10 +17,10 @@ import (
 	"github.com/filecoin-project/go-padreader"
 	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 
-	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-	"github.com/filecoin-project/venus-market/v2/piecestorage"
-	"github.com/filecoin-project/venus-market/v2/utils"
+	marketMetrics "github.com/ipfs-force-community/droplet/v2/metrics"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
+	"github.com/ipfs-force-community/droplet/v2/piecestorage"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 )
 
 type MarketAPI interface {

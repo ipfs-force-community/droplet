@@ -24,8 +24,8 @@ import (
 
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 
-	"github.com/filecoin-project/venus-market/v2/config"
-	"github.com/filecoin-project/venus-market/v2/utils"
+	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 )
 
 var log = logging.Logger("piece-storage")

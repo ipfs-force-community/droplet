@@ -16,9 +16,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
-	cli2 "github.com/filecoin-project/venus-market/v2/cli"
-	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
+	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
+	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
 )
 
 var retrievalCmd = &cli.Command{

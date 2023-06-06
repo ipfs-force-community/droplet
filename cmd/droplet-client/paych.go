@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/urfave/cli/v2"
 
-	cli2 "github.com/filecoin-project/venus-market/v2/cli"
-	"github.com/filecoin-project/venus-market/v2/paychmgr"
+	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
+	"github.com/ipfs-force-community/droplet/v2/paychmgr"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	lpaych "github.com/filecoin-project/venus/venus-shared/actors/builtin/paych"

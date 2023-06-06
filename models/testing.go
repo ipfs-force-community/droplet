@@ -8,15 +8,15 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus-market/v2/models/mysql"
-	"github.com/filecoin-project/venus-market/v2/utils/test_helper"
 	"github.com/google/uuid"
+	"github.com/ipfs-force-community/droplet/v2/models/mysql"
+	"github.com/ipfs-force-community/droplet/v2/utils/test_helper"
 	"github.com/ipfs/go-cid"
 	badger "github.com/ipfs/go-ds-badger2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/venus-market/v2/config"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 )
 
 func MysqlDB(t *testing.T) repo.Repo {

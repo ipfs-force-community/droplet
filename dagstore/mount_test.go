@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"testing"
 
-	mock_dagstore2 "github.com/filecoin-project/venus-market/v2/dagstore/mocks"
-	"github.com/filecoin-project/venus-market/v2/utils"
+	mock_dagstore2 "github.com/ipfs-force-community/droplet/v2/dagstore/mocks"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 
 	"github.com/golang/mock/gomock"
 	blocksutil "github.com/ipfs/go-ipfs-blocksutil"

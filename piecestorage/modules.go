@@ -3,7 +3,7 @@ package piecestorage
 import (
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 
-	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/config"
 )
 
 var SetupPieceStorageMetricsKey = builder.NextInvoke()

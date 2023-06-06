@@ -13,25 +13,25 @@ import (
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
-	"github.com/filecoin-project/venus-market/v2/api/clients"
-	"github.com/filecoin-project/venus-market/v2/api/impl"
-	"github.com/filecoin-project/venus-market/v2/api/impl/v0api"
-	cli2 "github.com/filecoin-project/venus-market/v2/cli"
-	"github.com/filecoin-project/venus-market/v2/cmd"
-	"github.com/filecoin-project/venus-market/v2/config"
-	"github.com/filecoin-project/venus-market/v2/dagstore"
-	"github.com/filecoin-project/venus-market/v2/fundmgr"
-	"github.com/filecoin-project/venus-market/v2/metrics"
-	"github.com/filecoin-project/venus-market/v2/minermgr"
-	"github.com/filecoin-project/venus-market/v2/models"
-	"github.com/filecoin-project/venus-market/v2/network"
-	"github.com/filecoin-project/venus-market/v2/paychmgr"
-	"github.com/filecoin-project/venus-market/v2/piecestorage"
-	"github.com/filecoin-project/venus-market/v2/retrievalprovider"
-	"github.com/filecoin-project/venus-market/v2/rpc"
-	"github.com/filecoin-project/venus-market/v2/storageprovider"
-	types2 "github.com/filecoin-project/venus-market/v2/types"
-	"github.com/filecoin-project/venus-market/v2/utils"
+	"github.com/ipfs-force-community/droplet/v2/api/clients"
+	"github.com/ipfs-force-community/droplet/v2/api/impl"
+	"github.com/ipfs-force-community/droplet/v2/api/impl/v0api"
+	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
+	"github.com/ipfs-force-community/droplet/v2/cmd"
+	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/dagstore"
+	"github.com/ipfs-force-community/droplet/v2/fundmgr"
+	"github.com/ipfs-force-community/droplet/v2/metrics"
+	"github.com/ipfs-force-community/droplet/v2/minermgr"
+	"github.com/ipfs-force-community/droplet/v2/models"
+	"github.com/ipfs-force-community/droplet/v2/network"
+	"github.com/ipfs-force-community/droplet/v2/paychmgr"
+	"github.com/ipfs-force-community/droplet/v2/piecestorage"
+	"github.com/ipfs-force-community/droplet/v2/retrievalprovider"
+	"github.com/ipfs-force-community/droplet/v2/rpc"
+	"github.com/ipfs-force-community/droplet/v2/storageprovider"
+	types2 "github.com/ipfs-force-community/droplet/v2/types"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 
 	marketapiV1 "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
@@ -127,8 +127,12 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 }
 
 func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
+	var err error
 	cfg := config.DefaultMarketConfig
-	cfg.HomeDir = cctx.String(RepoFlag.Name)
+	cfg.HomeDir, err = cmd.GetRepoPath(cctx, RepoFlag.Name, oldRepoPath)
+	if err != nil {
+		return nil, err
+	}
 	cfgPath, err := cfg.ConfigPath()
 	if err != nil {
 		return nil, err
@@ -195,10 +199,10 @@ func runDaemon(cctx *cli.Context) error {
 		builder.Override(new(jwtclient.IAuthClient), authClient),
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
-			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "venus-market", disabled)
+			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "droplet", disabled)
 		}),
 
-		metrics.MetricsOpts("venus-market", &cfg.Metrics),
+		metrics.MetricsOpts("droplet", &cfg.Metrics),
 		// override marketconfig
 		builder.Override(new(config.MarketConfig), cfg),
 		builder.Override(new(types2.ShutdownChan), shutdownChan),

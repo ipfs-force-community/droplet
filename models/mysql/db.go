@@ -13,8 +13,8 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
-	"github.com/filecoin-project/venus-market/v2/config"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )

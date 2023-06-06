@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
-	"github.com/filecoin-project/venus-market/v2/minermgr"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/ipfs-force-community/droplet/v2/minermgr"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"

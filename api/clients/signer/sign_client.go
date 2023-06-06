@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
-	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/config"
 
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
@@ -43,7 +43,7 @@ func NewISignerClient(isServer bool, authClient jwtclient.IAuthClient) func(metr
 		// Signing through venus chain-service
 		case config.SignerTypeGateway:
 			if !isServer {
-				return nil, fmt.Errorf("signing through the venus-gateway cannot be used for market-client")
+				return nil, fmt.Errorf("signing through the sophon-gateway cannot be used for droplet-clientt")
 			}
 			signer, closer, err = newGatewayWalletClient(mCtx, signerCfg, authClient)
 		default:

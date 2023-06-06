@@ -13,21 +13,21 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	clients2 "github.com/filecoin-project/venus-market/v2/api/clients"
-	"github.com/filecoin-project/venus-market/v2/api/impl"
-	cli2 "github.com/filecoin-project/venus-market/v2/cli"
-	"github.com/filecoin-project/venus-market/v2/client"
-	"github.com/filecoin-project/venus-market/v2/cmd"
-	"github.com/filecoin-project/venus-market/v2/config"
-	"github.com/filecoin-project/venus-market/v2/fundmgr"
-	"github.com/filecoin-project/venus-market/v2/models"
-	"github.com/filecoin-project/venus-market/v2/network"
-	"github.com/filecoin-project/venus-market/v2/paychmgr"
-	"github.com/filecoin-project/venus-market/v2/rpc"
-	"github.com/filecoin-project/venus-market/v2/storageprovider"
-	types2 "github.com/filecoin-project/venus-market/v2/types"
-	"github.com/filecoin-project/venus-market/v2/utils"
-	"github.com/filecoin-project/venus-market/v2/version"
+	clients2 "github.com/ipfs-force-community/droplet/v2/api/clients"
+	"github.com/ipfs-force-community/droplet/v2/api/impl"
+	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
+	"github.com/ipfs-force-community/droplet/v2/client"
+	"github.com/ipfs-force-community/droplet/v2/cmd"
+	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/fundmgr"
+	"github.com/ipfs-force-community/droplet/v2/models"
+	"github.com/ipfs-force-community/droplet/v2/network"
+	"github.com/ipfs-force-community/droplet/v2/paychmgr"
+	"github.com/ipfs-force-community/droplet/v2/rpc"
+	"github.com/ipfs-force-community/droplet/v2/storageprovider"
+	types2 "github.com/ipfs-force-community/droplet/v2/types"
+	"github.com/ipfs-force-community/droplet/v2/utils"
+	"github.com/ipfs-force-community/droplet/v2/version"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
@@ -40,6 +40,11 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
 )
 
+const (
+	oldRepoPath = "~/.marketclient"
+	defRepoPath = "~/.dropletclient"
+)
+
 var (
 	ExtractApiKey = builder.NextInvoke()
 	log           = logging.Logger("main")
@@ -48,8 +53,8 @@ var (
 var (
 	RepoFlag = &cli.StringFlag{
 		Name:    "repo",
-		EnvVars: []string{"VENUS_MARKET_CLIENT_PATH"},
-		Value:   "~/.marketclient",
+		EnvVars: []string{"DROPLET_CLIENT_PATH", "VENUS_MARKET_CLIENT_PATH"},
+		Value:   defRepoPath,
 	}
 
 	APIListenFlag = &cli.StringFlag{
@@ -69,7 +74,7 @@ var (
 
 	MessagerUrlFlag = &cli.StringFlag{
 		Name:  "messager-url",
-		Usage: "url to connect the venus-messager service of the chain service layer",
+		Usage: "url to connect the sophon-messager service of the chain service layer",
 	}
 
 	MessagerTokenFlag = &cli.StringFlag{
@@ -79,7 +84,7 @@ var (
 
 	AuthTokenFlag = &cli.StringFlag{
 		Name:  "auth-token",
-		Usage: "token used to connect venus chain service components, eg. venus-meassger, venus",
+		Usage: "token used to connect venus chain service components, eg. sophon-meassger, venus",
 	}
 
 	SignerTypeFlag = &cli.StringFlag{
@@ -115,8 +120,8 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:                 "market-client",
-		Usage:                "venus stores or retrieves the market client",
+		Name:                 "droplet-client",
+		Usage:                "venus stores or retrieves the droplet client",
 		Version:              version.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
@@ -126,8 +131,8 @@ func main() {
 			localCommand,
 			&cli.Command{
 				Name: "run",
-				Usage: "run market client daemon,(1) connect full node service: ./market-client run --node-url=<...> --node-token=<...> --addr=<WALLET_ADDR>;" +
-					"(2) connect venus shared service: ./market-client run --node-url=<...> --messager-url=<...> --auth-token=<...>  --signer-url=<...> --signer-token=<...> --addr=<WALLET_ADDR>.",
+				Usage: "run droplet client daemon,(1) connect full node service: ./droplet-client run --node-url=<...> --node-token=<...> --addr=<WALLET_ADDR>;" +
+					"(2) connect venus shared service: ./droplet-client run --node-url=<...> --messager-url=<...> --auth-token=<...>  --signer-url=<...> --signer-token=<...> --addr=<WALLET_ADDR>.",
 				Flags: []cli.Flag{
 					APIListenFlag,
 					NodeUrlFlag,
@@ -218,8 +223,12 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 }
 
 func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
+	var err error
 	cfg := config.DefaultMarketClientConfig
-	cfg.HomeDir = cctx.String("repo")
+	cfg.HomeDir, err = cmd.GetRepoPath(cctx, RepoFlag.Name, oldRepoPath)
+	if err != nil {
+		return nil, err
+	}
 	cfgPath, err := cfg.ConfigPath()
 	if err != nil {
 		return nil, err
@@ -276,11 +285,11 @@ func marketClient(cctx *cli.Context) error {
 		// defaults
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
-			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "market-client", disabled)
+			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "droplet-client", disabled)
 		}),
 
 		builder.Override(new(metrics.MetricsCtx), func() context.Context {
-			return metrics2.CtxScope(context.Background(), "venus-market")
+			return metrics2.CtxScope(context.Background(), "droplet")
 		}),
 		builder.Override(new(types2.ShutdownChan), shutdownChan),
 

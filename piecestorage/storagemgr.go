@@ -6,8 +6,8 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/filecoin-project/venus-market/v2/config"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs-force-community/droplet/v2/config"
 )
 
 var ErrorNotFoundForRead = fmt.Errorf("not found for read")

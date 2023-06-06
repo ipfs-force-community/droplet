@@ -17,7 +17,7 @@ import (
 
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
-	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/config"
 )
 
 var log = logging.Logger("modules")

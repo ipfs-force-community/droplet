@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
-	"github.com/filecoin-project/venus-market/v2/storageprovider"
+	"github.com/ipfs-force-community/droplet/v2/storageprovider"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
@@ -287,7 +287,7 @@ var dealsListCmd = &cli.Command{
 		&cli.Uint64Flag{
 			Name: "state",
 			Usage: `
-deal state, show all deal state: ./venus-market storage deal states.
+deal state, show all deal state: ./droplet storage deal states.
 part states:
 8  StorageDealExpired
 9  StorageDealSlashed

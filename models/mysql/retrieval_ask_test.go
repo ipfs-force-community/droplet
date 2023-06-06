@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus-messager/models/mtypes"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	market_types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/stretchr/testify/assert"
 )
 

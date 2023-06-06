@@ -8,8 +8,8 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 )

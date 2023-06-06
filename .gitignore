@@ -6,8 +6,8 @@
 *.dylib
 badgerStAskDb/
 *.puml
-/market-client
-/venus-market
+/droplet-client
+/droplet
 sequence_chart.md
 .idea
 .vscode

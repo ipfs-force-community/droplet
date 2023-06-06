@@ -9,9 +9,9 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/venus-market/v2/utils"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 	"github.com/libp2p/go-libp2p/core/host"
 )
 

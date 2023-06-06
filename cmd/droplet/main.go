@@ -8,12 +8,17 @@ import (
 
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 
-	cli2 "github.com/filecoin-project/venus-market/v2/cli"
-	_ "github.com/filecoin-project/venus-market/v2/network"
-	"github.com/filecoin-project/venus-market/v2/version"
+	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
+	_ "github.com/ipfs-force-community/droplet/v2/network"
+	"github.com/ipfs-force-community/droplet/v2/version"
 
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
+)
+
+const (
+	oldRepoPath = "~/.venusmarket"
+	defRepoPath = "~/.droplet"
 )
 
 var mainLog = logging.Logger("main")
@@ -27,8 +32,8 @@ var (
 var (
 	RepoFlag = &cli.StringFlag{
 		Name:    "repo",
-		EnvVars: []string{"VENUS_MARKET_PATH"},
-		Value:   "~/.venusmarket",
+		EnvVars: []string{"DROPLET_PATH", "VENUS_MARKET_PATH"},
+		Value:   defRepoPath,
 	}
 
 	APIListenFlag = &cli.StringFlag{
@@ -83,8 +88,8 @@ var (
 
 func main() {
 	app := &cli.App{
-		Name:                 "venus-market",
-		Usage:                "venus-market",
+		Name:                 "droplet",
+		Usage:                "droplet",
 		Version:              version.UserVersion(),
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{

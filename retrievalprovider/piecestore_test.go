@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
 	"github.com/google/uuid"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
 	typegen "github.com/whyrusleeping/cbor-gen"
@@ -23,9 +23,9 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus-market/v2/dagstore"
+	"github.com/ipfs-force-community/droplet/v2/dagstore"
 
-	"github.com/filecoin-project/venus-market/v2/models"
+	"github.com/ipfs-force-community/droplet/v2/models"
 )
 
 func TestPieceInfo_GetPieceInfoByPieceCid(t *testing.T) {

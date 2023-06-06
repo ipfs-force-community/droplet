@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/venus-market/v2/version"
+	"github.com/ipfs-force-community/droplet/v2/version"
 	"github.com/ipfs-force-community/metrics"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -34,7 +34,7 @@ func Host(mctx metrics.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (host.Host
 		libp2p.Peerstore(params.Peerstore),
 		libp2p.NoListenAddrs,
 		libp2p.Ping(true),
-		libp2p.UserAgent("venus-market" + version.UserVersion()),
+		libp2p.UserAgent("droplet" + version.UserVersion()),
 	}
 	for _, o := range params.Opts {
 		opts = append(opts, o...)

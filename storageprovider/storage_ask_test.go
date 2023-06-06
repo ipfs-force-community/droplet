@@ -8,9 +8,9 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus-market/v2/models"
-	"github.com/filecoin-project/venus-market/v2/models/badger"
-	"github.com/filecoin-project/venus-market/v2/utils/test_helper"
+	"github.com/ipfs-force-community/droplet/v2/models"
+	"github.com/ipfs-force-community/droplet/v2/models/badger"
+	"github.com/ipfs-force-community/droplet/v2/utils/test_helper"
 	"github.com/stretchr/testify/require"
 )
 

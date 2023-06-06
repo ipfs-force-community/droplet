@@ -6,12 +6,12 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"github.com/filecoin-project/venus-market/v2/models/badger/migrate"
+	"github.com/ipfs-force-community/droplet/v2/models/badger/migrate"
 
 	"github.com/ipfs/go-cid"
 
-	v220 "github.com/filecoin-project/venus-market/v2/models/badger/migrate/v2.2.0"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
+	v220 "github.com/ipfs-force-community/droplet/v2/models/badger/migrate/v2.2.0"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	cbg "github.com/whyrusleeping/cbor-gen"
