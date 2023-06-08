@@ -26,6 +26,16 @@ func NewStorageDealRepo(ds StorageDealsDS) repo.StorageDealRepo {
 	return &storageDealRepo{ds}
 }
 
+func (sdr *storageDealRepo) CreateDeals(ctx context.Context, storageDeals []*types.MinerDeal) error {
+	for _, storageDeal := range storageDeals {
+		if err := sdr.SaveDeal(ctx, storageDeal); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.MinerDeal) error {
 	storageDeal.TimeStamp = makeRefreshedTimeStamp(&storageDeal.TimeStamp)
 	b, err := cborrpc.Dump(storageDeal)

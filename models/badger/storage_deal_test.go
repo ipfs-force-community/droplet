@@ -40,6 +40,20 @@ func prepareStorageDealTest(t *testing.T) (context.Context, repo.StorageDealRepo
 	return ctx, r, dealCases
 }
 
+func TestCreateStorageDeals(t *testing.T) {
+	ctx, r, dealCases := prepareStorageDealTest(t)
+
+	deals := make([]*markettypes.MinerDeal, 0, len(dealCases))
+	for i := range dealCases {
+		deals = append(deals, &dealCases[i])
+	}
+	assert.NoError(t, r.CreateDeals(ctx, deals))
+
+	ret, err := r.ListDeal(ctx, &markettypes.StorageDealQueryParams{Page: markettypes.Page{Limit: 11}})
+	assert.NoError(t, err)
+	assert.Len(t, ret, 10)
+}
+
 func TestSaveStorageDeal(t *testing.T) {
 	ctx, r, dealCases := prepareStorageDealTest(t)
 

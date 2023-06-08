@@ -62,6 +62,14 @@ build: $(BUILD_DEPS)
 	go build -o ./droplet-client $(GOFLAGS) ./cmd/droplet-client
 	go build -o ./droplet $(GOFLAGS) ./cmd/droplet
 
+droplet: $(BUILD_DEPS)
+	rm -f droplet
+	go build -o ./droplet $(GOFLAGS) ./cmd/droplet
+
+droplet-client: $(BUILD_DEPS)
+	rm -f droplet-client
+	go build -o ./droplet-client $(GOFLAGS) ./cmd/droplet-client
+
 add-debug-flag:
 GOFLAGS+=-gcflags="all=-N -l"
 

@@ -302,6 +302,19 @@ func NewStorageDealRepo(db *gorm.DB) repo.StorageDealRepo {
 	return &storageDealRepo{db}
 }
 
+func (sdr *storageDealRepo) CreateDeals(ctx context.Context, deals []*types.MinerDeal) error {
+	storageDeals := make([]*storageDeal, 0, len(deals))
+	for _, deal := range deals {
+		storageDeal := fromStorageDeal(deal)
+		storageDeal.TimeStampOrm.Refresh()
+		storageDeals = append(storageDeals, storageDeal)
+	}
+
+	return sdr.WithContext(ctx).Clauses(
+		clause.OnConflict{Columns: []clause.Column{{Name: "proposal_cid"}}, UpdateAll: true}).
+		CreateInBatches(storageDeals, 100).Error
+}
+
 func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.MinerDeal) error {
 	deal := fromStorageDeal(storageDeal)
 	deal.TimeStampOrm.Refresh()

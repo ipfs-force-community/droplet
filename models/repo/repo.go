@@ -28,6 +28,7 @@ type FundRepo interface {
 }
 
 type StorageDealRepo interface {
+	CreateDeals(ctx context.Context, deals []*types.MinerDeal) error
 	SaveDeal(ctx context.Context, StorageDeal *types.MinerDeal) error
 	UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState types.PieceStatus) error
 

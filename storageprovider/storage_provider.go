@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs-force-community/metrics"
 	"go.uber.org/fx"
 
@@ -118,8 +119,8 @@ type StorageProvider interface {
 	// ImportPublishedDeal manually import published deals to storage deals
 	ImportPublishedDeal(ctx context.Context, deal types.MinerDeal) error
 
-	// ImportOfflineDeal manually import offline deals to storage deals
-	ImportOfflineDeal(ctx context.Context, deal types.MinerDeal) error
+	// ImportDeals manually import deals to storage deals
+	ImportDeals(ctx context.Context, deal map[address.Address][]*types.MinerDeal) error
 
 	// SubscribeToEvents listens for events that happen related to storage deals on a provider
 	SubscribeToEvents(subscriber ProviderSubscriber) shared.Unsubscribe
@@ -633,48 +634,48 @@ func (p *StorageProviderImpl) ImportPublishedDeal(ctx context.Context, deal type
 	return p.dealStore.SaveDeal(ctx, improtDeal)
 }
 
-// ImportPublishedDeal manually import published deals for an storage deal
-func (p *StorageProviderImpl) ImportOfflineDeal(ctx context.Context, deal types.MinerDeal) error {
-	// check deal state
-	if deal.State != storagemarket.StorageDealWaitingForData {
-		return fmt.Errorf("deal state %s not match %s", storagemarket.DealStates[deal.State], storagemarket.DealStates[storagemarket.StorageDealWaitingForData])
-	}
-
-	// check transfer type
-	if deal.Ref.TransferType != storagemarket.TTManual {
-		return fmt.Errorf("transfer type %s not match %s", deal.Ref.TransferType, storagemarket.TTManual)
-	}
-
-	// check if miner exit
-	if !p.minerMgr.Has(ctx, deal.Proposal.Provider) {
-		return fmt.Errorf("miner %s not support", deal.Proposal.Provider)
-	}
-
-	// check if local exit the deal
-	if _, err := p.dealStore.GetDeal(ctx, deal.ProposalCid); err == nil {
-		return fmt.Errorf("deal exist proposal cid %s id %d", deal.ProposalCid, deal.DealID)
-	} else if !errors.Is(err, repo.ErrNotFound) {
-		return err
-	}
-
-	// check client signature
+// ImportDeals manually import deals
+func (p *StorageProviderImpl) ImportDeals(ctx context.Context, deals map[address.Address][]*types.MinerDeal) error {
 	tok, _, err := p.spn.GetChainHead(ctx)
 	if err != nil {
-		p.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, &deal)
 		return fmt.Errorf("node error getting most recent state id: %w", err)
 	}
 
-	if err := providerutils.VerifyProposal(ctx, deal.ClientDealProposal, tok, p.spn.VerifySignature); err != nil {
-		p.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, &deal)
-		return fmt.Errorf("verifying StorageDealProposal: %w", err)
+	var errs *multierror.Error
+	for provider, d := range deals {
+		pendingDeals := make([]*types.MinerDeal, 0, len(d))
+
+		if !p.minerMgr.Has(ctx, provider) {
+			errs = multierror.Append(errs, fmt.Errorf("miner %s not support", provider))
+			continue
+		}
+
+		for _, deal := range d {
+			_, err := p.dealStore.GetDeal(ctx, deal.ProposalCid)
+			if err == nil {
+				errs = multierror.Append(errs, fmt.Errorf("deal exist: %s", deal.ProposalCid))
+			} else if !errors.Is(err, repo.ErrNotFound) {
+				return err
+			}
+
+			// todo: The ClientSignature of the boost deal cannot be obtained currently
+			if len(deal.ClientDealProposal.ClientSignature.Data) != 0 {
+				err := providerutils.VerifyProposal(ctx, deal.ClientDealProposal, tok, p.spn.VerifySignature)
+				if err != nil {
+					errs = multierror.Append(errs, fmt.Errorf("verify %s proposal failed: %v", deal.ProposalCid, err))
+					continue
+				}
+			}
+			pendingDeals = append(pendingDeals, deal)
+		}
+
+		err = p.dealStore.CreateDeals(ctx, pendingDeals)
+		if err != nil {
+			return fmt.Errorf("save miner %s deal to database %v", provider, err)
+		}
 	}
 
-	err = p.dealStore.SaveDeal(ctx, &deal)
-	if err != nil {
-		return fmt.Errorf("save miner deal to database %w", err)
-	}
-
-	return nil
+	return errs.ErrorOrNil()
 }
 
 // AddStorageCollateral adds storage collateral

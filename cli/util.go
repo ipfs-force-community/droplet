@@ -2,28 +2,39 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	"github.com/howeyc/gopass"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
+	"github.com/filecoin-project/go-state-types/crypto"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
 	"github.com/ipfs-force-community/droplet/v2/config"
@@ -32,6 +43,7 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market/v1"
+	shared "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -341,4 +353,206 @@ func shouldAddress(s string, checkEmpty bool, allowActor bool) (address.Address,
 	}
 
 	return address.NewFromString(s)
+}
+
+type result struct {
+	// lotus-miner query deals result
+	Result []*types.MinerDeal `json:"result"`
+
+	// boost query deals result
+	BoostResult struct {
+		Deals struct {
+			TotalCount int         `json:"totalCount"`
+			Deals      []boostDeal `json:"deals"`
+		} `json:"deals"`
+	} `json:"data"`
+}
+
+type bigInt big.Int
+
+func (bi *bigInt) UnmarshalJSON(data []byte) error {
+	type internal struct {
+		N string `json:"n"`
+	}
+
+	var t internal
+	if err := json.Unmarshal(data, &t); err != nil {
+		return err
+	}
+
+	i := big.NewInt(0)
+	if t.N != "0" {
+		n, err := strconv.ParseUint(t.N, 10, 64)
+		if err != nil {
+			return err
+		}
+		i = big.NewIntUnsigned(n)
+	}
+	*bi = bigInt(i)
+
+	return nil
+}
+
+type transfer struct {
+	Type string
+	Size bigInt
+}
+
+type sector struct {
+	ID     bigInt
+	Offset bigInt
+	Length bigInt
+}
+
+type boostDeal struct {
+	ID                   string
+	ClientAddress        string
+	ProviderAddress      string
+	CreatedAt            string
+	PieceCid             string
+	PieceSize            bigInt
+	IsVerified           bool
+	ProposalLabel        string
+	ProviderCollateral   bigInt
+	ClientCollateral     bigInt
+	StoragePricePerEpoch bigInt
+	StartEpoch           bigInt
+	EndEpoch             bigInt
+	ClientPeerID         string
+	DealDataRoot         string
+	SignedProposalCid    string
+	InboundFilePath      string
+	ChainDealID          bigInt
+	PublishCid           string
+	IsOffline            bool
+	Transfer             transfer
+	Checkpoint           string
+	Err                  string
+	Sector               sector
+	Message              string
+}
+
+func (d *boostDeal) minerDeal() (deal *types.MinerDeal, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+
+	label, err := shared.NewLabelFromString(d.ProposalLabel)
+	if err != nil {
+		return nil, err
+	}
+	clientPeerID, err := peer.Decode(d.ClientPeerID)
+	if err != nil {
+		return nil, err
+	}
+	createAt, err := time.Parse(time.RFC3339, d.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	pieceCID := shared.MustParseCid(d.PieceCid)
+
+	deal = &types.MinerDeal{
+		ClientDealProposal: market.ClientDealProposal{
+			Proposal: market.DealProposal{
+				PieceCID:             pieceCID,
+				PieceSize:            abi.PaddedPieceSize(d.PieceSize.Int64()),
+				VerifiedDeal:         d.IsVerified,
+				Client:               shared.MustParseAddress(d.ClientAddress),
+				Provider:             shared.MustParseAddress(d.ProviderAddress),
+				Label:                label,
+				StartEpoch:           abi.ChainEpoch(d.StartEpoch.Int64()),
+				EndEpoch:             abi.ChainEpoch(d.EndEpoch.Int64()),
+				StoragePricePerEpoch: big.Int(d.StoragePricePerEpoch),
+				ProviderCollateral:   big.Int(d.ProviderCollateral),
+				ClientCollateral:     big.Int(d.ClientCollateral),
+			},
+			// todo: query response not include Signature
+			ClientSignature: crypto.Signature{},
+		},
+		ProposalCid:   shared.MustParseCid(d.SignedProposalCid),
+		Client:        clientPeerID,
+		PiecePath:     "",
+		PayloadSize:   uint64(d.Transfer.Size.Int64()),
+		MetadataPath:  "",
+		FastRetrieval: true,
+		Message:       d.Err,
+		Ref: &storagemarket.DataRef{
+			TransferType: d.Transfer.Type,
+			Root:         shared.MustParseCid(d.DealDataRoot),
+			PieceCid:     &pieceCID,
+			PieceSize:    abi.UnpaddedPieceSize(d.PieceSize.Int64()),
+		},
+		AvailableForRetrieval: false,
+		DealID:                abi.DealID(d.ChainDealID.Int64()),
+		CreationTime:          cbg.CborTime(createAt),
+		SectorNumber:          abi.SectorNumber(d.Sector.ID.Int64()),
+		Offset:                abi.PaddedPieceSize(d.Sector.Offset.Int64()),
+		TimeStamp: types.TimeStamp{
+			CreatedAt: uint64(createAt.Unix()),
+			UpdatedAt: uint64(time.Now().Unix()),
+		},
+		SlashEpoch: -1,
+		// AddFundsCid: ,
+		// FundsReserved: ,
+		// TransferChannelID: ,
+	}
+	if d.IsOffline {
+		deal.Ref.TransferType = storagemarket.TTManual
+	}
+
+	if len(d.PublishCid) != 0 {
+		publicCID := shared.MustParseCid(d.PublishCid)
+		deal.PublishCid = &publicCID
+	}
+
+	switch d.Checkpoint {
+	// https://github.com/filecoin-project/boost/blob/main/gql/resolver.go#L546
+	case "Accepted":
+		if d.Message == "Awaiting Offline Data Import" {
+			deal.State = storagemarket.StorageDealWaitingForData
+			deal.PieceStatus = types.Undefine
+		}
+	// https://github.com/filecoin-project/boost/blob/main/gql/resolver.go#L583
+	case "Complete":
+		if strings.Contains(d.Message, string(types.Proving)) {
+			deal.State = storagemarket.StorageDealActive
+			deal.PieceStatus = types.Proving
+		}
+	}
+
+	return deal, nil
+}
+
+func getMinerPeerFunc(ctx context.Context, fapi v1api.FullNode) func(miner address.Address) peer.ID {
+	minersPeer := make(map[address.Address]peer.ID)
+
+	return func(miner address.Address) peer.ID {
+		id, ok := minersPeer[miner]
+		if !ok {
+			minerInfo, err := fapi.StateMinerInfo(ctx, miner, shared.EmptyTSK)
+			if err == nil && minerInfo.PeerId != nil {
+				id = *minerInfo.PeerId
+				minersPeer[miner] = *minerInfo.PeerId
+			}
+		}
+		return id
+	}
+}
+
+func getPayloadSizeFunc(dirs []string) func(pieceCID cid.Cid) uint64 {
+	sizes := make(map[cid.Cid]uint64)
+
+	return func(pieceCID cid.Cid) uint64 {
+		piece := pieceCID.String()
+		for _, dir := range dirs {
+			fi, err := os.Stat(filepath.Join(dir, piece))
+			if err == nil {
+				sizes[pieceCID] = uint64(fi.Size())
+			}
+		}
+
+		return sizes[pieceCID]
+	}
 }
