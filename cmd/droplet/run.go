@@ -11,7 +11,7 @@ import (
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 	"github.com/ipfs-force-community/venus-common-utils/journal"
 
-	"github.com/filecoin-project/venus-auth/jwtclient"
+	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
 	"github.com/ipfs-force-community/droplet/v2/api/clients"
 	"github.com/ipfs-force-community/droplet/v2/api/impl"

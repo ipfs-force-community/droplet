@@ -11,7 +11,7 @@ import (
 
 	"github.com/ipfs-force-community/metrics"
 
-	"github.com/filecoin-project/venus-auth/jwtclient"
+	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
 	"github.com/ipfs-force-community/droplet/v2/config"
 

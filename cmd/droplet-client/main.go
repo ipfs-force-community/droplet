@@ -42,7 +42,7 @@ import (
 
 const (
 	oldRepoPath = "~/.marketclient"
-	defRepoPath = "~/.dropletclient"
+	defRepoPath = "~/.droplet-client"
 )
 
 var (

@@ -24,7 +24,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/venus-auth/jwtclient"
+	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
 	clients2 "github.com/ipfs-force-community/droplet/v2/api/clients"
 	"github.com/ipfs-force-community/droplet/v2/config"

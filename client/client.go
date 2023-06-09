@@ -67,7 +67,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/storageprovider"
 	"github.com/ipfs-force-community/droplet/v2/utils"
 
-	"github.com/filecoin-project/venus-auth/log"
+	"github.com/ipfs-force-community/sophon-auth/log"
 
 	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/miner"

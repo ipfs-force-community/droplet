@@ -15,7 +15,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 
-	"github.com/filecoin-project/venus-auth/jwtclient"
+	authconfig "github.com/ipfs-force-community/sophon-auth/config"
+	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
 	"github.com/ipfs-force-community/droplet/v2/config"
 )
@@ -99,7 +100,7 @@ func ServeRPC(
 
 func getLocalJwtClient(home config.IHome, apiCfg *config.API) (jwtclient.IJwtAuthClient, error) {
 	if len(apiCfg.PrivateKey) == 0 {
-		secret, err := jwtclient.RandSecret()
+		secret, err := authconfig.RandSecret()
 		if err != nil {
 			return nil, err
 		}

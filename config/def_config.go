@@ -11,7 +11,7 @@ import (
 const (
 	DefaultSimultaneousTransfers = uint64(20)
 
-	HomePath = "~/.venusmarket"
+	HomePath = "~/.droplet"
 )
 
 var DefaultMarketConfig = &MarketConfig{
@@ -75,7 +75,7 @@ var DefaultMarketConfig = &MarketConfig{
 }
 
 var DefaultMarketClientConfig = &MarketClientConfig{
-	Home: Home{"~/.marketclient"},
+	Home: Home{"~/.droplet-client"},
 	Common: Common{
 		API: API{
 			ListenAddress: "/ip4/127.0.0.1/tcp/41231/ws",

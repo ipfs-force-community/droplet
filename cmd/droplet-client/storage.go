@@ -1404,7 +1404,7 @@ func renderDeal(di *client.DealInfo) {
 	color.Blue("Proposal CID: %s\n\n", di.ProposalCid.String())
 
 	if di.DealStages == nil {
-		color.Yellow("Deal was made with an older version of venus-market and droplet did not collect detailed information about its stages")
+		color.Yellow("Deal was made with an older version of droplet did not collect detailed information about its stages")
 		return
 	}
 
@@ -1616,7 +1616,7 @@ var storageDelesBatchCmd = &cli.Command{
 	Description: `Make deals with miners.
 price is measured in FIL/Epoch. Miners usually don't accept a bid
 lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
-with './market-client storage asks query <miner address>'.
+with './droplet-clientstorage asks query <miner address>'.
 duration is how long the miner should store the data for, in blocks.
 The minimum value is 518400 (6 months).`,
 	ArgsUsage: "[price duration]",

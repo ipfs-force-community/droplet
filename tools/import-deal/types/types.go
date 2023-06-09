@@ -9,7 +9,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus-messager/models/mtypes"
+	"github.com/ipfs-force-community/sophon-messager/models/mtypes"
 
 	"github.com/ipfs-force-community/droplet/v2/models/mysql"
 )

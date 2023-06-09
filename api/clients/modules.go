@@ -1,7 +1,7 @@
 package clients
 
 import (
-	"github.com/filecoin-project/venus-auth/jwtclient"
+	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/ipfs-force-community/venus-common-utils/builder"

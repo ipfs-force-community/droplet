@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/ipfs-force-community/venus-gateway/validator"
+	"github.com/ipfs-force-community/sophon-gateway/validator"
 )
 
 type localMinerValidator struct{}
