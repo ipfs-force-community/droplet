@@ -1,6 +1,6 @@
-# Market Client Configurations
+# Droplet Client Configurations
 
-A typical configuration of `market-client` is as follows...
+A typical configuration of `droplet-client` is as follows...
 
 ```
 
@@ -40,17 +40,17 @@ Simultaneous Transfers For Storage = 20
 
 Among them, it can be divided into three parts: 1) client network configuration, 2) configuration of Venus chain service components and 3) other configurations
 
-## Market Client network configuration
+## DROPLET Client network configuration
 
-This part of the configuration determines the interface between the `market client` and external actors
+This part of the configuration determines the interface between the `droplet client` and external actors
 
 ### [API]
 
-This section defines the external interface of `market-client`
+This section defines the external interface of `droplet-client`
 
 ```
 [API]
-# market-client provides the address where the service listens
+# droplet-client provides the address where the service listens
 # String type, required, default: "/ip4/127.0.0.1/tcp/41235"
 ListenAddress = "/ip4/127.0.0.1/tcp/41235"
 
@@ -87,10 +87,9 @@ PrivateKey = "08011240ae580daabbe087007d2b4db4e880af10d582215d2272669a94c49c854f
 ```
 
 
-
 ## Venus Chain Service Configuration
 
-When the `market-client` is connected to the `venus components`, the API of the related component needs to be configured.
+When the `droplet-client` is connected to the `venus components`, the API of the related component needs to be configured.
 
 ### [Node]
 
@@ -111,7 +110,7 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 
 ### [Messager]
 
-`venus-messager` service access configuration
+`sophon-messager` service access configuration
 
 ```
 [Messager]
@@ -128,7 +127,7 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 ### [Signer]
 
 The Venus component that provide signing services
-Only signature services of `wallet` type can be used in `market-client`
+Only signature services of `wallet` type can be used in `droplet-client`
 
 ```
 [Signer]
@@ -157,7 +156,7 @@ Simultaneous Transfers For Retrieval = 20
 # Integer type Default: 20
 Simultaneous Transfers For Storage = 20
 
-# The default address of the current market-client
+# The default address of the current droplet-client
 # String type, optional, can also be configured directly through the --addr flag of the command line
 DefaultMarketAddress = "t3qkgm5h7nmusacfggd744w7fdj45rn6iyl7n6s6lr34t4qlfebiphmm3vxtwc4a4acqi4nv3pqk6h7ddqqz5q:username"
 ```

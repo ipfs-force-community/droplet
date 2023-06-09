@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-	"github.com/filecoin-project/venus-messager/models/mtypes"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
+	"github.com/ipfs-force-community/sophon-messager/models/mtypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 

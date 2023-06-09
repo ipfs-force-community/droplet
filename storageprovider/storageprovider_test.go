@@ -21,11 +21,11 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/venus-market/v2/config"
-	"github.com/filecoin-project/venus-market/v2/minermgr"
-	"github.com/filecoin-project/venus-market/v2/models"
-	network2 "github.com/filecoin-project/venus-market/v2/network"
-	"github.com/filecoin-project/venus-market/v2/piecestorage"
+	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/minermgr"
+	"github.com/ipfs-force-community/droplet/v2/models"
+	network2 "github.com/ipfs-force-community/droplet/v2/network"
+	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 
 	vCrypto "github.com/filecoin-project/venus/pkg/crypto"
 	_ "github.com/filecoin-project/venus/pkg/crypto/bls"

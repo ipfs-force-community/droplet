@@ -17,8 +17,8 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/venus-market/v2/models/badger"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/ipfs-force-community/droplet/v2/models/badger"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 
 	"github.com/filecoin-project/venus/pkg/config"
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"

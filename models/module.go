@@ -1,11 +1,11 @@
 package models
 
 import (
-	badger2 "github.com/filecoin-project/venus-market/v2/models/badger"
-	"github.com/filecoin-project/venus-market/v2/models/mysql"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
+	badger2 "github.com/ipfs-force-community/droplet/v2/models/badger"
+	"github.com/ipfs-force-community/droplet/v2/models/mysql"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 
-	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/config"
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 )
 

@@ -17,10 +17,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/big"
 
-	cli2 "github.com/filecoin-project/venus-market/v2/cli"
 	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
+	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
 )
 
 const DefaultMaxRetrievePrice = "0"
@@ -243,13 +243,13 @@ In case of CAR retrieval, the selector must have one common "sub-root" node.
 Examples:
 
 - Retrieve a file by CID
-	# market-client retrieval retrieve --maxPrice 0.1fil bafyk... my-file
+	# droplet-clienttt retrieval retrieve --maxPrice 0.1fil bafyk... my-file
 
 - Retrieve a file by CID from f0123
-	# market-client retrieval retrieve --maxPrice 0.1fil --miner f0123 bafyk... my-file
+	# droplet-client retrieval retrieve --maxPrice 0.1fil --miner f0123 bafyk... my-file
 
 - Retrieve a first file from a specified directory
-	$ market-client retrieval retrieve --data-selector /Links/0/Hash bafyk... my-file.txt
+	$ droplet-client retrieval retrieve --data-selector /Links/0/Hash bafyk... my-file.txt
 `,
 	Flags: append([]cli.Flag{
 		&cli.BoolFlag{

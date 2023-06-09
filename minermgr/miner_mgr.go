@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 
-	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/config"
 
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 )

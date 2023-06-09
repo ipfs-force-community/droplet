@@ -48,7 +48,7 @@ var retrievalDealsListCmd = &cli.Command{
 		&cli.Uint64Flag{
 			Name: "status",
 			Usage: `
-deal status, show all deal status: ./venus-market retrieval deal statuses.
+deal status, show all deal status: ./droplet retrieval deal statuses.
 part statuses:
 6  DealStatusAccepted
 15 DealStatusCompleted

@@ -1,6 +1,6 @@
-# venus market 的配置解释
+# droplet 的配置解释
 
-一份典型的 `venus-market` 的配置是这样的:
+一份典型的 `droplet` 的配置是这样的:
 ```
 
 # ****** 数据传输参数配置 ********
@@ -71,7 +71,7 @@ SimultaneousTransfersForRetrieval = 20
      [CommonProvider.RetrievalPricing.External]
        Path = ""
 
-# ****** venus market 网络配置  ********
+# ****** droplet 网络配置  ********
 [API]
   ListenAddress = "/ip4/127.0.0.1/tcp/41235"
   RemoteListenAddress = ""
@@ -132,7 +132,7 @@ Path = "journal"
 # ******** DAG存储设置 ********
 
 [DAGStore]
-RootDir = "/root/.venusmarket/dagstore"
+RootDir = "/root/.droplet/dagstore"
 MaxConcurrentIndex = 5
 MaxConcurrentReadyFetches = 0
 MaxConcurrencyStorageCalls = 100
@@ -186,7 +186,7 @@ SimultaneousTransfersForRetrieval = 20
 
 ## 基础参数配置
 
-这部分的配置主要是决定了了market在进行工作时的偏好，满足定制化的需求，其中各项配置的作用如下：
+这部分的配置主要是决定了了 `droplet` 在进行工作时的偏好，满足定制化的需求，其中各项配置的作用如下：
 
 ``` 
 # 决定是否接受线上存储订单
@@ -246,7 +246,7 @@ Filter = ""
 RetrievalFilter = ""
 
 # 订单传输数据的存储位置
-# 字符串类型 可选 为空值时默认使用`MARKET_REPO`的路径
+# 字符串类型 可选 为空值时默认使用`DROPLET_REPO`的路径
 TransferPath = ""
 
 # 发送订单消息的最大费用
@@ -296,16 +296,16 @@ Addr = ""
 Account =""
 ```
 
-## venus market 网络配置
+## droplet  网络配置
 
-这部分的配置决定了 venus-market 和外界交互的接口
+这部分的配置决定了 droplet 和外界交互的接口
 
 ### [API]
-market 对外提供服务的接口
+droplet 对外提供服务的接口
 
 ```
 [API]
-# Market 提供服务监听的地址
+# droplet 提供服务监听的地址
 # 字符串类型，必选项，默认为:"/ip4/127.0.0.1/tcp/41235"
 ListenAddress = "/ip4/127.0.0.1/tcp/41235"
 
@@ -322,7 +322,7 @@ Timeout = "30s"
 
 ### [Libp2p]
 
-Market 在P2P网络中通信时使用的 通信地址
+Droplet 在P2P网络中通信时使用的 通信地址
 ```
 [Libp2p]
 # 监听的网络地址
@@ -342,7 +342,7 @@ PrivateKey = "08011240ae580daabbe087007d2b4db4e880af10d582215d2272669a94c49c854f
 
 ## venus 组件服务配置
 
-当market接入venus组件使用时，需要配置相关组件的API。
+当 `droplet` 接入venus组件使用时，需要配置相关组件的API。
 
 ### [Node]
 venus链服务接入配置
@@ -377,7 +377,7 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 
 ### [Signer]
 
-venus 提供签名服务的组件，它可以由两种类型：由venus-wallet直接提供的签名服务和由venus-gateway提供的间接签名服务
+venus 提供签名服务的组件，它可以由两种类型：由venus-wallet直接提供的签名服务和由sophon-gateway提供的间接签名服务
 
 ```
 [Signer]
@@ -484,7 +484,7 @@ Account = ""
 
 ## 数据库配置
 
-Market 运行过程中产生的数据的存储数据库的设置
+Droplet 运行过程中产生的数据的存储数据库的设置
 目前支持BadgerDB和MySQLDB，默认使用BadgerDB
 
 ### [Mysql]
@@ -517,19 +517,19 @@ Debug = false
 
 ##  扇区存储配置
 
-配置 market导入数据后生成的扇区的存储空间
+配置 `droplet` 导入数据后生成的扇区的存储空间
 支持使用两种类型的数据存储方式： 文件系统存储和对象存储
 
 ### [[PieceStorage.Fs]]
 
 配置本地文件系统作为扇区存储
-对于大量数据的扇区，建议挂载和`venus-cluster`共用的文件系统进行配置 
+对于大量数据的扇区，建议挂载和`sophon-cluster`共用的文件系统进行配置 
 
 ```
 [PieceStorage]
 [[PieceStorage.Fs]]
 
-# 存储空间的名称，它在market的所有的存储空间中，必须是唯一的
+# 存储空间的名称，它在 `droplet` 的所有的存储空间中，必须是唯一的
 # 字符串类型 必选
 Name = "local"
 
@@ -546,7 +546,7 @@ Path = "/piecestorage/"
 ```
 [PieceStorage]
 [[PieceStorage.S3]]
-# 存储空间的名称，它在market的所有的存储空间中，必须是唯一的
+# 存储空间的名称，它在 `droplet` 的所有的存储空间中，必须是唯一的
 # 字符串类型 必选
 Name = "s3"
 
@@ -561,7 +561,7 @@ EndPoint = "oss-cn-shanghai.aliyuncs.com"
 
 # 对象存储服务的Bucket名称
 # 字符串类型 必选
-Bucket = "venus-market"
+Bucket = "droplet"
 
 # 指定在Bucket 中的子目录
 # 字符串类型 可选
@@ -577,13 +577,13 @@ Token = ""
 
 
 ## 日志设置
-配置market 使用过程中，产生日志存储的位置
+配置 `droplet` 使用过程中，产生日志存储的位置
 
 ```
 [Journal]
 
 # 日志存储的位置
-# 字符串类型 默认为："journal" (即`MARKET_REPO`文件夹下面的journal文件夹)
+# 字符串类型 默认为："journal" (即`DROPLET_REPO`文件夹下面的journal文件夹)
 Path = "journal"
 ```
 
@@ -597,8 +597,8 @@ DAG 数据存储的配置
 [DAGStore]
 
 # DAG数据存储的根目录
-# 字符串类型 默认为： "<MARKETS_REPO_PATH>/dagstore"
-RootDir = "/root/.venusmarket/dagstore"
+# 字符串类型 默认为： "<DROPLET_REPO_PATH>/dagstore"
+RootDir = "/root/.droplet/dagstore"
 
 # 可以同时进行索引作业的最大数量
 # 整数类型 默认为5 0表示不限制

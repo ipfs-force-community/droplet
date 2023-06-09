@@ -1,6 +1,6 @@
-# Configurations of venus-market
+# Configurations of droplet
 
-A typical `venus-market` configuration looks like this:
+A typical `droplet` configuration looks like this:
 ```
 
 # ****** Data transfer parameter configuration ***********
@@ -71,7 +71,7 @@ Each miner can have independent basic parameters. If there is no configuration, 
       [CommonProvider. RetrievalPricing. External]
         Path = ""
 
-# ****** venus-market network configuration ***********
+# ****** droplet network configuration ***********
 [API]
    ListenAddress = "/ip4/127.0.0.1/tcp/41235"
    RemoteListenAddress = ""
@@ -132,7 +132,7 @@ Path = "journal"
 # ********** DAG Storage Settings ********
 
 [DAGStore]
-RootDir = "/root/.venusmarket/dagstore"
+RootDir = "/root/.droplet/dagstore"
 MaxConcurrentIndex = 5
 MaxConcurrentReadyFetches = 0
 MaxConcurrencyStorageCalls = 100
@@ -247,7 +247,7 @@ Filter = ""
 RetrievalFilter = ""
 
 # Storage location of transferred deal data
-# string type, optional, when it is empty, the path of `MARKET_REPO` is used by default
+# string type, optional, when it is empty, the path of `DROPLET_REPO` is used by default
 TransferPath = ""
 
 # Maximum fee for sending deal related messages
@@ -297,9 +297,9 @@ Addr = ""
 Account=""
 ```
 
-## venus-market Network Configuration
+## droplet Network Configuration
 
-This part of the configuration determines the interface between the venus-market and others
+This part of the configuration determines the interface between the droplet and others
 
 ### [API]
 The interface that market provides external services
@@ -380,7 +380,7 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 
 ### [Signer]
 
-Accessing Venus signature service, which can be of two types: signature services directly provided by venus-wallet and indirect signature services provided by venus-gateway
+Accessing Venus signature service, which can be of two types: signature services directly provided by venus-wallet and indirect signature services provided by sophon-gateway
 
 ```
 [Signer]
@@ -488,7 +488,7 @@ This is not very flexible, and will be considered for optimization in the future
 
 ## Database Configuration
 
-The setting of the storage database for the data generated during the operation of the venus-market.
+The setting of the storage database for the data generated during the operation of the droplet.
 BadgerDB and MySQLDB are currently supported, and BadgerDB is used by default.
 
 ### [Mysql]
@@ -521,13 +521,13 @@ Debug = false
 
 ## Sector Storage Configuration
 
-Configure the storage space of imported data from venus-market.
+Configure the storage space of imported data from droplet.
 Two types of data storage are supported: file system storage or object storage.
 
 ### [[PieceStorage. Fs]]
 
 Configure the local file system as sector storage
-For sectors with a large amount of data, it is recommended to mount the file system shared with venus-cluster
+For sectors with a large amount of data, it is recommended to mount the file system shared with sophon-cluster
 
 ```
 [Piece Storage]
@@ -565,7 +565,7 @@ EndPoint = "oss-cn-shanghai.aliyuncs.com"
 
 # Bucket name of the object storage service
 # string type, required
-Bucket = "venus-market"
+Bucket = "droplet"
 
 # Specify the subdirectory in the Bucket
 # string type, optional
@@ -587,7 +587,7 @@ Configure the location where the log is stored during the use of the market.
 [Journal]
 
 # The location of the log storage
-# String type, The default is: "journal" (that is, the journal folder under the `MARKET_REPO` folder)
+# String type, The default is: "journal" (that is, the journal folder under the `DROPLET_REPO` folder)
 Path = "journal"
 ```
 
@@ -601,8 +601,8 @@ Configuration of the DAG datastore.
 [DAGStore]
 
 # The root directory of the DAG data store
-# String type, Default: "<MARKETS_REPO_PATH>/dagstore"
-RootDir = "/root/.venusmarket/dagstore"
+# String type, Default: "<DROPLET_REPO_PATH>/dagstore"
+RootDir = "/root/.droplet/dagstore"
 
 # The maximum number of index jobs that can be performed at the same time
 # Integer type, defaults to 5, 0 means unlimited

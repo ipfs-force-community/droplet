@@ -23,8 +23,8 @@ import (
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/venus-market/v2/imports"
-	"github.com/filecoin-project/venus-market/v2/storageprovider"
+	"github.com/ipfs-force-community/droplet/v2/imports"
+	"github.com/ipfs-force-community/droplet/v2/storageprovider"
 )
 
 //go:embed testdata/*

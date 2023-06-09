@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/venus-market/v2/api/clients/signer"
-	"github.com/filecoin-project/venus-market/v2/utils"
+	"github.com/ipfs-force-community/droplet/v2/api/clients/signer"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -103,13 +103,13 @@ func (msgClient *MixMsgClient) PushMessage(ctx context.Context, msg *types.Messa
 		return cid.Undef, err
 	}
 
-	// from-account-signer handling moved to venus-gateway
+	// from-account-signer handling moved to sophon-gateway
 	_, err = msgClient.venusMessager.PushMessageWithId(ctx, msgID.String(), msg, nil)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	log.Infof("push message %s to venus-messager", msgID.String())
+	log.Warnf("push message %s to sophon-messager", msgID.String())
 
 	return msgID, nil
 }

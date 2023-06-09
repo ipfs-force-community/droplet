@@ -12,9 +12,9 @@ import (
 
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
+	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 )
 
 type IRetrievalHandler interface {

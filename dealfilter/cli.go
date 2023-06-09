@@ -9,9 +9,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
-	"github.com/filecoin-project/venus-market/v2/config"
 	vsTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs-force-community/droplet/v2/config"
 )
 
 func CliStorageDealFilter(cfg *config.MarketConfig) config.StorageDealFilter {
@@ -41,7 +41,7 @@ func CliStorageDealFilter(cfg *config.MarketConfig) config.StorageDealFilter {
 			IsOffline:          isOffline,
 			ClientDealProposal: deal.ClientDealProposal,
 			DealType:           "storage",
-			Agent:              "venus-market",
+			Agent:              "droplet",
 			FormatVersion:      "1.0.0",
 			FastRetrieval:      deal.FastRetrieval,
 			TransferType:       deal.Ref.TransferType,

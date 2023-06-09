@@ -1,13 +1,13 @@
 package clients
 
 import (
-	"github.com/filecoin-project/venus-auth/jwtclient"
+	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/ipfs-force-community/venus-common-utils/builder"
 
-	"github.com/filecoin-project/venus-market/v2/api/clients/signer"
-	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/api/clients/signer"
+	"github.com/ipfs-force-community/droplet/v2/config"
 
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 )

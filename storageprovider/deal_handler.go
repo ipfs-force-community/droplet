@@ -32,12 +32,12 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v10/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/venus-market/v2/config"
-	marketMetrics "github.com/filecoin-project/venus-market/v2/metrics"
-	"github.com/filecoin-project/venus-market/v2/minermgr"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-	network2 "github.com/filecoin-project/venus-market/v2/network"
-	"github.com/filecoin-project/venus-market/v2/piecestorage"
+	"github.com/ipfs-force-community/droplet/v2/config"
+	marketMetrics "github.com/ipfs-force-community/droplet/v2/metrics"
+	"github.com/ipfs-force-community/droplet/v2/minermgr"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
+	network2 "github.com/ipfs-force-community/droplet/v2/network"
+	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"

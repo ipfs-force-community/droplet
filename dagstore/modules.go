@@ -17,9 +17,9 @@ import (
 
 	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 
-	"github.com/filecoin-project/venus-market/v2/config"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
-	"github.com/filecoin-project/venus-market/v2/piecestorage"
+	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
+	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 )
 
 var DAGStoreKey = builder.Special{ID: 1}

@@ -6,7 +6,7 @@ import (
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 )
 
 // EventReceiver is any thing that can receive FSM events

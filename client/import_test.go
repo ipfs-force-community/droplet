@@ -21,7 +21,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/stores"
 
-	"github.com/filecoin-project/venus-market/v2/imports"
+	"github.com/ipfs-force-community/droplet/v2/imports"
 )
 
 // This test uses a full "dense" CARv2, and not a filestore (positional mapping).

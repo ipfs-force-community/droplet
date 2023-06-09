@@ -40,9 +40,9 @@ import (
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
-	cli2 "github.com/filecoin-project/venus-market/v2/cli"
-	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
+	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
+	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
 )
 
 var storageCmd = &cli.Command{
@@ -392,11 +392,11 @@ var storageDealsInitCmd = &cli.Command{
 	Name:  "init",
 	Usage: "Initialize storage deal with a miner",
 	Description: `Make a deal with a miner.
-dataCid comes from running 'market-client data import'.
+dataCid comes from running 'droplet-client data import'.
 miner is the address of the miner you wish to make a deal with.
 price is measured in FIL/Epoch. Miners usually don't accept a bid
 lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
-with './market-client storage asks query <miner address>'.
+with './droplet-client storage asks query <miner address>'.
 duration is how long the miner should store the data for, in blocks.
 The minimum value is 518400 (6 months).`,
 	ArgsUsage: "[dataCid miner price duration]",
@@ -613,7 +613,7 @@ uiLoop:
 
 		switch state {
 		case "import":
-			afmt.Print("Data CID (from " + color.YellowString("market-client data import") + "): ")
+			afmt.Print("Data CID (from " + color.YellowString("droplet-client data import") + "): ")
 
 			_cidStr, _, err := rl.ReadLine()
 			cidStr := string(_cidStr)
@@ -1404,7 +1404,7 @@ func renderDeal(di *client.DealInfo) {
 	color.Blue("Proposal CID: %s\n\n", di.ProposalCid.String())
 
 	if di.DealStages == nil {
-		color.Yellow("Deal was made with an older version of venus-market and venus-market did not collect detailed information about its stages")
+		color.Yellow("Deal was made with an older version of droplet did not collect detailed information about its stages")
 		return
 	}
 
@@ -1616,7 +1616,7 @@ var storageDelesBatchCmd = &cli.Command{
 	Description: `Make deals with miners.
 price is measured in FIL/Epoch. Miners usually don't accept a bid
 lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
-with './market-client storage asks query <miner address>'.
+with './droplet-clientstorage asks query <miner address>'.
 duration is how long the miner should store the data for, in blocks.
 The minimum value is 518400 (6 months).`,
 	ArgsUsage: "[price duration]",

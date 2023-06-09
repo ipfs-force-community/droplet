@@ -9,7 +9,7 @@ all: build
 # git modules that need to be loaded
 MODULES:=
 
-ldflags=-X=github.com/filecoin-project/venus-market/v2/version.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
+ldflags=-X=github.com/ipfs-force-community/droplet/v2/version.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
 ifneq ($(strip $(LDFLAGS)),)
 	    ldflags+=-extldflags=$(LDFLAGS)
 	endif
@@ -57,10 +57,10 @@ dist-clean:
 	git submodule deinit --all -f
 
 build: $(BUILD_DEPS)
-	rm -f market-client
-	rm -f venus-market
-	go build -o ./market-client $(GOFLAGS) ./cmd/market-client
-	go build -o ./venus-market $(GOFLAGS) ./cmd/venus-market
+	rm -f droplet-client
+	rm -f droplet
+	go build -o ./droplet-client $(GOFLAGS) ./cmd/droplet-client
+	go build -o ./droplet $(GOFLAGS) ./cmd/droplet
 
 add-debug-flag:
 GOFLAGS+=-gcflags="all=-N -l"
@@ -77,17 +77,17 @@ ifdef DOCKERFILE
 else
 	curl -O https://raw.githubusercontent.com/filecoin-project/venus-docs/master/script/docker/dockerfile
 endif
-	docker build --build-arg HTTPS_PROXY=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=venus-market -t venus-market .
-	docker build --build-arg HTTPS_PROXY=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=market-client -t market-client .
-	docker tag venus-market filvenus/venus-market:$(TAG)
-	docker tag market-client filvenus/market-client:$(TAG)
+	docker build --build-arg HTTPS_PROXY=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=droplet -t droplet .
+	docker build --build-arg HTTPS_PROXY=$(BUILD_DOCKER_PROXY) --build-arg BUILD_TARGET=droplet-client -t droplet-client .
+	docker tag droplet filvenus/droplet:$(TAG)
+	docker tag droplet-client filvenus/droplet-client:$(TAG)
 ifdef PRIVATE_REGISTRY
-	docker tag venus-market $(PRIVATE_REGISTRY)/filvenus/venus-market:$(TAG)
-	docker tag market-client $(PRIVATE_REGISTRY)/filvenus/market-client:$(TAG)
+	docker tag droplet $(PRIVATE_REGISTRY)/filvenus/droplet:$(TAG)
+	docker tag droplet-client $(PRIVATE_REGISTRY)/filvenus/droplet-client:$(TAG)
 endif
 
 
 
 docker-push: docker
-	docker push $(PRIVATE_REGISTRY)/filvenus/venus-market:$(TAG)
-	docker push $(PRIVATE_REGISTRY)/filvenus/market-client:$(TAG)
+	docker push $(PRIVATE_REGISTRY)/filvenus/droplet:$(TAG)
+	docker push $(PRIVATE_REGISTRY)/filvenus/droplet-client:$(TAG)

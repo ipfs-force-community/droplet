@@ -9,7 +9,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
-	"github.com/filecoin-project/venus-market/v2/tools/import-deal/types"
+	"github.com/ipfs-force-community/droplet/v2/tools/import-deal/types"
 )
 
 func ImportDealsToMysql(srcConn, conn string, nums int) error {
@@ -43,7 +43,7 @@ func ImportDealsToMysql(srcConn, conn string, nums int) error {
 		return err
 	}
 
-	// venus-market deals
+	// droplet deals
 	dstDb, err := gorm.Open(mysql.Open(conn))
 	if err != nil {
 		return err

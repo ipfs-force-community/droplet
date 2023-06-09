@@ -8,12 +8,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/venus/venus-shared/types"
 
-	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/config"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/venus-market/v2/models/repo"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 )
 
 var fakePaymentAddress = types.MustParseAddress("t00")

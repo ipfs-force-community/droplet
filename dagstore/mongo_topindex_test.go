@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/dagstore/index"
 	"github.com/filecoin-project/dagstore/shard"
-	"github.com/filecoin-project/venus-market/v2/dagstore"
+	"github.com/ipfs-force-community/droplet/v2/dagstore"
 	carindex "github.com/ipld/go-car/v2/index"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"

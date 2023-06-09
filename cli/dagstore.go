@@ -9,7 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/venus-market/v2/cli/tablewriter"
+	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
 )
 
 var DagstoreCmd = &cli.Command{
@@ -38,7 +38,7 @@ var dagstoreListShardsCmd = &cli.Command{
 		&cli.StringSliceFlag{
 			Name: "filter",
 			Usage: `Filter shards in specific states,
-eg. ./venus-market dagstore list-shards --filter=ShardStateErrored --filter=ShardStateAvailable, will ignore Errored and Available shards.
+eg. ./droplet dagstore list-shards --filter=ShardStateErrored --filter=ShardStateAvailable, will ignore Errored and Available shards.
 all shard states:
 ShardStateAvailable
 ShardStateServing

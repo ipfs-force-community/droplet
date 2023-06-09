@@ -11,8 +11,8 @@ import (
 	"github.com/golang/mock/gomock"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/filecoin-project/venus-market/v2/config"
-	mock_dagstore "github.com/filecoin-project/venus-market/v2/dagstore/mocks"
+	"github.com/ipfs-force-community/droplet/v2/config"
+	mock_dagstore "github.com/ipfs-force-community/droplet/v2/dagstore/mocks"
 	carindex "github.com/ipld/go-car/v2/index"
 
 	"github.com/filecoin-project/dagstore"

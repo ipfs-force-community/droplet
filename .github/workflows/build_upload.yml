@@ -10,7 +10,7 @@ jobs:
   build_upload:
     uses: filecoin-project/venus/.github/workflows/common_build_upload.yml@master
     with:
-      bin_name: 'venus-market'
+      bin_name: 'droplet'
       has_ffi: true
     secrets:
       OSS_KEY_ID: ${{secrets.OSS_KEY_ID}}
