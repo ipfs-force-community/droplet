@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -1204,11 +1205,28 @@ func (m *MarketNodeImpl) RemovePieceStorage(_ context.Context, name string) erro
 	return m.Config.RemovePieceStorage(name)
 }
 
-func (m *MarketNodeImpl) OfflineDealImport(ctx context.Context, deal types.MinerDeal) error {
-	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
-		return err
+func (m *MarketNodeImpl) DealsImport(ctx context.Context, deals []*types.MinerDeal) error {
+	if len(deals) == 0 {
+		return nil
 	}
-	return m.StorageProvider.ImportOfflineDeal(ctx, deal)
+
+	addrDeals := make(map[address.Address][]*types.MinerDeal)
+	for _, deal := range deals {
+		addrDeals[deal.Proposal.Provider] = append(addrDeals[deal.Proposal.Provider], deal)
+	}
+
+	var errs *multierror.Error
+	valid := make(map[address.Address][]*types.MinerDeal, len(addrDeals))
+	for addr, d := range addrDeals {
+		if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, addr); err != nil {
+			errs = multierror.Append(errs, err)
+			continue
+		}
+		valid[addr] = d
+	}
+	errs = multierror.Append(errs, m.StorageProvider.ImportDeals(ctx, valid))
+
+	return errs.ErrorOrNil()
 }
 
 func (m *MarketNodeImpl) Version(_ context.Context) (vTypes.Version, error) {

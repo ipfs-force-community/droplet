@@ -1,0 +1,144 @@
+{
+	"data": {
+		"deals": {
+			"totalCount": 2,
+			"deals": [{
+					"ID": "1b4b8f7e-6b55-4f71-93d7-be1b46ea00c6",
+					"ClientAddress": "f3uxq6uf56zkfiwuyqal272lxn7wjr5to7qhzd7x5u43zjt53bv4osiockngso4itca7onyucapwh2kn3kxgjq",
+					"ProviderAddress": "f020523",
+					"CreatedAt": "2023-06-07T15:45:40.164474+08:00",
+					"PieceCid": "baga6ea4seaqp77vrfncm4kdvsls3zg4idxmeow63yxa52p47tswtolxdhdcosmq",
+					"PieceSize": {
+						"__typename": "BigInt",
+						"n": "16777216"
+					},
+					"IsVerified": false,
+					"ProposalLabel": "bafybeihcume7lo6p3dauy4bk2c47k2ays7xr2dm3wgxnsdftygfqmpyoka",
+					"ProviderCollateral": {
+						"__typename": "BigInt",
+						"n": "0"
+					},
+					"ClientCollateral": {
+						"__typename": "BigInt",
+						"n": "0"
+					},
+					"StoragePricePerEpoch": {
+						"__typename": "BigInt",
+						"n": "0"
+					},
+					"StartEpoch": {
+						"__typename": "BigInt",
+						"n": "632345"
+					},
+					"EndEpoch": {
+						"__typename": "BigInt",
+						"n": "1150745"
+					},
+					"ClientPeerID": "12D3KooWAQZaLb11Ljk9xisShhCgFQNQFPEA1Lnb3APifu2aFPAS",
+					"DealDataRoot": "bafybeihcume7lo6p3dauy4bk2c47k2ays7xr2dm3wgxnsdftygfqmpyoka",
+					"SignedProposalCid": "bafyreih7qaddtjxu66khjohckd3gkp42p3x5i2fhw5xjw325rnb7wvje7q",
+					"InboundFilePath": "",
+					"ChainDealID": {
+						"__typename": "BigInt",
+						"n": "0"
+					},
+					"PublishCid": "",
+					"IsOffline": true,
+					"Transfer": {
+						"Type": "",
+						"Size": {
+							"__typename": "BigInt",
+							"n": "0"
+						}
+					},
+					"IsTransferStalled": false,
+					"Checkpoint": "Accepted",
+					"Err": "",
+					"Sector": {
+						"ID": {
+							"__typename": "BigInt",
+							"n": "0"
+						},
+						"Offset": {
+							"__typename": "BigInt",
+							"n": "0"
+						},
+						"Length": {
+							"__typename": "BigInt",
+							"n": "0"
+						}
+					},
+					"Message": "Awaiting Offline Data Import"
+				},
+				{
+					"ID": "602e4ad9-5a0f-42b8-afac-af90c93c2719",
+					"ClientAddress": "f3uxq6uf56zkfiwuyqal272lxn7wjr5to7qhzd7x5u43zjt53bv4osiockngso4itca7onyucapwh2kn3kxgjq",
+					"ProviderAddress": "f020523",
+					"CreatedAt": "2023-06-07T15:45:11.478651+08:00",
+					"PieceCid": "baga6ea4seaqp77vrfncm4kdvsls3zg4idxmeow63yxa52p47tswtolxdhdcosmq",
+					"PieceSize": {
+						"__typename": "BigInt",
+						"n": "16777216"
+					},
+					"IsVerified": false,
+					"ProposalLabel": "bafybeihcume7lo6p3dauy4bk2c47k2ays7xr2dm3wgxnsdftygfqmpyoka",
+					"ProviderCollateral": {
+						"__typename": "BigInt",
+						"n": "0"
+					},
+					"ClientCollateral": {
+						"__typename": "BigInt",
+						"n": "0"
+					},
+					"StoragePricePerEpoch": {
+						"__typename": "BigInt",
+						"n": "0"
+					},
+					"StartEpoch": {
+						"__typename": "BigInt",
+						"n": "632344"
+					},
+					"EndEpoch": {
+						"__typename": "BigInt",
+						"n": "1150744"
+					},
+					"ClientPeerID": "12D3KooWAQZaLb11Ljk9xisShhCgFQNQFPEA1Lnb3APifu2aFPAS",
+					"DealDataRoot": "bafybeihcume7lo6p3dauy4bk2c47k2ays7xr2dm3wgxnsdftygfqmpyoka",
+					"SignedProposalCid": "bafyreics2zkltd4puxyksgiequszv2qvy3zvw7hlko6nnb23tdxhylv4iy",
+					"InboundFilePath": "",
+					"ChainDealID": {
+						"__typename": "BigInt",
+						"n": "0"
+					},
+					"PublishCid": "",
+					"IsOffline": true,
+					"Transfer": {
+						"Type": "",
+						"Size": {
+							"__typename": "BigInt",
+							"n": "0"
+						}
+					},
+					"IsTransferStalled": false,
+					"Checkpoint": "Accepted",
+					"Err": "",
+					"Sector": {
+						"ID": {
+							"__typename": "BigInt",
+							"n": "0"
+						},
+						"Offset": {
+							"__typename": "BigInt",
+							"n": "0"
+						},
+						"Length": {
+							"__typename": "BigInt",
+							"n": "0"
+						}
+					},
+					"Message": "Awaiting Offline Data Import"
+				}
+			]
+		}
+	}
+}

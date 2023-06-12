@@ -44,7 +44,7 @@ var storageDealsCmds = &cli.Command{
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
 		dealsBatchImportDataCmd,
-		importOfflineDealCmd,
+		importDealCmd,
 		dealsListCmd,
 		updateStorageDealStateCmd,
 		dealsPendingPublish,
@@ -199,18 +199,29 @@ basdefxxx,baefaxxx
 	},
 }
 
-var importOfflineDealCmd = &cli.Command{
-	Name:      "import-offlinedeal",
-	Usage:     "Manually import offline deal",
-	ArgsUsage: "<deal_file_json>",
+var importDealCmd = &cli.Command{
+	Name:      "import-deal",
+	Usage:     "Manually import lotus-miner or boost deals",
+	ArgsUsage: "<deal file>",
 	Flags: []cli.Flag{
-		// verbose
-		&cli.BoolFlag{
-			Name:  "verbose",
-			Usage: "Print verbose output",
-			Aliases: []string{
-				"v",
-			},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "Where the order comes from, lotus-miner or boost",
+			Value: "lotus-miner",
+		},
+		&cli.StringSliceFlag{
+			Name:  "car-dirs",
+			Usage: "directory of car files",
+		},
+		&cli.Uint64SliceFlag{
+			Name: "states",
+			Usage: `
+What status deal is expected to be imported, default import StorageDealActive and StorageDealWaitingForData deal.
+use './droplet storage deal states' to show all states.
+part states:
+7  StorageDealActive
+18 StorageDealWaitingForData
+`,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -220,6 +231,12 @@ var importOfflineDealCmd = &cli.Command{
 		}
 		defer closer()
 
+		fapi, fcloser, err := NewFullNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer fcloser()
+
 		ctx := DaemonContext(cctx)
 
 		if cctx.Args().Len() < 1 {
@@ -227,38 +244,69 @@ var importOfflineDealCmd = &cli.Command{
 		}
 
 		fpath := cctx.Args().Get(0)
-
-		dealbyte, err := ioutil.ReadFile(fpath)
+		data, err := ioutil.ReadFile(fpath)
 		if err != nil {
-			return fmt.Errorf("read deal file(%s) fail %w", fpath, err)
+			return fmt.Errorf("read deal file(%s) failed: %v", fpath, err)
+		}
+		var r result
+		if err := json.Unmarshal(data, &r); err != nil {
+			return err
 		}
 
-		data := []market.MinerDeal{}
-		err = json.Unmarshal(dealbyte, &data)
-		if err != nil {
-			return fmt.Errorf("parse deal file(%s) fail %w", fpath, err)
+		expectStates := map[uint64]struct{}{
+			storagemarket.StorageDealWaitingForData: {},
+			storagemarket.StorageDealActive:         {},
 		}
-
-		totalCount := len(data)
-		importedCount := 0
-
-		// if verbose, print the deal info
-
-		for i := 0; i < totalCount; i++ {
-			err := api.OfflineDealImport(ctx, data[i])
-			if err != nil {
-				if cctx.Bool("verbose") {
-					fmt.Printf("( %d / %d ) %s : fail : %v\n", i+1, totalCount, data[i].ProposalCid, err)
-				}
-			} else {
-				importedCount++
-				if cctx.Bool("verbose") {
-					fmt.Printf("( %d / %d ) %s : success\n", i+1, totalCount, data[i].ProposalCid)
-				}
+		if cctx.IsSet("states") {
+			expectStates = make(map[uint64]struct{})
+			for _, v := range cctx.Uint64Slice("states") {
+				expectStates[v] = struct{}{}
 			}
 		}
 
-		fmt.Printf("import %d deals, %d deal success , %d deal fail .\n", totalCount, importedCount, totalCount-importedCount)
+		getMinerPeer := getMinerPeerFunc(ctx, fapi)
+		getPayloadSize := getPayloadSizeFunc(cctx.StringSlice("car-dirs"))
+		deals := make([]*market.MinerDeal, 0)
+		if cctx.String("from") == "boost" {
+			for _, deal := range r.BoostResult.Deals.Deals {
+				d, err := deal.minerDeal()
+				if err != nil {
+					fmt.Printf("parse %s deal failed: %v\n", deal.SignedProposalCid, err)
+					continue
+				}
+				if _, ok := expectStates[d.State]; !ok {
+					continue
+				}
+				d.Miner = getMinerPeer(d.Proposal.Provider)
+
+				if d.PayloadSize == 0 {
+					d.PayloadSize = getPayloadSize(d.Proposal.PieceCID)
+					d.Ref.RawBlockSize = d.PayloadSize
+					if d.PayloadSize == 0 {
+						fmt.Printf("deal %s payload size %d\n", deal.SignedProposalCid, d.PayloadSize)
+						continue
+					}
+				}
+				deals = append(deals, d)
+			}
+		} else if cctx.String("from") == "lotus-miner" {
+			for _, d := range r.Result {
+				if _, ok := expectStates[d.State]; ok {
+					d.PayloadSize = d.Ref.RawBlockSize
+					d.PieceStatus = market.Undefine
+					if d.SlashEpoch == 0 {
+						d.SlashEpoch = -1
+					}
+					deals = append(deals, d)
+				}
+			}
+		} else {
+			return fmt.Errorf("the value of --from can only be 'lotus-miner' or 'boost' ")
+		}
+		if err := api.DealsImport(ctx, deals); err != nil {
+			return fmt.Errorf("\nimport deals failed: %v", err)
+		}
+		fmt.Printf("import %d deals success\n", len(deals))
 
 		return nil
 	},
