@@ -1,5 +1,18 @@
 # droplet changelog
 
+## v2.8.0-rc1
+
+* feat: set address.CurrentNetwork when launch up [[#321](https://github.com/ipfs-force-community/droplet/pull/321)]
+* opt: not wait for index results to be generated [[#324](https://github.com/ipfs-force-community/droplet/pull/324)]
+* feat: output more power info [[#328](https://github.com/ipfs-force-community/droplet/pull/328)]
+* fix: adapt deal filter format to CIDgravity / 修改 dealfilter 的实现, 以兼容 CIDgravity [[#329](https://github.com/ipfs-force-community/droplet/pull/329)]
+* opt: ensure the type of signature data [[#330](https://github.com/ipfs-force-community/droplet/pull/330)]
+* Feat: unseal piece before tansfer / 在数据传输之前先 unseal piece 数据 [[#331](https://github.com/ipfs-force-community/droplet/pull/331)]
+* chore(deps): bump github.com/gin-gonic/gin from 1.9.0 to 1.9.1 [[#332](https://github.com/ipfs-force-community/droplet/pull/332)]
+* feat: batch send deals [[#297](https://github.com/ipfs-force-community/droplet/pull/297)]
+* feat: replace market with droplet [[#334](https://github.com/ipfs-force-community/droplet/pull/334)]
+* feat: import deals [[#335](https://github.com/ipfs-force-community/droplet/pull/335)]
+
 ## v2.7.2
 
 * 修复订单卡在 StorageDealStaged 状态 [[#324](https://github.com/ipfs-force-community/droplet/pull/324)]

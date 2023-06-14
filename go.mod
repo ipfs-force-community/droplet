@@ -30,7 +30,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.11.2-0.20230609030445-d8ba39cc8a85
+	github.com/filecoin-project/venus v1.12.0-rc1
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -38,9 +38,9 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea
-	github.com/ipfs-force-community/sophon-auth v1.11.1-0.20230607031351-bc57c2b78f44
-	github.com/ipfs-force-community/sophon-gateway v1.11.2-0.20230608082318-868706b16516
-	github.com/ipfs-force-community/sophon-messager v1.11.1-0.20230608053028-5901fbdca41e
+	github.com/ipfs-force-community/sophon-auth v1.12.0-rc1
+	github.com/ipfs-force-community/sophon-gateway v1.12.0-rc1
+	github.com/ipfs-force-community/sophon-messager v1.12.0-rc1
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
 	github.com/ipfs/go-blockservice v0.5.0
 	github.com/ipfs/go-cid v0.3.2
