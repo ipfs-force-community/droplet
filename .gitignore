@@ -8,7 +8,6 @@ badgerStAskDb/
 *.puml
 /droplet-client
 /droplet
-/droplet-http
 sequence_chart.md
 .idea
 .vscode

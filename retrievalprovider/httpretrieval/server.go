@@ -1,11 +1,9 @@
-package main
+package httpretrieval
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,48 +11,32 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/ipfs-force-community/droplet/v2/config"
 	"github.com/ipfs-force-community/droplet/v2/piecestorage"
-	"github.com/ipfs-force-community/droplet/v2/version"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/zap"
 )
 
-var log = logging.Logger("server")
+var log = logging.Logger("httpserver")
 
-type server struct {
-	dropletRepoPath string
-	pieceMgr        *piecestorage.PieceStorageManager
+type Server struct {
+	// path     string
+	pieceMgr *piecestorage.PieceStorageManager
 }
 
-func newServer(dropletRepoPath string) (*server, error) {
-	ser := &server{
-		dropletRepoPath: dropletRepoPath,
-	}
-	pieceMgr, err := loadPieceStore(dropletRepoPath)
+func NewServer(cfg *config.PieceStorage) (*Server, error) {
+	pieceMgr, err := piecestorage.NewPieceStorageManager(cfg)
 	if err != nil {
 		return nil, err
 	}
-	ser.pieceMgr = pieceMgr
 
-	return ser, nil
+	return &Server{pieceMgr: pieceMgr}, nil
 }
 
-func loadPieceStore(path string) (*piecestorage.PieceStorageManager, error) {
-	var cfg config.MarketConfig
-	if err := config.LoadConfig(filepath.Join(path, "config.toml"), &cfg); err != nil {
-		return nil, fmt.Errorf("parse droplet config failed: %v", err)
-	}
-	return piecestorage.NewPieceStorageManager(&cfg.PieceStorage)
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.RetrievalByPieceCID(w, r)
 }
 
-func (s *server) Version(w http.ResponseWriter, r *http.Request) {
-	ver := types.Version{
-		Version: version.UserVersion(),
-	}
-	responseJSONData(w, ver)
-}
-
-func (s *server) retrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
+func (s *Server) RetrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 	pieceCID, err := convertPieceCID(r.URL.Path)
 	if err != nil {
 		log.Warn(err)
@@ -157,16 +139,6 @@ func convertPieceCID(path string) (cid.Cid, error) {
 func badResponse(w http.ResponseWriter, code int, err error) {
 	w.WriteHeader(code)
 	w.Write([]byte("Error: " + err.Error())) // nolint
-}
-
-func responseJSONData(w http.ResponseWriter, data any) {
-	bytes, err := json.Marshal(data)
-	if err != nil {
-		badResponse(w, http.StatusInternalServerError, err)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(bytes) // nolint
 }
 
 // writeErrorWatcher calls onError if there is an error writing to the writer

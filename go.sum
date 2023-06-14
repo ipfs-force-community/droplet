@@ -470,8 +470,8 @@ github.com/filecoin-project/storetheindex v0.4.30-0.20221114113647-683091f8e893 
 github.com/filecoin-project/storetheindex v0.4.30-0.20221114113647-683091f8e893/go.mod h1:S7590oDimBvXMUtzWsBXoshu9HtYKwtXl47zAK9rcP8=
 github.com/filecoin-project/test-vectors/schema v0.0.5/go.mod h1:iQ9QXLpYWL3m7warwvK1JC/pTri8mnfEmKygNDqqY6E=
 github.com/filecoin-project/venus v1.2.4/go.mod h1:hJULXHGAnWuq5S5KRtPkwbT8DqgM9II7NwyNU7t59D0=
-github.com/filecoin-project/venus v1.12.0-rc1.0.20230614030014-7e9ae68efbdd h1:pa3SsFGs63Ji1DmR+ZqjN1Thr12L9ETjOhnMACm8Oeg=
-github.com/filecoin-project/venus v1.12.0-rc1.0.20230614030014-7e9ae68efbdd/go.mod h1:t5AL4ksL7QHaeKZ6sl6u6kW3jBvHK+m1xV0AdtGfjPE=
+github.com/filecoin-project/venus v1.12.0-rc1 h1:P1ylFseqjA5pV1Pbl04FdXwSE3CgTPeIa93aX0usjNE=
+github.com/filecoin-project/venus v1.12.0-rc1/go.mod h1:t5AL4ksL7QHaeKZ6sl6u6kW3jBvHK+m1xV0AdtGfjPE=
 github.com/filecoin-project/venus-auth v1.3.2/go.mod h1:m5Jog2GYxztwP7w3m/iJdv/V1/bTcAVU9rm/CbhxRQU=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:1i71OnUq3iUe1ma7Lr6yG6/rjvM3emb6yoL7xLFzcVQ=
@@ -832,8 +832,8 @@ github.com/ipfs-force-community/metrics v1.0.0/go.mod h1:mn40SioMuKtjmRumHFy/fJ2
 github.com/ipfs-force-community/metrics v1.0.1-0.20211022060227-11142a08b729/go.mod h1:mn40SioMuKtjmRumHFy/fJ26Pn028XuDjUJE9dorjyw=
 github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea h1:mtR+uqI444dF1j3IcpDq3MCFBR5B/OQnHFulTuM7a6o=
 github.com/ipfs-force-community/metrics v1.0.1-0.20220824061112-ac916bacf2ea/go.mod h1:5rXHGpIN2wCkdgDnucJ1rEeKhLzbAur5IO1aWAIwogY=
-github.com/ipfs-force-community/sophon-auth v1.12.0-rc1 h1:Rm91rxnwbx6ejEIPh7Bmf/+cWaNezhSj/zwmIkG9MG4=
-github.com/ipfs-force-community/sophon-auth v1.12.0-rc1/go.mod h1:cGYCfjA/BDB/Km9P7Za6t1hmwpFlPKf8ho/CHmLG81Y=
+github.com/ipfs-force-community/sophon-auth v1.12.0-rc1.0.20230614091443-9d27e566c685 h1:ZoPQPSb0UNcSCBDoBCwVomxBbBXrksMGHaQISBhNQSY=
+github.com/ipfs-force-community/sophon-auth v1.12.0-rc1.0.20230614091443-9d27e566c685/go.mod h1:cGYCfjA/BDB/Km9P7Za6t1hmwpFlPKf8ho/CHmLG81Y=
 github.com/ipfs-force-community/sophon-gateway v1.12.0-rc1 h1:c5BdvrB4g+Se/Uyotef6TR2H9pkm4ExtawR0zPx+GDs=
 github.com/ipfs-force-community/sophon-gateway v1.12.0-rc1/go.mod h1:F+f4qzx+uVMPftk/sv2JnNOFgxpl83l5zrb9UFtzcCM=
 github.com/ipfs-force-community/sophon-messager v1.12.0-rc1 h1:278xZjJt7yE18VOgPp/Nv9Scib37CkN2ZsBRrPSN1Qg=

@@ -1,19 +1,53 @@
-package main
+package httpretrieval
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/ipfs-force-community/droplet/v2/config"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestPathRegexp(t *testing.T) {
+	reg, err := regexp.Compile(`/piece/[a-z0-9]+`)
+	assert.NoError(t, err)
+
+	cases := []struct {
+		str    string
+		expect bool
+	}{
+		{
+			str:    "xxx",
+			expect: false,
+		},
+		{
+			str:    "/piece/",
+			expect: false,
+		},
+		{
+			str:    "/piece/ssss",
+			expect: true,
+		},
+		{
+			str:    "/piece/ss1ss1",
+			expect: true,
+		},
+	}
+
+	for _, c := range cases {
+		assert.Equal(t, c.expect, reg.MatchString(c.str))
+	}
+}
 
 func TestRetrievalByPiece(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -42,7 +76,7 @@ func TestRetrievalByPiece(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, f.Close())
 
-	s, err := newServer(tmpDri)
+	s, err := NewServer(&cfg.PieceStorage)
 	assert.NoError(t, err)
 	port := "34897"
 	startHTTPServer(ctx, t, port, s)
@@ -59,22 +93,26 @@ func TestRetrievalByPiece(t *testing.T) {
 	assert.Equal(t, buf.Bytes(), data)
 }
 
-func startHTTPServer(ctx context.Context, t *testing.T, port string, s *server) {
-	mux := http.DefaultServeMux
-	mux.HandleFunc("/piece/", s.retrievalByPieceCID)
+func startHTTPServer(ctx context.Context, t *testing.T, port string, s *Server) {
+	mux := mux.NewRouter()
+	err := mux.HandleFunc("/piece/{cid}", s.RetrievalByPieceCID).GetError()
+	assert.NoError(t, err)
+
 	ser := &http.Server{
 		Addr:    "127.0.0.1:" + port,
 		Handler: mux,
 	}
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			assert.NoError(t, ser.Shutdown(context.TODO()))
-		default:
+		if err := ser.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			assert.NoError(t, err)
 		}
+	}()
 
-		assert.NoError(t, ser.ListenAndServe())
+	go func() {
+		// wait server exit
+		<-ctx.Done()
+		assert.NoError(t, ser.Shutdown(context.TODO()))
 	}()
 	// wait serve up
 	time.Sleep(time.Second * 2)

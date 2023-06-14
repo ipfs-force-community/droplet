@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/types"
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"

@@ -322,5 +322,5 @@ func marketClient(cctx *cli.Context) error {
 	apiHandles := []rpc.APIHandle{
 		{Path: "/rpc/v0", API: &marketCli},
 	}
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux.NewRouter(), 1000, cli2.API_NAMESPACE_MARKET_CLIENT, nil, apiHandles, finishCh)
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, mux.NewRouter(), 1000, cli2.API_NAMESPACE_MARKET_CLIENT, nil, apiHandles, finishCh, nil)
 }
