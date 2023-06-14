@@ -118,6 +118,10 @@ type ProviderConfig struct {
 	RetrievalPaymentAddress Address
 
 	DealPublishAddress []Address
+
+	// The public multi-address for retrieving deals with droplet-http.
+	// Note: Must be in multiaddr format, eg /ip4/127.0.0.1/tcp/53241/http
+	HTTPRetrievalMultiaddr string
 }
 
 func defaultProviderConfig() *ProviderConfig {

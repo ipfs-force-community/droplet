@@ -70,6 +70,11 @@ droplet-client: $(BUILD_DEPS)
 	rm -f droplet-client
 	go build -o ./droplet-client $(GOFLAGS) ./cmd/droplet-client
 
+droplet-http: $(BUILD_DEPS)
+	rm -f droplet-http
+	go build -o ./droplet-http $(GOFLAGS) ./cmd/droplet-http
+.PHONY: droplet-http
+
 add-debug-flag:
 GOFLAGS+=-gcflags="all=-N -l"
 
