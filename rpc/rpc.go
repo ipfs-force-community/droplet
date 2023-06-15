@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"regexp"
 
 	"github.com/etherlabsio/healthcheck/v2"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -18,6 +19,7 @@ import (
 	"github.com/filecoin-project/venus-auth/jwtclient"
 
 	"github.com/filecoin-project/venus-market/v2/config"
+	"github.com/filecoin-project/venus-market/v2/retrievalprovider/httpretrieval"
 )
 
 var log = logging.Logger("modules")
@@ -37,6 +39,7 @@ func ServeRPC(
 	authClient *jwtclient.AuthClient,
 	apiHandles []APIHandle,
 	shutdownCh <-chan struct{},
+	httpRetrievalServer *httpretrieval.Server,
 ) error {
 	serverOptions := make([]jsonrpc.ServerOption, 0)
 	if maxRequestSize != 0 { // config set
@@ -66,6 +69,10 @@ func ServeRPC(
 		authMux = jwtclient.NewAuthMux(localJwtClient, nil, mux)
 	}
 	authMux.TrustHandle("/healthcheck", healthcheck.Handler())
+	if httpRetrievalServer != nil {
+		authMux.TrustHandle("/piece/", httpRetrievalServer, jwtclient.RegexpOption(regexp.MustCompile(`/piece/[a-z0-9]+`)))
+	}
+
 	srv := &http.Server{Handler: authMux}
 
 	go func() {

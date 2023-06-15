@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/venus-market/v2/paychmgr"
 	"github.com/filecoin-project/venus-market/v2/piecestorage"
 	"github.com/filecoin-project/venus-market/v2/retrievalprovider"
+	"github.com/filecoin-project/venus-market/v2/retrievalprovider/httpretrieval"
 	"github.com/filecoin-project/venus-market/v2/rpc"
 	"github.com/filecoin-project/venus-market/v2/storageprovider"
 	types2 "github.com/filecoin-project/venus-market/v2/types"
@@ -239,6 +240,10 @@ func runDaemon(cctx *cli.Context) error {
 	if err = router.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorageMgr)).GetError(); err != nil {
 		return fmt.Errorf("handle 'resource' failed: %w", err)
 	}
+	httpRetrievalServer, err := httpretrieval.NewServer(&cfg.PieceStorage)
+	if err != nil {
+		return err
+	}
 
 	var iMarket marketapiV1.IMarketStruct
 	permission.PermissionProxy(marketapiV1.IMarket(resAPI), &iMarket)
@@ -248,5 +253,6 @@ func runDaemon(cctx *cli.Context) error {
 		{Path: "/rpc/v1", API: api},
 		{Path: "/rpc/v0", API: v0api.WrapperV1IMarket{IMarket: api}},
 	}
-	return rpc.ServeRPC(ctx, cfg, &cfg.API, router, 1000, cli2.API_NAMESPACE_VENUS_MARKET, authClient, apiHandles, finishCh)
+
+	return rpc.ServeRPC(ctx, cfg, &cfg.API, router, 1000, cli2.API_NAMESPACE_VENUS_MARKET, authClient, apiHandles, finishCh, httpRetrievalServer)
 }
