@@ -118,6 +118,10 @@ type ProviderConfig struct {
 	RetrievalPaymentAddress Address
 
 	DealPublishAddress []Address
+
+	// The public multi-address for retrieving deals with venus-market.
+	// Note: Must be in multiaddr format, eg /ip4/127.0.0.1/tcp/41235/http
+	HTTPRetrievalMultiaddr string
 }
 
 func defaultProviderConfig() *ProviderConfig {
@@ -153,5 +157,6 @@ func defaultProviderConfig() *ProviderConfig {
 
 		MaxPublishDealsFee:     types.FIL(types.NewInt(0)),
 		MaxMarketBalanceAddFee: types.FIL(types.NewInt(0)),
+		HTTPRetrievalMultiaddr: "",
 	}
 }
