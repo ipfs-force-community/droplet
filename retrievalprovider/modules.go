@@ -82,5 +82,6 @@ var RetrievalProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(gatewayAPIV2.IMarketEvent), NewMarketEventStream),
 		builder.Override(new(gatewayAPIV2.IMarketClient), builder.From(new(gatewayAPIV2.IMarketEvent))),
 		builder.Override(new(gatewayAPIV2.IMarketServiceProvider), builder.From(new(gatewayAPIV2.IMarketEvent))),
+		builder.Override(new(*TransportsListener), NewTransportsListener),
 	)
 }

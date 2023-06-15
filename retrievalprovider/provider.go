@@ -49,6 +49,8 @@ type RetrievalProvider struct {
 	storageDealRepo   repo.StorageDealRepo
 
 	retrievalStreamHandler *RetrievalStreamHandler
+
+	transportListener *TransportsListener
 }
 
 // NewProvider returns a new retrieval Provider
@@ -63,6 +65,7 @@ func NewProvider(
 	rdf config.RetrievalDealFilter,
 	pieceStorageMgr *piecestorage.PieceStorageManager,
 	gatewayMarketClient gateway.IMarketClient,
+	transportLister *TransportsListener,
 ) (*RetrievalProvider, error) {
 	storageDealsRepo := repo.StorageDealRepo()
 	retrievalDealRepo := repo.RetrievalDealRepo()
@@ -77,6 +80,7 @@ func NewProvider(
 		storageDealRepo:        storageDealsRepo,
 		stores:                 stores.NewReadOnlyBlockstores(),
 		retrievalStreamHandler: NewRetrievalStreamHandler(cfg, retrievalAskRepo, retrievalDealRepo, storageDealsRepo, pieceInfo),
+		transportListener:      transportLister,
 	}
 
 	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo, storageDealsRepo, gatewayMarketClient, pieceStorageMgr)
@@ -138,12 +142,14 @@ func NewProvider(
 
 // Stop stops handling incoming requests.
 func (p *RetrievalProvider) Stop() error {
+	p.transportListener.Stop()
 	return p.network.StopHandlingRequests()
 }
 
 // Start begins listening for deals on the given host.
 // Start must be called in order to accept incoming deals.
 func (p *RetrievalProvider) Start(ctx context.Context) error {
+	p.transportListener.Start()
 	return p.network.SetDelegate(p.retrievalStreamHandler)
 }
 

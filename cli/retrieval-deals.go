@@ -7,8 +7,14 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
+	mtypes "github.com/ipfs-force-community/droplet/v2/types"
+	"github.com/ipfs-force-community/droplet/v2/utils"
+	"github.com/ipld/go-ipld-prime/codec/dagcbor"
+	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 )
@@ -20,6 +26,7 @@ var RetrievalCmds = &cli.Command{
 		retrievalDealsCmds,
 		retirevalAsksCmds,
 		retrievalDealSelectionCmds,
+		queryProtocols,
 	},
 }
 
@@ -191,4 +198,71 @@ func outputRetrievalDeal(deal *market.ProviderDealState) error {
 	fillSpaceAndPrint(data, len("PaymentIntervalIncrease"))
 
 	return nil
+}
+
+var queryProtocols = &cli.Command{
+	Name:      "protocols",
+	Usage:     "query retrieval support protocols",
+	ArgsUsage: "<miner>",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() == 0 {
+			return fmt.Errorf("must pass miner")
+		}
+
+		api, closer, err := NewFullNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		miner, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		minerInfo, err := api.StateMinerInfo(ctx, miner, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+		if minerInfo.PeerId == nil {
+			return fmt.Errorf("peer id is nil")
+		}
+
+		h, err := libp2p.New(
+			libp2p.Identity(nil),
+			libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"),
+		)
+		if err != nil {
+			return err
+		}
+
+		addrs, err := utils.ConvertMultiaddr(minerInfo.Multiaddrs)
+		if err != nil {
+			return err
+		}
+		if err := h.Connect(ctx, peer.AddrInfo{ID: *minerInfo.PeerId, Addrs: addrs}); err != nil {
+			return err
+		}
+		stream, err := h.NewStream(ctx, *minerInfo.PeerId, mtypes.TransportsProtocolID)
+		if err != nil {
+			return fmt.Errorf("failed to open stream to peer: %w", err)
+		}
+		_ = stream.SetReadDeadline(time.Now().Add(time.Minute))
+		//nolint: errcheck
+		defer stream.SetReadDeadline(time.Time{})
+
+		// Read the response from the stream
+		queryResponsei, err := mtypes.BindnodeRegistry.TypeFromReader(stream, (*mtypes.QueryResponse)(nil), dagcbor.Decode)
+		if err != nil {
+			return fmt.Errorf("reading query response: %w", err)
+		}
+		queryResponse := queryResponsei.(*mtypes.QueryResponse)
+
+		for _, p := range queryResponse.Protocols {
+			fmt.Println(p)
+		}
+
+		return nil
+	},
 }
