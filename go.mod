@@ -315,4 +315,5 @@ require (
 replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.7
+	gorm.io/gorm => github.com/simlecode/gorm v0.0.0-20230620094206-3ebe9dbc94d3
 )
