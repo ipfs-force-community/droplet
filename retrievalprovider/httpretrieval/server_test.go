@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sync"
 	"testing"
 	"time"
 
@@ -81,16 +82,30 @@ func TestRetrievalByPiece(t *testing.T) {
 	port := "34897"
 	startHTTPServer(ctx, t, port, s)
 
-	url := fmt.Sprintf("http://127.0.0.1:%s/piece/%s", port, pieceStr)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	assert.NoError(t, err)
-	resp, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	defer resp.Body.Close() // nolint
+	wg := sync.WaitGroup{}
+	requestAndCheck := func() {
+		defer wg.Done()
 
-	data, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.Equal(t, buf.Bytes(), data)
+		url := fmt.Sprintf("http://127.0.0.1:%s/piece/%s", port, pieceStr)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		assert.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close() // nolint
+
+		data, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		assert.Equal(t, buf.Bytes(), data)
+		fmt.Println("data length: ", len(data))
+	}
+
+	for i := 0; i < 10; i++ {
+		wg.Add(3)
+		go requestAndCheck()
+		go requestAndCheck()
+		go requestAndCheck()
+	}
+	wg.Wait()
 }
 
 func startHTTPServer(ctx context.Context, t *testing.T, port string, s *Server) {
