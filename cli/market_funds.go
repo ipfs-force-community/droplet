@@ -30,7 +30,7 @@ var marketBalancesCmd = &cli.Command{
 	Usage: "Print storage market client balances",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		fapi, fcloser, err := NewFullNode(cctx)
+		fapi, fcloser, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return err
 		}
@@ -184,7 +184,7 @@ var walletMarketWithdraw = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, acloser, err := NewFullNode(cctx)
+		api, acloser, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return err
 		}

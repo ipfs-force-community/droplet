@@ -158,7 +158,7 @@ var getStorageAskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := DaemonContext(cctx)
 
-		fnapi, closer, err := NewFullNode(cctx)
+		fnapi, closer, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return err
 		}
@@ -218,7 +218,7 @@ var listStorageAsksCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := DaemonContext(cctx)
 
-		fnapi, closer, err := NewFullNode(cctx)
+		fnapi, closer, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return err
 		}

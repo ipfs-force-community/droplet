@@ -16,11 +16,6 @@ import (
 	_ "github.com/filecoin-project/venus/pkg/crypto/secp"
 )
 
-const (
-	oldRepoPath = "~/.venusmarket"
-	defRepoPath = "~/.droplet"
-)
-
 var mainLog = logging.Logger("main")
 
 // Invokes are called in the order they are defined.
@@ -33,7 +28,7 @@ var (
 	RepoFlag = &cli.StringFlag{
 		Name:    "repo",
 		EnvVars: []string{"DROPLET_PATH", "VENUS_MARKET_PATH"},
-		Value:   defRepoPath,
+		Value:   cli2.DefMarketRepoPath,
 	}
 
 	APIListenFlag = &cli.StringFlag{

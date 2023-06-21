@@ -97,5 +97,14 @@ endif
 
 
 docker-push: docker
+ifdef PRIVATE_REGISTRY
 	docker push $(PRIVATE_REGISTRY)/filvenus/droplet:$(TAG)
 	docker push $(PRIVATE_REGISTRY)/filvenus/droplet-client:$(TAG)
+else
+	docker tag droplet filvenus/droplet:latest
+	docker tag droplet-client filvenus/droplet-client:latest
+	docker push filvenus/droplet:latest
+	docker push filvenus/droplet-client:latest
+	docker push filvenus/droplet:$(TAG)
+	docker push filvenus/droplet-client:$(TAG)
+endif

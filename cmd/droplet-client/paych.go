@@ -69,7 +69,7 @@ var paychAddFundsCmd = &cli.Command{
 			return cli2.ShowHelp(cctx, fmt.Errorf("parsing amount failed: %s", err))
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ var paychStatusByFromToCmd = &cli.Command{
 			return cli2.ShowHelp(cctx, fmt.Errorf("failed to parse to address: %s", err))
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -164,7 +164,7 @@ var paychStatusCmd = &cli.Command{
 			return cli2.ShowHelp(cctx, fmt.Errorf("failed to parse channel address: %s", err))
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -241,7 +241,7 @@ var paychListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all locally registered payment channels",
 	Action: func(cctx *cli.Context) error {
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -275,7 +275,7 @@ var paychSettleCmd = &cli.Command{
 			return fmt.Errorf("failed to parse payment channel address: %s", err)
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -315,7 +315,7 @@ var paychCloseCmd = &cli.Command{
 			return fmt.Errorf("failed to parse payment channel address: %s", err)
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -382,7 +382,7 @@ var paychVoucherCreateCmd = &cli.Command{
 
 		lane := cctx.Int("lane")
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -428,7 +428,7 @@ var paychVoucherCheckCmd = &cli.Command{
 			return err
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -464,7 +464,7 @@ var paychVoucherAddCmd = &cli.Command{
 			return err
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -501,7 +501,7 @@ var paychVoucherListCmd = &cli.Command{
 			return err
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -546,7 +546,7 @@ var paychVoucherBestSpendableCmd = &cli.Command{
 			return err
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -622,7 +622,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return err
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
