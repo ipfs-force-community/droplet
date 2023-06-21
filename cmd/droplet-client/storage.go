@@ -252,7 +252,7 @@ var storageAsksQueryCmd = &cli.Command{
 			return err
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx,cli2.OldClientRepoPath)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -328,7 +328,7 @@ var storageAsksListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		fapi, fcloser, err := cli2.NewFullNode(cctx,cli2.OldClientRepoPath)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -443,7 +443,7 @@ The minimum value is 518400 (6 months).`,
 			return interactiveDeal(cctx)
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx,cli2.OldClientRepoPath)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -537,7 +537,7 @@ The minimum value is 518400 (6 months).`,
 }
 
 func interactiveDeal(cctx *cli.Context) error {
-	fapi, fcloser, err := cli2.NewFullNode(cctx,cli2.OldClientRepoPath)
+	fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 	if err != nil {
 		return err
 	}
@@ -1039,7 +1039,7 @@ var storageDealsListCmd = &cli.Command{
 			color.NoColor = !cctx.Bool("color")
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx,cli2.OldClientRepoPath)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -1354,7 +1354,7 @@ var storageDealsGetCmd = &cli.Command{
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx,cli2.OldClientRepoPath)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -1672,7 +1672,7 @@ The minimum value is 518400 (6 months).`,
 			return fmt.Errorf("must pass two arguments")
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx,cli2.OldClientRepoPath)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
