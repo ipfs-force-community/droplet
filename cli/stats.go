@@ -59,7 +59,7 @@ var StatsPowerCmd = &cli.Command{
 			log.SetOutput(bytes.NewBuffer(nil))
 		}
 
-		api, acloser, err := NewFullNode(cctx)
+		api, acloser, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return fmt.Errorf("setting up venus node connection: %w", err)
 		}
@@ -259,7 +259,7 @@ var StatsDealsCmd = &cli.Command{
 	Description: "Statistics on active market deals",
 	Action: func(cctx *cli.Context) error {
 		ctx := ReqContext(cctx)
-		api, closer, err := NewFullNode(cctx)
+		api, closer, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return err
 		}

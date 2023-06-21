@@ -71,7 +71,7 @@ var datacapExtendCmd = &cli.Command{
 		defer closer()
 		ctx := cli2.ReqContext(cliCtx)
 
-		fapi, fcloser, err := cli2.NewFullNode(cliCtx)
+		fapi, fcloser, err := cli2.NewFullNode(cliCtx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -286,7 +286,7 @@ var datacapClaimsListCmd = &cli.Command{
 			return fmt.Errorf("must pass provider address")
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cliCtx)
+		fapi, fcloser, err := cli2.NewFullNode(cliCtx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -368,7 +368,7 @@ var datacapAllocationListCmd = &cli.Command{
 			return fmt.Errorf("must pass client address")
 		}
 
-		fapi, fcloser, err := cli2.NewFullNode(cliCtx)
+		fapi, fcloser, err := cli2.NewFullNode(cliCtx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}

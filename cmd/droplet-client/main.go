@@ -40,11 +40,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/api/permission"
 )
 
-const (
-	oldRepoPath = "~/.marketclient"
-	defRepoPath = "~/.droplet-client"
-)
-
 var (
 	ExtractApiKey = builder.NextInvoke()
 	log           = logging.Logger("main")
@@ -54,7 +49,7 @@ var (
 	RepoFlag = &cli.StringFlag{
 		Name:    "repo",
 		EnvVars: []string{"DROPLET_CLIENT_PATH", "VENUS_MARKET_CLIENT_PATH"},
-		Value:   defRepoPath,
+		Value:   cli2.DefClientRepoPath,
 	}
 
 	APIListenFlag = &cli.StringFlag{
@@ -225,7 +220,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketClientConfig) error {
 func prepare(cctx *cli.Context) (*config.MarketClientConfig, error) {
 	var err error
 	cfg := config.DefaultMarketClientConfig
-	cfg.HomeDir, err = cmd.GetRepoPath(cctx, RepoFlag.Name, oldRepoPath)
+	cfg.HomeDir, err = cli2.GetRepoPath(cctx, RepoFlag.Name, cli2.OldClientRepoPath)
 	if err != nil {
 		return nil, err
 	}

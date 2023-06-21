@@ -209,7 +209,7 @@ var queryProtocols = &cli.Command{
 			return fmt.Errorf("must pass miner")
 		}
 
-		api, closer, err := NewFullNode(cctx)
+		api, closer, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return err
 		}
