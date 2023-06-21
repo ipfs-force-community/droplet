@@ -70,6 +70,10 @@ droplet-client: $(BUILD_DEPS)
 	rm -f droplet-client
 	go build -o ./droplet-client $(GOFLAGS) ./cmd/droplet-client
 
+index: $(BUILD_DEPS)
+	rm -f index-tool
+	go build -o ./index-tool $(GOFLAGS) ./tools/index
+
 add-debug-flag:
 GOFLAGS+=-gcflags="all=-N -l"
 
