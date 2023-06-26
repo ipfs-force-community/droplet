@@ -117,7 +117,7 @@ func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, 
 }
 
 func NewMarketClientNode(cctx *cli.Context) (clientapi.IMarketClient, jsonrpc.ClientCloser, error) {
-	homePath, err := GetRepoPath(cctx, "repo", OldMarketRepoPath)
+	homePath, err := GetRepoPath(cctx, "repo", OldClientRepoPath)
 	if err != nil {
 		return nil, nil, err
 	}
