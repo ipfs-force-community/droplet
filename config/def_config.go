@@ -62,6 +62,13 @@ var DefaultMarketConfig = &MarketConfig{
 		MaxConcurrentIndex:         5,
 		MaxConcurrencyStorageCalls: 100,
 		GCInterval:                 Duration(1 * time.Minute),
+		MysqlShard: &Mysql{
+			ConnectionString: "",
+			MaxOpenConn:      100,
+			MaxIdleConn:      100,
+			ConnMaxLifeTime:  "1m",
+			Debug:            false,
+		},
 	},
 
 	SimultaneousTransfersForRetrieval:        DefaultSimultaneousTransfers,

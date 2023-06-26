@@ -85,6 +85,14 @@ func NewDAGStore(ctx context.Context, cfg *config.DAGStoreConfig, marketApi Mark
 		return nil, nil, fmt.Errorf("failed to create dagstore datastore in %s: %w", datastoreDir, err)
 	}
 
+	if cfg.MysqlShard != nil && len(cfg.MysqlShard.ConnectionString) != 0 {
+		shardRepo, err := newShardRepo(cfg.MysqlShard)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to shard repo: %v", err)
+		}
+		dstore = &shardWrapper{ds: dstore, shardRepo: shardRepo}
+	}
+
 	irepo, err := index.NewFSRepo(indexDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to initialise dagstore index repo")
@@ -501,3 +509,14 @@ func (w *Wrapper) Close() error {
 
 	return nil
 }
+
+type shardWrapper struct {
+	ds ds.Batching
+	*shardRepo
+}
+
+func (s *shardWrapper) Batch(ctx context.Context) (ds.Batch, error) {
+	return s.ds.Batch(ctx)
+}
+
+var _ ds.Batching = &shardWrapper{}
