@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
@@ -98,12 +97,12 @@ func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, 
 		return nil, nil, err
 	}
 
-	apiUrl, err := ioutil.ReadFile(path.Join(homePath, "api"))
+	apiUrl, err := os.ReadFile(path.Join(homePath, "api"))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	token, err := ioutil.ReadFile(path.Join(homePath, "token"))
+	token, err := os.ReadFile(path.Join(homePath, "token"))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -121,12 +120,12 @@ func NewMarketClientNode(cctx *cli.Context) (clientapi.IMarketClient, jsonrpc.Cl
 	if err != nil {
 		return nil, nil, err
 	}
-	apiUrl, err := ioutil.ReadFile(path.Join(homePath, "api"))
+	apiUrl, err := os.ReadFile(path.Join(homePath, "api"))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	token, err := ioutil.ReadFile(path.Join(homePath, "token"))
+	token, err := os.ReadFile(path.Join(homePath, "token"))
 	if err != nil {
 		return nil, nil, err
 	}

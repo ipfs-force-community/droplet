@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -92,7 +91,7 @@ func TestReadALl(t *testing.T) {
 
 	r := getPayloadReader(payloadSize)
 	algnR := NewAlgnZeroMountReader(r, payloadSize, size)
-	p, err := ioutil.ReadAll(algnR)
+	p, err := io.ReadAll(algnR)
 	assert.Nil(t, err)
 	countOne := 0
 	for i := 0; i < len(p); i++ {

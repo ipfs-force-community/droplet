@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/filecoin-project/go-fil-markets/stores"
@@ -62,7 +61,7 @@ func (a *API) createUnixFSFilestore(ctx context.Context, srcPath string, dstPath
 		return cid.Undef, fmt.Errorf("failed to create reader path file: %w", err)
 	}
 
-	f, err := ioutil.TempFile("", "")
+	f, err := os.CreateTemp("", "")
 	if err != nil {
 		return cid.Undef, fmt.Errorf("failed to create temp file: %w", err)
 	}
