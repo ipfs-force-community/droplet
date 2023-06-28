@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -59,7 +59,7 @@ func TestResouceDownload(t *testing.T) {
 		psm.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		result, err := ioutil.ReadAll(w.Body)
+		result, err := io.ReadAll(w.Body)
 		assert.Nil(t, err)
 		assert.Equal(t, "mock resource2 content", string(result))
 	})
