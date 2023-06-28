@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -54,7 +53,7 @@ func (f *fsPieceStorage) SaveTo(_ context.Context, resourceId string, r io.Reade
 	}
 
 	dstPath := path.Join(f.baseUrl, resourceId)
-	tempFile, err := ioutil.TempFile("", "piece-*")
+	tempFile, err := os.CreateTemp("", "piece-*")
 	if err != nil {
 		return 0, err
 	}

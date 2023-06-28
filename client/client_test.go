@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -73,7 +73,7 @@ func TestImportLocal(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	outBytes, err := ioutil.ReadFile(out1)
+	outBytes, err := os.ReadFile(out1)
 	require.NoError(t, err)
 	require.Equal(t, b, outBytes)
 
@@ -124,7 +124,7 @@ func TestImportLocal(t *testing.T) {
 	err = files.WriteTo(file, exportedPath)
 	require.NoError(t, err)
 
-	exportedBytes, err := ioutil.ReadFile(exportedPath)
+	exportedBytes, err := os.ReadFile(exportedPath)
 	require.NoError(t, err)
 
 	// compare original file to recreated unixfs file.

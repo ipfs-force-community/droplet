@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
 	"regexp"
 
@@ -140,7 +140,7 @@ func saveAPIInfo(home config.IHome, apiCfg *config.API, token []byte) error {
 	if err != nil {
 		return fmt.Errorf("unable to home path to save api/token")
 	}
-	_ = ioutil.WriteFile(path.Join(string(homePath), "api"), []byte(apiCfg.ListenAddress), 0o644)
-	_ = ioutil.WriteFile(path.Join(string(homePath), "token"), token, 0o644)
+	_ = os.WriteFile(path.Join(string(homePath), "api"), []byte(apiCfg.ListenAddress), 0o644)
+	_ = os.WriteFile(path.Join(string(homePath), "token"), token, 0o644)
 	return nil
 }

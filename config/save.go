@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -25,7 +24,7 @@ func SaveConfig(cfg IHome) error {
 	}
 
 	_ = os.MkdirAll(path.Dir(cfgPath), os.ModePerm)
-	return ioutil.WriteFile(cfgPath, buf.Bytes(), 0o644)
+	return os.WriteFile(cfgPath, buf.Bytes(), 0o644)
 }
 
 func LoadConfig(cfgPath string, cfg IHome) error {
@@ -34,7 +33,7 @@ func LoadConfig(cfgPath string, cfg IHome) error {
 		return err
 	}
 
-	cfgBytes, err := ioutil.ReadFile(homeDir)
+	cfgBytes, err := os.ReadFile(homeDir)
 	if err != nil {
 		return err
 	}

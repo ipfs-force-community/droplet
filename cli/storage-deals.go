@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -244,7 +243,7 @@ part states:
 		}
 
 		fpath := cctx.Args().Get(0)
-		data, err := ioutil.ReadFile(fpath)
+		data, err := os.ReadFile(fpath)
 		if err != nil {
 			return fmt.Errorf("read deal file(%s) failed: %v", fpath, err)
 		}
