@@ -25,7 +25,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 			}, builder.Options(
 				// if mysql is configured, use mysql
 				builder.Override(new(repo.Repo), func() (repo.Repo, error) {
-					return mysql.NewMysqlRepo(mysqlCfg)
+					return mysql.InitMysql(mysqlCfg)
 				}),
 			),
 				builder.Options(

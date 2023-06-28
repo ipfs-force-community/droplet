@@ -21,7 +21,7 @@ import (
 
 func MysqlDB(t *testing.T) repo.Repo {
 	connSQL := test_helper.Mysql(t)
-	repo, err := mysql.NewMysqlRepo(&config.Mysql{
+	repo, err := mysql.InitMysql(&config.Mysql{
 		ConnectionString: connSQL,
 		MaxOpenConn:      10,
 		MaxIdleConn:      10,

@@ -62,6 +62,10 @@ func (r MysqlRepo) RetrievalDealRepo() repo.IRetrievalDealRepo {
 	return NewRetrievalDealRepo(r.GetDb())
 }
 
+func (r MysqlRepo) ShardRepo() repo.IShardRepo {
+	return NewShardRepo(r.GetDb())
+}
+
 func (r MysqlRepo) Close() error {
 	db, err := r.DB.DB()
 	if err != nil {
@@ -71,7 +75,8 @@ func (r MysqlRepo) Close() error {
 }
 
 func (r MysqlRepo) Migrate() error {
-	return r.AutoMigrate(retrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{}, channelInfo{}, msgInfo{}, retrievalDeal{})
+	return r.AutoMigrate(retrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{},
+		channelInfo{}, msgInfo{}, retrievalDeal{}, shard{})
 }
 
 func (r MysqlRepo) Transaction(cb func(txRepo repo.TxRepo) error) error {
@@ -88,17 +93,7 @@ func (r txRepo) StorageDealRepo() repo.StorageDealRepo {
 	return NewStorageDealRepo(r.DB)
 }
 
-func NewMysqlRepo(cfg *config.Mysql) (repo.Repo, error) {
-	db, err := InitMysql(cfg)
-	if err != nil {
-		return nil, err
-	}
-	r := &MysqlRepo{DB: db}
-
-	return r, r.Migrate()
-}
-
-func InitMysql(cfg *config.Mysql) (*gorm.DB, error) {
+func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 	if err != nil {
 		return nil, fmt.Errorf("[db connection failed] Database name: %s %w", cfg.ConnectionString, err)
@@ -122,7 +117,9 @@ func InitMysql(cfg *config.Mysql) (*gorm.DB, error) {
 	}
 	sqlDB.SetConnMaxLifetime(d)
 
-	return db, nil
+	r := &MysqlRepo{DB: db}
+
+	return r, r.Migrate()
 }
 
 type DBCid cid.Cid

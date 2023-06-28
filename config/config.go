@@ -87,8 +87,6 @@ type DAGStoreConfig struct {
 
 	// ReadDiretly enable to read piece storage directly skip transient file
 	UseTransient bool
-
-	MysqlShard *Mysql
 }
 
 type MongoTopIndex struct {
