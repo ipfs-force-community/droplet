@@ -3,7 +3,7 @@ package dagstore
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"testing"
 
@@ -44,7 +44,7 @@ func TestLotusMount(t *testing.T) {
 	rd, err := mnt.Fetch(context.Background())
 	require.NoError(t, err)
 
-	bz, err := ioutil.ReadAll(rd)
+	bz, err := io.ReadAll(rd)
 	require.NoError(t, err)
 	require.NoError(t, rd.Close())
 	require.Equal(t, []byte("testing"), bz)
@@ -63,7 +63,7 @@ func TestLotusMount(t *testing.T) {
 	// fetching on this mount should get us back the same data.
 	rd, err = mnt2.Fetch(context.Background())
 	require.NoError(t, err)
-	bz, err = ioutil.ReadAll(rd)
+	bz, err = io.ReadAll(rd)
 	require.NoError(t, err)
 	require.NoError(t, rd.Close())
 	require.Equal(t, []byte("testing"), bz)

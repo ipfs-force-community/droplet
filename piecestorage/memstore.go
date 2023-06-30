@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"sync"
 
 	"github.com/filecoin-project/venus/venus-shared/types/market"
@@ -44,7 +43,7 @@ func (m *MemPieceStore) GetName() string {
 func (m *MemPieceStore) SaveTo(ctx context.Context, resourceId string, reader io.Reader) (int64, error) {
 	m.dataLk.Lock()
 	defer m.dataLk.Unlock()
-	bytes, err := ioutil.ReadAll(reader)
+	bytes, err := io.ReadAll(reader)
 	if err != nil {
 		return 0, err
 	}
