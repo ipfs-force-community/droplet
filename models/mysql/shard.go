@@ -53,6 +53,10 @@ func from(s *dagstore.PersistedShard) *shard {
 	}
 }
 
+func (s *shardRepo) CreateShard(ctx context.Context, shard *dagstore.PersistedShard) error {
+	return s.DB.WithContext(ctx).Create(from(shard)).Error
+}
+
 func (s *shardRepo) SaveShard(ctx context.Context, shard *dagstore.PersistedShard) error {
 	return s.DB.WithContext(ctx).Save(from(shard)).Error
 }

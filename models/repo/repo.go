@@ -99,6 +99,7 @@ type ICidInfoRepo interface {
 }
 
 type IShardRepo interface {
+	CreateShard(ctx context.Context, shard *dagstore.PersistedShard) error
 	dagstore.ShardRepo
 }
 
