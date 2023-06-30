@@ -56,6 +56,12 @@ func TestAddMultihashesForShard(t *testing.T) {
 			})
 			assert.Nil(t, err)
 		}
+
+		{
+			has, err := indexSaver.HasShard(ctx, shard.KeyFromString(entry.Name()))
+			assert.NoError(t, err)
+			assert.True(t, has)
+		}
 	}
 }
 

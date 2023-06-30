@@ -14,6 +14,10 @@ func NewShardRepo() *Shard {
 	return &Shard{}
 }
 
+func (s *Shard) CreateShard(ctx context.Context, shard *dagstore.PersistedShard) error {
+	panic("implement me")
+}
+
 func (s *Shard) SaveShard(ctx context.Context, shard *dagstore.PersistedShard) error {
 	panic("implement me")
 }
