@@ -19,6 +19,8 @@ import (
 
 	"github.com/filecoin-project/go-statemachine/fsm"
 	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/models/badger"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	carindex "github.com/ipld/go-car/v2/index"
 
 	"github.com/filecoin-project/dagstore"
@@ -53,7 +55,11 @@ type Wrapper struct {
 
 var _ stores.DAGStoreWrapper = (*Wrapper)(nil)
 
-func NewDAGStore(ctx context.Context, cfg *config.DAGStoreConfig, marketApi MarketAPI) (*dagstore.DAGStore, *Wrapper, error) {
+func NewDAGStore(ctx context.Context,
+	cfg *config.DAGStoreConfig,
+	marketApi MarketAPI,
+	repo repo.Repo,
+) (*dagstore.DAGStore, *Wrapper, error) {
 	// construct the DAG Store.
 	registry := mount.NewRegistry()
 	if err := registry.Register(marketScheme, mountTemplate(marketApi, cfg.UseTransient)); err != nil {
@@ -85,6 +91,14 @@ func NewDAGStore(ctx context.Context, cfg *config.DAGStoreConfig, marketApi Mark
 		return nil, nil, fmt.Errorf("failed to create dagstore datastore in %s: %w", datastoreDir, err)
 	}
 
+	var shardRepo dagstore.ShardRepo
+	if _, ok := repo.ShardRepo().(*badger.Shard); !ok {
+		// store shard state to mysql
+		shardRepo = repo.ShardRepo()
+	} else {
+		shardRepo = dagstore.NewBadgerShardRepo(dstore)
+	}
+
 	irepo, err := index.NewFSRepo(indexDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to initialise dagstore index repo")
@@ -93,7 +107,7 @@ func NewDAGStore(ctx context.Context, cfg *config.DAGStoreConfig, marketApi Mark
 	dCfg := dagstore.Config{
 		TransientsDir: transientsDir,
 		IndexRepo:     irepo,
-		Datastore:     dstore,
+		ShardRepo:     shardRepo,
 		MountRegistry: registry,
 		FailureCh:     failureCh,
 		TraceCh:       traceCh,

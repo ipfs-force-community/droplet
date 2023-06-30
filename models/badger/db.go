@@ -248,6 +248,10 @@ func (r *BadgerRepo) RetrievalDealRepo() repo.IRetrievalDealRepo {
 	return NewRetrievalDealRepo(r.dsParams.RetrievalDealsDs)
 }
 
+func (r *BadgerRepo) ShardRepo() repo.IShardRepo {
+	return NewShardRepo()
+}
+
 func (r *BadgerRepo) Close() error {
 	// todo: to implement
 	return nil

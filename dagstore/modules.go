@@ -53,7 +53,13 @@ func CreateAndStartMarketAPI(ctx metrics.MetricsCtx, lc fx.Lifecycle, r *config.
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func NewWrapperDAGStore(ctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config.HomeDir, cfg *config.DAGStoreConfig, minerAPI MarketAPI) (*dagstore.DAGStore, stores.DAGStoreWrapper, error) {
+func NewWrapperDAGStore(ctx metrics.MetricsCtx,
+	lc fx.Lifecycle,
+	homeDir *config.HomeDir,
+	cfg *config.DAGStoreConfig,
+	minerAPI MarketAPI,
+	repo repo.Repo,
+) (*dagstore.DAGStore, stores.DAGStoreWrapper, error) {
 	// fall back to default root directory if not explicitly set in the config.
 	if cfg.RootDir == "" {
 		cfg.RootDir = filepath.Join(string(*homeDir), DefaultDAGStoreDir)
@@ -67,7 +73,7 @@ func NewWrapperDAGStore(ctx metrics.MetricsCtx, lc fx.Lifecycle, homeDir *config
 		}
 	}
 
-	dagst, w, err := NewDAGStore(ctx, cfg, minerAPI)
+	dagst, w, err := NewDAGStore(ctx, cfg, minerAPI, repo)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create DAG store: %w", err)
 	}
