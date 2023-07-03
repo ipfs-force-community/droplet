@@ -1,0 +1,65 @@
+name: "Bug Report"
+description: "File a bug report to help us improve / 报告 bug"
+labels: [C-bug]
+body:
+- type: checkboxes
+  attributes:
+    label: Droplet / 水滴
+    description: |
+      Please select the related components.
+      请选择涉及模块。
+    options:
+      - label: droplet
+        required: false
+      - label: droplet-client
+        required: false
+      - label: 文档 / docs
+        required: false
+- type: textarea
+  id: version
+  attributes:
+    label: Version / 版本
+    render: text
+    description: |
+      Enter version of the component if applicable.
+      填写组件的版本。    
+    placeholder: |
+      e.g.
+      { "Version": "1.6.0+git.3652863fa.dirty" }
+      venus message version v1.6.0--58feea4
+  validations:
+    required: true
+- type: textarea
+  id: description
+  attributes:
+    label: Describe the Bug / 描述 
+    description: |
+      This is where you get to tell us what went wrong, when doing so, please try to provide a clear and concise description of the bug with all related information.
+      填写你所遇到的崩溃、异常信息或你认为与预期结果不符的行为。
+  validations:
+    required: true
+- type: textarea
+  id: logging
+  attributes:
+    label: Logging Information / 日志
+    render: text
+    description: |
+      Please provide debug logs of the problem.
+      If you don't provide detailed logs when you raise the issue it will almost certainly be the first request I make before furthur diagnosing the problem.
+      填写可以帮助定位问题的日志信息。
+  validations:
+    required: true
+- type: textarea
+  id: reproduce
+  attributes:
+    label: Repo Steps / 重现步骤 
+    description: |
+      Steps to reproduce the behavior.
+      能够重现问题的步骤。
+    placeholder: |
+      1. Run '...'
+      2. Do '...'
+      3. See error '...'
+      ...
+  validations:
+    required: false
