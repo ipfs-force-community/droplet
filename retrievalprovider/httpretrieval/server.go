@@ -60,6 +60,7 @@ func (s *Server) RetrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 		badResponse(w, http.StatusNotFound, err)
 		return
 	}
+	defer mountReader.Close() // nolint
 
 	serveContent(w, r, mountReader, log)
 	log.Info("end retrieval deal")
