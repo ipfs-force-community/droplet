@@ -52,7 +52,7 @@ body:
 - type: textarea
   id: reproduce
   attributes:
-    label: Repo Steps / 重现步骤 
+    label: Repo Steps / 重现步骤
     description: |
       Steps to reproduce the behavior.
       能够重现问题的步骤。

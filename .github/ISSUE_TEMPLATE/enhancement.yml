@@ -18,7 +18,7 @@ body:
 - type: textarea
   id: description
   attributes:
-    label: Description / 描述 
+    label: Description / 描述
     placeholder: |
       I suggest ...
       是否可以考虑...
