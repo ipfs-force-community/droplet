@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path"
 	"regexp"
@@ -70,6 +71,7 @@ func ServeRPC(
 		authMux = jwtclient.NewAuthMux(localJwtClient, nil, mux)
 	}
 	authMux.TrustHandle("/healthcheck", healthcheck.Handler())
+	authMux.TrustHandle("/debug/pprof/", http.DefaultServeMux)
 	if httpRetrievalServer != nil {
 		authMux.TrustHandle("/piece/", httpRetrievalServer, jwtclient.RegexpOption(regexp.MustCompile(`/piece/[a-z0-9]+`)))
 	}
