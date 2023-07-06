@@ -642,6 +642,7 @@ func (p *StorageProviderImpl) ImportDeals(ctx context.Context, deals map[address
 	}
 
 	var errs *multierror.Error
+	batchSize := 100
 	for provider, d := range deals {
 		pendingDeals := make([]*types.MinerDeal, 0, len(d))
 
@@ -650,13 +651,22 @@ func (p *StorageProviderImpl) ImportDeals(ctx context.Context, deals map[address
 			continue
 		}
 
+		pubDeals, err := p.dealStore.GetDeals(ctx, provider, 0, math.MaxInt64)
+		if err != nil {
+			return fmt.Errorf("get deal by provider %s failed: %s", provider, err)
+		}
+		proposalCIDs := make(map[cid.Cid]struct{}, len(pubDeals))
+		for _, d := range pubDeals {
+			proposalCIDs[d.ProposalCid] = struct{}{}
+		}
+
 		for _, deal := range d {
-			_, err := p.dealStore.GetDeal(ctx, deal.ProposalCid)
-			if err == nil {
+			_, ok := proposalCIDs[deal.ProposalCid]
+			if ok {
 				errs = multierror.Append(errs, fmt.Errorf("deal exist: %s", deal.ProposalCid))
-			} else if !errors.Is(err, repo.ErrNotFound) {
-				return err
+				continue
 			}
+			proposalCIDs[deal.ProposalCid] = struct{}{}
 
 			// todo: The ClientSignature of the boost deal cannot be obtained currently
 			if len(deal.ClientDealProposal.ClientSignature.Data) != 0 {
@@ -667,10 +677,15 @@ func (p *StorageProviderImpl) ImportDeals(ctx context.Context, deals map[address
 				}
 			}
 			pendingDeals = append(pendingDeals, deal)
+			if len(pendingDeals) == batchSize {
+				if err = p.dealStore.CreateDeals(ctx, pendingDeals); err != nil {
+					return fmt.Errorf("save miner %s deal to database %v", provider, err)
+				}
+				pendingDeals = pendingDeals[:0]
+			}
 		}
 
-		err = p.dealStore.CreateDeals(ctx, pendingDeals)
-		if err != nil {
+		if err = p.dealStore.CreateDeals(ctx, pendingDeals); err != nil {
 			return fmt.Errorf("save miner %s deal to database %v", provider, err)
 		}
 	}
