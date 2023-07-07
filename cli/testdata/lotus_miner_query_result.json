@@ -23,11 +23,15 @@
 		"ProposalCid": {
 			"/": "bafyreiaskbu5kx3qje5fvgsymtlogitaiwx6quksv57rppw33ogw2gwz3a"
 		},
-		"AddFundsCid": null,
-		"PublishCid": null,
+		"AddFundsCid": {
+			"/": "baga6ea4seaqp2gxiw4a5hrerykjpti7bzm6n6oc236jbkdykctwgthcmpqnjqhy"
+		},
+		"PublishCid": {
+			"/": "baga6ea4seaqp2gxiw4a5hrerykjpti7bzm6n6oc236jbkdykctwgthcmpqnjqhy"
+		},
 		"Miner": "12D3KooWRvjAQRVTUH4WnYCL8Gq8LocavMjgcuPWKcc5oJxA4erz",
 		"Client": "12D3KooWAwmur3HdnS2pGMgXtM8wkGByquyuajoRmjb1SENNbeio",
-		"State": 18,
+		"State": 7,
 		"PiecePath": "",
 		"MetadataPath": "",
 		"SlashEpoch": 0,
@@ -46,10 +50,10 @@
 			"RawBlockSize": 10241347
 		},
 		"AvailableForRetrieval": false,
-		"DealID": 0,
+		"DealID": 10,
 		"CreationTime": "2023-06-07T15:35:19.485691+08:00",
 		"TransferChannelId": null,
-		"SectorNumber": 0,
+		"SectorNumber": 10,
 		"InboundCAR": ""
 	}, {
 		"Proposal": {
