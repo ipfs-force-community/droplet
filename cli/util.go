@@ -492,7 +492,7 @@ func (d *boostDeal) minerDeal() (deal *types.MinerDeal, err error) {
 		FastRetrieval: true,
 		Message:       d.Err,
 		Ref: &storagemarket.DataRef{
-			TransferType: d.Transfer.Type,
+			TransferType: "import",
 			Root:         shared.MustParseCid(d.DealDataRoot),
 			PieceCid:     &pieceCID,
 			PieceSize:    abi.UnpaddedPieceSize(d.PieceSize.Int64()),
