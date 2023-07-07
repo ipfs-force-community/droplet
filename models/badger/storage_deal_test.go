@@ -297,16 +297,17 @@ func TestListStorageDealByAddr(t *testing.T) {
 func TestListDeal(t *testing.T) {
 	ctx, r, dealCases := prepareStorageDealTest(t)
 
-	var peerID peer.ID
-	testutil.Provide(t, &peerID)
+	peers := make([]peer.ID, 2)
+	testutil.Provide(t, &peers)
 	miner := []address.Address{dealCases[0].Proposal.Provider, testutil.AddressProvider()(t)}
-	peers := []peer.ID{dealCases[0].Client, peerID}
 	states := []storagemarket.StorageDealStatus{
 		storagemarket.StorageDealAcceptWait,
 		storagemarket.StorageDealAwaitingPreCommit,
 		storagemarket.StorageDealFailing,
 		storagemarket.StorageDealExpired,
 	}
+
+	assert.NotEqual(t, peers[0].String(), peers[1].String())
 
 	for i, deal := range dealCases {
 		deal.Proposal.Provider = miner[i%2]
@@ -361,7 +362,7 @@ func TestListDeal(t *testing.T) {
 			Page:   defPage,
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, 5, len(deals))
+		assert.Len(t, deals, 5)
 	}
 
 	storageDealAcceptWait := storagemarket.StorageDealAcceptWait
