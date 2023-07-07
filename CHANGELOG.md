@@ -1,5 +1,11 @@
 # droplet changelog
 
+## v2.8.0
+
+* fix: repo compatibility for cli [[#348](https://github.com/ipfs-force-community/droplet/pull/348)]
+* chore: output piece size to log [[#351](https://github.com/ipfs-force-community/droplet/pull/351)]
+* fix: use old client repo when create market client[[#353](https://github.com/ipfs-force-community/droplet/pull/353)]
+
 ## v2.8.0-rc1
 
 * feat: set address.CurrentNetwork when launch up [[#321](https://github.com/ipfs-force-community/droplet/pull/321)]

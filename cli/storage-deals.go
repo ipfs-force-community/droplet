@@ -230,7 +230,7 @@ part states:
 		}
 		defer closer()
 
-		fapi, fcloser, err := NewFullNode(cctx)
+		fapi, fcloser, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return err
 		}

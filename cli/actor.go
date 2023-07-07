@@ -172,7 +172,7 @@ var actorSetAddrsCmd = &cli.Command{
 		}
 		defer closer()
 
-		api, acloser, err := NewFullNode(cctx)
+		api, acloser, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return err
 		}
@@ -256,7 +256,7 @@ var actorSetPeeridCmd = &cli.Command{
 		}
 		defer closer()
 
-		api, acloser, err := NewFullNode(cctx)
+		api, acloser, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return err
 		}
@@ -323,7 +323,7 @@ var actorInfoCmd = &cli.Command{
 		}
 		defer closer()
 
-		api, acloser, err := NewFullNode(cctx)
+		api, acloser, err := NewFullNode(cctx, OldMarketRepoPath)
 		if err != nil {
 			return err
 		}

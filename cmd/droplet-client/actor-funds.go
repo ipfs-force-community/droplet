@@ -37,7 +37,7 @@ var actorFundsBalancesCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}
@@ -191,7 +191,7 @@ var actorFundsWithdrawCmd = &cli.Command{
 		defer closer()
 		ctx := cli2.ReqContext(cctx)
 
-		fapi, fcloser, err := cli2.NewFullNode(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
 			return err
 		}

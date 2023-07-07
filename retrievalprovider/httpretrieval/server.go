@@ -54,10 +54,18 @@ func (s *Server) RetrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 		badResponse(w, http.StatusNotFound, err)
 		return
 	}
+	len, err := store.Len(ctx, pieceCIDStr)
+	if err != nil {
+		log.Warn(err)
+		badResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+	log.Infof("piece size: %v", len)
+
 	mountReader, err := store.GetMountReader(ctx, pieceCIDStr)
 	if err != nil {
 		log.Warn(err)
-		badResponse(w, http.StatusNotFound, err)
+		badResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 	defer mountReader.Close() // nolint

@@ -59,6 +59,16 @@ const (
 	API_NAMESPACE_MARKET_CLIENT = "VENUS_MARKET_CLIENT" //nolint
 )
 
+const (
+	OldMarketRepoPath = "~/.venusmarket"
+	DefMarketRepoPath = "~/.droplet"
+)
+
+const (
+	OldClientRepoPath = "~/.marketclient"
+	DefClientRepoPath = "~/.droplet-client"
+)
+
 // GetCidEncoder returns an encoder using the `cid-base` flag if provided, or
 // the default (Base32) encoder if not.
 func GetCidEncoder(cctx *cli.Context) (cidenc.Encoder, error) {
@@ -82,7 +92,7 @@ var minerFlag = &cli.StringFlag{
 }
 
 func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, error) {
-	homePath, err := homedir.Expand(cctx.String("repo"))
+	homePath, err := GetRepoPath(cctx, "repo", OldMarketRepoPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -106,7 +116,7 @@ func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, 
 }
 
 func NewMarketClientNode(cctx *cli.Context) (clientapi.IMarketClient, jsonrpc.ClientCloser, error) {
-	homePath, err := homedir.Expand(cctx.String("repo"))
+	homePath, err := GetRepoPath(cctx, "repo", OldClientRepoPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,10 +138,14 @@ func NewMarketClientNode(cctx *cli.Context) (clientapi.IMarketClient, jsonrpc.Cl
 	return clientapi.NewIMarketClientRPC(cctx.Context, addr, apiInfo.AuthHeader())
 }
 
-func NewFullNode(cctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
-	cfgPath := path.Join(cctx.String("repo"), "config.toml")
+func NewFullNode(cctx *cli.Context, legacyRepo string) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+	repoPath, err := GetRepoPath(cctx, "repo", legacyRepo)
+	if err != nil {
+		return nil, nil, err
+	}
+	cfgPath := path.Join(repoPath, "config.toml")
 	marketCfg := config.DefaultMarketConfig
-	err := config.LoadConfig(cfgPath, marketCfg)
+	err = config.LoadConfig(cfgPath, marketCfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -554,4 +568,46 @@ func getPayloadSizeFunc(dirs []string) func(pieceCID cid.Cid) uint64 {
 
 		return sizes[pieceCID]
 	}
+}
+
+// todo: remove legacy repo path after v1.13
+func GetRepoPath(cctx *cli.Context, repoFlagName, oldRepoPath string) (string, error) {
+	repoPath, err := homedir.Expand(cctx.String(repoFlagName))
+	if err != nil {
+		return "", err
+	}
+	has, err := exist(repoPath)
+	if err != nil {
+		return "", err
+	}
+	if !has {
+		oldRepoPath, err = homedir.Expand(oldRepoPath)
+		if err != nil {
+			return "", err
+		}
+		has, err = exist(oldRepoPath)
+		if err != nil {
+			return "", err
+		}
+		if has {
+			return oldRepoPath, nil
+		}
+	}
+
+	return repoPath, nil
+}
+
+func exist(path string) (bool, error) {
+	f, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	if !f.IsDir() {
+		return false, fmt.Errorf("%s not a file directory", path)
+	}
+
+	return true, nil
 }

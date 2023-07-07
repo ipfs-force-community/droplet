@@ -130,7 +130,7 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 	var err error
 	cfg := config.DefaultMarketConfig
-	cfg.HomeDir, err = cmd.GetRepoPath(cctx, RepoFlag.Name, oldRepoPath)
+	cfg.HomeDir, err = cli2.GetRepoPath(cctx, RepoFlag.Name, cli2.OldMarketRepoPath)
 	if err != nil {
 		return nil, err
 	}
