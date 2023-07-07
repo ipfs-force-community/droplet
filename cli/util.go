@@ -519,16 +519,16 @@ func (d *boostDeal) minerDeal() (deal *types.MinerDeal, err error) {
 		publicCID := shared.MustParseCid(d.PublishCid)
 		deal.PublishCid = &publicCID
 	}
+	deal.PieceStatus = types.Undefine
 
 	switch d.Checkpoint {
 	// https://github.com/filecoin-project/boost/blob/main/gql/resolver.go#L546
 	case "Accepted":
 		if d.Message == "Awaiting Offline Data Import" {
 			deal.State = storagemarket.StorageDealWaitingForData
-			deal.PieceStatus = types.Undefine
 		}
 	// https://github.com/filecoin-project/boost/blob/main/gql/resolver.go#L583
-	case "Complete":
+	case "IndexedAndAnnounced":
 		if strings.Contains(d.Message, string(types.Proving)) {
 			deal.State = storagemarket.StorageDealActive
 			deal.PieceStatus = types.Proving
