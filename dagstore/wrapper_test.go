@@ -13,6 +13,7 @@ import (
 
 	"github.com/ipfs-force-community/droplet/v2/config"
 	mock_dagstore "github.com/ipfs-force-community/droplet/v2/dagstore/mocks"
+	"github.com/ipfs-force-community/droplet/v2/models/badger"
 	carindex "github.com/ipld/go-car/v2/index"
 
 	"github.com/filecoin-project/dagstore"
@@ -36,7 +37,7 @@ func TestWrapperLoadShard(t *testing.T) {
 	dagst, w, err := NewDAGStore(ctx, &config.DAGStoreConfig{
 		RootDir:    t.TempDir(),
 		GCInterval: config.Duration(1 * time.Millisecond),
-	}, mockLotusMount{})
+	}, mockLotusMount{}, badger.NewBadgerRepo(badger.BadgerDSParams{}))
 	require.NoError(t, err)
 
 	defer dagst.Close() //nolint:errcheck
@@ -101,7 +102,7 @@ func TestWrapperBackground(t *testing.T) {
 	dagst, w, err := NewDAGStore(ctx, &config.DAGStoreConfig{
 		RootDir:    t.TempDir(),
 		GCInterval: config.Duration(1 * time.Millisecond),
-	}, mockLotusMount{})
+	}, mockLotusMount{}, badger.NewBadgerRepo(badger.BadgerDSParams{}))
 	require.NoError(t, err)
 
 	defer dagst.Close() //nolint:errcheck

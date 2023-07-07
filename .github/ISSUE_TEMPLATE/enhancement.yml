@@ -1,0 +1,26 @@
+name: Enhancement / 功能特性 
+description:  "New feature request or enhancement suggestion / 提议新功能，或改善已有功能"
+labels: [C-enhancement]
+body:
+- type: checkboxes
+  attributes:
+    label: Droplet / 水滴
+    description: |
+      Please select the related components.
+      请选择涉及模块。
+    options:
+      - label: droplet
+        required: false
+      - label: droplet-client
+        required: false
+      - label: 文档 / docs
+        required: false
+- type: textarea
+  id: description
+  attributes:
+    label: Description / 描述
+    placeholder: |
+      I suggest ...
+      是否可以考虑...
+  validations:
+    required: true

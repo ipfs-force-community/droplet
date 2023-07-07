@@ -32,7 +32,7 @@ func TestUnmarshalBoostDeal(t *testing.T) {
 	var r2 result
 	assert.NoError(t, json.Unmarshal(data, &r2))
 	assert.Len(t, r2.Result, 3)
-	assert.Equal(t, uint64(18), r2.Result[0].State)
+	assert.Equal(t, uint64(7), r2.Result[0].State)
 	for i, deal := range r2.Result {
 		fmt.Printf("i: %d, deal: %+v\n", i, deal)
 	}

@@ -25,7 +25,7 @@ type MongoTopIndex struct {
 	indexCol *mongo.Collection
 }
 
-func NewMongoTopIndex(ctx context.Context, url string) (index.Inverted, error) {
+func NewMongoTopIndex(ctx context.Context, url string) (*MongoTopIndex, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(url))
@@ -71,4 +71,13 @@ func (mongoTopIndex *MongoTopIndex) GetShardsForMultihash(ctx context.Context, h
 		shardKeys = append(shardKeys, shard.KeyFromString(r))
 	}
 	return shardKeys, nil
+}
+
+func (mongoTopIndex *MongoTopIndex) HasShard(ctx context.Context, shard shard.Key) (bool, error) {
+	count, err := mongoTopIndex.indexCol.CountDocuments(ctx, bson.M{"pieces": shard.String()})
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }

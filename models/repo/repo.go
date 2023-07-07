@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 
+	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -97,6 +98,11 @@ type ICidInfoRepo interface {
 	ListCidInfoKeys(ctx context.Context) ([]cid.Cid, error)
 }
 
+type IShardRepo interface {
+	CreateShard(ctx context.Context, shard *dagstore.PersistedShard) error
+	dagstore.ShardRepo
+}
+
 type Repo interface {
 	FundRepo() FundRepo
 	StorageDealRepo() StorageDealRepo
@@ -106,6 +112,7 @@ type Repo interface {
 	RetrievalAskRepo() IRetrievalAskRepo
 	CidInfoRepo() ICidInfoRepo
 	RetrievalDealRepo() IRetrievalDealRepo
+	ShardRepo() IShardRepo
 	Close() error
 	Migrate() error
 	Transaction(func(txRepo TxRepo) error) error
