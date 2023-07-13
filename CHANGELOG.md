@@ -1,5 +1,10 @@
 # droplet changelog
 
+
+## v2.8.1
+
+* feat: update gateway deps by @LinZexiao in https://github.com/ipfs-force-community/droplet/pull/362
+
 ## v2.8.0
 
 * fix: repo compatibility for cli [[#348](https://github.com/ipfs-force-community/droplet/pull/348)]
