@@ -502,7 +502,7 @@ It means that the balance in the wallet is insufficient, call the command `./dro
 5. Import data files of offline deal
 It is necessary to transfer the `.car` file generated in the previous step 2 to droplet offline, and import the data through the droplet command:
 ```shell
-./droplet storage-deals import-data bafyreiecguaxgtmgcanfco6huni4d6h6zs3w3bznermmiurtdos7r6hftm ./readme.md.car
+./droplet storage deal import-data bafyreiecguaxgtmgcanfco6huni4d6h6zs3w3bznermmiurtdos7r6hftm ./readme.md.car
 ```
 
 Check the status again, the order status is updated to `StorageDealPublishing`:
