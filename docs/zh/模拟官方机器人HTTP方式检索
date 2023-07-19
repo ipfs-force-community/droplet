@@ -1,6 +1,6 @@
 # 模拟官方机器人HTTP方式检索
 
-目前常见的检索方式`GraphSync`、`HTTP`、`Bitswap`三种，而我们的`venus`的`droplet`默认使用的是`GraphSync`方式，在v2.8.0版本之后，也支持`HTTP`方式。由于`HTTP`是无状态的请求数据，在检索时无需要建立大量索引的特性，对于检索成功率提升较高。
+目前常见的检索方式 `GraphSync`、`HTTP`、`Bitswap` 三种，`droplet` 默认使用的是 `GraphSync` 方式，在 v2.8.0 版本之后，也支持 `HTTP` 方式。由于 `HTTP` 是无状态的请求数据，在检索时无需要建立大量索引的特性，对于检索成功率提升较高。
 
 
 
