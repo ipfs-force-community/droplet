@@ -21,7 +21,7 @@
 
 
 
-### 通过请求验证
+### 通过 HTTP 请求验证检索功能
 
 ```bash
 curl http://公网IP:41235/piece/baga6ea4sexxxxxx --output /tmp/test
