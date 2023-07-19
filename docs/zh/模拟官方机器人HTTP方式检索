@@ -31,7 +31,7 @@ curl http://公网IP:41235/piece/baga6ea4sexxxxxx --output /tmp/test
 
 
 
-### 通过工具验证
+### 通过 RetrievalBot 工具验证检索功能
 
 ```bash
 git clone https://github.com/simlecode/RetrievalBot.git
