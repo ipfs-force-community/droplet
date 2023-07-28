@@ -749,6 +749,10 @@ func outputStorageDeal(deal *market.MinerDeal) error {
 	if err != nil {
 		return err
 	}
+	dataCid, err := cid.Decode(label)
+	if err != nil {
+		return fmt.Errorf("parse %s to cid failed: %v", label, err)
+	}
 	if deal.AddFundsCid != nil {
 		addFundsCid = deal.AddFundsCid.String()
 	}
@@ -783,7 +787,7 @@ func outputStorageDeal(deal *market.MinerDeal) error {
 		{"StoragePricePerEpoch", deal.Proposal.StoragePricePerEpoch},
 		{"ProviderCollateral", deal.Proposal.ProviderCollateral},
 		{"ClientCollateral", deal.Proposal.ClientCollateral},
-		{"Label", label},
+		{"Label", dataCid},
 		{"MinerPeerID", deal.Miner.Pretty()},
 		{"ClientPeerID", deal.Client.Pretty()},
 		{"FundsReserved", deal.FundsReserved},

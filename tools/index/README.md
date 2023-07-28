@@ -18,6 +18,9 @@ make index
 * --mysql-url：MySQL 的连接地址，用于存储 shard 状态，要和 `droplet` 使用同一个数据库，表名是 `shards`。
 * --droplet-url：droplet 服务的 RPC 地址。
 * --droplet-token：droplet 服务的 token。
+* --start：订单创建时间需大于设置的值。
+* --end：订单创建时间需小于设置的值。
+* --concurrency：生成索引的并发数，默认是 1。
 
 ```bash
 ./index-tool gen-index \
