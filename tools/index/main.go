@@ -115,6 +115,9 @@ var generateIndexCmd = &cli.Command{
 			return err
 		}
 		p.concurrency = cctx.Int(concurrencyFlag.Name)
+		if p.concurrency < 1 {
+			p.concurrency = 1
+		}
 
 		fmt.Println("car dir:", carDir, "index dir:", indexDir)
 
@@ -183,7 +186,7 @@ func paramsFromContext(cctx *cli.Context) (*params, error) {
 			pieceInfos = append(pieceInfos, &pieceInfo{piece: p, payloadSize: deal.PayloadSize, pieceSize: uint64(deal.Proposal.PieceSize)})
 		}
 	}
-	fmt.Printf("had %d active deals, had %d piece\n", len(deals), len(pieceInfos))
+	fmt.Printf("active deals: %d, valid deals: %d, pieces: %d\n", len(deals), len(pieceInfos), len(pieces))
 
 	var topIndexRepo *dagstore.MongoTopIndex
 	if len(mongoURL) != 0 {
@@ -213,14 +216,14 @@ func paramsFromContext(cctx *cli.Context) (*params, error) {
 func getStartEndTime(cctx *cli.Context) (*time.Time, *time.Time, error) {
 	var start, end *time.Time
 	if cctx.IsSet(startFlag.Name) {
-		t, err := time.Parse("2006-01-02 15:04:05", cctx.String(startFlag.Name))
+		t, err := time.Parse("2006-01-02", cctx.String(startFlag.Name))
 		if err != nil {
 			return nil, nil, err
 		}
 		start = &t
 	}
 	if cctx.IsSet(endFlag.Name) {
-		t, err := time.Parse("2006-01-02 15:04:05", cctx.String(endFlag.Name))
+		t, err := time.Parse("2006-01-02", cctx.String(endFlag.Name))
 		if err != nil {
 			return nil, nil, err
 		}
