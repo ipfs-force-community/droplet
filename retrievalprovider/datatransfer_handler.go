@@ -86,8 +86,11 @@ func (d *DataTransferHandler) HandleCancelForDeal(ctx context.Context, identifie
 		if deal.Status != rm.DealStatusFailing {
 			deal.Message = "Client cancelled retrieval"
 		}
+		if err := d.retrievalDealHandler.CancelDeal(ctx, deal); err != nil {
+			return err
+		}
 	}
-	return d.retrievalDealStore.SaveDeal(ctx, deal)
+	return nil
 }
 
 func (d *DataTransferHandler) HandleErrorForDeal(ctx context.Context, identifier rm.ProviderDealIdentifier, errIn error) error {
