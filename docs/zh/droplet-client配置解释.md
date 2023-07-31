@@ -2,8 +2,7 @@
 
 `droplet-client` 的一份典型的配置如下
 
-```
-
+```toml
 SimultaneousTransfersForRetrieval = 20
 SimultaneousTransfersForStorage = 20
 
@@ -40,7 +39,7 @@ SimultaneousTransfersForStorage = 20
 
 其中，可以分成三个部分： `client` 网络配置，`venus` 服务组件的配置和 其他配置
 
-## Droplet Client 网络配置
+## 网络配置
 
 这部分的配置决定了 `venus client` 和外界交互的接口
 
@@ -84,8 +83,6 @@ NoAnnounceAddresses = []
 PrivateKey = "08011240ae580daabbe087007d2b4db4e880af10d582215d2272669a94c49c854f36f99c35"
 ```
 
-
-
 ## venus 组件服务配置
 
 当 `droplet-client` 接入 `venus` 组件使用时，需要配置相关组件的 `API`。
@@ -104,7 +101,6 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 
 ```
 
-
 ### [Messager]
 
 `venus` 消息服务接入配置
@@ -120,7 +116,6 @@ Url = "/ip4/192.168.200.128/tcp/39812/"
 Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
 ```
 
-
 ### [Signer]
 
 `venus` 提供签名服务的组件
@@ -129,7 +124,7 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 ```
 [Signer]
 # 签名服务组件的类型
-# 字符串类型，只能是"wallet"
+# 字符串类型，"wallet"或者"lotusnode"两种类型
 Type = "wallet"
 
 # 签名服务入口
@@ -140,7 +135,6 @@ Url = "/ip4/192.168.200.128/tcp/5678/"
 # 字符串类型，必选
 Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsInBlcm0iOiJhZG1pbiIsImV4dCI6IiJ9.PuzEy1TlAjjNiSUu_tbHi2XPUritDLm9Xf5UW3MHRe8"
 ```
-
 
 ## 其他配置
 
