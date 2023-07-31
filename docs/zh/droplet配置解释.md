@@ -9,7 +9,7 @@
 
 - 包括：同步节点，消息节点，签名节点及授权节点。
 
-```yuml
+```toml
 [Node]
   Url = "/ip4/192.168.200.21/tcp/3453"
   Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiemwiLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.3u-PInSUmX-8f6Z971M7JBCHYgFVQrvwUjJfFY03ouQ"
@@ -426,7 +426,7 @@ Timeout = "30s"
 
 #### [Libp2p]
 
-Droplet 在P2P网络中通信时使用的 通信地址
+droplet 在P2P网络中通信时使用的 通信地址
 ```
 [Libp2p]
 # 监听的网络地址
@@ -588,7 +588,7 @@ Account = ""
 
 ### 数据库配置
 
-Droplet 运行过程中产生的数据的存储数据库的设置
+droplet 运行过程中产生的数据的存储数据库的设置
 目前支持BadgerDB和MySQLDB，默认使用BadgerDB
 
 #### [Mysql]

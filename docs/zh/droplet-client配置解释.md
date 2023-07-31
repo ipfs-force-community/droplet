@@ -1,4 +1,4 @@
-# Droplet Client 配置解释
+# droplet-client 配置解释
 
 `droplet-client` 的一份典型的配置如下
 
