@@ -47,7 +47,7 @@ func (s *Server) RetrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	pieceCIDStr := pieceCID.String()
 	log := log.With("piece cid", pieceCIDStr)
-	log.Info("start retrieval deal")
+	log.Infof("start retrieval deal, Range: %s", r.Header.Get("Range"))
 	store, err := s.pieceMgr.FindStorageForRead(ctx, pieceCIDStr)
 	if err != nil {
 		log.Warn(err)
@@ -117,9 +117,11 @@ func serveContent(w http.ResponseWriter, r *http.Request, content io.ReadSeeker,
 
 	// Write a line to the log
 	end := time.Now()
+	total, count := writeErrWatcher.total, writeErrWatcher.count
+	avg := total / count
 	completeMsg := fmt.Sprintf("GET %s\t%s - %s: %s / %s transferred",
 		r.URL, end.Format(time.RFC3339), start.Format(time.RFC3339), time.Since(start),
-		fmt.Sprintf("%s (%d B)", types.SizeStr(types.NewInt(writeErrWatcher.count)), writeErrWatcher.count))
+		fmt.Sprintf("total %s (%d B), average write %s ", types.SizeStr(types.NewInt(total)), total, types.SizeStr(types.NewInt(avg))))
 	if isGzipped {
 		completeMsg += " (gzipped)"
 	}
@@ -153,15 +155,16 @@ func badResponse(w http.ResponseWriter, code int, err error) {
 // writeErrorWatcher calls onError if there is an error writing to the writer
 type writeErrorWatcher struct {
 	http.ResponseWriter
-	count   uint64
-	onError func(err error)
+	total, count uint64
+	onError      func(err error)
 }
 
 func (w *writeErrorWatcher) Write(bz []byte) (int, error) {
-	count, err := w.ResponseWriter.Write(bz)
+	n, err := w.ResponseWriter.Write(bz)
 	if err != nil {
 		w.onError(err)
 	}
-	w.count += uint64(count)
-	return count, err
+	w.total += uint64(n)
+	w.count++
+	return n, err
 }
