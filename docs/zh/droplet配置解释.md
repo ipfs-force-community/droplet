@@ -1,13 +1,127 @@
 # droplet 的配置解释
 
-一份典型的 `droplet` 的配置是这样的:
+
+### 常用配置项说明
+
+这里我们对比较常用的配置项进行说明。
+
+#### 链服务配置
+
+- 包括：同步节点，消息节点，签名节点及授权节点。
+
+```toml
+[Node]
+  Url = "/ip4/192.168.200.21/tcp/3453"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiemwiLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.3u-PInSUmX-8f6Z971M7JBCHYgFVQrvwUjJfFY03ouQ"
+[Messager]
+  Url = "/ip4/192.168.200.21/tcp/39812"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiemwiLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.3u-PInSUmX-8f6Z971M7JBCHYgFVQrvwUjJfFY03ouQ"
+[Signer]
+  Type = "gateway"
+  Url = "/ip4/192.168.200.21/tcp/45132"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiemwiLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.3u-PInSUmX-8f6Z971M7JBCHYgFVQrvwUjJfFY03ouQ"
+[AuthNode]
+  Url = "http://192.168.200.21:8989"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiemwiLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.3u-PInSUmX-8f6Z971M7JBCHYgFVQrvwUjJfFY03ouQ"
 ```
 
+#### `API` 监听配置
+
+`droplet` 默认监听端口为 `127.0.0.1:41235`, 为了支持不同网络的访问请求, 需要修改`API`的监听地址:
+
+```yuml
+[API]
+ListenAddress = "/ip4/0.0.0.0/tcp/41235"
+```
+
+#### `PublishMsgPeriod` 配置
+
+`droplet` 在收到 `droplet-client` 的订单时, 并不会马上就发布 `ClientDealProposal` 消息,会等待一定的时间, 由配置文件中的 `PublishMsgPeriod` 项来控制，在测试时可以将此项设置为较小值减少等待时间。下面的设置，将等待时间设置为10秒。
+
+```yuml
+PublishMsgPeriod = "10s"
+```
+
+#### `PieceStorage` 配置
+
+目前 `droplet` 支持两种 `Piece` 数据的存储模式：
+- 文件系统
+- 对象存储
+
+```yuml
+[PieceStorage]
+  [[PieceStorage.Fs]]
+    Name = "local"
+    Enable = true
+    Path = "/mnt/pieces"
+  [[PieceStorage.S3]]
+    Name = "oss"
+    Enable = false
+    EndPoint = ""
+    AccessKey = ""
+    SecretKey = ""
+    Token = ""
+```
+
+也可以通过命令配置，命令设置不需要重启进程。命令设置后会更新配置文件：
+
+```bash
+# 本地文件系统存储
+./droplet piece-storage add-fs --path="/piece/storage/path" --name="local"
+
+# 对象存储
+./droplet piece-storage add-s3 --endpoint=<url> --name="oss"
+```
+
+#### `Miners` 配置
+
+`droplet` 服务的矿工及每个矿工的参数，配置如下：
+
+```
+[[Miners]]
+  Addr = "f01000"
+  Account = "testuser01"
+  
+  ConsiderOnlineStorageDeals = true
+  ConsiderOfflineStorageDeals = true
+  ConsiderOnlineRetrievalDeals = true
+  ConsiderOfflineRetrievalDeals = true
+  ConsiderVerifiedStorageDeals = true
+  ConsiderUnverifiedStorageDeals = true
+  PieceCidBlocklist = []
+  ExpectedSealDuration = "24h0m0s"
+  MaxDealStartDelay = "336h0m0s"
+  PublishMsgPeriod = "1h0m0s"
+  MaxDealsPerPublishMsg = 8
+  MaxProviderCollateralMultiplier = 2
+  Filter = ""
+  RetrievalFilter = ""
+  TransferPath = ""
+  MaxPublishDealsFee = "0 FIL"
+  MaxMarketBalanceAddFee = "0 FIL"
+  [CommonProviderConfig.RetrievalPricing]
+    Strategy = "default"
+    [CommonProviderConfig.RetrievalPricing.Default]
+      VerifiedDealsFreeTransfer = true
+    [CommonProviderConfig.RetrievalPricing.External]
+      Path = ""
+    [CommonProviderConfig.AddressConfig]
+      DisableWorkerFallback = false
+```
+
+:::tip
+
+如果有多个矿工，将上述配置拷贝一份即可。***如果矿工比较多，那配置文件会很长，后续会考虑优化***
+
+:::
+
+
+### 一份典型的 `droplet` 全量配置
+```
 # ****** 数据传输参数配置 ********
 SimultaneousTransfersForStorage = 20
 SimultaneousTransfersForStoragePerClient = 20
 SimultaneousTransfersForRetrieval = 20
-
 
 # ****** 全局基础参数配置 ********
 [CommonProvider]
@@ -38,7 +152,7 @@ SimultaneousTransfersForRetrieval = 20
       Path = ""
     
 
-每个矿工可以有独立的基础参数，没有配置时使用全局配置，配置方式如下：
+# 每个矿工可以有独立的基础参数，没有配置时使用全局配置，配置方式如下：
 
 # ****** miner基础参数配置 ********
 [[Miners]]
@@ -103,8 +217,6 @@ SimultaneousTransfersForRetrieval = 20
   Url = "http://127.0.0.1:8989"
   Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdC11c2VyMDEiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.ETjNy3HMDS3ScZ3cax9xYb6AopNWYp4y71lZGCvYxMg"
 
-
-
 #  ******** 数据库设置 ********
 [Mysql]
 ConnectionString = ""
@@ -112,7 +224,6 @@ MaxOpenConn = 100
 MaxIdleConn = 100
 ConnMaxLifeTime = "1m"
 Debug = false
-
 
 # ******** 扇区存储设置 ********
 [PieceStorage]
@@ -123,14 +234,11 @@ Name = "local"
 ReadOnly = false
 Path = "./.vscode/test"
 
-
 # ******** 日志设置 ********
 [Journal]
 Path = "journal"
 
-
 # ******** DAG存储设置 ********
-
 [DAGStore]
 RootDir = "/root/.droplet/dagstore"
 MaxConcurrentIndex = 5
@@ -141,12 +249,8 @@ Transient = ""
 Index = ""
 UseTransient = false
 
-
 # ******** 数据检索配置 ********
-
 RetrievalPaymentAddress = ""
-
-
 
 # ****** Metric 配置 ********
 [Metrics]
@@ -164,12 +268,12 @@ RetrievalPaymentAddress = ""
       Host = "127.0.0.1"
       Port = 4568
       ReportingPeriod = "10s"
-
 ```
 
 接下来，将这个配置分成基础参数，网络配置，Venus组件配置等多个部分进行讲解
 
-## 数据传输参数配置
+## 全量配置说明
+### 数据传输参数配置
 ```
 # 存储订单的最大同时传输数目
 # 整数类型 默认为：20
@@ -184,7 +288,7 @@ SimultaneousTransfersForStoragePerClient = 20
 SimultaneousTransfersForRetrieval = 20
 ```
 
-## 基础参数配置
+### 基础参数配置
 
 这部分的配置主要是决定了了 `droplet` 在进行工作时的偏好，满足定制化的需求，其中各项配置的作用如下：
 
@@ -296,11 +400,11 @@ Addr = ""
 Account =""
 ```
 
-## droplet  网络配置
+### droplet  网络配置
 
 这部分的配置决定了 droplet 和外界交互的接口
 
-### [API]
+#### [API]
 droplet 对外提供服务的接口
 
 ```
@@ -320,9 +424,9 @@ Secret = "878f9c1f88c6f68ee7be17e5f0848c9312897b5d22ff7d89ca386ed0a583da3c"
 Timeout = "30s"
 ```
 
-### [Libp2p]
+#### [Libp2p]
 
-Droplet 在P2P网络中通信时使用的 通信地址
+droplet 在P2P网络中通信时使用的 通信地址
 ```
 [Libp2p]
 # 监听的网络地址
@@ -340,11 +444,11 @@ NoAnnounceAddresses = []
 PrivateKey = "08011240ae580daabbe087007d2b4db4e880af10d582215d2272669a94c49c854f36f99c35"
 ```
 
-## venus 组件服务配置
+### venus 组件服务配置
 
 当 `droplet` 接入venus组件使用时，需要配置相关组件的API。
 
-### [Node]
+#### [Node]
 venus链服务接入配置
 ```
 [Node]
@@ -359,7 +463,7 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 ```
 
 
-### [Messager]
+#### [Messager]
 
 venus 消息服务接入配置
 
@@ -375,7 +479,7 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 ```
 
 
-### [Signer]
+#### [Signer]
 
 venus 提供签名服务的组件，它可以由两种类型：由venus-wallet直接提供的签名服务和由sophon-gateway提供的间接签名服务
 
@@ -395,7 +499,7 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 ```
 
 
-### [AuthNode]
+#### [AuthNode]
 
 venus 提供鉴权服务接入配置
 ```
@@ -411,17 +515,17 @@ Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZm9yY2VuZXQtbnYxNiIsIn
 ```
 
 
-## 矿工配置
+### 矿工配置
 
 预置矿工信息
 ```
 [[Miners]]
 # 矿工的地址
 # 字符串类型 必选
-Addr =""
+Addr ="f01000"
 
-# 账户名
-# 字符串类型 必选
+# 账户名，可以随意设定
+# 字符串类型 可选
 Account = ""
 
 # 基础参数，见上文
@@ -482,12 +586,12 @@ Account = ""
 :::
 
 
-## 数据库配置
+### 数据库配置
 
-Droplet 运行过程中产生的数据的存储数据库的设置
+droplet 运行过程中产生的数据的存储数据库的设置
 目前支持BadgerDB和MySQLDB，默认使用BadgerDB
 
-### [Mysql]
+#### [Mysql]
 
 MySQLDB的配置
 ```
@@ -515,15 +619,15 @@ ConnMaxLifeTime = "1m"
 Debug = false
 ```
 
-##  扇区存储配置
+###  扇区存储配置
 
 配置 `droplet` 导入数据后生成的扇区的存储空间
 支持使用两种类型的数据存储方式： 文件系统存储和对象存储
 
-### [[PieceStorage.Fs]]
+#### [[PieceStorage.Fs]]
 
 配置本地文件系统作为扇区存储
-对于大量数据的扇区，建议挂载和`sophon-cluster`共用的文件系统进行配置 
+对于大量数据的扇区，建议挂载和`Damocles`共用的文件系统进行配置 
 
 ```
 [PieceStorage]
@@ -576,7 +680,7 @@ Token = ""
 ```
 
 
-## 日志设置
+### 日志设置
 配置 `droplet` 使用过程中，产生日志存储的位置
 
 ```
@@ -588,7 +692,7 @@ Path = "journal"
 ```
 
 
-## DAG存储设置
+### DAG存储设置
 
 DAG 数据存储的配置
 
@@ -630,8 +734,7 @@ Index = ""
 UseTransient = false
 ```
 
-
-## 数据检索
+### 数据检索
 
 获取订单中存储的扇区数据时的相关配置
 
@@ -641,7 +744,7 @@ UseTransient = false
 RetrievalPaymentAddress = ""
 ```
 
-## Metric 配置
+### Metric 配置
 
 配置 Metric 相关的参数
 
