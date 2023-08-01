@@ -69,6 +69,10 @@ part statuses:
 			Name:  "discard-failed",
 			Usage: "filter errored deal",
 		},
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
@@ -101,12 +105,15 @@ part statuses:
 
 		for _, deal := range deals {
 			payloadCid := deal.PayloadCID.String()
+			if !cctx.Bool("verbose") {
+				payloadCid = "..." + payloadCid[len(payloadCid)-8:]
+			}
 
 			_, _ = fmt.Fprintf(w,
 				"%s\t%d\t%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
 				deal.Receiver.String(),
 				deal.ID,
-				"..."+payloadCid[len(payloadCid)-8:],
+				payloadCid,
 				retrievalmarket.DealStatuses[deal.Status],
 				deal.PricePerByte.String(),
 				deal.TotalSent,
