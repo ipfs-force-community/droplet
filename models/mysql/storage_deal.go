@@ -509,6 +509,9 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageD
 	if params.State != nil {
 		query.Where("state = ?", params.State)
 	}
+	if len(params.PieceCID) != 0 {
+		query.Where("cdp_piece_cid = ?", params.PieceCID)
+	}
 	if discardFailedDeal {
 		states := []storagemarket.StorageDealStatus{storagemarket.StorageDealFailing,
 			storagemarket.StorageDealExpired, storagemarket.StorageDealError, storagemarket.StorageDealSlashed}

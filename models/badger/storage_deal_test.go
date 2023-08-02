@@ -299,6 +299,7 @@ func TestListDeal(t *testing.T) {
 	ctx, r, dealCases := prepareStorageDealTest(t)
 
 	peers := []peer.ID{peer.ID("1"), peer.ID("2")}
+	byPiece := make(map[string]int)
 	miner := []address.Address{dealCases[0].Proposal.Provider, testutil.AddressProvider()(t)}
 	states := []storagemarket.StorageDealStatus{
 		storagemarket.StorageDealAcceptWait,
@@ -315,6 +316,7 @@ func TestListDeal(t *testing.T) {
 		deal.State = states[i%4]
 		err := r.SaveDeal(ctx, &deal)
 		assert.NoError(t, err)
+		byPiece[deal.Proposal.PieceCID.String()]++
 	}
 
 	// refresh UpdatedAt and CreationTime
@@ -388,6 +390,19 @@ func TestListDeal(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Len(t, deals, 2)
+
+	// test piece
+	for piece, count := range byPiece {
+		deals, err = r.ListDeal(ctx, &markettypes.StorageDealQueryParams{
+			Page: markettypes.Page{
+				Limit: 100,
+			},
+			PieceCID: piece,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, deals, count)
+	}
+
 }
 
 func TestGetStoragePieceInfo(t *testing.T) {
