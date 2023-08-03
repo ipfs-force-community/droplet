@@ -271,7 +271,10 @@ func runDaemon(cctx *cli.Context) error {
 	if err = router.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorageMgr)).GetError(); err != nil {
 		return fmt.Errorf("handle 'resource' failed: %w", err)
 	}
-	httpRetrievalServer := httpretrieval.NewServer(resAPI.PieceStorageMgr)
+	httpRetrievalServer, err := httpretrieval.NewServer(resAPI.PieceStorageMgr, resAPI)
+	if err != nil {
+		return err
+	}
 
 	var iMarket marketapiV1.IMarketStruct
 	permission.PermissionProxy(marketapiV1.IMarket(resAPI), &iMarket)

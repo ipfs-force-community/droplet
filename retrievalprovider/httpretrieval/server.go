@@ -1,6 +1,7 @@
 package httpretrieval
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,7 +9,10 @@ import (
 	"time"
 
 	"github.com/NYTimes/gziphandler"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	marketAPI "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	marketTypes "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -19,10 +23,11 @@ var log = logging.Logger("httpserver")
 
 type Server struct {
 	pieceMgr *piecestorage.PieceStorageManager
+	api      marketAPI.IMarket
 }
 
-func NewServer(pieceMgr *piecestorage.PieceStorageManager) *Server {
-	return &Server{pieceMgr: pieceMgr}
+func NewServer(pieceMgr *piecestorage.PieceStorageManager, api marketAPI.IMarket) (*Server, error) {
+	return &Server{pieceMgr: pieceMgr, api: api}, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -41,9 +46,20 @@ func (s *Server) RetrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 	pieceCIDStr := pieceCID.String()
 	log := log.With("piece cid", pieceCIDStr)
 	log.Infof("start retrieval deal, Range: %s", r.Header.Get("Range"))
+
+	_, err = s.listDealsByPiece(ctx, pieceCIDStr)
+	if err != nil {
+		log.Warn(err)
+		badResponse(w, http.StatusNotFound, err)
+		return
+	}
+
 	store, err := s.pieceMgr.FindStorageForRead(ctx, pieceCIDStr)
 	if err != nil {
 		log.Warn(err)
+		// if errors.Is(err, piecestorage.ErrorNotFoundForRead) {
+		// todo: unseal data
+		// }
 		badResponse(w, http.StatusNotFound, err)
 		return
 	}
@@ -65,6 +81,24 @@ func (s *Server) RetrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 
 	serveContent(w, r, mountReader, log)
 	log.Info("end retrieval deal")
+}
+
+func (s *Server) listDealsByPiece(ctx context.Context, piece string) ([]marketTypes.MinerDeal, error) {
+	activeState := storagemarket.StorageDealActive
+	p := &marketTypes.StorageDealQueryParams{
+		PieceCID: piece,
+		Page:     marketTypes.Page{Limit: 100},
+		State:    &activeState,
+	}
+	deals, err := s.api.MarketListIncompleteDeals(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	if len(deals) == 0 {
+		return nil, fmt.Errorf("not found deal")
+	}
+
+	return deals, nil
 }
 
 func serveContent(w http.ResponseWriter, r *http.Request, content io.ReadSeeker, log *zap.SugaredLogger) {
