@@ -2,8 +2,11 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/ipfs-force-community/metrics"
+	"github.com/multiformats/go-multiaddr"
+	maNet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
@@ -146,10 +149,12 @@ type MarketConfig struct {
 	// The maximum number of parallel online data transfers for retrieval deals
 	SimultaneousTransfersForRetrieval uint64
 
-	Node     Node
-	Messager Messager
+	ChainService *ChainService
+
+	Node     *Node
+	Messager *Messager
+	AuthNode *AuthNode
 	Signer   Signer
-	AuthNode AuthNode
 
 	Mysql Mysql
 
@@ -161,6 +166,66 @@ type MarketConfig struct {
 
 	Journal Journal
 	Metrics metrics.MetricsConfig
+}
+
+func (m *MarketConfig) GetNode() *Node {
+	ret := &Node{}
+	if m.Node != nil {
+		ret = m.Node
+	}
+	chainService := ChainService{}
+	if m.ChainService != nil {
+		chainService = *m.ChainService
+	}
+	if ret.Url == "" && chainService.Url != "" {
+		ret.Url = chainService.Url
+	}
+	if ret.Token == "" && chainService.Token != "" {
+		ret.Token = chainService.Token
+	}
+	return ret
+}
+
+func (m *MarketConfig) GetMessager() *Messager {
+	ret := &Messager{}
+	if m.Messager != nil {
+		ret = m.Messager
+	}
+	chainService := ChainService{}
+	if m.ChainService != nil {
+		chainService = *m.ChainService
+	}
+	if ret.Url == "" && chainService.Url != "" {
+		ret.Url = chainService.Url
+	}
+	if ret.Token == "" && chainService.Token != "" {
+		ret.Token = chainService.Token
+	}
+	return ret
+}
+
+func (m *MarketConfig) GetAuthNode() *AuthNode {
+	ret := &AuthNode{}
+	if m.AuthNode != nil {
+		ret = m.AuthNode
+	}
+	chainService := ChainService{}
+	if m.ChainService != nil {
+		chainService = *m.ChainService
+	}
+	if ret.Url == "" && chainService.Url != "" {
+		// transfer chainService.Url to AuthNode.Url
+		u, err := ParseAddr(chainService.Url)
+		if err != nil {
+			panic(fmt.Errorf("parse chainService.Url %s fail %w", chainService.Url, err))
+		}
+		ret.Url = u
+	}
+
+	if ret.Token == "" && chainService.Token != "" {
+		ret.Token = chainService.Token
+	}
+	return ret
 }
 
 func (m *MarketConfig) RemovePieceStorage(name string) error {
@@ -283,4 +348,53 @@ func (m *MarketConfig) SetMinerProviderConfig(mAddr address.Address, pCfg *Provi
 			}
 		}
 	}
+}
+
+// ParseAddr parse a multi addr to a traditional url ( with http scheme as default)
+func ParseAddr(addr string) (string, error) {
+	ret := addr
+	ma, err := multiaddr.NewMultiaddr(addr)
+	if err == nil {
+		_, addr, err := maNet.DialArgs(ma)
+		if err != nil {
+			return "", fmt.Errorf("parser libp2p url fail %w", err)
+		}
+
+		ret = "http://" + addr
+
+		_, err = ma.ValueForProtocol(multiaddr.P_WSS)
+		if err == nil {
+			ret = "wss://" + addr
+		} else if err != multiaddr.ErrProtocolNotFound {
+			return "", err
+		}
+
+		_, err = ma.ValueForProtocol(multiaddr.P_HTTPS)
+		if err == nil {
+			ret = "https://" + addr
+		} else if err != multiaddr.ErrProtocolNotFound {
+			return "", err
+		}
+
+		_, err = ma.ValueForProtocol(multiaddr.P_WS)
+		if err == nil {
+			ret = "ws://" + addr
+		} else if err != multiaddr.ErrProtocolNotFound {
+			return "", err
+		}
+
+		_, err = ma.ValueForProtocol(multiaddr.P_HTTP)
+		if err == nil {
+			ret = "http://" + addr
+		} else if err != multiaddr.ErrProtocolNotFound {
+			return "", err
+		}
+	}
+
+	_, err = url.Parse(ret)
+	if err != nil {
+		return "", fmt.Errorf("parser address fail %w", err)
+	}
+
+	return ret, nil
 }

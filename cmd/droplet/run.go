@@ -43,11 +43,12 @@ var runCmd = &cli.Command{
 	Usage: "Run the market daemon",
 	Flags: []cli.Flag{
 		APIListenFlag,
+		ChainServiceTokenFlag,
+		ChainServiceUrlFlag,
 		NodeUrlFlag,
 		AuthUrlFlag,
 		MessagerUrlFlag,
 		GatewayUrlFlag,
-		ChainServiceTokenFlag,
 		SignerTypeFlag,
 		SignerUrlFlag,
 		SignerTokenFlag,
@@ -62,23 +63,41 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 	}
 
 	if cctx.IsSet(NodeUrlFlag.Name) {
+		if cfg.Node == nil {
+			cfg.Node = &config.Node{}
+		}
+
 		cfg.Node.Url = cctx.String(NodeUrlFlag.Name)
 	}
 
 	if cctx.IsSet(AuthUrlFlag.Name) {
+		if cfg.AuthNode == nil {
+			cfg.AuthNode = &config.AuthNode{}
+		}
 		cfg.AuthNode.Url = cctx.String(AuthUrlFlag.Name)
 	}
 
 	if cctx.IsSet(MessagerUrlFlag.Name) {
+		if cfg.Messager == nil {
+			cfg.Messager = &config.Messager{}
+		}
 		cfg.Messager.Url = cctx.String(MessagerUrlFlag.Name)
 	}
 
 	// chain service token
 	if cctx.IsSet(ChainServiceTokenFlag.Name) {
+		if cfg.ChainService == nil {
+			cfg.ChainService = &config.ChainService{}
+		}
 		csToken := cctx.String(ChainServiceTokenFlag.Name)
-		cfg.Node.Token = csToken
-		cfg.Messager.Token = csToken
-		cfg.AuthNode.Token = csToken
+		cfg.ChainService.Token = csToken
+	}
+
+	if cctx.IsSet(ChainServiceUrlFlag.Name) {
+		if cfg.ChainService == nil {
+			cfg.ChainService = &config.ChainService{}
+		}
+		cfg.ChainService.Url = cctx.String(ChainServiceUrlFlag.Name)
 	}
 
 	if cctx.IsSet(SignerTypeFlag.Name) {
@@ -107,6 +126,9 @@ func flagData(cctx *cli.Context, cfg *config.MarketConfig) error {
 
 			if cctx.IsSet(ChainServiceTokenFlag.Name) {
 				cfg.Signer.Token = cctx.String(ChainServiceTokenFlag.Name)
+				if cfg.AuthNode == nil {
+					cfg.AuthNode = &config.AuthNode{}
+				}
 				cfg.AuthNode.Token = cctx.String(ChainServiceTokenFlag.Name)
 			}
 		default:
@@ -166,7 +188,7 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 		return nil, err
 	}
 
-	return cfg, cmd.FetchAndLoadBundles(cctx.Context, cfg.Node)
+	return cfg, cmd.FetchAndLoadBundles(cctx.Context, *cfg.GetNode())
 }
 
 func runDaemon(cctx *cli.Context) error {
@@ -185,11 +207,12 @@ func runDaemon(cctx *cli.Context) error {
 
 	// 'NewAuthClient' never returns an error, no needs to check
 	var authClient *jwtclient.AuthClient
-	if len(cfg.AuthNode.Url) != 0 {
-		if len(cfg.AuthNode.Token) == 0 {
+	authNode := cfg.GetAuthNode()
+	if len(authNode.Url) != 0 {
+		if len(authNode.Token) == 0 {
 			return fmt.Errorf("the auth node token must be configured if auth node url is configured")
 		}
-		authClient, _ = jwtclient.NewAuthClient(cfg.AuthNode.Url, cfg.AuthNode.Token)
+		authClient, _ = jwtclient.NewAuthClient(authNode.Url, authNode.Token)
 	}
 
 	var iAuthClient jwtclient.IAuthClient = authClient
@@ -219,7 +242,7 @@ func runDaemon(cctx *cli.Context) error {
 		minermgr.MinerMgrOpts(),
 
 		// clients
-		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, iAuthClient),
+		clients.ClientsOpts(true, cfg.GetMessager(), &cfg.Signer, authClient),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),
 		piecestorage.PieceStorageOpts(&cfg.PieceStorage),

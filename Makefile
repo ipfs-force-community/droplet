@@ -74,10 +74,11 @@ index: $(BUILD_DEPS)
 	rm -f index-tool
 	go build -o ./index-tool $(GOFLAGS) ./tools/index
 
-add-debug-flag:
-GOFLAGS+=-gcflags="all=-N -l"
-
-debug: add-debug-flag build
+debug: $(BUILD_DEPS)
+	rm -f droplet-client
+	rm -f droplet
+	go build -o ./droplet-client $(GOFLAGS) -gcflags="all=-N -l" ./cmd/droplet-client
+	go build -o ./droplet $(GOFLAGS) -gcflags="all=-N -l" ./cmd/droplet
 
 # docker
 .PHONY: docker

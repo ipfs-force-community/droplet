@@ -62,6 +62,11 @@ var (
 		Usage: "chain service token",
 	}
 
+	ChainServiceUrlFlag = &cli.StringFlag{
+		Name:  "cs-url",
+		Usage: "chain service url",
+	}
+
 	SignerTypeFlag = &cli.StringFlag{
 		Name:  "signer-type",
 		Usage: "signer service type(lotusnode, wallet, gateway)",
