@@ -63,14 +63,14 @@ var retrievalFindCmd = &cli.Command{
 
 		// Check if we already have this data locally
 
-		has, err := api.ClientHasLocal(ctx, file)
-		if err != nil {
-			return err
-		}
+		// has, err := api.ClientHasLocal(ctx, file)
+		// if err != nil {
+		// 	return err
+		// }
 
-		if has {
-			fmt.Println("LOCAL")
-		}
+		// if has {
+		// 	fmt.Println("LOCAL")
+		// }
 
 		var pieceCid *cid.Cid
 		if cctx.String("pieceCid") != "" {
