@@ -192,12 +192,16 @@ func runDaemon(cctx *cli.Context) error {
 		authClient, _ = jwtclient.NewAuthClient(cfg.AuthNode.Url, cfg.AuthNode.Token)
 	}
 
+	var iAuthClient jwtclient.IAuthClient = authClient
+	if authClient == nil {
+		iAuthClient = &models.IAuthClientStub{}
+	}
+
 	resAPI := &impl.MarketNodeImpl{}
 	shutdownChan := make(chan struct{})
 	closeFunc, err := builder.New(ctx,
 		// defaults
-		builder.Override(new(*jwtclient.AuthClient), authClient),
-		builder.Override(new(jwtclient.IAuthClient), authClient),
+		builder.Override(new(jwtclient.IAuthClient), iAuthClient),
 		builder.Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		builder.Override(new(journal.Journal), func(lc fx.Lifecycle, home config.IHome, disabled journal.DisabledEvents) (journal.Journal, error) {
 			return journal.OpenFilesystemJournal(lc, home.MustHomePath(), "droplet", disabled)
@@ -215,7 +219,7 @@ func runDaemon(cctx *cli.Context) error {
 		minermgr.MinerMgrOpts(),
 
 		// clients
-		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, authClient),
+		clients.ClientsOpts(true, &cfg.Messager, &cfg.Signer, iAuthClient),
 		models.DBOptions(true, &cfg.Mysql),
 		network.NetworkOpts(true, cfg.SimultaneousTransfersForRetrieval, cfg.SimultaneousTransfersForStoragePerClient, cfg.SimultaneousTransfersForStorage),
 		piecestorage.PieceStorageOpts(&cfg.PieceStorage),
