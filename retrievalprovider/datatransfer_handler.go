@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 )
@@ -15,6 +15,7 @@ type IDatatransferHandler interface {
 	HandleCompleteFor(context.Context, rm.ProviderDealIdentifier) error
 	HandleAcceptFor(context.Context, rm.ProviderDealIdentifier, datatransfer.ChannelID) error
 	HandleDisconnectFor(context.Context, rm.ProviderDealIdentifier, error) error
+	UpdateFunding(ctx context.Context, identifier rm.ProviderDealIdentifier) error
 
 	HandleCancelForDeal(context.Context, rm.ProviderDealIdentifier) error
 	HandleErrorForDeal(context.Context, rm.ProviderDealIdentifier, error) error
@@ -72,6 +73,14 @@ func (d *DataTransferHandler) HandleDisconnectFor(ctx context.Context, identifie
 		return err
 	}
 	return d.retrievalDealHandler.Error(ctx, deal, errIn)
+}
+
+func (d *DataTransferHandler) UpdateFunding(ctx context.Context, identifier rm.ProviderDealIdentifier) error {
+	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
+	if err != nil {
+		return err
+	}
+	return d.retrievalDealHandler.UpdateFunding(ctx, deal)
 }
 
 func (d *DataTransferHandler) HandleCancelForDeal(ctx context.Context, identifier rm.ProviderDealIdentifier) error {

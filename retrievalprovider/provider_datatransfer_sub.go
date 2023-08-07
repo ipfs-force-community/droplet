@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
 )
 
 // ProviderDataTransferSubscriber is the function called when an event occurs in a data
@@ -17,9 +16,14 @@ import (
 func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Subscriber {
 	return func(event datatransfer.Event, channelState datatransfer.ChannelState) {
 		ctx := context.TODO()
-		dealProposal, ok := dealProposalFromVoucher(channelState.Voucher())
+		voucher := channelState.Voucher()
+		if voucher.Voucher == nil {
+			log.Errorf("received empty voucher")
+			return
+		}
+		dealProposal, err := rm.DealProposalFromNode(voucher.Voucher)
 		// if this event is for a transfer not related to storage, ignore
-		if !ok {
+		if err != nil {
 			return
 		}
 
@@ -51,6 +55,30 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)
 			}
+		case datatransfer.DataLimitExceeded:
+			// DataLimitExceeded indicates it's time to wait for a payment
+			mlog.With("retrievalEvent", rm.ProviderEventPaymentRequested)
+			err := deals.UpdateFunding(ctx, identify)
+			if err != nil {
+				log.Errorf("processing dt event %v: %s", datatransfer.DataLimitExceeded.String(), err)
+			}
+		case datatransfer.BeginFinalizing:
+			// BeginFinalizing indicates it's time to wait for a final payment
+			// Because the legacy client expects a final voucher, we dispatch this event event when
+			// the deal is free -- so that we have a chance to send this final voucher before completion
+			// TODO: do not send the legacy voucher when the client no longer expects it
+			mlog.With("retrievalEvent", rm.ProviderEventLastPaymentRequested)
+			err := deals.UpdateFunding(ctx, identify)
+			if err != nil {
+				log.Errorf("processing dt event %v: %s", datatransfer.BeginFinalizing.String(), err)
+			}
+		case datatransfer.NewVoucher:
+			// NewVoucher indicates a potential new payment we should attempt to process
+			mlog.With("retrievalEvent", rm.ProviderEventProcessPayment)
+			err := deals.UpdateFunding(ctx, identify)
+			if err != nil {
+				log.Errorf("processing dt event %v: %s", datatransfer.NewVoucher.String(), err)
+			}
 		case datatransfer.Cancel:
 			mlog.With("retrievalEvent", rm.ProviderEventClientCancelled)
 			err := deals.HandleCancelForDeal(ctx, identify)
@@ -62,19 +90,4 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 		}
 		mlog.Debugw("processing retrieval provider dt event")
 	}
-}
-
-func dealProposalFromVoucher(voucher datatransfer.Voucher) (*rm.DealProposal, bool) {
-	dealProposal, ok := voucher.(*rm.DealProposal)
-	// if this event is for a transfer not related to storage, ignore
-	if ok {
-		return dealProposal, true
-	}
-
-	legacyProposal, ok := voucher.(*migrations.DealProposal0)
-	if !ok {
-		return nil, false
-	}
-	newProposal := migrations.MigrateDealProposal0To1(*legacyProposal)
-	return &newProposal, true
 }

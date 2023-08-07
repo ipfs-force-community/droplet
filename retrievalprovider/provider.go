@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/dtutils"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket/migrations"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 
@@ -40,8 +39,6 @@ type RetrievalProvider struct {
 	dataTransfer     network.ProviderDataTransfer
 	network          rmnet.RetrievalMarketNetwork
 	requestValidator *ProviderRequestValidator
-	reValidator      *ProviderRevalidator
-	disableNewDeals  bool
 	dagStore         stores.DAGStoreWrapper
 	stores           *stores.ReadOnlyBlockstores
 
@@ -83,58 +80,25 @@ func NewProvider(
 		transportListener:      transportLister,
 	}
 
-	retrievalHandler := NewRetrievalDealHandler(&providerDealEnvironment{p}, retrievalDealRepo, storageDealsRepo, gatewayMarketClient, pieceStorageMgr)
+	retrievalHandler := NewRetrievalDealHandler(newProviderDealEnvironment(p, fullNode, payAPI), retrievalDealRepo, storageDealsRepo, gatewayMarketClient, pieceStorageMgr)
 	p.requestValidator = NewProviderRequestValidator(cfg, storageDealsRepo, retrievalDealRepo, retrievalAskRepo, pieceInfo, rdf)
 	transportConfigurer := dtutils.TransportConfigurer(network.ID(), &providerStoreGetter{retrievalDealRepo, p.stores})
-	p.reValidator = NewProviderRevalidator(fullNode, payAPI, retrievalDealRepo, retrievalHandler)
 
-	var err error
-	if p.disableNewDeals {
-		err = p.dataTransfer.RegisterVoucherType(&migrations.DealProposal0{}, p.requestValidator)
-		if err != nil {
-			return nil, err
-		}
-		err = p.dataTransfer.RegisterRevalidator(&migrations.DealPayment0{}, p.reValidator)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		err = p.dataTransfer.RegisterVoucherType(&retrievalmarket.DealProposal{}, p.requestValidator)
-		if err != nil {
-			return nil, err
-		}
-		err = p.dataTransfer.RegisterVoucherType(&migrations.DealProposal0{}, p.requestValidator)
-		if err != nil {
-			return nil, err
-		}
-
-		err = p.dataTransfer.RegisterRevalidator(&retrievalmarket.DealPayment{}, p.reValidator)
-		if err != nil {
-			return nil, err
-		}
-		err = p.dataTransfer.RegisterRevalidator(&migrations.DealPayment0{}, NewLegacyRevalidator(p.reValidator))
-		if err != nil {
-			return nil, err
-		}
-
-		err = p.dataTransfer.RegisterVoucherResultType(&retrievalmarket.DealResponse{})
-		if err != nil {
-			return nil, err
-		}
-
-		err = p.dataTransfer.RegisterTransportConfigurer(&retrievalmarket.DealProposal{}, transportConfigurer)
-		if err != nil {
-			return nil, err
-		}
-	}
-	err = p.dataTransfer.RegisterVoucherResultType(&migrations.DealResponse0{})
+	err := p.dataTransfer.RegisterVoucherType(retrievalmarket.DealProposalType, p.requestValidator)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dataTransfer.RegisterTransportConfigurer(&migrations.DealProposal0{}, transportConfigurer)
+
+	err = p.dataTransfer.RegisterVoucherType(retrievalmarket.DealPaymentType, p.requestValidator)
 	if err != nil {
 		return nil, err
 	}
+
+	err = p.dataTransfer.RegisterTransportConfigurer(retrievalmarket.DealProposalType, transportConfigurer)
+	if err != nil {
+		return nil, err
+	}
+
 	datatransferProcess := NewDataTransferHandler(retrievalHandler, retrievalDealRepo)
 	dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(datatransferProcess))
 	return p, nil

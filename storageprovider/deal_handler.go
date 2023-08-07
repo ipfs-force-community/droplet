@@ -89,13 +89,13 @@ func NewStorageDealProcessImpl(
 	sdf config.StorageDealFilter,
 	pb *EventPublishAdapter,
 ) (StorageDealHandler, error) {
-	err := dataTransfer.RegisterVoucherType(&requestvalidation.StorageDataTransferVoucher{}, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{deals}, nil))
+	err := dataTransfer.RegisterVoucherType(requestvalidation.StorageDataTransferVoucherType, requestvalidation.NewUnifiedRequestValidator(&providerPushDeals{deals}, nil))
 	if err != nil {
 		return nil, err
 	}
 
 	blockstores := stores.NewReadWriteBlockstores()
-	err = dataTransfer.RegisterTransportConfigurer(&requestvalidation.StorageDataTransferVoucher{}, dtutils.TransportConfigurer(newProviderStoreGetter(deals, blockstores)))
+	err = dataTransfer.RegisterTransportConfigurer(requestvalidation.StorageDataTransferVoucherType, dtutils.TransportConfigurer(newProviderStoreGetter(deals, blockstores)))
 	if err != nil {
 		return nil, err
 	}

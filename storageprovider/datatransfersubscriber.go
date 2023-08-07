@@ -6,7 +6,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 )
@@ -29,13 +29,23 @@ type IDatatransferHandler interface {
 // event or moving to error if a data transfer error occurs
 func ProviderDataTransferSubscriber(deals IDatatransferHandler, eventPublisher *EventPublishAdapter) datatransfer.Subscriber {
 	return func(event datatransfer.Event, channelState datatransfer.ChannelState) {
-		voucher, ok := channelState.Voucher().(*requestvalidation.StorageDataTransferVoucher)
-		// if this event is for a transfer not related to storage, ignore
-		if !ok {
+		node := channelState.Voucher()
+		if node.Voucher == nil {
 			log.Debugw("ignoring data-transfer event as it's not storage related", "event", datatransfer.Events[event.Code], "channelID",
 				channelState.ChannelID())
 			return
 		}
+		voucherIface, err := requestvalidation.BindnodeRegistry.TypeFromNode(node.Voucher, &requestvalidation.StorageDataTransferVoucher{})
+		// if this event is for a transfer not related to storage, ignore
+		if err != nil {
+			log.Debugw("ignoring data-transfer event as it's not storage related", "event", datatransfer.Events[event.Code], "channelID",
+				channelState.ChannelID())
+			return
+		}
+		voucher, _ := voucherIface.(*requestvalidation.StorageDataTransferVoucher) // safe to assume type
+
+		log.Debugw("processing storage provider dt event", "event", datatransfer.Events[event.Code], "proposalCid", voucher.Proposal, "channelID",
+			channelState.ChannelID(), "channelState", datatransfer.Statuses[channelState.Status()])
 
 		ctx := context.TODO()
 		log.Debugw("processing storage provider dt event", "event", datatransfer.Events[event.Code], "proposalCid", voucher.Proposal, "channelID",
@@ -52,7 +62,7 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler, eventPublisher *
 
 		// Translate from data transfer events to provider FSM events
 		// Note: We ignore data transfer progress events (they do not affect deal state)
-		err := func() error {
+		err = func() error {
 			switch event.Code {
 			case datatransfer.Cancel:
 				eventPublisher.PublishWithCid(storagemarket.ProviderEventDataTransferCancelled, voucher.Proposal)

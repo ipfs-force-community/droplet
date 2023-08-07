@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	vtypes "github.com/filecoin-project/venus/venus-shared/types"
 	gtypes "github.com/filecoin-project/venus/venus-shared/types/gateway"
 	mktypes "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -21,6 +24,7 @@ type IRetrievalHandler interface {
 	UnsealData(ctx context.Context, deal *mktypes.ProviderDealState) error
 	CancelDeal(ctx context.Context, deal *mktypes.ProviderDealState) error
 	CleanupDeal(ctx context.Context, deal *mktypes.ProviderDealState) error
+	UpdateFunding(ctx context.Context, deal *mktypes.ProviderDealState) error
 	Error(ctx context.Context, deal *mktypes.ProviderDealState, err error) error
 }
 
@@ -191,4 +195,126 @@ func (p *RetrievalDealHandler) Error(ctx context.Context, deal *mktypes.Provider
 		deal.Message = err.Error()
 	}
 	return p.retrievalDealStore.SaveDeal(ctx, deal)
+}
+
+// UpdateFunding saves payments as needed until a transfer can resume
+func (p *RetrievalDealHandler) UpdateFunding(ctx context.Context, deal *mktypes.ProviderDealState) error {
+	log.Debugf("handling new event while in ongoing state of transfer %d", deal.ID)
+	// if we have no channel ID yet, there's no need to attempt to process payment based on channel state
+	if deal.ChannelID == nil {
+		return nil
+	}
+	// read the channel state based on the channel id
+	channelState, err := p.env.ChannelState(ctx, *deal.ChannelID)
+	if err != nil {
+		return p.Error(ctx, deal, err)
+	}
+	// process funding and produce the new validation status
+	result := p.updateFunding(ctx, deal, channelState)
+	// update the validation status on the channel
+	err = p.env.UpdateValidationStatus(ctx, *deal.ChannelID, result)
+	if err != nil {
+		return p.Error(ctx, deal, err)
+	}
+	return nil
+}
+
+func (p *RetrievalDealHandler) updateFunding(ctx context.Context,
+	deal *mktypes.ProviderDealState,
+	channelState datatransfer.ChannelState,
+) datatransfer.ValidationResult {
+	// process payment, determining how many more funds we have then the current deal.FundsReceived
+	received, err := p.processLastVoucher(ctx, channelState, deal)
+	if err != nil {
+		return errorDealResponse(deal.Identifier(), err)
+	}
+
+	if received.Nil() {
+		received = big.Zero()
+	}
+
+	// calculate the current amount paid
+	totalPaid := big.Add(deal.FundsReceived, received)
+
+	// check whether money is owed based on deal parameters, total amount paid, and current state of the transfer
+	owed := deal.Params.OutstandingBalance(totalPaid, channelState.Queued(), channelState.Status().InFinalization())
+	log.Debugf("provider: owed %d, total received %d = received so far %d + newly received %d, unseal price %d, price per byte %d, bytes sent: %d, in finalization: %v",
+		owed, totalPaid, deal.FundsReceived, received, deal.UnsealPrice, deal.PricePerByte, channelState.Queued(), channelState.Status().InFinalization())
+
+	var voucherResult *rm.DealResponse
+	if owed.GreaterThan(big.Zero()) {
+		// if payment is still owed but we received funds, send a partial payment received event
+		if received.GreaterThan(big.Zero()) {
+			log.Debugf("provider: owed %d: sending partial payment request", owed)
+			deal.FundsReceived = big.Add(deal.FundsReceived, owed)
+		}
+		// sending this response voucher is primarily to cover for current client logic --
+		// our client expects a voucher requesting payment before it sends anything
+		// TODO: remove this when the client no longer expects a voucher
+		if received.GreaterThan(big.Zero()) || deal.Status != rm.DealStatusFundsNeededUnseal {
+			voucherResult = &rm.DealResponse{
+				ID:          deal.ID,
+				Status:      deal.Status,
+				PaymentOwed: owed,
+			}
+		}
+	} else {
+		// send an event to record payment received
+		deal.FundsReceived = big.Add(deal.FundsReceived, owed)
+		if deal.Status == rm.DealStatusFundsNeededLastPayment {
+			log.Debugf("provider: funds needed: last payment")
+			// sending this response voucher is primarily to cover for current client logic --
+			// our client expects a voucher announcing completion from the provider before it finishes
+			// TODO: remove this when the current no longer expects a voucher
+			voucherResult = &rm.DealResponse{
+				ID:     deal.ID,
+				Status: rm.DealStatusCompleted,
+			}
+		}
+	}
+	if err := p.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
+		log.Errorf("save deal FundsReceived failed: %v", err)
+	}
+
+	vr := datatransfer.ValidationResult{
+		Accepted:             true,
+		ForcePause:           deal.Status == rm.DealStatusUnsealing || deal.Status == rm.DealStatusFundsNeededUnseal,
+		RequiresFinalization: owed.GreaterThan(big.Zero()) || deal.Status != rm.DealStatusFundsNeededLastPayment,
+		DataLimit:            deal.Params.NextInterval(totalPaid),
+	}
+	if voucherResult != nil {
+		node := rm.BindnodeRegistry.TypeToNode(voucherResult)
+		vr.VoucherResult = &datatransfer.TypedVoucher{Voucher: node, Type: rm.DealResponseType}
+	}
+	return vr
+}
+
+func (p *RetrievalDealHandler) savePayment(ctx context.Context, payment *rm.DealPayment, deal *mktypes.ProviderDealState) (abi.TokenAmount, error) {
+	tok, _, err := p.env.GetChainHead(context.TODO())
+	if err != nil {
+		_ = p.CancelDeal(ctx, deal)
+		return big.Zero(), err
+	}
+	// Save voucher
+	received, err := p.env.SavePaymentVoucher(context.TODO(), payment.PaymentChannel, payment.PaymentVoucher, nil, big.Zero(), tok)
+	if err != nil {
+		_ = p.CancelDeal(ctx, deal)
+		return big.Zero(), fmt.Errorf("save payment voucher failed: %v", err)
+	}
+	return received, nil
+}
+
+func (p *RetrievalDealHandler) processLastVoucher(ctx context.Context, channelState datatransfer.ChannelState, deal *mktypes.ProviderDealState) (abi.TokenAmount, error) {
+	voucher := channelState.LastVoucher()
+
+	// read payment and return response if present
+	if payment, err := rm.DealPaymentFromNode(voucher.Voucher); err == nil {
+		return p.savePayment(ctx, payment, deal)
+	}
+
+	if _, err := rm.DealProposalFromNode(voucher.Voucher); err == nil {
+		return big.Zero(), nil
+	}
+
+	return big.Zero(), errors.New("wrong voucher type")
 }
