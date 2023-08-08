@@ -14,7 +14,7 @@ import (
 	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 )
 
-func NewMarketEventStream(mCtx metrics.MetricsCtx, authClient *jwtclient.AuthClient) gatewayAPIV2.IMarketEvent {
+func NewMarketEventStream(mCtx metrics.MetricsCtx, authClient jwtclient.IAuthClient) gatewayAPIV2.IMarketEvent {
 
 	marketStream := marketevent.NewMarketEventStream(mCtx, validator.NewMinerValidator(authClient), &types.RequestConfig{
 		RequestQueueSize: 30,
