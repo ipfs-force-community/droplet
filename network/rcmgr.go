@@ -32,10 +32,7 @@ func ResourceManager(lc fx.Lifecycle, homeDir *config.HomeDir) (network.Resource
 	// For every extra 1GB of memory we have available, increase our limit by 1GiB
 	defaultLimits.SystemLimitIncrease.Memory = 1 << 30
 	defaultLimitConfig := defaultLimits.AutoScale()
-	// if defaultLimitConfig.System.Memory > 4<<30 {
-	// 	// Cap our memory limit
-	// 	defaultLimitConfig.System.Memory = 4 << 30
-	// }
+
 	changes := rcmgr.PartialLimitConfig{}
 
 	if defaultLimitConfig.ToPartialLimitConfig().System.Memory > 4<<30 {

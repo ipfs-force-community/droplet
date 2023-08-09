@@ -13,7 +13,6 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/sophon-messager/models/mtypes"
 	"github.com/libp2p/go-libp2p/core/peer"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -77,11 +76,8 @@ func fromProviderDealState(deal *types.ProviderDealState) (*retrievalDeal, error
 		if err := deal.Selector.MarshalCBOR(buf); err != nil {
 			return nil, err
 		}
-		def := &cbg.Deferred{}
-		if err := def.MarshalCBOR(buf); err != nil {
-			return nil, err
-		}
-		newdeal.Selector = &def.Raw
+		bytes := buf.Bytes()
+		newdeal.Selector = &bytes
 	}
 	if deal.ChannelID != nil {
 		newdeal.ChannelID = ChannelID{

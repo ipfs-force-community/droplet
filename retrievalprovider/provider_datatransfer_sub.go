@@ -68,7 +68,7 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 			// the deal is free -- so that we have a chance to send this final voucher before completion
 			// TODO: do not send the legacy voucher when the client no longer expects it
 			mlog.With("retrievalEvent", rm.ProviderEventLastPaymentRequested)
-			err := deals.UpdateFunding(ctx, identify)
+			err := deals.HandleLastPayment(ctx, identify)
 			if err != nil {
 				log.Errorf("processing dt event %v: %s", datatransfer.BeginFinalizing.String(), err)
 			}

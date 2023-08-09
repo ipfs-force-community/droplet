@@ -246,7 +246,10 @@ func (p *RetrievalDealHandler) updateFunding(ctx context.Context,
 		// if payment is still owed but we received funds, send a partial payment received event
 		if received.GreaterThan(big.Zero()) {
 			log.Debugf("provider: owed %d: sending partial payment request", owed)
-			deal.FundsReceived = big.Add(deal.FundsReceived, owed)
+			deal.FundsReceived = big.Add(deal.FundsReceived, received)
+			if err := p.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
+				log.Errorf("save deal FundsReceived failed: %v", err)
+			}
 		}
 		// sending this response voucher is primarily to cover for current client logic --
 		// our client expects a voucher requesting payment before it sends anything
@@ -260,7 +263,10 @@ func (p *RetrievalDealHandler) updateFunding(ctx context.Context,
 		}
 	} else {
 		// send an event to record payment received
-		deal.FundsReceived = big.Add(deal.FundsReceived, owed)
+		deal.FundsReceived = big.Add(deal.FundsReceived, received)
+		if err := p.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
+			log.Errorf("save deal FundsReceived failed: %v", err)
+		}
 		if deal.Status == rm.DealStatusFundsNeededLastPayment {
 			log.Debugf("provider: funds needed: last payment")
 			// sending this response voucher is primarily to cover for current client logic --
@@ -271,9 +277,6 @@ func (p *RetrievalDealHandler) updateFunding(ctx context.Context,
 				Status: rm.DealStatusCompleted,
 			}
 		}
-	}
-	if err := p.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
-		log.Errorf("save deal FundsReceived failed: %v", err)
 	}
 
 	vr := datatransfer.ValidationResult{

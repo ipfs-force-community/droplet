@@ -63,7 +63,6 @@ func (rv *ProviderRequestValidator) ValidatePush(_ datatransfer.ChannelID, sende
 }
 
 // ValidatePull validates a pull request received from the peer that will receive data
-// func (rv *ProviderRequestValidator) ValidatePull(isRestart bool, _ datatransfer.ChannelID, receiver peer.ID, voucher datatransfer.Voucher, baseCid cid.Cid, selector ipld.Node) (datatransfer.VoucherResult, error) {
 func (rv *ProviderRequestValidator) ValidatePull(_ datatransfer.ChannelID, receiver peer.ID, voucher datamodel.Node, baseCid cid.Cid, selector datamodel.Node) (datatransfer.ValidationResult, error) {
 	ctx := context.TODO()
 	proposal, err := retrievalmarket.DealProposalFromNode(voucher)
@@ -275,6 +274,7 @@ func errorDealResponse(dealID retrievalmarket.ProviderDealIdentifier, err error)
 		Message: err.Error(),
 		Status:  retrievalmarket.DealStatusErrored,
 	}
+	log.Errorf("error proposal, id: %v, status: %v, reason: %v", dr.ID, dr.Status, dr.Message)
 	node := retrievalmarket.BindnodeRegistry.TypeToNode(&dr)
 	return datatransfer.ValidationResult{
 		Accepted:      false,
