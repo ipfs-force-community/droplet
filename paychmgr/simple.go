@@ -17,6 +17,7 @@ import (
 
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/ipfs-force-community/droplet/v2/api/clients"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 )
 
@@ -502,14 +503,18 @@ func (ca *channelAccessor) waitForAddFundsMsg(ctx context.Context, channelID str
 }
 
 func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string, mcid cid.Cid) error {
+	var failedMsg bool
 	mwait, err := ca.api.WaitMsg(ca.chctx, mcid, 1)
 	if err != nil {
-		log.Error(err)
-		return err
+		if !errors.Is(err, clients.ErrMarkFailedMessageByMessager) {
+			log.Error(err)
+			return err
+		}
+		failedMsg = true
 	}
 
-	if mwait.Receipt.ExitCode != 0 {
-		err := fmt.Errorf("voucher channel creation failed: adding funds (exit code %d)", mwait.Receipt.ExitCode)
+	updateChannelInfo := func(errInfo string) error {
+		err := fmt.Errorf("voucher channel creation failed: adding funds: msg %s, error: %s", mcid, errInfo)
 		log.Error(err)
 
 		ca.lk.Lock()
@@ -521,6 +526,16 @@ func (ca *channelAccessor) waitAddFundsMsg(ctx context.Context, channelID string
 		})
 
 		return err
+	}
+
+	if failedMsg {
+		if err := updateChannelInfo(clients.ErrMarkFailedMessageByMessager.Error()); err != nil {
+			return err
+		}
+	} else if mwait != nil && mwait.Receipt.ExitCode != 0 {
+		if err := updateChannelInfo(fmt.Sprintf("exit code %d", mwait.Receipt.ExitCode)); err != nil {
+			return err
+		}
 	}
 
 	ca.lk.Lock()

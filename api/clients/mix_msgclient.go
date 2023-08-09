@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	msgTypes "github.com/filecoin-project/venus/venus-shared/types/messager"
 )
+
+var ErrMarkFailedMessageByMessager = errors.New("mark failed message by messager")
 
 type IMixMessage interface {
 	GetMessage(ctx context.Context, mid cid.Cid) (*types.Message, error)
@@ -166,7 +169,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 				if msg.Receipt != nil {
 					reason = string(msg.Receipt.Return)
 				}
-				return nil, fmt.Errorf("msg failed due to %s", reason)
+				return nil, fmt.Errorf("msg failed due to %s, %w", reason, ErrMarkFailedMessageByMessager)
 			}
 
 		case <-tm.C:
