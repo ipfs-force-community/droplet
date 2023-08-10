@@ -298,7 +298,7 @@ part states:
 					} else {
 						d.Ref.TransferType = "import"
 					}
-					if d.State == storagemarket.StorageDealActive {
+					if d.State == storagemarket.StorageDealActive || d.State == storagemarket.StorageDealSlashed {
 						d.PieceStatus = market.Proving
 					}
 					if d.SlashEpoch == 0 {
