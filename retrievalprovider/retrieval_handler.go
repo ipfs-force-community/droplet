@@ -226,6 +226,7 @@ func (p *RetrievalDealHandler) updateFunding(ctx context.Context,
 	// process payment, determining how many more funds we have then the current deal.FundsReceived
 	received, err := p.processLastVoucher(ctx, channelState, deal)
 	if err != nil {
+		_ = p.CancelDeal(ctx, deal)
 		return errorDealResponse(deal.Identifier(), err)
 	}
 
@@ -247,9 +248,6 @@ func (p *RetrievalDealHandler) updateFunding(ctx context.Context,
 		if received.GreaterThan(big.Zero()) {
 			log.Debugf("provider: owed %d: sending partial payment request", owed)
 			deal.FundsReceived = big.Add(deal.FundsReceived, received)
-			if err := p.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
-				log.Errorf("save deal FundsReceived failed: %v", err)
-			}
 		}
 		// sending this response voucher is primarily to cover for current client logic --
 		// our client expects a voucher requesting payment before it sends anything
@@ -264,8 +262,11 @@ func (p *RetrievalDealHandler) updateFunding(ctx context.Context,
 	} else {
 		// send an event to record payment received
 		deal.FundsReceived = big.Add(deal.FundsReceived, received)
-		if err := p.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
-			log.Errorf("save deal FundsReceived failed: %v", err)
+		if deal.Status == rm.DealStatusFundsNeeded {
+			deal.Status = rm.DealStatusOngoing
+		}
+		if deal.Status == rm.DealStatusFundsNeededUnseal {
+			deal.Status = rm.DealStatusUnsealing
 		}
 		if deal.Status == rm.DealStatusFundsNeededLastPayment {
 			log.Debugf("provider: funds needed: last payment")
@@ -276,7 +277,14 @@ func (p *RetrievalDealHandler) updateFunding(ctx context.Context,
 				ID:     deal.ID,
 				Status: rm.DealStatusCompleted,
 			}
+			deal.Status = rm.DealStatusFinalizing
 		}
+	}
+
+	if err := p.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
+		log.Infof("save retrieval deal %d status failed: %v", deal.ID, err)
+		_ = p.CancelDeal(ctx, deal)
+		return errorDealResponse(deal.Identifier(), err)
 	}
 
 	vr := datatransfer.ValidationResult{
@@ -293,16 +301,27 @@ func (p *RetrievalDealHandler) updateFunding(ctx context.Context,
 }
 
 func (p *RetrievalDealHandler) savePayment(ctx context.Context, payment *rm.DealPayment, deal *mktypes.ProviderDealState) (abi.TokenAmount, error) {
+	updateDeal := func(err error) {
+		if deal.Status == rm.DealStatusFundsNeededUnseal || deal.Status == rm.DealStatusFundsNeeded || deal.Status == rm.DealStatusFundsNeededLastPayment {
+			deal.Status = rm.DealStatusFailing
+		}
+		deal.Message = err.Error()
+		if err := p.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
+			log.Infof("save retrieval deal %d status failed: %v", deal.ID, err)
+		}
+	}
+
 	tok, _, err := p.env.GetChainHead(context.TODO())
 	if err != nil {
-		_ = p.CancelDeal(ctx, deal)
+		updateDeal(err)
 		return big.Zero(), err
 	}
 	// Save voucher
 	received, err := p.env.SavePaymentVoucher(context.TODO(), payment.PaymentChannel, payment.PaymentVoucher, nil, big.Zero(), tok)
 	if err != nil {
-		_ = p.CancelDeal(ctx, deal)
-		return big.Zero(), fmt.Errorf("save payment voucher failed: %v", err)
+		err = fmt.Errorf("save payment voucher failed: %v", err)
+		updateDeal(err)
+		return big.Zero(), err
 	}
 	return received, nil
 }

@@ -27,15 +27,17 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 			return
 		}
 
+		mlog := log.With("event", datatransfer.Events[event.Code], "dealID", dealProposal.ID, "peer", channelState.OtherPeer())
+
 		identify := rm.ProviderDealIdentifier{DealID: dealProposal.ID, Receiver: channelState.Recipient()}
 		if channelState.Status() == datatransfer.Completed {
+			mlog.Debugf("deal completed")
 			err := deals.HandleCompleteFor(ctx, identify)
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)
 			}
 		}
 
-		mlog := log.With("event", datatransfer.Events[event.Code], "dealID", dealProposal.ID, "peer", channelState.OtherPeer())
 		switch event.Code {
 		case datatransfer.Accept:
 			mlog.With("retrievalEvent", rm.ProviderEventDealAccepted)
@@ -58,9 +60,9 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 		case datatransfer.DataLimitExceeded:
 			// DataLimitExceeded indicates it's time to wait for a payment
 			mlog.With("retrievalEvent", rm.ProviderEventPaymentRequested)
-			err := deals.UpdateFunding(ctx, identify)
+			err := deals.HandlePaymentRequested(ctx, identify)
 			if err != nil {
-				log.Errorf("processing dt event %v: %s", datatransfer.DataLimitExceeded.String(), err)
+				log.Errorf("processing dt event: %s", err)
 			}
 		case datatransfer.BeginFinalizing:
 			// BeginFinalizing indicates it's time to wait for a final payment
@@ -70,14 +72,14 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 			mlog.With("retrievalEvent", rm.ProviderEventLastPaymentRequested)
 			err := deals.HandleLastPayment(ctx, identify)
 			if err != nil {
-				log.Errorf("processing dt event %v: %s", datatransfer.BeginFinalizing.String(), err)
+				log.Errorf("processing dt event: %s", err)
 			}
 		case datatransfer.NewVoucher:
 			// NewVoucher indicates a potential new payment we should attempt to process
 			mlog.With("retrievalEvent", rm.ProviderEventProcessPayment)
-			err := deals.UpdateFunding(ctx, identify)
+			err := deals.HandleProcessPayment(ctx, identify)
 			if err != nil {
-				log.Errorf("processing dt event %v: %s", datatransfer.NewVoucher.String(), err)
+				log.Errorf("processing dt event: %s", err)
 			}
 		case datatransfer.Cancel:
 			mlog.With("retrievalEvent", rm.ProviderEventClientCancelled)

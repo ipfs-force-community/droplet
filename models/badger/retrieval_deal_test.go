@@ -8,18 +8,17 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
+	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	"github.com/libp2p/go-libp2p/core/peer"
-	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
-	testutil.MustRegisterDefaultValueProvier(func(t *testing.T) *cbg.Deferred {
-		return &cbg.Deferred{
-			Raw: make([]byte, 1),
-		}
+	testutil.MustRegisterDefaultValueProvier(func(t *testing.T) retrievalmarket.CborGenCompatibleNode {
+		allSelector := selectorparse.CommonSelector_ExploreAllRecursively
+		return retrievalmarket.CborGenCompatibleNode{Node: allSelector}
 	})
 }
 

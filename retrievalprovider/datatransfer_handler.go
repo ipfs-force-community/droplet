@@ -15,8 +15,9 @@ type IDatatransferHandler interface {
 	HandleCompleteFor(context.Context, rm.ProviderDealIdentifier) error
 	HandleAcceptFor(context.Context, rm.ProviderDealIdentifier, datatransfer.ChannelID) error
 	HandleDisconnectFor(context.Context, rm.ProviderDealIdentifier, error) error
+	HandlePaymentRequested(context.Context, rm.ProviderDealIdentifier) error
+	HandleProcessPayment(context.Context, rm.ProviderDealIdentifier) error
 	HandleLastPayment(context.Context, rm.ProviderDealIdentifier) error
-	UpdateFunding(context.Context, rm.ProviderDealIdentifier) error
 
 	HandleCancelForDeal(context.Context, rm.ProviderDealIdentifier) error
 	HandleErrorForDeal(context.Context, rm.ProviderDealIdentifier, error) error
@@ -76,6 +77,34 @@ func (d *DataTransferHandler) HandleDisconnectFor(ctx context.Context, identifie
 	return d.retrievalDealHandler.Error(ctx, deal, errIn)
 }
 
+func (d *DataTransferHandler) HandlePaymentRequested(ctx context.Context, identifier rm.ProviderDealIdentifier) error {
+	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
+	if err != nil {
+		return err
+	}
+	if deal.Status == rm.DealStatusOngoing || deal.Status == rm.DealStatusUnsealed {
+		deal.Status = rm.DealStatusFundsNeeded
+		if err := d.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
+			return err
+		}
+	}
+	if deal.Status == rm.DealStatusNew {
+		deal.Status = rm.DealStatusFundsNeededUnseal
+		if err := d.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
+			return err
+		}
+	}
+	return d.retrievalDealHandler.UpdateFunding(ctx, deal)
+}
+
+func (d *DataTransferHandler) HandleProcessPayment(ctx context.Context, identifier rm.ProviderDealIdentifier) error {
+	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
+	if err != nil {
+		return err
+	}
+	return d.retrievalDealHandler.UpdateFunding(ctx, deal)
+}
+
 func (d *DataTransferHandler) HandleLastPayment(ctx context.Context, identifier rm.ProviderDealIdentifier) error {
 	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
 	if err != nil {
@@ -89,20 +118,6 @@ func (d *DataTransferHandler) HandleLastPayment(ctx context.Context, identifier 
 		return d.retrievalDealHandler.UpdateFunding(ctx, deal)
 	}
 	return nil
-}
-
-func (d *DataTransferHandler) UpdateFunding(ctx context.Context, identifier rm.ProviderDealIdentifier) error {
-	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
-	if err != nil {
-		return err
-	}
-	if deal.Status == rm.DealStatusOngoing || deal.Status == rm.DealStatusUnsealed {
-		deal.Status = rm.DealStatusFundsNeeded
-		if err := d.retrievalDealStore.SaveDeal(ctx, deal); err != nil {
-			return err
-		}
-	}
-	return d.retrievalDealHandler.UpdateFunding(ctx, deal)
 }
 
 func (d *DataTransferHandler) HandleCancelForDeal(ctx context.Context, identifier rm.ProviderDealIdentifier) error {
