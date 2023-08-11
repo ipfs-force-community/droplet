@@ -21,7 +21,7 @@ type DealAssiger interface {
 	UpdateDealStatus(ctx context.Context, miner address.Address, dealID abi.DealID, pieceStatus types.PieceStatus, dealStatus storagemarket.StorageDealStatus) error
 	GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.DealInfo, error)
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
-	AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
+	AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
 	ReleaseDeals(ctx context.Context, miner address.Address, deals []abi.DealID) error
 }
 
@@ -180,7 +180,7 @@ func (ps *dealAssigner) GetUnPackedDeals(ctx context.Context, miner address.Addr
 	return result, nil
 }
 
-func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
+func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error) {
 	maddr, err := address.NewIDAddress(uint64(sid.Miner))
 	if err != nil {
 		return nil, err
@@ -233,7 +233,7 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 			return left.StoragePricePerEpoch.GreaterThan(right.StoragePricePerEpoch)
 		})
 
-		pieces, err = pickAndAlign(deals, ssize, spec)
+		pieces, err = pickAndAlign(deals, ssize, currentHeight, spec)
 		if err != nil {
 			return fmt.Errorf("unable to pick and align pieces from deals: %w", err)
 		}

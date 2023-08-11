@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
 	mtypes "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -17,7 +18,7 @@ var (
 	errDealsUnOrdered       = fmt.Errorf("deals un-ordered")
 )
 
-func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spec *mtypes.GetDealSpec) ([]*mtypes.DealInfoIncludePath, error) {
+func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *mtypes.GetDealSpec) ([]*mtypes.DealInfoIncludePath, error) {
 	space := abi.PaddedPieceSize(ssize)
 
 	if err := space.Validate(); err != nil {
@@ -43,6 +44,19 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, spe
 				continue
 			}
 
+			// See: https://github.com/filecoin-project/builtin-actors/blob/c0aed11801cb434c989695ad67721c410b9ada33/actors/market/src/lib.rs#L1073-L1094
+			// https://github.com/filecoin-project/builtin-actors/blob/c0aed11801cb434c989695ad67721c410b9ada33/actors/verifreg/src/lib.rs#L1056-L1071
+			if spec.SectorExpiration != nil {
+				allocTermMin := deal.DealProposal.EndEpoch - deal.DealProposal.StartEpoch
+				allocTermMax := allocTermMin + market.MarketDefaultAllocationTermBuffer
+				if allocTermMax > types.MaximumVerifiedAllocationTerm {
+					allocTermMax = types.MaximumVerifiedAllocationTerm
+				}
+				sectorLifetime := *spec.SectorExpiration - currentHeight
+				if !(sectorLifetime >= allocTermMin && sectorLifetime <= allocTermMax) {
+					continue
+				}
+			}
 			picked = append(picked, deal)
 		}
 
