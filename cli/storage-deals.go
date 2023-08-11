@@ -293,6 +293,14 @@ part states:
 				if _, ok := expectStates[d.State]; ok {
 					d.PayloadSize = d.Ref.RawBlockSize
 					d.PieceStatus = market.Undefine
+					if d.Ref == nil {
+						d.Ref = &storagemarket.DataRef{TransferType: "import"}
+					} else {
+						d.Ref.TransferType = "import"
+					}
+					if d.State == storagemarket.StorageDealActive || d.State == storagemarket.StorageDealSlashed {
+						d.PieceStatus = market.Proving
+					}
 					if d.SlashEpoch == 0 {
 						d.SlashEpoch = -1
 					}
