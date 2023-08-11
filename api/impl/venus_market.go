@@ -1076,7 +1076,7 @@ func (m *MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, sid abi.Sector
 
 	head, err := m.FullNode.ChainHead(ctx)
 	if err != nil {
-		log.Errorf("get chain head %w", err)
+		return nil, fmt.Errorf("get chain head %w", err)
 	}
 	return m.DealAssigner.AssignUnPackedDeals(ctx, sid, ssize, head.Height(), spec)
 }
