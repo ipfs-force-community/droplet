@@ -1074,7 +1074,11 @@ func (m *MarketNodeImpl) AssignUnPackedDeals(ctx context.Context, sid abi.Sector
 		return nil, err
 	}
 
-	return m.DealAssigner.AssignUnPackedDeals(ctx, sid, ssize, spec)
+	head, err := m.FullNode.ChainHead(ctx)
+	if err != nil {
+		log.Errorf("get chain head %w", err)
+	}
+	return m.DealAssigner.AssignUnPackedDeals(ctx, sid, ssize, head.Height(), spec)
 }
 
 // ReleaseDeals is used to release the deals that have been assigned by AssignUnPackedDeals method.
