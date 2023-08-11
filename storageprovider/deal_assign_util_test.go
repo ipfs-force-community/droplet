@@ -444,7 +444,7 @@ func TestDealAssignPickAndAlign(t *testing.T) {
 		require.Lenf(t, c.expectedDealIDs, expectedPieceCount, "<%s> expected deal ids & piece sizes should be equal", c.name)
 
 		caseDeals := generateTestingDeals(c.sizes, c.lifetimes)
-		gotDeals, gotErr := pickAndAlign(caseDeals, c.sectorSize, c.spec)
+		gotDeals, gotErr := pickAndAlign(caseDeals, c.sectorSize, 0, c.spec)
 
 		if c.expectedErr != nil {
 			require.ErrorIsf(t, gotErr, c.expectedErr, "<%s> expected a specified error", c.name)
