@@ -9,7 +9,6 @@ import (
 
 	"github.com/NYTimes/gziphandler"
 	"github.com/filecoin-project/venus/venus-shared/types"
-	"github.com/ipfs-force-community/droplet/v2/config"
 	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -19,17 +18,11 @@ import (
 var log = logging.Logger("httpserver")
 
 type Server struct {
-	// path     string
 	pieceMgr *piecestorage.PieceStorageManager
 }
 
-func NewServer(cfg *config.PieceStorage) (*Server, error) {
-	pieceMgr, err := piecestorage.NewPieceStorageManager(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Server{pieceMgr: pieceMgr}, nil
+func NewServer(pieceMgr *piecestorage.PieceStorageManager) *Server {
+	return &Server{pieceMgr: pieceMgr}
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
