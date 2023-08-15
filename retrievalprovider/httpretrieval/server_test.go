@@ -15,6 +15,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -76,8 +77,9 @@ func TestRetrievalByPiece(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, f.Close())
 
-	s, err := NewServer(&cfg.PieceStorage)
+	pieceStorage, err := piecestorage.NewPieceStorageManager(&cfg.PieceStorage)
 	assert.NoError(t, err)
+	s := NewServer(pieceStorage)
 	port := "34897"
 	startHTTPServer(ctx, t, port, s)
 
