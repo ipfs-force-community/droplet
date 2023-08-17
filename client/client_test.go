@@ -10,11 +10,11 @@ import (
 	"testing"
 
 	types "github.com/filecoin-project/venus/venus-shared/types/market/client"
+	blockstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-libipfs/files"
 	"github.com/ipfs/go-merkledag"

@@ -14,9 +14,9 @@ import (
 
 	"go.uber.org/fx"
 
+	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-libipfs/files"

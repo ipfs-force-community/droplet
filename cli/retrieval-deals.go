@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -180,7 +181,7 @@ func outputRetrievalDeal(deal *market.ProviderDealState) error {
 		pieceCID = deal.PieceCID.String()
 	}
 	if !deal.Selector.IsNull() {
-		raw, err = deal.Selector.Node.AsBytes()
+		raw, err = json.Marshal(deal.Selector)
 		if err != nil {
 			return err
 		}

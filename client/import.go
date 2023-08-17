@@ -8,10 +8,10 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-fil-markets/stores"
+	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	ipld "github.com/ipfs/go-ipld-format"
