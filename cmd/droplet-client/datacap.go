@@ -308,7 +308,7 @@ var datacapClaimsListCmd = &cli.Command{
 
 		client := abi.ActorID(0)
 		if cliCtx.IsSet("client") {
-			clientAddr, err := address.NewFromString("client")
+			clientAddr, err := address.NewFromString(cliCtx.String("client"))
 			if err != nil {
 				return err
 			}
@@ -390,7 +390,7 @@ var datacapAllocationListCmd = &cli.Command{
 
 		provider := abi.ActorID(0)
 		if cliCtx.IsSet("provider") {
-			providerAddr, err := address.NewFromString("provider")
+			providerAddr, err := address.NewFromString(cliCtx.String("provider"))
 			if err != nil {
 				return err
 			}
