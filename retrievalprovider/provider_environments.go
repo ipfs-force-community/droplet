@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 
+	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/filecoin-project/dagstore"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/dtutils"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -18,7 +19,10 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
+	"github.com/ipfs-force-community/droplet/v2/paychmgr"
 
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 )
 
@@ -46,12 +50,26 @@ type ProviderDealEnvironment interface {
 	DeleteStore(dealID retrievalmarket.DealID) error
 	ResumeDataTransfer(context.Context, datatransfer.ChannelID) error
 	CloseDataTransfer(context.Context, datatransfer.ChannelID) error
+	ChannelState(context.Context, datatransfer.ChannelID) (datatransfer.ChannelState, error)
+	UpdateValidationStatus(context.Context, datatransfer.ChannelID, datatransfer.ValidationResult) error
+
+	GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error)
+	SavePaymentVoucher(ctx context.Context, paymentChannel address.Address,
+		voucher *vTypes.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount, tok shared.TipSetToken) (abi.TokenAmount, error)
 }
 
 var _ ProviderDealEnvironment = new(providerDealEnvironment)
 
 type providerDealEnvironment struct {
 	p *RetrievalProvider
+	*retrievalProviderNode
+}
+
+func newProviderDealEnvironment(p *RetrievalProvider, fullNode v1api.FullNode, payAPI *paychmgr.PaychAPI) ProviderDealEnvironment {
+	return &providerDealEnvironment{
+		p:                     p,
+		retrievalProviderNode: &retrievalProviderNode{fullNode: fullNode, payAPI: payAPI},
+	}
 }
 
 // PrepareBlockstore is called when the deal data has been unsealed and we need
@@ -95,6 +113,38 @@ func (pde *providerDealEnvironment) DeleteStore(dealID retrievalmarket.DealID) e
 	}
 
 	return nil
+}
+
+func (pde *providerDealEnvironment) ChannelState(ctx context.Context, chid datatransfer.ChannelID) (datatransfer.ChannelState, error) {
+	return pde.p.dataTransfer.ChannelState(ctx, chid)
+}
+
+func (pde *providerDealEnvironment) UpdateValidationStatus(ctx context.Context, chid datatransfer.ChannelID, result datatransfer.ValidationResult) error {
+	return pde.p.dataTransfer.UpdateValidationStatus(ctx, chid, result)
+}
+
+type retrievalProviderNode struct {
+	fullNode v1api.FullNode
+	payAPI   *paychmgr.PaychAPI
+}
+
+func (rpn *retrievalProviderNode) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
+	head, err := rpn.fullNode.ChainHead(ctx)
+	if err != nil {
+		return shared.TipSetToken{}, 0, nil
+	}
+
+	return head.Key().Bytes(), head.Height(), nil
+}
+
+func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context,
+	paymentChannel address.Address,
+	voucher *vTypes.SignedVoucher,
+	proof []byte,
+	expectedAmount abi.TokenAmount,
+	tok shared.TipSetToken,
+) (abi.TokenAmount, error) {
+	return rpn.payAPI.PaychVoucherAdd(ctx, paymentChannel, voucher, proof, expectedAmount)
 }
 
 var _ dtutils.StoreGetter = &providerStoreGetter{}

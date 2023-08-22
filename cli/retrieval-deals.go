@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -172,14 +173,18 @@ var retrievalDealStateCmd = &cli.Command{
 func outputRetrievalDeal(deal *market.ProviderDealState) error {
 	var channelID, pieceCID string
 	var raw []byte
+	var err error
 	if deal.ChannelID != nil {
 		channelID = deal.ChannelID.String()
 	}
 	if deal.PieceCID != nil {
 		pieceCID = deal.PieceCID.String()
 	}
-	if deal.Selector != nil {
-		raw = deal.Selector.Raw
+	if !deal.Selector.IsNull() {
+		raw, err = json.Marshal(deal.Selector)
+		if err != nil {
+			return err
+		}
 	}
 	data := []kv{
 		{"Receiver", deal.Receiver},

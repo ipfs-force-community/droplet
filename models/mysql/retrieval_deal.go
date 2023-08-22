@@ -1,18 +1,18 @@
 package mysql
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/sophon-messager/models/mtypes"
 	"github.com/libp2p/go-libp2p/core/peer"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -50,7 +50,7 @@ func (m *retrievalDeal) TableName() string {
 	return retrievalDealTableName
 }
 
-func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
+func fromProviderDealState(deal *types.ProviderDealState) (*retrievalDeal, error) {
 	newdeal := &retrievalDeal{
 		DealProposal: DealProposal{
 			PayloadCID:              DBCid(deal.PayloadCID),
@@ -71,8 +71,13 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 		LegacyProtocol:        deal.LegacyProtocol,
 		TimeStampOrm:          TimeStampOrm{CreatedAt: deal.CreatedAt, UpdatedAt: deal.UpdatedAt},
 	}
-	if deal.Selector != nil {
-		newdeal.Selector = &deal.Selector.Raw
+	if !deal.Selector.IsNull() {
+		buf := &bytes.Buffer{}
+		if err := deal.Selector.MarshalCBOR(buf); err != nil {
+			return nil, err
+		}
+		bytes := buf.Bytes()
+		newdeal.Selector = &bytes
 	}
 	if deal.ChannelID != nil {
 		newdeal.ChannelID = ChannelID{
@@ -87,7 +92,7 @@ func fromProviderDealState(deal *types.ProviderDealState) *retrievalDeal {
 	} else {
 		newdeal.DealProposal.PieceCID = DBCid(*deal.DealProposal.PieceCID)
 	}
-	return newdeal
+	return newdeal, nil
 }
 
 func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) {
@@ -116,8 +121,12 @@ func toProviderDealState(deal *retrievalDeal) (*types.ProviderDealState, error) 
 	}
 	var err error
 
-	if deal.DealProposal.Selector != nil {
-		newdeal.DealProposal.Selector = &cbg.Deferred{Raw: *deal.Selector}
+	if deal.Selector != nil {
+		sel := &rm.CborGenCompatibleNode{}
+		if err := sel.UnmarshalCBOR(bytes.NewBuffer(*deal.Selector)); err != nil {
+			return nil, err
+		}
+		newdeal.DealProposal.Selector = *sel
 	}
 
 	if len(deal.Receiver) > 0 {
@@ -147,7 +156,10 @@ type retrievalDealRepo struct {
 }
 
 func (rdr *retrievalDealRepo) SaveDeal(ctx context.Context, deal *types.ProviderDealState) error {
-	dbDeal := fromProviderDealState(deal)
+	dbDeal, err := fromProviderDealState(deal)
+	if err != nil {
+		return err
+	}
 	dbDeal.TimeStampOrm.Refresh()
 	return rdr.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).
 		Create(dbDeal).Error

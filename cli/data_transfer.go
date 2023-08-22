@@ -10,7 +10,7 @@ import (
 
 	tm "github.com/buger/goterm"
 
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/libp2p/go-libp2p/core/peer"

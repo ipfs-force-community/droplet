@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	datatransfer "github.com/filecoin-project/go-data-transfer"
+	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -57,7 +57,8 @@ func TestSaveRetrievalDeal(t *testing.T) {
 	r, mock, _, RetrievaldealStateCase, close := prepareRetrievalDealRepoTest(t)
 	defer close()
 	ctx := context.Background()
-	dbDeal := fromProviderDealState(RetrievaldealStateCase)
+	dbDeal, err := fromProviderDealState(RetrievaldealStateCase)
+	assert.NoError(t, err)
 
 	db, err := getMysqlDryrunDB()
 	assert.Nil(t, err)

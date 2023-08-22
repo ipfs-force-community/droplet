@@ -32,37 +32,41 @@ func ResourceManager(lc fx.Lifecycle, homeDir *config.HomeDir) (network.Resource
 	// For every extra 1GB of memory we have available, increase our limit by 1GiB
 	defaultLimits.SystemLimitIncrease.Memory = 1 << 30
 	defaultLimitConfig := defaultLimits.AutoScale()
-	if defaultLimitConfig.System.Memory > 4<<30 {
+
+	changes := rcmgr.PartialLimitConfig{}
+
+	if defaultLimitConfig.ToPartialLimitConfig().System.Memory > 4<<30 {
 		// Cap our memory limit
-		defaultLimitConfig.System.Memory = 4 << 30
+		changes.System.Memory = 4 << 30
 	}
 
 	maxconns := int(200) // make config
-	if 2*maxconns > defaultLimitConfig.System.ConnsInbound {
+	if rcmgr.LimitVal(2*maxconns) > defaultLimitConfig.ToPartialLimitConfig().System.ConnsInbound {
 		// adjust conns to 2x to allow for two conns per peer (TCP+QUIC)
-		defaultLimitConfig.System.ConnsInbound = logScale(2 * maxconns)
-		defaultLimitConfig.System.ConnsOutbound = logScale(2 * maxconns)
-		defaultLimitConfig.System.Conns = logScale(4 * maxconns)
+		changes.System.ConnsInbound = rcmgr.LimitVal(logScale(2 * maxconns))
+		changes.System.ConnsOutbound = rcmgr.LimitVal(logScale(2 * maxconns))
+		changes.System.Conns = rcmgr.LimitVal(logScale(4 * maxconns))
 
-		defaultLimitConfig.System.StreamsInbound = logScale(16 * maxconns)
-		defaultLimitConfig.System.StreamsOutbound = logScale(64 * maxconns)
-		defaultLimitConfig.System.Streams = logScale(64 * maxconns)
+		changes.System.StreamsInbound = rcmgr.LimitVal(logScale(16 * maxconns))
+		changes.System.StreamsOutbound = rcmgr.LimitVal(logScale(64 * maxconns))
+		changes.System.Streams = rcmgr.LimitVal(logScale(64 * maxconns))
 
-		if 2*maxconns > defaultLimitConfig.System.FD {
-			defaultLimitConfig.System.FD = logScale(2 * maxconns)
+		if rcmgr.LimitVal(2*maxconns) > defaultLimitConfig.ToPartialLimitConfig().System.FD {
+			changes.System.FD = rcmgr.LimitVal(logScale(2 * maxconns))
 		}
 
-		defaultLimitConfig.ServiceDefault.StreamsInbound = logScale(8 * maxconns)
-		defaultLimitConfig.ServiceDefault.StreamsOutbound = logScale(32 * maxconns)
-		defaultLimitConfig.ServiceDefault.Streams = logScale(32 * maxconns)
+		changes.ServiceDefault.StreamsInbound = rcmgr.LimitVal(logScale(8 * maxconns))
+		changes.ServiceDefault.StreamsOutbound = rcmgr.LimitVal(logScale(32 * maxconns))
+		changes.ServiceDefault.Streams = rcmgr.LimitVal(logScale(32 * maxconns))
 
-		defaultLimitConfig.ProtocolDefault.StreamsInbound = logScale(8 * maxconns)
-		defaultLimitConfig.ProtocolDefault.StreamsOutbound = logScale(32 * maxconns)
-		defaultLimitConfig.ProtocolDefault.Streams = logScale(32 * maxconns)
+		changes.ProtocolDefault.StreamsInbound = rcmgr.LimitVal(logScale(8 * maxconns))
+		changes.ProtocolDefault.StreamsOutbound = rcmgr.LimitVal(logScale(32 * maxconns))
+		changes.ProtocolDefault.Streams = rcmgr.LimitVal(logScale(32 * maxconns))
 
 		log.Info("adjusted default resource manager limits")
 	}
 
+	changedLimitConfig := changes.Build(defaultLimitConfig)
 	// initialize
 	var limiter rcmgr.Limiter
 	var opts []rcmgr.Option
@@ -73,13 +77,13 @@ func ResourceManager(lc fx.Lifecycle, homeDir *config.HomeDir) (network.Resource
 	switch {
 	case err == nil:
 		defer limitsIn.Close() //nolint:errcheck
-		limiter, err = rcmgr.NewLimiterFromJSON(limitsIn, defaultLimitConfig)
+		limiter, err = rcmgr.NewLimiterFromJSON(limitsIn, changedLimitConfig)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing limit file: %w", err)
 		}
 
 	case errors.Is(err, os.ErrNotExist):
-		limiter = rcmgr.NewFixedLimiter(defaultLimitConfig)
+		limiter = rcmgr.NewFixedLimiter(changedLimitConfig)
 
 	default:
 		return nil, err
