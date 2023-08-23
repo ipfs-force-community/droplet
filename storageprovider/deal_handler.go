@@ -536,6 +536,9 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 			log.Errorf("failed to register shard: %v", err)
 		}
 
+		// Remove temporary car files
+		storageDealPorcess.removeTemporaryFile(ctx, deal, true)
+
 		log.Infow("successfully handed off deal to sealing subsystem", "pieceCid", deal.Proposal.PieceCID, "proposalCid", deal.ProposalCid)
 		deal.AvailableForRetrieval = true
 		deal.State = storagemarket.StorageDealAwaitingPreCommit
@@ -568,6 +571,51 @@ func (storageDealPorcess *StorageDealProcessImpl) savePieceFile(ctx context.Cont
 		log.Infof("success to write file %s to piece storage", pieceCid)
 	}
 	return nil
+}
+
+func (storageDealPorcess *StorageDealProcessImpl) removeTemporaryFile(ctx context.Context, deal *types.MinerDeal, checkPieceStorage bool) {
+	if checkPieceStorage {
+		// Check if the temporary file has been copied to piece storage
+		_, err := storageDealPorcess.pieceStorageMgr.FindStorageForRead(ctx, deal.Proposal.PieceCID.String())
+		if err != nil {
+			log.Warnf("failed to delete temporary file: %v, %v", deal.ProposalCid, err)
+			return
+		}
+	}
+
+	err := func() error {
+		if deal.PiecePath != filestore.Path("") {
+			fs, err := storageDealPorcess.tf(deal.Proposal.Provider)
+			if err != nil {
+				return fmt.Errorf("get temp file store for %s: %v", deal.Proposal.Provider, err)
+			}
+			err = fs.Delete(deal.PiecePath)
+			if err != nil {
+				return fmt.Errorf("deleting piece at path %s: %v", deal.PiecePath, err)
+			}
+		}
+		if deal.MetadataPath != filestore.Path("") {
+			fs, err := storageDealPorcess.tf(deal.Proposal.Provider)
+			if err != nil {
+				return fmt.Errorf("get temp file store for %s: %v", deal.Proposal.Provider, err)
+			}
+			err = fs.Delete(deal.MetadataPath)
+			if err != nil {
+				return fmt.Errorf("deleting piece at path %s: %v", deal.MetadataPath, err)
+			}
+		}
+		if deal.InboundCAR != "" {
+			if err := storageDealPorcess.TerminateBlockstore(deal.ProposalCid, deal.InboundCAR); err != nil {
+				return fmt.Errorf("error deleting store, car_path=%s: %s", deal.InboundCAR, err)
+			}
+		}
+		return nil
+	}()
+	if err != nil {
+		log.Warnf("failed to delete temporary file: %v, %v", deal.ProposalCid, err)
+	} else {
+		log.Infof("delete temporary file success: %v", deal.ProposalCid)
+	}
 }
 
 func (storageDealPorcess *StorageDealProcessImpl) SendSignedResponse(ctx context.Context, mAddr address.Address, resp *network.Response) error {
@@ -636,38 +684,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleError(ctx context.Contex
 
 	storageDealPorcess.peerTagger.UntagPeer(deal.Client, deal.ProposalCid.String())
 
-	if deal.PiecePath != filestore.Path("") {
-		fs, err := storageDealPorcess.tf(deal.Proposal.Provider)
-		if err != nil {
-			log.Warnf("get temp file store for %s: %v", deal.Proposal.Provider, err)
-		} else {
-			err = fs.Delete(deal.PiecePath)
-			if err != nil {
-				log.Warnf("deleting piece at path %s: %v", deal.PiecePath, err)
-			}
-		}
-	}
-	if deal.MetadataPath != filestore.Path("") {
-		fs, err := storageDealPorcess.tf(deal.Proposal.Provider)
-		if err != nil {
-			log.Warnf("get temp file store for %s: %v", deal.Proposal.Provider, err)
-		} else {
-			err = fs.Delete(deal.MetadataPath)
-			if err != nil {
-				log.Warnf("deleting piece at path %s: %v", deal.MetadataPath, err)
-			}
-		}
-	}
-
-	if deal.InboundCAR != "" {
-		if err := storageDealPorcess.FinalizeBlockstore(deal.ProposalCid); err != nil {
-			log.Warnf("error finalizing read-write store, car_path=%s: %s", deal.InboundCAR, err)
-		}
-
-		if err := storageDealPorcess.TerminateBlockstore(deal.ProposalCid, deal.InboundCAR); err != nil {
-			log.Warnf("error deleting store, car_path=%s: %s", deal.InboundCAR, err)
-		}
-	}
+	storageDealPorcess.removeTemporaryFile(ctx, deal, false)
 
 	storageDealPorcess.releaseReservedFunds(ctx, deal)
 
