@@ -31,23 +31,6 @@ var DefaultMarketConfig = &MarketConfig{
 		},
 	},
 	// 两种选择: 空或者注释形式
-	Node: Node{
-		Url:   "", // /ip4/<ip>/tcp/3453
-		Token: "", // cs-token
-	},
-	Messager: Messager{
-		Url:   "", // /ip4/<ip>/tcp/39812
-		Token: "", // cs-token
-	},
-	AuthNode: AuthNode{
-		Url:   "", // http://<ip>:8989
-		Token: "", // cs-token
-	},
-	Signer: Signer{
-		SignerType: "wallet",
-		Url:        "", // /ip4/<ip>/tcp/5678
-		Token:      "", // signer-token
-	},
 	Mysql: Mysql{
 		ConnectionString: "",
 		MaxOpenConn:      100,
@@ -89,19 +72,6 @@ var DefaultMarketClientConfig = &MarketClientConfig{
 			AnnounceAddresses:   []string{},
 			NoAnnounceAddresses: []string{},
 		},
-	},
-	Node: Node{
-		Url:   "", // /ip4/<ip>/tcp/3453
-		Token: "", // cs-token
-	},
-	Signer: Signer{
-		SignerType: "wallet",
-		Url:        "", // /ip4/<ip>/tcp/5678
-		Token:      "", // signer-token
-	},
-	Messager: Messager{
-		Url:   "", // /ip4/<ip>/tcp/39812
-		Token: "", // cs-token
 	},
 	DefaultMarketAddress:              Address(address.Undef),
 	SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,

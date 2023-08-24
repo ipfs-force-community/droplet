@@ -149,7 +149,8 @@ func NewFullNode(cctx *cli.Context, legacyRepo string) (v1api.FullNode, jsonrpc.
 	if err != nil {
 		return nil, nil, err
 	}
-	apiInfo := api.NewAPIInfo(marketCfg.Node.Url, marketCfg.Node.Token)
+	nodeCfg := marketCfg.GetNode()
+	apiInfo := api.NewAPIInfo(nodeCfg.Url, nodeCfg.Token)
 	addr, err := apiInfo.DialArgs("v1")
 	if err != nil {
 		return nil, nil, err

@@ -46,9 +46,10 @@ type ConnectConfig struct {
 }
 
 type (
-	Node     ConnectConfig
-	Messager ConnectConfig
-	AuthNode ConnectConfig
+	ChainService ConnectConfig
+	Node         ConnectConfig
+	Messager     ConnectConfig
+	AuthNode     ConnectConfig
 )
 
 type SignerType = string
