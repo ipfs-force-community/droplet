@@ -40,7 +40,7 @@ require (
 	github.com/ipfs-force-community/metrics v1.0.1-0.20230626064437-eed34cb166f5
 	github.com/ipfs-force-community/sophon-auth v1.13.0-rc1
 	github.com/ipfs-force-community/sophon-gateway v1.13.0-rc1
-	github.com/ipfs-force-community/sophon-messager v1.12.1-0.20230719025513-b11768735c5f
+	github.com/ipfs-force-community/sophon-messager v1.13.0-rc1
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
 	github.com/ipfs/boxo v0.10.0
 	github.com/ipfs/go-blockservice v0.5.0
