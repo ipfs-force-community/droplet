@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm/clause"
 )
 
 func prepareCIDInfoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []cidInfo, func()) {
@@ -102,13 +103,16 @@ func TestAddPieceBlockLocations(t *testing.T) {
 		return cids[i].String() < cids[j].String()
 	})
 
-	v1, err := mysqlBlockLocation(blockLocationCase[cids[0]]).Value()
+	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
-	v2, err := mysqlBlockLocation(blockLocationCase[cids[1]]).Value()
+
+	sql, vars, err := getSQL(db.Clauses(
+		clause.OnConflict{Columns: []clause.Column{{Name: "proposal_cid"}}, UpdateAll: true}).
+		Create(toCidInfos(cid3, blockLocationCase)))
 	assert.NoError(t, err)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `cid_infos` (`piece_cid`,`payload_cid`,`block_location`,`created_at`,`updated_at`) VALUES (?,?,?,?,?)")).WithArgs(cid3.String(), cids[0].String(), v1, sqlmock.AnyArg(), sqlmock.AnyArg(), cid3.String(), cids[1].String(), v2, sqlmock.AnyArg(), sqlmock.AnyArg()).WillReturnResult(sqlmock.NewResult(2, 2))
+	mock.ExpectExec(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
 	err = r.CidInfoRepo().AddPieceBlockLocations(context.Background(), cid3, blockLocationCase)
