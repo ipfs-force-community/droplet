@@ -51,7 +51,7 @@ func NewMysqlCidInfoRepo(ds *gorm.DB) repo.ICidInfoRepo {
 	return &mysqlCidInfoRepo{ds}
 }
 
-func (m *mysqlCidInfoRepo) AddPieceBlockLocations(ctx context.Context, pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
+func toCidInfos(pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) []cidInfo {
 	mysqlInfos := make([]cidInfo, len(blockLocations))
 	idx := 0
 	/* following point has been confirmed :
@@ -68,6 +68,12 @@ func (m *mysqlCidInfoRepo) AddPieceBlockLocations(ctx context.Context, pieceCID 
 	sort.Slice(mysqlInfos, func(i, j int) bool {
 		return mysqlInfos[i].PayloadCid.String() < mysqlInfos[j].PayloadCid.String()
 	})
+
+	return mysqlInfos
+}
+
+func (m *mysqlCidInfoRepo) AddPieceBlockLocations(ctx context.Context, pieceCID cid.Cid, blockLocations map[cid.Cid]piecestore.BlockLocation) error {
+	mysqlInfos := toCidInfos(pieceCID, blockLocations)
 
 	return m.Table(cidInfoTableName).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "piece_cid"}, {Name: "payload_cid"}},

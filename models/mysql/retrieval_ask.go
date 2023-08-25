@@ -39,33 +39,41 @@ func (a *retrievalAsk) TableName() string {
 	return retrievalAskTableName
 }
 
-func (rar *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (*types.RetrievalAsk, error) {
-	var mAsk retrievalAsk
-	if err := rar.WithContext(ctx).Take(&mAsk, "address = ?", DBAddress(addr).String()).Error; err != nil {
-		return nil, err
-	}
-	return &types.RetrievalAsk{
-		Miner:                   addr,
-		PricePerByte:            big.Int(mtypes.SafeFromGo(mAsk.PricePerByte.Int)),
-		UnsealPrice:             big.Int(mtypes.SafeFromGo(mAsk.UnsealPrice.Int)),
-		PaymentInterval:         mAsk.PaymentInterval,
-		PaymentIntervalIncrease: mAsk.PaymentIntervalIncrease,
-		TimeStamp:               mAsk.Timestamp(),
-	}, nil
-}
-
-func (rar *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk) error {
-	return rar.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "address"}},
-		UpdateAll: true,
-	}).Create(&retrievalAsk{
+func fromRetrievalAsk(ask *types.RetrievalAsk) *retrievalAsk {
+	return &retrievalAsk{
 		Address:                 DBAddress(ask.Miner),
 		PricePerByte:            mtypes.SafeFromGo(ask.PricePerByte.Int),
 		UnsealPrice:             mtypes.SafeFromGo(ask.UnsealPrice.Int),
 		PaymentInterval:         ask.PaymentInterval,
 		PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
 		TimeStampOrm:            *(&TimeStampOrm{CreatedAt: ask.CreatedAt, UpdatedAt: ask.UpdatedAt}).Refresh(),
-	}).Error
+	}
+}
+
+func toRetrievalAsk(ask *retrievalAsk) *types.RetrievalAsk {
+	return &types.RetrievalAsk{
+		Miner:                   ask.Address.addr(),
+		PricePerByte:            big.Int(mtypes.SafeFromGo(ask.PricePerByte.Int)),
+		UnsealPrice:             big.Int(mtypes.SafeFromGo(ask.UnsealPrice.Int)),
+		PaymentInterval:         ask.PaymentInterval,
+		PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
+		TimeStamp:               ask.Timestamp(),
+	}
+}
+
+func (rar *retrievalAskRepo) GetAsk(ctx context.Context, addr address.Address) (*types.RetrievalAsk, error) {
+	var mAsk retrievalAsk
+	if err := rar.WithContext(ctx).Take(&mAsk, "address = ?", DBAddress(addr).String()).Error; err != nil {
+		return nil, err
+	}
+	return toRetrievalAsk(&mAsk), nil
+}
+
+func (rar *retrievalAskRepo) SetAsk(ctx context.Context, ask *types.RetrievalAsk) error {
+	return rar.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "address"}},
+		UpdateAll: true,
+	}).Create(fromRetrievalAsk(ask)).Error
 }
 
 func (rar *retrievalAskRepo) ListAsk(ctx context.Context) ([]*types.RetrievalAsk, error) {
@@ -76,14 +84,7 @@ func (rar *retrievalAskRepo) ListAsk(ctx context.Context) ([]*types.RetrievalAsk
 	}
 	results := make([]*types.RetrievalAsk, len(dbAsks))
 	for index, ask := range dbAsks {
-		results[index] = &types.RetrievalAsk{
-			Miner:                   ask.Address.addr(),
-			PricePerByte:            big.Int(mtypes.SafeFromGo(ask.PricePerByte.Int)),
-			UnsealPrice:             big.Int(mtypes.SafeFromGo(ask.UnsealPrice.Int)),
-			PaymentInterval:         ask.PaymentInterval,
-			PaymentIntervalIncrease: ask.PaymentIntervalIncrease,
-			TimeStamp:               ask.Timestamp(),
-		}
+		results[index] = toRetrievalAsk(&ask)
 	}
 	return results, nil
 }

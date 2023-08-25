@@ -23,7 +23,7 @@ require (
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.28.4-0.20230816163331-bd08f1651b1d
-	github.com/filecoin-project/go-jsonrpc v0.1.5
+	github.com/filecoin-project/go-jsonrpc v0.1.8
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-state-types v0.11.1
 	github.com/filecoin-project/go-statemachine v1.0.3
@@ -39,7 +39,7 @@ require (
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20230626064437-eed34cb166f5
 	github.com/ipfs-force-community/sophon-auth v1.13.0-rc1
-	github.com/ipfs-force-community/sophon-gateway v1.12.1-0.20230804030603-e27d9b39f03b
+	github.com/ipfs-force-community/sophon-gateway v1.13.0-rc1
 	github.com/ipfs-force-community/sophon-messager v1.12.1-0.20230719025513-b11768735c5f
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
 	github.com/ipfs/boxo v0.10.0
@@ -86,9 +86,9 @@ require (
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
-	gorm.io/driver/mysql v1.1.1
+	gorm.io/driver/mysql v1.3.5
 	gorm.io/driver/sqlite v1.1.4
-	gorm.io/gorm v1.21.12
+	gorm.io/gorm v1.23.8
 )
 
 require (
@@ -207,7 +207,7 @@ require (
 	github.com/jbenet/go-temp-err-catcher v0.1.0 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
-	github.com/jinzhu/now v1.1.2 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

@@ -28,9 +28,6 @@ func prepareChannelInfoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []*types.
 		ch.AvailableAmount = big.NewInt(0)
 	}
 
-	// msgInfosCase := make([]*types.MsgInfo, 10)
-	// testutil.Provide(t, &msgInfosCase)
-
 	return r, mock, channelInfosCases, func() {
 		assert.NoError(t, closeDB(mock, sqlDB))
 	}
@@ -60,8 +57,9 @@ func TestSaveChannel(t *testing.T) {
 	sql, vars, err := getSQL(db.WithContext(context.Background()).Clauses(clause.OnConflict{UpdateAll: true}).Create(dbChannelInfo))
 	assert.NoError(t, err)
 
-	// set updated_at field as any
+	// set updated_at and created_at as any
 	vars[len(vars)-1] = sqlmock.AnyArg()
+	vars[len(vars)-2] = sqlmock.AnyArg()
 
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnResult(sqlmock.NewResult(1, 1))
@@ -249,11 +247,20 @@ func TestSaveMessage(t *testing.T) {
 	msgInfo := msgInfosCase[0]
 	dbMsgInfo := fromMsgInfo(msgInfo)
 
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	sql, vars, err := getSQL(db.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbMsgInfo))
+	assert.NoError(t, err)
+
+	vars[len(vars)-1] = sqlmock.AnyArg()
+	vars[len(vars)-2] = sqlmock.AnyArg()
+
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `paych_msg_infos` (`channel_id`,`msg_cid`,`received`,`err`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?)")).WithArgs(dbMsgInfo.ChannelID, dbMsgInfo.MsgCid.String(), dbMsgInfo.Received, dbMsgInfo.Err, sqlmock.AnyArg(), sqlmock.AnyArg()).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	err := r.PaychMsgInfoRepo().SaveMessage(context.Background(), msgInfo)
+	err = r.PaychMsgInfoRepo().SaveMessage(context.Background(), msgInfo)
 	assert.NoError(t, err)
 }
 

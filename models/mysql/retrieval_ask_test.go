@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/sophon-messager/models/mtypes"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm/clause"
 )
 
 func prepareRetrievalAskTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, *market_types.RetrievalAsk, func()) {
@@ -37,8 +38,8 @@ func TestRetrievalGetAsk(t *testing.T) {
 
 	ctx := context.Background()
 
-	rows := mock.NewRows([]string{"price_per_byte", "payment_interval", "payment_interval_increase", "unseal_price"})
-	rows.AddRow(mtypes.SafeFromGo(retrievalAskCase.PricePerByte.Int), retrievalAskCase.PaymentInterval, retrievalAskCase.PaymentIntervalIncrease, mtypes.SafeFromGo(retrievalAskCase.UnsealPrice.Int))
+	rows := mock.NewRows([]string{"address", "price_per_byte", "payment_interval", "payment_interval_increase", "unseal_price"})
+	rows.AddRow(DBAddress(retrievalAskCase.Miner), mtypes.SafeFromGo(retrievalAskCase.PricePerByte.Int), retrievalAskCase.PaymentInterval, retrievalAskCase.PaymentIntervalIncrease, mtypes.SafeFromGo(retrievalAskCase.UnsealPrice.Int))
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_asks` WHERE address = ? LIMIT 1")).WithArgs(DBAddress(retrievalAskCase.Miner).String()).WillReturnRows(rows)
 	result, err := r.RetrievalAskRepo().GetAsk(ctx, retrievalAskCase.Miner)
 	assert.Nil(t, err)
@@ -51,11 +52,18 @@ func TestSetRetrievalAsk(t *testing.T) {
 
 	ctx := context.Background()
 
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	sql, vars, err := getSQL(db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "address"}}, UpdateAll: true}).
+		Create(fromRetrievalAsk(retrievalAskCase)))
+	assert.NoError(t, err)
+
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO `retrieval_asks` (`address`,`price_per_byte`,`unseal_price`,`payment_interval`,`payment_interval_increase`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE `address`=VALUES(`address`),`price_per_byte`=VALUES(`price_per_byte`),`unseal_price`=VALUES(`unseal_price`),`payment_interval`=VALUES(`payment_interval`),`payment_interval_increase`=VALUES(`payment_interval_increase`),`updated_at`=VALUES(`updated_at`)")).
-		WithArgs(DBAddress(retrievalAskCase.Miner).String(), mtypes.SafeFromGo(retrievalAskCase.PricePerByte.Int), mtypes.SafeFromGo(retrievalAskCase.UnsealPrice.Int), retrievalAskCase.PaymentInterval, retrievalAskCase.PaymentIntervalIncrease, sqlmock.AnyArg(), sqlmock.AnyArg()).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
-	err := r.RetrievalAskRepo().SetAsk(ctx, retrievalAskCase)
+
+	err = r.RetrievalAskRepo().SetAsk(ctx, retrievalAskCase)
 	assert.Nil(t, err)
 }
 
