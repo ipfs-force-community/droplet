@@ -65,20 +65,24 @@ build: $(BUILD_DEPS)
 droplet: $(BUILD_DEPS)
 	rm -f droplet
 	go build -o ./droplet $(GOFLAGS) ./cmd/droplet
+.PHONY: droplet
 
 droplet-client: $(BUILD_DEPS)
 	rm -f droplet-client
 	go build -o ./droplet-client $(GOFLAGS) ./cmd/droplet-client
+.PHONY: droplet-client
 
 index: $(BUILD_DEPS)
 	rm -f index-tool
 	go build -o ./index-tool $(GOFLAGS) ./tools/index
+.PHONY: index
 
 debug: $(BUILD_DEPS)
 	rm -f droplet-client
 	rm -f droplet
 	go build -o ./droplet-client $(GOFLAGS) -gcflags="all=-N -l" ./cmd/droplet-client
 	go build -o ./droplet $(GOFLAGS) -gcflags="all=-N -l" ./cmd/droplet
+.PHONY: debug
 
 # docker
 .PHONY: docker
