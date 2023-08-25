@@ -1233,8 +1233,8 @@ github.com/ipfs-force-community/sophon-auth v1.13.0-rc1 h1:d4N2I7QDlK0WNgvaMb3Z+
 github.com/ipfs-force-community/sophon-auth v1.13.0-rc1/go.mod h1:+S04oHCcJS6hylIv1kb74mA/m7qe41m6Py1hTFLM6rE=
 github.com/ipfs-force-community/sophon-gateway v1.13.0-rc1 h1:5BYVfOfbYSpRJ2bency5OObFYaIj+BMYd2oN4haP5sY=
 github.com/ipfs-force-community/sophon-gateway v1.13.0-rc1/go.mod h1:pYhNxq7lr3UNiNFPIVOJpGMVYzXNnkKQkZAOg/wK1ag=
-github.com/ipfs-force-community/sophon-messager v1.12.1-0.20230719025513-b11768735c5f h1:3O0hFYvP8Cx7X1rdOh24vAc9lUzYIRtpV1m5Ufr1+NM=
-github.com/ipfs-force-community/sophon-messager v1.12.1-0.20230719025513-b11768735c5f/go.mod h1:Vo9VnDwYJmVFaWrHtFPCiZNxFWqWQFgucQcmA3hA+VU=
+github.com/ipfs-force-community/sophon-messager v1.13.0-rc1 h1:GZ/hMwDBILXeS1SmaNweA3haCTjdnDltq2Ck2z/tle8=
+github.com/ipfs-force-community/sophon-messager v1.13.0-rc1/go.mod h1:ODYPt8b4AZ1ZUp4SnmGJIUbgGvTIu5JLwbRdu/oVSIk=
 github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7 h1:v/1/INcqm3kHLauWQYB63MwWJRWGz+3WEuUPp0jzIl8=
 github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7/go.mod h1:sSTUXgIu95tPHvgcYhdLuELmgPJWCP/pNMFtsrVtOyA=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=

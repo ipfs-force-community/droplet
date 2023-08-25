@@ -1,5 +1,33 @@
 # droplet changelog
 
+## v2.9.0-rc1
+
+* Update README.md [[#341](https://github.com/ipfs-force-community/droplet/pull/341)]
+* doc: fix link [[#349](https://github.com/ipfs-force-community/droplet/pull/349)]
+* chore: Remove dependency on io/ioutil package [[#355](https://github.com/ipfs-force-community/droplet/pull/355)]
+* feat: persist shard to mysql [[#354](https://github.com/ipfs-force-community/droplet/pull/354)]
+* feat: tools: generate car index and import index to mongo [[#356](https://github.com/ipfs-force-community/droplet/pull/356)]
+* fix: close reader [[#363](https://github.com/ipfs-force-community/droplet/pull/363)]
+* add issue template [[#361](https://github.com/ipfs-force-community/droplet/pull/361)]
+* fix: import deals slow [[#371](https://github.com/ipfs-force-community/droplet/pull/371)]
+* feat: add pprof [[#369](https://github.com/ipfs-force-community/droplet/pull/369)]
+* Chore/merge v2.8 [[#372](https://github.com/ipfs-force-community/droplet/pull/372)]
+* fix: memory leak [[#375](https://github.com/ipfs-force-community/droplet/pull/375)]
+* fix: import boost deal [[#376](https://github.com/ipfs-force-community/droplet/pull/376)]
+* doc:修正导入离线订单命令为./droplet storage deal import-data [[#380](https://github.com/ipfs-force-community/droplet/pull/380)]
+* Create 模拟官方机器人HTTP方式检索 [[#385](https://github.com/ipfs-force-community/droplet/pull/385)]
+* Fix/gen index tool [[#386](https://github.com/ipfs-force-community/droplet/pull/386)]
+* chore: output average write to log [[#390](https://github.com/ipfs-force-community/droplet/pull/390)]
+* update deploy docs / 更新部署文档 [[#392](https://github.com/ipfs-force-community/droplet/pull/392)]
+* fix: not set retrieval deal status [[#391](https://github.com/ipfs-force-community/droplet/pull/391)]
+* feat: add IAuthClient stub [[#399](https://github.com/ipfs-force-community/droplet/pull/399)]
+* feat: support filter deals by SectorExpiration [[#404](https://github.com/ipfs-force-community/droplet/pull/404)]
+* fix: handle slashed deal [[#402](https://github.com/ipfs-force-community/droplet/pull/402)]
+* fix: Use the unified piecestorage object [[#409](https://github.com/ipfs-force-community/droplet/pull/409)]
+* fix: parse address failed [[#411](https://github.com/ipfs-force-community/droplet/pull/411)]
+* chore: update venus & go-data-transfer [[#397](https://github.com/ipfs-force-community/droplet/pull/397)]
+* feat: Automatically delete temporary car files [[#413](https://github.com/ipfs-force-community/droplet/pull/413)]
+
 ## v2.8.0
 
 * fix: repo compatibility for cli [[#348](https://github.com/ipfs-force-community/droplet/pull/348)]
