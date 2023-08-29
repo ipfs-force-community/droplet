@@ -49,7 +49,6 @@ type Wrapper struct {
 	dagst      dagstore.Interface
 	minerAPI   MarketAPI
 	failureCh  chan dagstore.ShardResult
-	traceCh    chan dagstore.Trace
 	gcInterval time.Duration
 }
 
@@ -68,9 +67,6 @@ func NewDAGStore(ctx context.Context,
 
 	// The dagstore will write Shard failures to the `failureCh` here.
 	failureCh := make(chan dagstore.ShardResult, 1)
-
-	// The dagstore will write Trace events to the `traceCh` here.
-	traceCh := make(chan dagstore.Trace, 32)
 
 	var (
 		transientsDir = filepath.Join(cfg.RootDir, "transients")
@@ -110,7 +106,6 @@ func NewDAGStore(ctx context.Context,
 		ShardRepo:     shardRepo,
 		MountRegistry: registry,
 		FailureCh:     failureCh,
-		TraceCh:       traceCh,
 		// not limiting fetches globally, as the Lotus mount does
 		// conditional throttling.
 		MaxConcurrentIndex:        cfg.MaxConcurrentIndex,
@@ -137,7 +132,6 @@ func NewDAGStore(ctx context.Context,
 		dagst:      dagst,
 		minerAPI:   marketApi,
 		failureCh:  failureCh,
-		traceCh:    traceCh,
 		gcInterval: time.Duration(cfg.GCInterval),
 	}
 
@@ -174,10 +168,6 @@ func (w *Wrapper) Start(ctx context.Context) error {
 	w.backgroundWg.Add(1)
 	go w.gcLoop()
 
-	// run a go-routine to read the trace for debugging.
-	w.backgroundWg.Add(1)
-	go w.traceLoop()
-
 	// Run a go-routine for shard recovery
 	if dss, ok := w.dagst.(*dagstore.DAGStore); ok {
 		w.backgroundWg.Add(1)
@@ -185,24 +175,6 @@ func (w *Wrapper) Start(ctx context.Context) error {
 	}
 
 	return w.dagst.Start(ctx)
-}
-
-func (w *Wrapper) traceLoop() {
-	defer w.backgroundWg.Done()
-
-	for w.ctx.Err() == nil {
-		select {
-		// Log trace events from the DAG store
-		case tr := <-w.traceCh:
-			log.Debugw("trace",
-				"shard-key", tr.Key.String(),
-				"op-type", tr.Op.String(),
-				"after", tr.After.String())
-
-		case <-w.ctx.Done():
-			return
-		}
-	}
 }
 
 func (w *Wrapper) gcLoop() {
