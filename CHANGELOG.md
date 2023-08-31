@@ -1,5 +1,7 @@
 # droplet changelog
 
+## v2.9.0
+
 ## v2.9.0-rc1
 
 * Update README.md [[#341](https://github.com/ipfs-force-community/droplet/pull/341)]
