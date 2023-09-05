@@ -14,7 +14,7 @@ import (
 
 var log = logging.Logger("clients")
 
-var ClientsOpts = func(server bool, msgCfg *config.Messager, signerCfg *config.Signer, authClient jwtclient.IAuthClient) builder.Option {
+var ClientsOpts = func(server bool, msgCfg config.Messager, signerCfg *config.Signer, authClient jwtclient.IAuthClient) builder.Option {
 	return builder.Options(
 		builder.Override(new(IMixMessage), NewMixMsgClient),
 		builder.Override(new(signer.ISigner), signer.NewISignerClient(server, authClient)),
