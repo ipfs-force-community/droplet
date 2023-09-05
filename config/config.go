@@ -168,10 +168,10 @@ type MarketConfig struct {
 	Metrics metrics.MetricsConfig
 }
 
-func (m *MarketConfig) GetNode() *Node {
-	ret := &Node{}
+func (m *MarketConfig) GetNode() Node {
+	ret := Node{}
 	if m.Node != nil {
-		ret = m.Node
+		ret = *m.Node
 	}
 	chainService := ChainService{}
 	if m.ChainService != nil {
@@ -186,10 +186,10 @@ func (m *MarketConfig) GetNode() *Node {
 	return ret
 }
 
-func (m *MarketConfig) GetMessager() *Messager {
-	ret := &Messager{}
+func (m *MarketConfig) GetMessager() Messager {
+	ret := Messager{}
 	if m.Messager != nil {
-		ret = m.Messager
+		ret = *m.Messager
 	}
 	chainService := ChainService{}
 	if m.ChainService != nil {
@@ -204,10 +204,10 @@ func (m *MarketConfig) GetMessager() *Messager {
 	return ret
 }
 
-func (m *MarketConfig) GetAuthNode() *AuthNode {
-	ret := &AuthNode{}
+func (m *MarketConfig) GetAuthNode() AuthNode {
+	ret := AuthNode{}
 	if m.AuthNode != nil {
-		ret = m.AuthNode
+		ret = *m.AuthNode
 	}
 	chainService := ChainService{}
 	if m.ChainService != nil {

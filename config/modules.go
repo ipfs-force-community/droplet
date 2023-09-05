@@ -419,7 +419,7 @@ var ConfigServerOpts = func(cfg *MarketConfig) builder.Option {
 		builder.Override(new(*MarketConfig), cfg),
 		builder.Override(new(*HomeDir), cfg.HomePath),
 		builder.Override(new(IHome), cfg),
-		builder.Override(new(*Node), cfg.GetNode()),
+		builder.Override(new(Node), cfg.GetNode()),
 		builder.Override(new(*Messager), cfg.GetMessager),
 		builder.Override(new(*Signer), &cfg.Signer),
 		builder.Override(new(*Mysql), &cfg.Mysql),

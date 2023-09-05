@@ -15,7 +15,7 @@ import (
 	"github.com/ipfs-force-community/metrics"
 )
 
-func NodeClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, nodeCfg *config.Node) (v1api.FullNode, error) {
+func NodeClient(mctx metrics.MetricsCtx, lc fx.Lifecycle, nodeCfg config.Node) (v1api.FullNode, error) {
 	fullNode, closer, err := v1api.DialFullNodeRPC(mctx, nodeCfg.Url, nodeCfg.Token, nil)
 	if err != nil {
 		return nil, err
