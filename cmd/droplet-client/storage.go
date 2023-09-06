@@ -491,8 +491,8 @@ The minimum value is 518400 (6 months).`,
 			}
 
 			ref.PieceSize = abi.UnpaddedPieceSize(psize)
-
 			ref.TransferType = storagemarket.TTManual
+			p.statelessDeal = true
 		}
 
 		sdParams := &client.DealParams{
@@ -1557,19 +1557,9 @@ func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi 
 		return nil, fmt.Errorf("maximum deal duration is %d blocks", MaxDealDuration)
 	}
 
-	var a address.Address
-	if from := cctx.String("from"); from != "" {
-		faddr, err := address.NewFromString(from)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse 'from' address: %w", err)
-		}
-		a = faddr
-	} else {
-		def, err := api.DefaultAddress(cctx.Context)
-		if err != nil {
-			return nil, err
-		}
-		a = def
+	a, err := getProvidedOrDefaultWallet(cctx.Context, api, cctx.String("from"))
+	if err != nil {
+		return nil, err
 	}
 
 	// Check if the address is a verified client
