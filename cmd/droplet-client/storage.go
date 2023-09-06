@@ -499,8 +499,8 @@ The minimum value is 518400 (6 months).`,
 			}
 
 			ref.PieceSize = abi.UnpaddedPieceSize(psize)
-
 			ref.TransferType = storagemarket.TTManual
+			p.statelessDeal = true
 		}
 
 		sdParams := &client.DealParams{
