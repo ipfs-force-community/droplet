@@ -3,6 +3,7 @@ package models
 import (
 	badger2 "github.com/ipfs-force-community/droplet/v2/models/badger"
 	"github.com/ipfs-force-community/droplet/v2/models/mysql"
+	"github.com/ipfs-force-community/droplet/v2/models/mysql/client"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 
 	"github.com/ipfs-force-community/droplet/v2/config"
@@ -25,7 +26,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 			}, builder.Options(
 				// if mysql is configured, use mysql
 				builder.Override(new(repo.Repo), func() (repo.Repo, error) {
-					return mysql.InitMysql(mysqlCfg)
+					return mysql.NewMysqlRepo(mysqlCfg)
 				}),
 			),
 				builder.Options(
@@ -61,6 +62,9 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 				builder.Override(new(badger2.ClientOfflineDealsDS), badger2.NewClientOfflineDealStore),
 				builder.Override(new(repo.Repo), badger2.NewMigratedBadgerRepo),
 				builder.Override(new(repo.ClientOfflineDealRepo), badger2.NewBadgerClientOfflineDealRepo),
+				builder.ApplyIf(func(s *builder.Settings) bool {
+					return mysqlCfg != nil && len(mysqlCfg.ConnectionString) > 0
+				}, builder.Override(new(client.Repo), client.NewMysqlRepo)),
 			),
 		),
 	)

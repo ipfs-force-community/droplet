@@ -75,7 +75,7 @@ func getSqliteDryrunDB() (*gorm.DB, error) {
 	return gorm.Open(sqlite.Open(":memory:"), &gorm.Config{DryRun: true})
 }
 
-func getMysqlDryrunDB() (*gorm.DB, error) {
+func GetMysqlDryrunDB() (*gorm.DB, error) {
 	sqlDB, _, err := sqlmock.New()
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func getMysqlDryrunDB() (*gorm.DB, error) {
 	return gormDB, nil
 }
 
-func getFullRows(obj interface{}) (*sqlmock.Rows, error) {
+func GetFullRows(obj interface{}) (*sqlmock.Rows, error) {
 	tmp := make([]interface{}, 0)
 
 	if reflect.TypeOf(obj).Kind() == reflect.Ptr {
@@ -170,7 +170,7 @@ func getFullRows(obj interface{}) (*sqlmock.Rows, error) {
 	return rows, nil
 }
 
-func getSQL(db *gorm.DB) (sql string, vars []driver.Value, err error) {
+func GetSQL(db *gorm.DB) (sql string, vars []driver.Value, err error) {
 	stmt := db.Statement
 	sql = stmt.SQL.String()
 	varsI := stmt.Vars

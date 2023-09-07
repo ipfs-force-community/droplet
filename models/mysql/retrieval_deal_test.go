@@ -60,9 +60,9 @@ func TestSaveRetrievalDeal(t *testing.T) {
 	dbDeal, err := fromProviderDealState(RetrievaldealStateCase)
 	assert.NoError(t, err)
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.Nil(t, err)
-	sql, vars, err := getSQL(db.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).
+	sql, vars, err := GetSQL(db.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).
 		Create(dbDeal))
 	assert.NoError(t, err)
 	vars[20] = sqlmock.AnyArg()
@@ -84,7 +84,7 @@ func TestRetrievalGetDeal(t *testing.T) {
 	peerid, err := peer.Decode(dbRetrievalDealCase.Receiver)
 	assert.Nil(t, err)
 
-	rows, err := getFullRows(dbRetrievalDealCase)
+	rows, err := GetFullRows(dbRetrievalDealCase)
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE cdp_proposal_id=? AND receiver=? LIMIT 1")).WithArgs(retrievalmarket.DealID(dbRetrievalDealCase.DealProposal.ID), peerid.String()).WillReturnRows(rows)
@@ -102,7 +102,7 @@ func TestGetRetrievalDealByTransferId(t *testing.T) {
 
 	ctx := context.Background()
 
-	rows, err := getFullRows(dbRetrievalDealCase)
+	rows, err := GetFullRows(dbRetrievalDealCase)
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE ci_initiator = ? AND ci_responder = ? AND ci_channel_id = ? LIMIT 1")).WithArgs(dbRetrievalDealCase.ChannelID.Initiator, dbRetrievalDealCase.ChannelID.Responder, dbRetrievalDealCase.ChannelID.ID).WillReturnRows(rows)
@@ -143,7 +143,7 @@ func TestListRetrievalDeals(t *testing.T) {
 
 	ctx := context.Background()
 
-	rows, err := getFullRows(dbRetrievalDealCase)
+	rows, err := GetFullRows(dbRetrievalDealCase)
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals`")).WillReturnRows(rows)
@@ -159,7 +159,7 @@ func TestListRetrievalDeals(t *testing.T) {
 
 	// test receiver
 	receiver := dbRetrievalDealCase.Receiver
-	rows, err = getFullRows(dbRetrievalDealCase)
+	rows, err = GetFullRows(dbRetrievalDealCase)
 	assert.NoError(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE receiver = ?")).WithArgs(receiver).WillReturnRows(rows)
 	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{Receiver: receiver})
@@ -168,7 +168,7 @@ func TestListRetrievalDeals(t *testing.T) {
 
 	// test deal id
 	payloadCID := testutil.CidProvider(32)(t)
-	rows, err = getFullRows(dbRetrievalDealCase)
+	rows, err = GetFullRows(dbRetrievalDealCase)
 	assert.NoError(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE cdp_payload_cid = ?")).WithArgs(payloadCID.String()).WillReturnRows(rows)
 	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{PayloadCID: payloadCID.String()})
@@ -177,7 +177,7 @@ func TestListRetrievalDeals(t *testing.T) {
 
 	// test status
 	status := dbRetrievalDealCase.Status
-	rows, err = getFullRows(dbRetrievalDealCase)
+	rows, err = GetFullRows(dbRetrievalDealCase)
 	assert.NoError(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE status = ?")).WithArgs(status).WillReturnRows(rows)
 	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{Status: &status})
@@ -186,7 +186,7 @@ func TestListRetrievalDeals(t *testing.T) {
 
 	// test discard failed deal
 	status = uint64(retrievalmarket.DealStatusErrored)
-	rows, err = getFullRows(dbRetrievalDealCase)
+	rows, err = GetFullRows(dbRetrievalDealCase)
 	assert.NoError(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `retrieval_deals` WHERE status != ?")).WithArgs(status).WillReturnRows(rows)
 	res, err = r.RetrievalDealRepo().ListDeals(ctx, &types.RetrievalDealQueryParams{DiscardFailedDeal: true})

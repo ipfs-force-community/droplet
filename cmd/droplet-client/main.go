@@ -113,6 +113,7 @@ func main() {
 		cli2.WithCategory("paych", paychCmd),
 		cli2.WithCategory("datacap", datacapCmds),
 		cli2.WithCategory("direct-deal", directDealCommands),
+		cli2.WithCategory("piece-info", pieceInfoCommands),
 	}
 
 	app := &cli.App{

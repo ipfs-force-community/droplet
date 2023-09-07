@@ -52,10 +52,10 @@ func TestSetRetrievalAsk(t *testing.T) {
 
 	ctx := context.Background()
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "address"}}, UpdateAll: true}).
+	sql, vars, err := GetSQL(db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "address"}}, UpdateAll: true}).
 		Create(fromRetrievalAsk(retrievalAskCase)))
 	assert.NoError(t, err)
 

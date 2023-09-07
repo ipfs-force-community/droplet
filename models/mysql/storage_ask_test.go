@@ -49,13 +49,13 @@ func TestGetStorageAsk(t *testing.T) {
 	ask := storageAskCases[0]
 	dbAsk := fromStorageAsk(&ask)
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbAsk)
+	rows, err := GetFullRows(dbAsk)
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.WithContext(context.Background()).Take(&dbAsk, "miner = ?", dbAsk.Miner.String()))
+	sql, vars, err := GetSQL(db.WithContext(context.Background()).Take(&dbAsk, "miner = ?", dbAsk.Miner.String()))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -69,13 +69,13 @@ func TestSetStorageAsk(t *testing.T) {
 	r, mock, storageAskCases, done := prepareStorageAskTest(t)
 	defer done()
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
 	ask := storageAskCases[0]
 	dbAsk := fromStorageAsk(&ask)
 
-	sql, vars, err := getSQL(db.WithContext(context.Background()).Clauses(clause.OnConflict{
+	sql, vars, err := GetSQL(db.WithContext(context.Background()).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "miner"}},
 		UpdateAll: true,
 	}).Save(dbAsk))
@@ -96,7 +96,7 @@ func TestListStorageAsk(t *testing.T) {
 	r, mock, storageAskCases, done := prepareStorageAskTest(t)
 	defer done()
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
 	var dbAsks []*storageAsk
@@ -106,10 +106,10 @@ func TestListStorageAsk(t *testing.T) {
 		expectRes = append(expectRes, &storageAskCases[i])
 	}
 
-	rows, err := getFullRows(dbAsks)
+	rows, err := GetFullRows(dbAsks)
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.Table("storage_asks").Find(&dbAsks))
+	sql, vars, err := GetSQL(db.Table("storage_asks").Find(&dbAsks))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)

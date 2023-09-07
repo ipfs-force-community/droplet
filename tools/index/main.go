@@ -198,7 +198,7 @@ func paramsFromContext(cctx *cli.Context) (*params, error) {
 
 	cfg := config.DefaultMarketConfig
 	cfg.Mysql.ConnectionString = mysqlURL
-	repo, err := mysql.InitMysql(&cfg.Mysql)
+	repo, err := mysql.NewMysqlRepo(&cfg.Mysql)
 	if err != nil {
 		return nil, fmt.Errorf("connect to mysql failed: %v", err)
 	}

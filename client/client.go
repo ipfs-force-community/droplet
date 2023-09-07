@@ -14,6 +14,7 @@ import (
 
 	"go.uber.org/fx"
 
+	"github.com/hashicorp/go-multierror"
 	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -61,6 +62,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/api/clients/signer"
 	"github.com/ipfs-force-community/droplet/v2/config"
 	"github.com/ipfs-force-community/droplet/v2/imports"
+	clientdb "github.com/ipfs-force-community/droplet/v2/models/mysql/client"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	marketNetwork "github.com/ipfs-force-community/droplet/v2/network"
 	"github.com/ipfs-force-community/droplet/v2/retrievalprovider"
@@ -104,6 +106,7 @@ type API struct {
 
 	OfflineDealRepo repo.ClientOfflineDealRepo
 	DealTracker     *DealTracker
+	PieceInfoDB     clientdb.Repo `optional:"true"`
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -1618,4 +1621,37 @@ func (a *API) ClientListOfflineDeals(ctx context.Context) ([]types.DealInfo, err
 	}
 
 	return res, nil
+}
+
+func (a *API) ClientImportPieceInfos(ctx context.Context, pis []*types.ClientPieceInfo) error {
+	if a.PieceInfoDB == nil {
+		return fmt.Errorf("piece info db is nil")
+	}
+
+	// todo: batch insert
+	errs := &multierror.Error{}
+	for _, pi := range pis {
+		if err := a.PieceInfoDB.ClientPieceInfoRepo().SavePieceInfo(pi); err != nil {
+			errs = multierror.Append(errs, err)
+			continue
+		}
+	}
+
+	return errs.ErrorOrNil()
+}
+
+func (a *API) ClientListPieceInfo(ctx context.Context) ([]*types.ClientPieceInfo, error) {
+	if a.PieceInfoDB == nil {
+		return nil, fmt.Errorf("piece info db is nil")
+	}
+
+	return a.PieceInfoDB.ClientPieceInfoRepo().ListPieceInfo()
+}
+
+func (a *API) ClientGetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*types.ClientPieceInfo, error) {
+	if a.PieceInfoDB == nil {
+		return nil, fmt.Errorf("piece info db is nil")
+	}
+
+	return a.PieceInfoDB.ClientPieceInfoRepo().GetPieceInfo(pieceCID)
 }

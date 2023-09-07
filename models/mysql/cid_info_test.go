@@ -40,13 +40,13 @@ func TestGetCIDInfo(t *testing.T) {
 		},
 	}
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(cidInfoCase)
+	rows, err := GetFullRows(cidInfoCase)
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.Model(&cidInfo{}).Find(&cidInfo{}, "payload_cid = ?", DBCid(cidInfoCase.PayloadCid.cid()).String()))
+	sql, vars, err := GetSQL(db.Model(&cidInfo{}).Find(&cidInfo{}, "payload_cid = ?", DBCid(cidInfoCase.PayloadCid.cid()).String()))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -60,12 +60,12 @@ func TestListCidInfoKeys(t *testing.T) {
 	r, mock, cidInfoCases, done := prepareCIDInfoTest(t)
 	defer done()
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
 	rows := sqlmock.NewRows([]string{"payload_cid"}).AddRow([]byte(cidInfoCases[0].PayloadCid.String())).AddRow([]byte(cidInfoCases[1].PayloadCid.String()))
 
-	sql, vars, err := getSQL(db.Table(cidInfoTableName).Select("payload_cid"))
+	sql, vars, err := GetSQL(db.Table(cidInfoTableName).Select("payload_cid"))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -103,10 +103,10 @@ func TestAddPieceBlockLocations(t *testing.T) {
 		return cids[i].String() < cids[j].String()
 	})
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.Clauses(
+	sql, vars, err := GetSQL(db.Clauses(
 		clause.OnConflict{Columns: []clause.Column{{Name: "proposal_cid"}}, UpdateAll: true}).
 		Create(toCidInfos(cid3, blockLocationCase)))
 	assert.NoError(t, err)

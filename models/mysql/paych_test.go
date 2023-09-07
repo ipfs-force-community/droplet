@@ -51,10 +51,10 @@ func TestSaveChannel(t *testing.T) {
 	channelInfo := channelInfosCases[0]
 	dbChannelInfo := fromChannelInfo(channelInfo)
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.WithContext(context.Background()).Clauses(clause.OnConflict{UpdateAll: true}).Create(dbChannelInfo))
+	sql, vars, err := GetSQL(db.WithContext(context.Background()).Clauses(clause.OnConflict{UpdateAll: true}).Create(dbChannelInfo))
 	assert.NoError(t, err)
 
 	// set updated_at and created_at as any
@@ -76,14 +76,14 @@ func TestGetChannelByAddress(t *testing.T) {
 	channelInfoCase := channelInfosCases[0]
 	dbChannelInfo := fromChannelInfo(channelInfoCase)
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbChannelInfo)
+	rows, err := GetFullRows(dbChannelInfo)
 	assert.NoError(t, err)
 
 	var nullInfo channelInfo
-	sql, vars, err := getSQL(db.Take(&nullInfo, "channel = ? and is_deleted = 0", DBAddress(*channelInfoCase.Channel).String()))
+	sql, vars, err := GetSQL(db.Take(&nullInfo, "channel = ? and is_deleted = 0", DBAddress(*channelInfoCase.Channel).String()))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -100,14 +100,14 @@ func TestGetChannelByChannelID(t *testing.T) {
 	channelInfoCase := channelInfosCases[0]
 	dbChannelInfo := fromChannelInfo(channelInfoCase)
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbChannelInfo)
+	rows, err := GetFullRows(dbChannelInfo)
 	assert.NoError(t, err)
 
 	var nullInfo channelInfo
-	sql, vars, err := getSQL(db.Take(&nullInfo, "channel_id = ? and is_deleted = 0", channelInfoCase.ChannelID))
+	sql, vars, err := GetSQL(db.Take(&nullInfo, "channel_id = ? and is_deleted = 0", channelInfoCase.ChannelID))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -127,14 +127,14 @@ func TestOutboundActiveByFromTo(t *testing.T) {
 
 	dbChannelInfo := fromChannelInfo(channelInfoCase)
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbChannelInfo)
+	rows, err := GetFullRows(dbChannelInfo)
 	assert.NoError(t, err)
 
 	var nullInfo channelInfo
-	sql, vars, err := getSQL(db.Take(&nullInfo, "direction = ? and settling = ? and control = ? and target = ? and is_deleted = 0",
+	sql, vars, err := GetSQL(db.Take(&nullInfo, "direction = ? and settling = ? and control = ? and target = ? and is_deleted = 0",
 		types.DirOutbound, false, DBAddress(channelInfoCase.Control).String(), DBAddress(channelInfoCase.Target).String()))
 	assert.NoError(t, err)
 
@@ -156,14 +156,14 @@ func TestWithPendingAddFunds(t *testing.T) {
 		dbChannelInfos[i] = fromChannelInfo(tempChannelInfo)
 	}
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbChannelInfos)
+	rows, err := GetFullRows(dbChannelInfos)
 	assert.NoError(t, err)
 
 	var nullInfo channelInfo
-	sql, vars, err := getSQL(db.Find(&nullInfo, "direction = ? and is_deleted = 0", types.DirOutbound))
+	sql, vars, err := GetSQL(db.Find(&nullInfo, "direction = ? and is_deleted = 0", types.DirOutbound))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -194,7 +194,7 @@ func TestListChannel(t *testing.T) {
 		addrs = append(addrs, *c.Channel)
 	}
 
-	rows, err := getFullRows(dbChannelInfos)
+	rows, err := GetFullRows(dbChannelInfos)
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `channel_infos` WHERE channel != ? and is_deleted = 0")).WithArgs(UndefDBAddress.String()).WillReturnRows(rows)
@@ -211,7 +211,7 @@ func TestRemoveChannel(t *testing.T) {
 	channelInfo := channelInfosCases[0]
 	dbChannelInfo := fromChannelInfo(channelInfo)
 
-	rows, err := getFullRows(dbChannelInfo)
+	rows, err := GetFullRows(dbChannelInfo)
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `channel_infos` WHERE channel_id = ? and is_deleted = 0 LIMIT 1")).WithArgs(channelInfosCases[0].ChannelID).WillReturnRows(rows)
@@ -247,10 +247,10 @@ func TestSaveMessage(t *testing.T) {
 	msgInfo := msgInfosCase[0]
 	dbMsgInfo := fromMsgInfo(msgInfo)
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbMsgInfo))
+	sql, vars, err := GetSQL(db.Clauses(clause.OnConflict{UpdateAll: true}).Create(dbMsgInfo))
 	assert.NoError(t, err)
 
 	vars[len(vars)-1] = sqlmock.AnyArg()

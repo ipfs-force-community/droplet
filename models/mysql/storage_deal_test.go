@@ -27,10 +27,10 @@ func TestSaveDeal(t *testing.T) {
 	r, mock, dbStorageDealCases, storageDealCases, done := prepareStorageDealRepoTest(t)
 	defer done()
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.Clauses(
+	sql, vars, err := GetSQL(db.Clauses(
 		clause.OnConflict{Columns: []clause.Column{{Name: "proposal_cid"}}, UpdateAll: true}).
 		Create(dbStorageDealCases[0]))
 	assert.NoError(t, err)
@@ -49,19 +49,19 @@ func TestGetDeal(t *testing.T) {
 	r, mock, dbStorageDealCases, storageDealCases, done := prepareStorageDealRepoTest(t)
 	defer done()
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
 	pageSize := 10
 	pageIndex := 1
 
 	var md []storageDeal
-	sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).
+	sql, vars, err := GetSQL(db.Table((&storageDeal{}).TableName()).
 		Find(&md, "cdp_provider = ?", dbStorageDealCases[0].ClientDealProposal.Provider.String()).
 		Offset(pageIndex * pageSize).Limit(pageSize))
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbStorageDealCases[0])
+	rows, err := GetFullRows(dbStorageDealCases[0])
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -79,14 +79,14 @@ func TestGetDealsByPieceCidAndStatus(t *testing.T) {
 	deal := storageDealCases[0]
 	dbDeal := dbStorageDealCases[0]
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbDeal)
+	rows, err := GetFullRows(dbDeal)
 	assert.NoError(t, err)
 
 	var md []storageDeal
-	sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).
+	sql, vars, err := GetSQL(db.Table((&storageDeal{}).TableName()).
 		Find(&md, "cdp_piece_cid = ? AND state in ?", dbDeal.PieceCID.String(), []storagemarket.StorageDealStatus{storagemarket.StorageDealActive}))
 	assert.NoError(t, err)
 
@@ -105,14 +105,14 @@ func TestGetDealsByDataCidAndDealStatus(t *testing.T) {
 	deal := storageDealCases[0]
 	dbDeal := dbStorageDealCases[0]
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbDeal)
+	rows, err := GetFullRows(dbDeal)
 	assert.NoError(t, err)
 
 	var md []storageDeal
-	sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Where("ref_root=?", deal.Ref.Root.String()).Where("cdp_provider=?", DBAddress(deal.Proposal.Provider).String()).Where("piece_status in ?", []types.PieceStatus{deal.PieceStatus}).Find(&md))
+	sql, vars, err := GetSQL(db.Table((&storageDeal{}).TableName()).Where("ref_root=?", deal.Ref.Root.String()).Where("cdp_provider=?", DBAddress(deal.Proposal.Provider).String()).Where("piece_status in ?", []types.PieceStatus{deal.PieceStatus}).Find(&md))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -130,14 +130,14 @@ func TestGetDealByAddrAndStatus(t *testing.T) {
 	deal := storageDealCases[0]
 	dbDeal := dbStorageDealCases[0]
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbDeal)
+	rows, err := GetFullRows(dbDeal)
 	assert.NoError(t, err)
 
 	var md []storageDeal
-	sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Where("cdp_provider=?", DBAddress(deal.Proposal.Provider).String()).Where("state in ?", []storagemarket.StorageDealStatus{storagemarket.StorageDealActive}).Find(&md))
+	sql, vars, err := GetSQL(db.Table((&storageDeal{}).TableName()).Where("cdp_provider=?", DBAddress(deal.Proposal.Provider).String()).Where("state in ?", []storagemarket.StorageDealStatus{storagemarket.StorageDealActive}).Find(&md))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -155,14 +155,14 @@ func TestGetGetDealByDealID(t *testing.T) {
 	deal := storageDealCases[0]
 	dbDeal := dbStorageDealCases[0]
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbDeal)
+	rows, err := GetFullRows(dbDeal)
 	assert.NoError(t, err)
 
 	var nullDeal *storageDeal
-	sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Take(&nullDeal, "cdp_provider = ? and deal_id = ?", DBAddress(deal.Proposal.Provider).String(), deal.DealID))
+	sql, vars, err := GetSQL(db.Table((&storageDeal{}).TableName()).Take(&nullDeal, "cdp_provider = ? and deal_id = ?", DBAddress(deal.Proposal.Provider).String(), deal.DealID))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -179,14 +179,14 @@ func TestGetDealsByPieceStatusAndDealStatus(t *testing.T) {
 	deal := storageDealCases[0]
 	dbDeal := dbStorageDealCases[0]
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
 	t.Run("with deal status", func(t *testing.T) {
-		rows, err := getFullRows(dbDeal)
+		rows, err := GetFullRows(dbDeal)
 		assert.NoError(t, err)
 		var md []storageDeal
-		sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Where("piece_status = ?", deal.PieceStatus).Where("state in ?", []storagemarket.StorageDealStatus{dbDeal.State}).Where("cdp_provider=?", DBAddress(deal.Proposal.Provider).String()).Find(&md))
+		sql, vars, err := GetSQL(db.Table((&storageDeal{}).TableName()).Where("piece_status = ?", deal.PieceStatus).Where("state in ?", []storagemarket.StorageDealStatus{dbDeal.State}).Where("cdp_provider=?", DBAddress(deal.Proposal.Provider).String()).Find(&md))
 		assert.NoError(t, err)
 		assert.NotEqual(t, "", sql)
 
@@ -199,10 +199,10 @@ func TestGetDealsByPieceStatusAndDealStatus(t *testing.T) {
 	})
 
 	t.Run("without deal status", func(t *testing.T) {
-		rows, err := getFullRows(dbDeal)
+		rows, err := GetFullRows(dbDeal)
 		assert.NoError(t, err)
 		var md []storageDeal
-		sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Where("piece_status = ?", deal.PieceStatus).Where("cdp_provider=?", DBAddress(deal.Proposal.Provider).String()).Find(&md))
+		sql, vars, err := GetSQL(db.Table((&storageDeal{}).TableName()).Where("piece_status = ?", deal.PieceStatus).Where("cdp_provider=?", DBAddress(deal.Proposal.Provider).String()).Find(&md))
 		assert.NoError(t, err)
 		assert.NotEqual(t, "", sql)
 
@@ -224,12 +224,12 @@ func TestUpdateDealStatus(t *testing.T) {
 	targetDealStatus := storagemarket.StorageDealAwaitingPreCommit
 	targetPieceStatus := types.Assigned
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
 	updateColumns := map[string]interface{}{"state": targetDealStatus, "piece_status": targetPieceStatus, "updated_at": sqlmock.AnyArg()}
 
-	sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Where("proposal_cid = ?", DBCid(deal.ProposalCid).String()).Updates(updateColumns))
+	sql, vars, err := GetSQL(db.Table((&storageDeal{}).TableName()).Where("proposal_cid = ?", DBCid(deal.ProposalCid).String()).Updates(updateColumns))
 	assert.NoError(t, err)
 
 	mock.ExpectBegin()
@@ -244,10 +244,10 @@ func TestListDeal(t *testing.T) {
 	r, mock, dbStorageDealCases, storageDealCases, done := prepareStorageDealRepoTest(t)
 	defer done()
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbStorageDealCases)
+	rows, err := GetFullRows(dbStorageDealCases)
 	assert.NoError(t, err)
 
 	var storageDeals []storageDeal
@@ -259,7 +259,7 @@ func TestListDeal(t *testing.T) {
 	}
 
 	// empty params
-	sql, _, err := getSQL(newQuery().Find(&storageDeals))
+	sql, _, err := GetSQL(newQuery().Find(&storageDeals))
 	assert.NoError(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WillReturnRows(rows)
 	res, err := r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{})
@@ -268,9 +268,9 @@ func TestListDeal(t *testing.T) {
 
 	var vars []driver.Value
 	// test page
-	rows, err = getFullRows(dbStorageDealCases[1:])
+	rows, err = GetFullRows(dbStorageDealCases[1:])
 	assert.NoError(t, err)
-	sql, vars, err = getSQL(newQuery().Offset(1).Limit(5).Find(&storageDeals))
+	sql, vars, err = GetSQL(newQuery().Offset(1).Limit(5).Find(&storageDeals))
 	assert.NoError(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
 	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: types.Page{Offset: 1, Limit: 5}})
@@ -279,9 +279,9 @@ func TestListDeal(t *testing.T) {
 	assert.Equal(t, storageDealCases[1], res[0])
 
 	// test miner
-	rows, err = getFullRows(dbStorageDealCases[0])
+	rows, err = GetFullRows(dbStorageDealCases[0])
 	assert.NoError(t, err)
-	sql, vars, err = getSQL(newQuery().Where("cdp_provider = ?", dbStorageDealCases[0].Provider.String()).Limit(caseCount).Find(&storageDeals))
+	sql, vars, err = GetSQL(newQuery().Where("cdp_provider = ?", dbStorageDealCases[0].Provider.String()).Limit(caseCount).Find(&storageDeals))
 	assert.NoError(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
 	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: defPage, Miner: address.Address(dbStorageDealCases[0].Provider)})
@@ -290,9 +290,9 @@ func TestListDeal(t *testing.T) {
 
 	// test client
 	client := dbStorageDealCases[0].Client
-	rows, err = getFullRows(dbStorageDealCases[0])
+	rows, err = GetFullRows(dbStorageDealCases[0])
 	assert.NoError(t, err)
-	sql, vars, err = getSQL(newQuery().Where("client = ?", client).Limit(caseCount).Find(&storageDeals))
+	sql, vars, err = GetSQL(newQuery().Where("client = ?", client).Limit(caseCount).Find(&storageDeals))
 	assert.NoError(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
 	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: defPage, Client: client})
@@ -301,9 +301,9 @@ func TestListDeal(t *testing.T) {
 
 	// test state
 	storageDealActive := storagemarket.StorageDealActive
-	rows, err = getFullRows(dbStorageDealCases)
+	rows, err = GetFullRows(dbStorageDealCases)
 	assert.NoError(t, err)
-	sql, vars, err = getSQL(newQuery().Where("state = ?", storageDealActive).Limit(caseCount).Find(&storageDeals))
+	sql, vars, err = GetSQL(newQuery().Where("state = ?", storageDealActive).Limit(caseCount).Find(&storageDeals))
 	assert.NoError(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
 	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: defPage, State: &storageDealActive})
@@ -313,9 +313,9 @@ func TestListDeal(t *testing.T) {
 	// test state
 	states := []storagemarket.StorageDealStatus{storagemarket.StorageDealFailing,
 		storagemarket.StorageDealExpired, storagemarket.StorageDealError, storagemarket.StorageDealSlashed}
-	rows, err = getFullRows(dbStorageDealCases)
+	rows, err = GetFullRows(dbStorageDealCases)
 	assert.NoError(t, err)
-	sql, vars, err = getSQL(newQuery().Where("state not in ?", states).Limit(caseCount).Find(&storageDeals))
+	sql, vars, err = GetSQL(newQuery().Where("state not in ?", states).Limit(caseCount).Find(&storageDeals))
 	assert.NoError(t, err)
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
 	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: defPage, DiscardFailedDeal: true})
@@ -329,14 +329,14 @@ func TestListDealByAddr(t *testing.T) {
 
 	deal := storageDealCases[0]
 	dbDeal := dbStorageDealCases[0]
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbDeal)
+	rows, err := GetFullRows(dbDeal)
 	assert.NoError(t, err)
 
 	var nullDeals []*storageDeal
-	sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Find(&nullDeals, "cdp_provider = ?", DBAddress(deal.Proposal.Provider).String()))
+	sql, vars, err := GetSQL(db.Table((&storageDeal{}).TableName()).Find(&nullDeals, "cdp_provider = ?", DBAddress(deal.Proposal.Provider).String()))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -354,14 +354,14 @@ func TestGetPieceInfo(t *testing.T) {
 	deal := storageDealCases[0]
 	dbDeal := dbStorageDealCases[0]
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbDeal)
+	rows, err := GetFullRows(dbDeal)
 	assert.NoError(t, err)
 
 	var nullDeal *storageDeal
-	sql, vars, err := getSQL(db.Table(storageDealTableName).Find(&nullDeal, "cdp_piece_cid = ?", DBCid(deal.Proposal.PieceCID).String()))
+	sql, vars, err := GetSQL(db.Table(storageDealTableName).Find(&nullDeal, "cdp_piece_cid = ?", DBCid(deal.Proposal.PieceCID).String()))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -396,10 +396,10 @@ func TestListPieceInfoKeys(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"cdp_piece_cid"}).AddRow(pCidV)
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Select("cdp_piece_cid"))
+	sql, vars, err := GetSQL(db.Table((&storageDeal{}).TableName()).Select("cdp_piece_cid"))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
@@ -417,14 +417,14 @@ func TestGetPieceSize(t *testing.T) {
 	deal := storageDealCases[0]
 	dbDeal := dbStorageDealCases[0]
 
-	db, err := getMysqlDryrunDB()
+	db, err := GetMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	rows, err := getFullRows(dbDeal)
+	rows, err := GetFullRows(dbDeal)
 	assert.NoError(t, err)
 
 	var nullDeal *storageDeal
-	sql, vars, err := getSQL(db.Table(storageDealTableName).Take(&nullDeal, "cdp_piece_cid = ? ", DBCid(deal.Proposal.PieceCID).String()))
+	sql, vars, err := GetSQL(db.Table(storageDealTableName).Take(&nullDeal, "cdp_piece_cid = ? ", DBCid(deal.Proposal.PieceCID).String()))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)

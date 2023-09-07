@@ -93,7 +93,7 @@ func (r txRepo) StorageDealRepo() repo.StorageDealRepo {
 	return NewStorageDealRepo(r.DB)
 }
 
-func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
+func InitMysql(cfg *config.Mysql) (*gorm.DB, error) {
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 	if err != nil {
 		return nil, fmt.Errorf("[db connection failed] Database name: %s %w", cfg.ConnectionString, err)
@@ -117,8 +117,15 @@ func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 	}
 	sqlDB.SetConnMaxLifetime(d)
 
-	r := &MysqlRepo{DB: db}
+	return db, nil
+}
 
+func NewMysqlRepo(cfg *config.Mysql) (repo.Repo, error) {
+	db, err := InitMysql(cfg)
+	if err != nil {
+		return nil, err
+	}
+	r := &MysqlRepo{DB: db}
 	return r, r.Migrate()
 }
 
