@@ -66,6 +66,10 @@ func (r MysqlRepo) ShardRepo() repo.IShardRepo {
 	return NewShardRepo(r.GetDb())
 }
 
+func (r MysqlRepo) DirectDealRepo() repo.DirectDealRepo {
+	return NewDirectDealRepo(r.GetDb())
+}
+
 func (r MysqlRepo) Close() error {
 	db, err := r.DB.DB()
 	if err != nil {
@@ -76,7 +80,7 @@ func (r MysqlRepo) Close() error {
 
 func (r MysqlRepo) Migrate() error {
 	return r.AutoMigrate(retrievalAsk{}, cidInfo{}, storageAsk{}, fundedAddressState{}, storageDeal{},
-		channelInfo{}, msgInfo{}, retrievalDeal{}, shard{})
+		channelInfo{}, msgInfo{}, retrievalDeal{}, shard{}, directDeal{})
 }
 
 func (r MysqlRepo) Transaction(cb func(txRepo repo.TxRepo) error) error {

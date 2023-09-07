@@ -115,6 +115,7 @@ type Repo interface {
 	CidInfoRepo() ICidInfoRepo
 	RetrievalDealRepo() IRetrievalDealRepo
 	ShardRepo() IShardRepo
+	DirectDealRepo() DirectDealRepo
 	Close() error
 	Migrate() error
 	Transaction(func(txRepo TxRepo) error) error
@@ -128,6 +129,12 @@ type ClientOfflineDealRepo interface {
 	SaveDeal(ctx context.Context, deal *types2.ClientOfflineDeal) error
 	GetDeal(ctx context.Context, proposalCID cid.Cid) (*types2.ClientOfflineDeal, error)
 	ListDeal(ctx context.Context) ([]*types2.ClientOfflineDeal, error)
+}
+
+type DirectDealRepo interface {
+	SaveDeal(ctx context.Context, deal *types.DirectDeal) error
+	GetDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error)
+	ListDeal(ctx context.Context) ([]*types.DirectDeal, error)
 }
 
 var ErrNotFound = errors.New("record not found")
