@@ -134,6 +134,7 @@ type ClientOfflineDealRepo interface {
 type DirectDealRepo interface {
 	SaveDeal(ctx context.Context, deal *types.DirectDeal) error
 	GetDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error)
+	GetDealByAllocationID(ctx context.Context, id uint64) (*types.DirectDeal, error)
 	ListDeal(ctx context.Context) ([]*types.DirectDeal, error)
 }
 

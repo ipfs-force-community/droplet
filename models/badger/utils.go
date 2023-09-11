@@ -3,6 +3,7 @@ package badger
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -14,7 +15,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
-func checkCallbackAndGetParamType(i interface{}) (reflect.Type, error) {
+func checkCallbackAndGetParamType(i any, checkCBOR bool) (reflect.Type, error) {
 	t := reflect.TypeOf(i)
 	if t.Kind() != reflect.Func {
 		return nil, fmt.Errorf("must be a function")
@@ -26,8 +27,10 @@ func checkCallbackAndGetParamType(i interface{}) (reflect.Type, error) {
 		return nil, fmt.Errorf("callback must and only have 2 return value")
 	}
 	in := t.In(0)
-	if !in.Implements(reflect.TypeOf((*cbg.CBORUnmarshaler)(nil)).Elem()) {
-		return nil, fmt.Errorf("param must be a CBORUnmarshaler")
+	if checkCBOR {
+		if !in.Implements(reflect.TypeOf((*cbg.CBORUnmarshaler)(nil)).Elem()) {
+			return nil, fmt.Errorf("param must be a CBORUnmarshaler")
+		}
 	}
 	if t.Out(0).Kind() != reflect.Bool {
 		return nil, fmt.Errorf("1st return value must be an boolean")
@@ -38,8 +41,8 @@ func checkCallbackAndGetParamType(i interface{}) (reflect.Type, error) {
 	return in.Elem(), nil
 }
 
-func travelCborAbleDS(ctx context.Context, ds datastore.Batching, callback interface{}) error {
-	instanceType, err := checkCallbackAndGetParamType(callback)
+func travelCborAbleDS(ctx context.Context, ds datastore.Batching, callback any) error {
+	instanceType, err := checkCallbackAndGetParamType(callback, true)
 	if err != nil {
 		return err
 	}
@@ -51,6 +54,26 @@ func travelCborAbleDS(ctx context.Context, ds datastore.Batching, callback inter
 		}
 		rets := reflect.ValueOf(callback).Call([]reflect.Value{
 			reflect.ValueOf(unmarshaler),
+		})
+		if !rets[1].IsNil() {
+			return true, rets[0].Interface().(error)
+		}
+		return rets[0].Interface().(bool), nil
+	})
+}
+
+func travelJSONAbleDS(ctx context.Context, ds datastore.Batching, callback interface{}) error {
+	instanceType, err := checkCallbackAndGetParamType(callback, false)
+	if err != nil {
+		return err
+	}
+	return TravelBatching(ctx, ds, func(k string, v []byte) (bool, error) {
+		i := reflect.New(instanceType).Interface()
+		if err = json.Unmarshal(v, i); err != nil {
+			return true, err
+		}
+		rets := reflect.ValueOf(callback).Call([]reflect.Value{
+			reflect.ValueOf(i),
 		})
 		if !rets[1].IsNil() {
 			return true, rets[0].Interface().(error)

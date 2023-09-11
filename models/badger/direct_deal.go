@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 
+	shared "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
 )
 
 func NewDirectDealRepo(ds DirectDealsDS) repo.DirectDealRepo {
@@ -43,26 +43,33 @@ func (r *directDealRepo) GetDeal(ctx context.Context, id uuid.UUID) (*types.Dire
 	return &d, nil
 }
 
-func (r *directDealRepo) ListDeal(ctx context.Context) (deals []*types.DirectDeal, err error) {
-	result, err := r.ds.Query(ctx, query.Query{})
+func (r *directDealRepo) GetDealByAllocationID(ctx context.Context, allocationID uint64) (*types.DirectDeal, error) {
+	var d *types.DirectDeal
+	err := travelJSONAbleDS(ctx, r.ds, func(deal *types.DirectDeal) (bool, error) {
+		if deal.AllocationID == shared.AllocationId(allocationID) && deal.State != types.DealError {
+			d = deal
+			return true, nil
+		}
+		return false, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		err = result.Close()
-	}()
+	if d == nil {
+		return nil, repo.ErrNotFound
+	}
 
-	for entry := range result.Next() {
-		if entry.Error != nil {
-			return nil, err
-		}
-		var d types.DirectDeal
-		err = json.Unmarshal(entry.Value, &d)
-		if err != nil {
-			return nil, err
-		}
+	return d, nil
+}
 
-		deals = append(deals, &d)
+func (r *directDealRepo) ListDeal(ctx context.Context) ([]*types.DirectDeal, error) {
+	var deals []*types.DirectDeal
+	err := travelJSONAbleDS(ctx, r.ds, func(deal *types.DirectDeal) (bool, error) {
+		deals = append(deals, deal)
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return deals, nil

@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -65,6 +66,8 @@ type MarketNodeImpl struct {
 	DataTransfer      network.ProviderDataTransfer
 	DealPublisher     *storageprovider.DealPublisher
 	DealAssigner      storageprovider.DealAssiger
+
+	DirectDealProvider *storageprovider.DirectDealProvider
 
 	AuthClient jwtclient.IAuthClient
 
@@ -1323,4 +1326,20 @@ func (m *MarketNodeImpl) DealsBatchImportData(ctx context.Context, refs types.Im
 	results = append(results, res...)
 
 	return results, nil
+}
+
+func (m *MarketNodeImpl) ImportDirectDeal(ctx context.Context, dealParams *types.DirectDealParams) error {
+	err := m.DirectDealProvider.ImportDeal(ctx, dealParams)
+	if err != nil {
+		log.Errorf("import direct deal %s failed: %v", dealParams.PieceCID, err)
+	}
+	return err
+}
+
+func (m *MarketNodeImpl) GetDirectDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error) {
+	return m.Repo.DirectDealRepo().GetDeal(ctx, id)
+}
+
+func (m *MarketNodeImpl) ListDirectDeals(ctx context.Context) ([]*types.DirectDeal, error) {
+	return m.Repo.DirectDealRepo().ListDeal(ctx)
 }

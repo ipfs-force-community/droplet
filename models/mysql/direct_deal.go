@@ -14,21 +14,25 @@ import (
 const directDealTableName = "direct_deals"
 
 type directDeal struct {
-	ID        string
-	PieceCID  DBCid
-	PieceSize uint64
-	Client    DBAddress
-	Provider  DBAddress
+	ID        string    `gorm:"column:id;type:varchar(128);primary_key"`
+	PieceCID  DBCid     `gorm:"column:piece_cid;type:varchar(256);index"`
+	PieceSize uint64    `gorm:"column:piece_size;type:bigint unsigned;NOT NULL"`
+	Client    DBAddress `gorm:"column:client;type:varchar(256);index"`
+	Provider  DBAddress `gorm:"column:provider;type:varchar(256);index"`
 
-	AllocationID uint64
-	ClaimID      uint64
+	State   types.DirectDealState `gorm:"column:state;type:int;NOT NULL"`
+	Status  types.PieceStatus     `gorm:"column:status;type:varchar(32);NOT NULL"`
+	Message string                `gorm:"column:message;type:varchar(256)"`
 
-	SectorID uint64
-	Offset   uint64
-	Length   uint64
+	AllocationID uint64 `gorm:"column:allocation_id;type:bigint unsigned;index;NOT NULL"`
+	ClaimID      uint64 `gorm:"column:claim_id;type:bigint unsigned;NOT NULL"`
 
-	StartEpoch int64
-	EndEpoch   int64
+	SectorID uint64 `gorm:"column:sector_id;type:bigint unsigned;NOT NULL"`
+	Offset   uint64 `gorm:"column:offset;type:bigint unsigned;NOT NULL"`
+	Length   uint64 `gorm:"column:length;type:bigint unsigned;NOT NULL"`
+
+	StartEpoch int64 `gorm:"column:start_epoch;type:bigint;NOT NULL"`
+	EndEpoch   int64 `gorm:"column:end_epoch;type:bigint;NOT NULL"`
 
 	TimeStampOrm
 }
@@ -43,6 +47,9 @@ func (dd *directDeal) toDirectDeal() (*types.DirectDeal, error) {
 		PieceSize:    abi.PaddedPieceSize(dd.PieceSize),
 		Client:       dd.Client.addr(),
 		Provider:     dd.Provider.addr(),
+		State:        dd.State,
+		PieceStatus:  dd.Status,
+		Message:      dd.Message,
 		AllocationID: verifreg.AllocationId(dd.AllocationID),
 		ClaimID:      verifreg.ClaimId(dd.ClaimID),
 		SectorID:     abi.SectorNumber(dd.SectorID),
@@ -68,6 +75,9 @@ func fromDirectDeal(dd *types.DirectDeal) *directDeal {
 		PieceSize:    uint64(dd.PieceSize),
 		Client:       DBAddress(dd.Client),
 		Provider:     DBAddress(dd.Provider),
+		State:        dd.State,
+		Status:       dd.PieceStatus,
+		Message:      dd.Message,
 		AllocationID: uint64(dd.AllocationID),
 		ClaimID:      uint64(dd.ClaimID),
 		SectorID:     uint64(dd.SectorID),
@@ -100,6 +110,15 @@ func (ddr *directDealRepo) SaveDeal(ctx context.Context, deal *types.DirectDeal)
 func (ddr *directDealRepo) GetDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error) {
 	var deal directDeal
 	if err := ddr.DB.WithContext(ctx).Take(&deal, "id = ?", id.String()).Error; err != nil {
+		return nil, err
+	}
+
+	return deal.toDirectDeal()
+}
+
+func (ddr *directDealRepo) GetDealByAllocationID(ctx context.Context, allocationID uint64) (*types.DirectDeal, error) {
+	var deal directDeal
+	if err := ddr.DB.WithContext(ctx).Take(&deal, "allocation_id = ? and state != ?", allocationID, types.DealError).Error; err != nil {
 		return nil, err
 	}
 
