@@ -359,9 +359,14 @@ func (sdr *storageDealRepo) GetDealsByPieceStatusAndDealStatus(ctx context.Conte
 
 func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error) {
 	var deal *types.MinerDeal
-
+	states := []storagemarket.StorageDealStatus{storagemarket.StorageDealFailing, storagemarket.StorageDealRejecting, storagemarket.StorageDealError}
 	err := travelCborAbleDS(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
 		if inDeal.ClientDealProposal.Proposal.PieceCID == pieceCID {
+			for _, state := range states {
+				if inDeal.State == state {
+					return false, nil
+				}
+			}
 			deal = inDeal
 			return true, nil
 		}

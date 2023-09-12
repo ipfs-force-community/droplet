@@ -567,8 +567,10 @@ func (sdr *storageDealRepo) GetDealsByPieceStatusAndDealStatus(ctx context.Conte
 }
 
 func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error) {
-	var deal *storageDeal
-	if err := sdr.WithContext(ctx).Table(storageDealTableName).Take(&deal, "cdp_piece_cid = ? ", DBCid(pieceCID).String()).Error; err != nil {
+	var deal storageDeal
+	states := []storagemarket.StorageDealStatus{storagemarket.StorageDealFailing, storagemarket.StorageDealRejecting, storagemarket.StorageDealError}
+	if err := sdr.WithContext(ctx).Table(storageDealTableName).Take(&deal, "cdp_piece_cid = ? and state not in ?",
+		DBCid(pieceCID).String(), states).Error; err != nil {
 		return 0, 0, err
 	}
 

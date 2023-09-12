@@ -423,8 +423,9 @@ func TestGetPieceSize(t *testing.T) {
 	rows, err := getFullRows(dbDeal)
 	assert.NoError(t, err)
 
+	states := []storagemarket.StorageDealStatus{storagemarket.StorageDealFailing, storagemarket.StorageDealRejecting, storagemarket.StorageDealError}
 	var nullDeal *storageDeal
-	sql, vars, err := getSQL(db.Table(storageDealTableName).Take(&nullDeal, "cdp_piece_cid = ? ", DBCid(deal.Proposal.PieceCID).String()))
+	sql, vars, err := getSQL(db.Table(storageDealTableName).Take(&nullDeal, "cdp_piece_cid = ? and state not in ?", DBCid(deal.Proposal.PieceCID).String(), states))
 	assert.NoError(t, err)
 
 	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
