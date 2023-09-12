@@ -113,7 +113,7 @@ func NewDAGStore(ctx context.Context,
 		RecoverOnStart:            dagstore.RecoverNow,
 	}
 
-	if cfg.MongoTopIndex != nil {
+	if cfg.MongoTopIndex != nil && len(cfg.MongoTopIndex.Url) != 0 {
 		dCfg.TopLevelIndex, err = NewMongoTopIndex(ctx, cfg.MongoTopIndex.Url)
 		if err != nil {
 			return nil, nil, err
