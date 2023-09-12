@@ -188,7 +188,7 @@ func prepare(cctx *cli.Context) (*config.MarketConfig, error) {
 		return nil, err
 	}
 
-	return cfg, cmd.FetchAndLoadBundles(cctx.Context, *cfg.GetNode())
+	return cfg, cmd.FetchAndLoadBundles(cctx.Context, cfg.GetNode())
 }
 
 func runDaemon(cctx *cli.Context) error {

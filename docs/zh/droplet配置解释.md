@@ -10,6 +10,9 @@
 - 包括：同步节点，消息节点，签名节点及授权节点。
 
 ```toml
+[ChainService]
+  Url =  "/ip4/192.168.200.21/tcp/45132"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiemwiLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.3u-PInSUmX-8f6Z971M7JBCHYgFVQrvwUjJfFY03ouQ"
 [Node]
   Url = "/ip4/192.168.200.21/tcp/3453"
   Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiemwiLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.3u-PInSUmX-8f6Z971M7JBCHYgFVQrvwUjJfFY03ouQ"
@@ -200,6 +203,10 @@ SimultaneousTransfersForRetrieval = 20
 
 
 # ****** venus 组件服务配置 ********
+[ChainService]
+  Url =  "/ip4/192.168.200.21/tcp/45132"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiemwiLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.3u-PInSUmX-8f6Z971M7JBCHYgFVQrvwUjJfFY03ouQ"
+
 [Node]
   Url = "/ip4/192.168.200.151/tcp/3453"
   Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoidGVzdC11c2VyMDEiLCJwZXJtIjoic2lnbiIsImV4dCI6IiJ9.ETjNy3HMDS3ScZ3cax9xYb6AopNWYp4y71lZGCvYxMg"
@@ -448,8 +455,18 @@ PrivateKey = "08011240ae580daabbe087007d2b4db4e880af10d582215d2272669a94c49c854f
 
 当 `droplet` 接入venus组件使用时，需要配置相关组件的API。
 
+
+#### [ChainService]
+venus 链服务统一入口配置。
+该配置项的 `Url` 和 `Token` 会成为后续配置项 `Node` , `Messager` 以及 `AuthNode` 的默认值
+```toml
+[ChainService]
+  Url =  "/ip4/192.168.200.21/tcp/45132"
+  Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiemwiLCJwZXJtIjoiYWRtaW4iLCJleHQiOiIifQ.3u-PInSUmX-8f6Z971M7JBCHYgFVQrvwUjJfFY03ouQ"
+```
+
 #### [Node]
-venus链服务接入配置
+venus链同步节点接入配置
 ```
 [Node]
 # 链服务的入口
