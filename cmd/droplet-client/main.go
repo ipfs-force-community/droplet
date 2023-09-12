@@ -112,6 +112,7 @@ func main() {
 		cli2.WithCategory("actor-funds", actorFundsCmd),
 		cli2.WithCategory("paych", paychCmd),
 		cli2.WithCategory("datacap", datacapCmds),
+		cli2.WithCategory("pieceinfo", pieceInfoCmds),
 	}
 
 	app := &cli.App{

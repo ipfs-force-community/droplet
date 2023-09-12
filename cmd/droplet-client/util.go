@@ -49,17 +49,38 @@ func loadManifest(path string) ([]*manifest, error) {
 
 	manifests := make([]*manifest, 0, len(records))
 	for i, record := range records {
-		// skip title: payload_cid,filename,piece_cid,payload_size,piece_size,detail or payload_cid,filename,detail
+		// skip title
 		if i == 0 {
 			continue
 		}
 
 		if len(record) == 3 {
+			// payload_cid,filename,detail
 			payloadCID, err := cid.Parse(record[0])
 			if err == nil {
 				manifests = append(manifests, &manifest{payloadCID: payloadCID})
 			}
+		} else if len(record) == 4 {
+			// payload_cid,piece_cid,payload_size,piece_size
+			payloadCID, err := cid.Parse(record[0])
+			if err != nil {
+				continue
+			}
+			pieceCID, err := cid.Parse(record[1])
+			if err != nil {
+				continue
+			}
+			payloadSize, err := strconv.ParseUint(record[2], 10, 64)
+			if err != nil {
+				continue
+			}
+			pieceSize, err := strconv.Atoi(record[3])
+			if err == nil {
+				manifests = append(manifests, &manifest{payloadCID: payloadCID, payloadSize: payloadSize,
+					pieceCID: pieceCID, pieceSize: abi.UnpaddedPieceSize(pieceSize)})
+			}
 		} else if len(record) == 6 {
+			// payload_cid,filename,piece_cid,payload_size,piece_size,detail
 			payloadCID, err := cid.Parse(record[0])
 			if err != nil {
 				continue
