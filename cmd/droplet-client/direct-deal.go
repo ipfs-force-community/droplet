@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
-	"github.com/filecoin-project/venus/pkg/constants"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/datacap"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -70,8 +69,25 @@ var directDealAllocate = &cli.Command{
 			Name: "expiration",
 			Usage: "The latest epoch by which a provider must commit data before the allocation expires (epochs).\n" +
 				"Default is 60 days.",
-			Value: types.MaximumVerifiedAllocationExpiration,
 		},
+	},
+	Before: func(cctx *cli.Context) error {
+		if !cctx.IsSet("expiration") {
+			fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
+			if err != nil {
+				return err
+			}
+			defer fcloser()
+			head, err := fapi.ChainHead(cctx.Context)
+			if err != nil {
+				return err
+			}
+			val := types.MaximumVerifiedAllocationExpiration + head.Height()
+
+			return cctx.Set("expiration", strconv.FormatInt(int64(val), 10))
+		}
+
+		return nil
 	},
 	Action: func(cctx *cli.Context) error {
 		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
@@ -122,7 +138,7 @@ var directDealAllocate = &cli.Command{
 		var pieceInfos []*abi.PieceInfo
 		pieces := cctx.StringSlice("piece-info")
 		for _, p := range pieces {
-			pieceDetail := strings.Split(p, ",")
+			pieceDetail := strings.Split(p, "=")
 			if len(pieceDetail) > 2 {
 				return fmt.Errorf("incorrect pieceInfo format: %s", pieceDetail)
 			}
@@ -154,20 +170,19 @@ var directDealAllocate = &cli.Command{
 			return fmt.Errorf("requested datacap(%v) is greater then the available datacap(%v)", rDataCap, aDataCap)
 		}
 
+		head, err := fapi.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
 		termMax := cctx.Int64("term-max")
 		termMin := cctx.Int64("term-min")
 		expiration := cctx.Int64("expiration")
 		if termMax < termMin {
 			return fmt.Errorf("maximum duration %d cannot be smaller than minimum duration %d", termMax, termMin)
 		}
-
-		head, err := fapi.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
-
-		if abi.ChainEpoch(termMax) < head.Height() || abi.ChainEpoch(termMin) < head.Height() {
-			return fmt.Errorf("current chain head %d is greater than TermMin %d or TermMax %d", head.Height(), termMin, termMax)
+		if expiration < int64(head.Height()) {
+			return fmt.Errorf("expiration %d smaller than current epoch %d", expiration, head.Height())
 		}
 
 		// Create allocation requests
@@ -219,7 +234,7 @@ var directDealAllocate = &cli.Command{
 		fmt.Println("submitted data cap allocation message:", msgCid.String())
 		fmt.Println("waiting for message to be included in a block")
 
-		res, err := fapi.StateWaitMsg(ctx, msgCid, 1, constants.LookbackNoLimit, true)
+		res, err := api.MessagerWaitMessage(ctx, msgCid)
 		if err != nil {
 			return fmt.Errorf("waiting for message to be included in a block: %w", err)
 		}
