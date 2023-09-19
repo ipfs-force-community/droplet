@@ -17,6 +17,7 @@ import (
 	acrypto "github.com/filecoin-project/go-state-types/crypto"
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/google/uuid"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/sophon-messager/models/mtypes"
 	"github.com/ipfs/go-cid"
@@ -28,6 +29,7 @@ import (
 const storageDealTableName = "storage_deals"
 
 type storageDeal struct {
+	ID                 string `gorm:"column:id;type:varchar(128);index"`
 	ClientDealProposal `gorm:"embedded;embeddedPrefix:cdp_"`
 
 	ProposalCid DBCid  `gorm:"column:proposal_cid;type:varchar(256);primary_key"`
@@ -130,6 +132,7 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 		labelStr = string(labelBytes)
 	}
 	md := &storageDeal{
+		ID: src.ID.String(),
 		ClientDealProposal: ClientDealProposal{
 			PieceCID:             DBCid(src.ClientDealProposal.Proposal.PieceCID),
 			PieceSize:            uint64(src.ClientDealProposal.Proposal.PieceSize),
@@ -217,7 +220,15 @@ func toStorageDeal(src *storageDeal) (*types.MinerDeal, error) {
 	if err != nil {
 		return nil, err
 	}
+	var id uuid.UUID
+	if len(src.ID) != 0 {
+		id, err = uuid.Parse(src.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	md := &types.MinerDeal{
+		ID: id,
 		ClientDealProposal: vTypes.ClientDealProposal{
 			Proposal: vTypes.DealProposal{
 				PieceCID:             src.PieceCID.cid(),
@@ -327,6 +338,16 @@ func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.Min
 func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error) {
 	var md storageDeal
 	err := sdr.WithContext(ctx).Take(&md, "proposal_cid = ?", DBCid(proposalCid).String()).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return toStorageDeal(&md)
+}
+
+func (sdr *storageDealRepo) GetDealByUUID(ctx context.Context, id uuid.UUID) (*types.MinerDeal, error) {
+	var md storageDeal
+	err := sdr.WithContext(ctx).Take(&md, "id = ?", id.String()).Error
 	if err != nil {
 		return nil, err
 	}

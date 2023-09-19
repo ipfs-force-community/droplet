@@ -11,7 +11,9 @@ import (
 	"github.com/filecoin-project/go-ds-versioning/pkg/versioned"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/google/uuid"
 	v220 "github.com/ipfs-force-community/droplet/v2/models/badger/migrate/v2.2.0"
+	v230 "github.com/ipfs-force-community/droplet/v2/models/badger/migrate/v2.3.0"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
@@ -33,8 +35,9 @@ var versioningKey = datastore.NewKey("/versions/current")
 var log = logging.Logger("badger-migration")
 
 type migrateFunc struct {
-	version versioning.VersionKey
-	mf      versioning.MigrationFunc
+	preVersion versioning.VersionKey
+	version    versioning.VersionKey
+	mf         versioning.MigrationFunc
 }
 
 type migrateFuncSchedule []migrateFunc
@@ -50,7 +53,7 @@ func (mfs migrateFuncSchedule) subScheduleFrom(fromVersion string) migrateFuncSc
 	var startPos int
 	for idx, mf := range mfs {
 		if string(mf.version) == fromVersion {
-			startPos = idx
+			startPos = idx + 1
 			break
 		}
 	}
@@ -77,8 +80,8 @@ var migrateDs = map[string][]migrateFunc{
 	},
 	DsNameStorageDeal: {
 		{
-			version: "1", mf: func(old *v220.MinerDeal) (*market.MinerDeal, error) {
-				return &market.MinerDeal{
+			version: "1", mf: func(old *v220.MinerDeal) (*v230.MinerDeal, error) {
+				return &v230.MinerDeal{
 					ClientDealProposal:    old.ClientDealProposal,
 					ProposalCid:           old.ProposalCid,
 					AddFundsCid:           old.AddFundsCid,
@@ -103,6 +106,37 @@ var migrateDs = map[string][]migrateFunc{
 					PieceStatus:           market.PieceStatus(old.PieceStatus),
 					InboundCAR:            old.InboundCAR,
 					TimeStamp:             timeStampNow(),
+				}, nil
+			},
+		},
+		{
+			preVersion: "1", version: "2", mf: func(old *v230.MinerDeal) (*market.MinerDeal, error) {
+				return &market.MinerDeal{
+					ID:                    uuid.New(),
+					ClientDealProposal:    old.ClientDealProposal,
+					ProposalCid:           old.ProposalCid,
+					AddFundsCid:           old.AddFundsCid,
+					PublishCid:            old.PublishCid,
+					Miner:                 old.Miner,
+					Client:                old.Client,
+					State:                 old.State,
+					PiecePath:             old.PiecePath,
+					PayloadSize:           old.PayloadSize,
+					MetadataPath:          old.MetadataPath,
+					SlashEpoch:            old.SlashEpoch,
+					FastRetrieval:         old.FastRetrieval,
+					Message:               old.Message,
+					FundsReserved:         old.FundsReserved,
+					Ref:                   old.Ref,
+					AvailableForRetrieval: old.AvailableForRetrieval,
+					DealID:                old.DealID,
+					CreationTime:          old.CreationTime,
+					TransferChannelID:     old.TransferChannelID,
+					SectorNumber:          old.SectorNumber,
+					Offset:                old.Offset,
+					PieceStatus:           old.PieceStatus,
+					InboundCAR:            old.InboundCAR,
+					TimeStamp:             old.TimeStamp,
 				}, nil
 			},
 		},
@@ -211,16 +245,12 @@ func migrateOne(ctx context.Context, name string, mfs migrateFuncSchedule, ds da
 		oldVersion = string(v)
 	}
 	targetVersion := mfs.targetVersion()
-	var dsWithOldVersion datastore.Batching
-	if len(oldVersion) == 0 {
-		dsWithOldVersion = ds
-	} else {
-		dsWithOldVersion = namespace.Wrap(ds, datastore.NewKey(oldVersion))
-		if oldVersion == string(targetVersion) {
-			log.Infof("doesn't need migration for %s, current version is:%s", name, oldVersion)
-			return dsWithOldVersion, nil
-		}
+
+	if oldVersion == string(targetVersion) {
+		log.Infof("doesn't need migration for %s, current version is:%s", name, oldVersion)
+		return namespace.Wrap(ds, datastore.NewKey(oldVersion)), nil
 	}
+
 	log.Infof("migrate: %s from %s to %s", name, oldVersion, string(targetVersion))
 	mfs = mfs.subScheduleFrom(oldVersion)
 	if len(mfs) == 0 {
@@ -228,14 +258,15 @@ func migrateOne(ctx context.Context, name string, mfs migrateFuncSchedule, ds da
 	}
 	var migrationBuilders versioned.BuilderList = make([]versioned.Builder, len(mfs))
 	for idx, mf := range mfs {
-		migrationBuilders[idx] = versioned.NewVersionedBuilder(mf.mf, mf.version)
+		migrationBuilders[idx] = versioned.NewVersionedBuilder(mf.mf, mf.version).OldVersion(mfs[idx].preVersion)
 	}
 	migrations, err := migrationBuilders.Build()
 	if err != nil {
 		return nil, err
 	}
-	_, doMigrate := statestore.NewVersionedStateStore(dsWithOldVersion, migrations, targetVersion)
+	_, doMigrate := statestore.NewVersionedStateStore(ds, migrations, targetVersion)
 	if err := doMigrate(ctx); err != nil {
+		log.Errorf("migrate from %s to %s failed: %v", oldVersion, targetVersion, err)
 		var rollbackErr error
 		// if error happens, just rollback the version number
 		if len(oldVersion) == 0 {

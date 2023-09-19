@@ -45,6 +45,7 @@ linters-settings:
     min-occurrences: 6
 
 run:
-skip-dirs-use-default: false
-skip-files:
+  skip-dirs-use-default: false
+  skip-files:
   - testhelper.go
+  - ".*_gen\\.go$" # skip auto generated go files
