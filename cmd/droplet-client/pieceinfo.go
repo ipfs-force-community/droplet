@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
 	"github.com/urfave/cli/v2"
@@ -37,6 +38,10 @@ var generateManifestFromPieceFileCmd = &cli.Command{
 			Name:  "skip",
 			Usage: "skip piece file, eg --skip xxxx1 --skip xxxx2",
 		},
+		&cli.BoolFlag{
+			Name:  "is-padding",
+			Usage: "Whether the car file is padding",
+		},
 	},
 	ArgsUsage: "<piece-dir>",
 	Action: func(cliCtx *cli.Context) error {
@@ -51,13 +56,15 @@ var generateManifestFromPieceFileCmd = &cli.Command{
 			skips[piece] = struct{}{}
 		}
 
+		isPadding := cliCtx.Bool("is-padding")
+
 		ms := make([]*manifest, 0)
 		err := filepath.Walk(dir, func(path string, d fs.FileInfo, _ error) error {
 			if d.IsDir() {
 				return nil
 			}
 
-			m, err := walkFile(path, d, skips)
+			m, err := walkFile(path, d, skips, isPadding)
 			if err != nil {
 				fmt.Printf("walk %s failed: %v\n", path, err)
 				return nil
@@ -87,7 +94,7 @@ var generateManifestFromPieceFileCmd = &cli.Command{
 	},
 }
 
-func walkFile(path string, d fs.FileInfo, skips map[string]struct{}) (*manifest, error) {
+func walkFile(path string, d fs.FileInfo, skips map[string]struct{}, isPadding bool) (*manifest, error) {
 	name := d.Name()
 	if _, ok := skips[name]; ok {
 		fmt.Println("skip file:", name)
@@ -124,10 +131,15 @@ func walkFile(path string, d fs.FileInfo, skips map[string]struct{}) (*manifest,
 	}
 	size := fi.Size()
 
+	pieceSize := padreader.PaddedSize(uint64(size))
+	if isPadding {
+		pieceSize = abi.UnpaddedPieceSize(size)
+	}
+
 	return &manifest{
 		payloadCID:  hd.Roots[0],
 		payloadSize: uint64(size),
 		pieceCID:    pieceCid,
-		pieceSize:   padreader.PaddedSize(uint64(size)),
+		pieceSize:   pieceSize,
 	}, nil
 }
