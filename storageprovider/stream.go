@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/google/uuid"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
@@ -17,9 +19,11 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/config"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/droplet/v2/utils"
+	network2 "github.com/libp2p/go-libp2p/core/network"
 
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	types2 "github.com/ipfs-force-community/droplet/v2/types"
 )
 
 var _ network.StorageReceiver = (*StorageDealStream)(nil)
@@ -47,7 +51,7 @@ func NewStorageDealStream(
 	dealProcess StorageDealHandler,
 	mixMsgClient clients.IMixMessage,
 	pubsub *EventPublishAdapter,
-) (network.StorageReceiver, error) {
+) (*StorageDealStream, error) {
 	return &StorageDealStream{
 		conns:          conns,
 		storedAsk:      storedAsk,
@@ -157,6 +161,7 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 	}
 
 	deal := &types.MinerDeal{
+		ID:                 uuid.New(),
 		Client:             s.RemotePeer(),
 		Miner:              storageDealStream.net.ID(),
 		ClientDealProposal: *proposal.DealProposal,
@@ -319,4 +324,119 @@ func (storageDealStream *StorageDealStream) processDealStatusRequest(ctx context
 		DealID:        md.DealID,
 		FastRetrieval: md.FastRetrieval,
 	}, md.ClientDealProposal.Proposal.Provider, nil
+}
+
+// The time limit to read a message from the client when the client opens a stream
+const providerReadDeadline = 10 * time.Second
+
+// The time limit to write a response to the client
+const providerWriteDeadline = 10 * time.Second
+
+// boost protocol
+
+func (storageDealStream *StorageDealStream) HandleNewDealStream(s network2.Stream) {
+	start := time.Now()
+	log := log.With("client-peer", s.Conn().RemotePeer())
+
+	defer func() {
+		err := s.Close()
+		if err != nil {
+			log.Infow("closing stream", "err", err)
+		}
+		log.Debugw("handled deal proposal request", "duration", time.Since(start).String())
+	}()
+
+	// Set a deadline on reading from the stream so it doesn't hang
+	_ = s.SetReadDeadline(time.Now().Add(providerReadDeadline))
+
+	// Read the deal proposal from the stream
+	var proposal types2.DealParams
+	err := proposal.UnmarshalCBOR(s)
+	_ = s.SetReadDeadline(time.Time{}) // Clear read deadline so conn doesn't get closed
+	if err != nil {
+		log.Warnw("reading storage deal proposal from stream", "err", err)
+		return
+	}
+
+	log = log.With("id", proposal.DealUUID)
+	log.Infow("received deal proposal")
+
+	ctx := context.Background()
+
+	writeNewDealResponse := func(s network2.Stream, accepted bool, reason string) {
+		if len(reason) != 0 {
+			log.Warn(reason)
+		}
+		// Write the response to the client
+		err := cborutil.WriteCborRPC(s, &types2.DealResponse{Accepted: accepted, Message: reason})
+		if err != nil {
+			log.Warnw("writing deal response", "err", err)
+		}
+	}
+
+	if !proposal.IsOffline {
+		writeNewDealResponse(s, false, "not support online deal")
+		return
+	}
+
+	// Check if we are already tracking this deal
+	_, err = storageDealStream.deals.GetDealByUUID(ctx, proposal.DealUUID)
+	if err == nil {
+		writeNewDealResponse(s, false, "same deal exists")
+		return
+	}
+
+	proposalNd, err := cborutil.AsIpld(&proposal.ClientDealProposal)
+	if err != nil {
+		writeNewDealResponse(s, false, fmt.Sprintf("deal proposal cbor failed: %v", err))
+		return
+	}
+
+	deal := &types.MinerDeal{
+		ID:                 uuid.New(),
+		Client:             s.Conn().RemotePeer(),
+		Miner:              storageDealStream.net.ID(),
+		ClientDealProposal: proposal.ClientDealProposal,
+		ProposalCid:        proposalNd.Cid(),
+		State:              storagemarket.StorageDealUnknown,
+		PieceStatus:        types.Undefine,
+		Ref: &storagemarket.DataRef{
+			TransferType: proposal.Transfer.Type,
+			Root:         proposal.DealDataRoot,
+			PieceCid:     &proposal.ClientDealProposal.Proposal.PieceCID,
+			PieceSize:    proposal.ClientDealProposal.Proposal.PieceSize.Unpadded(),
+			RawBlockSize: proposal.Transfer.Size,
+		},
+		FastRetrieval: true,
+		CreationTime:  curTime(),
+	}
+	err = storageDealStream.deals.SaveDeal(ctx, deal)
+	if err != nil {
+		log.Errorf("save miner deal to database %v", err)
+		return
+	}
+
+	var reason string
+	accepted := true
+	deal.State = storagemarket.StorageDealWaitingForData
+
+	err = storageDealStream.dealProcess.AcceptNewDeal(ctx, deal)
+	if err != nil {
+		reason = err.Error()
+		deal.Message = reason
+		deal.State = storagemarket.StorageDealRejecting
+		accepted = false
+	}
+
+	go func() {
+		if err := storageDealStream.deals.SaveDeal(ctx, deal); err != nil {
+			log.Errorf("save deal failed: %v", err)
+		}
+	}()
+
+	// Set a deadline on writing to the stream so it doesn't hang
+	_ = s.SetWriteDeadline(time.Now().Add(providerWriteDeadline))
+	defer s.SetWriteDeadline(time.Time{}) // nolint
+
+	writeNewDealResponse(s, accepted, reason)
 }

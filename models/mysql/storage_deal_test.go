@@ -545,3 +545,26 @@ func prepareStorageDealRepoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []*st
 		assert.NoError(t, closeDB(mock, sqlDB))
 	}
 }
+
+func TestGetDealByUUID(t *testing.T) {
+	r, mock, dbStorageDealCases, storageDealCases, done := prepareStorageDealRepoTest(t)
+	defer done()
+
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	deal := dbStorageDealCases[0]
+
+	var md storageDeal
+	sql, vars, err := getSQL(db.Table((&storageDeal{}).TableName()).Take(&md, "id = ?", deal.ID))
+	assert.NoError(t, err)
+
+	rows, err := getFullRows(deal)
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+
+	res, err := r.StorageDealRepo().GetDealByUUID(context.Background(), storageDealCases[0].ID)
+	assert.NoError(t, err)
+	assert.Equal(t, storageDealCases[0], res)
+}

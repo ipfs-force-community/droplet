@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
@@ -34,6 +35,7 @@ type StorageDealRepo interface {
 	UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState types.PieceStatus) error
 
 	GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error)
+	GetDealByUUID(ctx context.Context, id uuid.UUID) (*types.MinerDeal, error)
 	GetDealByDealID(ctx context.Context, mAddr address.Address, dealID abi.DealID) (*types.MinerDeal, error)
 
 	// todo rename Getxxx to Listxxx if return deals list

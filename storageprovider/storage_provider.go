@@ -41,6 +41,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/droplet/v2/network"
 	"github.com/ipfs-force-community/droplet/v2/piecestorage"
+	types3 "github.com/ipfs-force-community/droplet/v2/types"
 	"github.com/ipfs-force-community/droplet/v2/utils"
 
 	types2 "github.com/filecoin-project/venus/venus-shared/types"
@@ -133,6 +134,8 @@ type StorageProviderImpl struct {
 
 	tf config.TransferFileStoreConfigFunc
 
+	host host.Host
+
 	spn       StorageProviderNode
 	conns     *connmanager.ConnManager
 	storedAsk IStorageAsk
@@ -141,12 +144,12 @@ type StorageProviderImpl struct {
 
 	unsubDataTransfer datatransfer.Unsubscribe
 
-	dealStore       repo.StorageDealRepo
-	dealProcess     StorageDealHandler
-	transferProcess IDatatransferHandler
-	storageReceiver smnet.StorageReceiver
-	minerMgr        minermgr.IMinerMgr
-	pieceStorageMgr *piecestorage.PieceStorageManager
+	dealStore         repo.StorageDealRepo
+	dealProcess       StorageDealHandler
+	transferProcess   IDatatransferHandler
+	storageDealStream *StorageDealStream
+	minerMgr          minermgr.IMinerMgr
+	pieceStorageMgr   *piecestorage.PieceStorageManager
 }
 
 // NewStorageProvider returns a new storage provider
@@ -170,6 +173,8 @@ func NewStorageProvider(
 
 	spV2 := &StorageProviderImpl{
 		ctx: metrics.LifecycleCtx(mCtx, lc),
+
+		host: h,
 
 		net: net,
 
@@ -197,11 +202,11 @@ func NewStorageProvider(
 	// register a data transfer event handler -- this will send events to the state machines based on DT events
 	spV2.unsubDataTransfer = dataTransfer.SubscribeToEvents(ProviderDataTransferSubscriber(spV2.transferProcess, pb)) // fsm.Group
 
-	storageReceiver, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.dealStore, spV2.net, tf, dealProcess, mixMsgClient, pb)
+	storageDealStream, err := NewStorageDealStream(spV2.conns, spV2.storedAsk, spV2.spn, spV2.dealStore, spV2.net, tf, dealProcess, mixMsgClient, pb)
 	if err != nil {
 		return nil, err
 	}
-	spV2.storageReceiver = storageReceiver
+	spV2.storageDealStream = storageDealStream
 
 	return spV2, nil
 }
@@ -210,10 +215,13 @@ func NewStorageProvider(
 // It also registers the provider with a StorageMarketNetwork so it can receive incoming
 // messages on the storage market's libp2p protocols
 func (p *StorageProviderImpl) Start(ctx context.Context) error {
-	err := p.net.SetDelegate(p.storageReceiver)
+	err := p.net.SetDelegate(p.storageDealStream)
 	if err != nil {
 		return err
 	}
+
+	p.host.SetStreamHandler(types3.DealProtocolv120ID, p.storageDealStream.HandleNewDealStream)
+	p.host.SetStreamHandler(types3.DealProtocolv121ID, p.storageDealStream.HandleNewDealStream)
 
 	go func() {
 		err := p.start(ctx)
@@ -266,6 +274,9 @@ func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.M
 // Stop terminates processing of deals on a StorageProvider
 func (p *StorageProviderImpl) Stop() error {
 	p.unsubDataTransfer()
+
+	p.host.RemoveStreamHandler(types3.DealProtocolv120ID)
+	p.host.RemoveStreamHandler(types3.DealProtocolv121ID)
 
 	return p.net.StopHandlingRequests()
 }
