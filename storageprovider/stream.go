@@ -2,6 +2,7 @@ package storageprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/connmanager"
@@ -186,7 +188,7 @@ func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDe
 		return
 	}
 
-	err = storageDealStream.dealProcess.AcceptDeal(ctx, deal)
+	err = storageDealStream.dealProcess.AcceptLegacyDeal(ctx, deal)
 	if err != nil {
 		log.Errorf("fail accept deal %s %w", proposalNd.Cid(), err)
 	}
@@ -439,4 +441,95 @@ func (storageDealStream *StorageDealStream) HandleNewDealStream(s network2.Strea
 	defer s.SetWriteDeadline(time.Time{}) // nolint
 
 	writeNewDealResponse(s, accepted, reason)
+}
+
+func (storageDealStream *StorageDealStream) HandleNewDealStatusStream(s network2.Stream) {
+	start := time.Now()
+
+	defer func() {
+		err := s.Close()
+		if err != nil {
+			log.Infow("closing stream", "err", err)
+		}
+		log.Debugw("handled deal status request", "duration", time.Since(start).String())
+	}()
+
+	// Read the deal status request from the stream
+	_ = s.SetReadDeadline(time.Now().Add(providerReadDeadline))
+	var req types2.DealStatusRequest
+	err := req.UnmarshalCBOR(s)
+	_ = s.SetReadDeadline(time.Time{}) // Clear read deadline so conn doesn't get closed
+	if err != nil {
+		log.Warnw("reading deal status request from stream", "err", err)
+		return
+	}
+	log := log.With("id", req.DealUUID)
+	log.Debugw("received deal status request")
+
+	resp := storageDealStream.getDealStatus(req, log)
+
+	// Set a deadline on writing to the stream so it doesn't hang
+	_ = s.SetWriteDeadline(time.Now().Add(providerWriteDeadline))
+	defer s.SetWriteDeadline(time.Time{}) // nolint
+
+	if err := cborutil.WriteCborRPC(s, &resp); err != nil {
+		log.Errorw("failed to write deal status response", "err", err)
+	}
+}
+
+func (storageDealStream *StorageDealStream) getDealStatus(req types2.DealStatusRequest, log *zap.SugaredLogger) types2.DealStatusResponse {
+	errResp := func(err string) types2.DealStatusResponse {
+		return types2.DealStatusResponse{DealUUID: req.DealUUID, Error: err}
+	}
+
+	ctx := context.Background()
+
+	pds, err := storageDealStream.deals.GetDealByUUID(ctx, req.DealUUID)
+	if err != nil && errors.Is(err, repo.ErrNotFound) {
+		return errResp(fmt.Sprintf("no storage deal found with deal UUID %s", req.DealUUID))
+	}
+
+	if err != nil {
+		log.Errorw("failed to fetch deal status", "err", err)
+		return errResp("failed to fetch deal status")
+	}
+
+	// verify request signature
+	uuidBytes, err := req.DealUUID.MarshalBinary()
+	if err != nil {
+		log.Errorw("failed to serialize request deal UUID", "err", err)
+		return errResp("failed to serialize request deal UUID")
+	}
+
+	clientAddr := pds.ClientDealProposal.Proposal.Client
+	addr, err := storageDealStream.spn.StateAccountKey(ctx, clientAddr, vTypes.EmptyTSK)
+	if err != nil {
+		log.Errorw("failed to get account key for client addr", "client", clientAddr.String(), "err", err)
+		msg := fmt.Sprintf("failed to get account key for client addr %s", clientAddr.String())
+		return errResp(msg)
+	}
+
+	err = providerutils.VerifySignature(ctx, req.Signature, addr, uuidBytes, nil, storageDealStream.spn.VerifySignature)
+	if err != nil {
+		log.Warnw("signature verification failed", "err", err)
+		return errResp("signature verification failed")
+	}
+
+	isOffline := storagemarket.TTManual == pds.Ref.TransferType
+
+	return types2.DealStatusResponse{
+		DealUUID: req.DealUUID,
+		DealStatus: &types2.DealStatus{
+			Error:             pds.Message,
+			Status:            storagemarket.DealStates[pds.State],
+			SealingStatus:     string(pds.PieceStatus),
+			Proposal:          pds.ClientDealProposal.Proposal,
+			SignedProposalCid: pds.ProposalCid,
+			PublishCid:        pds.PublishCid,
+			ChainDealID:       pds.DealID,
+		},
+		IsOffline:      isOffline,
+		TransferSize:   0,
+		NBytesReceived: 0,
+	}
 }
