@@ -48,7 +48,7 @@ import (
 const DealMaxLabelSize = 256
 
 type StorageDealHandler interface {
-	AcceptDeal(ctx context.Context, deal *types.MinerDeal) error
+	AcceptLegacyDeal(ctx context.Context, deal *types.MinerDeal) error
 	AcceptNewDeal(ctx context.Context, minerDeal *types.MinerDeal) error
 	HandleOff(ctx context.Context, deal *types.MinerDeal) error
 	HandleError(ctx context.Context, deal *types.MinerDeal, err error) error
@@ -129,7 +129,7 @@ func (storageDealPorcess *StorageDealProcessImpl) runDealDecisionLogic(ctx conte
 }
 
 // StorageDealUnknown->StorageDealValidating(ValidateDealProposal)->StorageDealAcceptWait(DecideOnProposal)->StorageDealWaitingForData
-func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
+func (storageDealPorcess *StorageDealProcessImpl) AcceptLegacyDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
 	storageDealPorcess.peerTagger.TagPeer(minerDeal.Client, minerDeal.ProposalCid.String())
 	err := storageDealPorcess.acceptDeal(ctx, minerDeal)
 	if err != nil {

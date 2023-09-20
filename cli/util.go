@@ -42,6 +42,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/api/clients/signer"
 	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
 	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -216,6 +217,31 @@ func GetSignerFromRepo(cctx *cli.Context, legacyRepo string) (signer.ISigner, js
 	}
 
 	return signer.NewISignerClient(false, nil)(cctx.Context, &cfg.Signer)
+}
+
+func GetAddressInfo(ctx context.Context, fapi v1api.FullNode, miner address.Address) (*peer.AddrInfo, error) {
+	minerInfo, err := fapi.StateMinerInfo(ctx, miner, shared.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+	addrs, err := utils.ConvertMultiaddr(minerInfo.Multiaddrs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &peer.AddrInfo{ID: *minerInfo.PeerId, Addrs: addrs}, nil
+}
+
+func AddressFromContextOrDefault(cctx *cli.Context, api clientapi.IMarketClient) (address.Address, error) {
+	if from := cctx.String("from"); from != "" {
+		addr, err := address.NewFromString(from)
+		if err != nil {
+			return address.Undef, fmt.Errorf("failed to parse 'from' address: %w", err)
+		}
+		return addr, nil
+	}
+
+	return api.DefaultAddress(cctx.Context)
 }
 
 func WithCategory(cat string, cmd *cli.Command) *cli.Command {
