@@ -222,6 +222,7 @@ func (p *StorageProviderImpl) Start(ctx context.Context) error {
 
 	p.host.SetStreamHandler(types3.DealProtocolv120ID, p.storageDealStream.HandleNewDealStream)
 	p.host.SetStreamHandler(types3.DealProtocolv121ID, p.storageDealStream.HandleNewDealStream)
+	p.host.SetStreamHandler(types3.DealStatusV12ProtocolID, p.storageDealStream.HandleNewDealStatusStream)
 
 	go func() {
 		err := p.start(ctx)
@@ -277,6 +278,7 @@ func (p *StorageProviderImpl) Stop() error {
 
 	p.host.RemoveStreamHandler(types3.DealProtocolv120ID)
 	p.host.RemoveStreamHandler(types3.DealProtocolv121ID)
+	p.host.RemoveStreamHandler(types3.DealStatusV12ProtocolID)
 
 	return p.net.StopHandlingRequests()
 }
