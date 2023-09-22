@@ -3,6 +3,7 @@ package badger
 import (
 	"bytes"
 	"context"
+	"sort"
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
@@ -269,6 +270,11 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageD
 	}); err != nil {
 		return nil, err
 	}
+
+	// sort by time
+	sort.Slice(storageDeals, func(i, j int) bool {
+		return (storageDeals[i].TimeStamp.CreatedAt < storageDeals[j].TimeStamp.CreatedAt) == params.Asc
+	})
 
 	return storageDeals, nil
 }
