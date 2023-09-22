@@ -255,7 +255,7 @@ func TestListDeal(t *testing.T) {
 	caseCount := len(storageDealCases)
 	defPage := types.Page{Limit: caseCount}
 	newQuery := func() *gorm.DB {
-		return db.Table((&storageDeal{}).TableName())
+		return db.Table((&storageDeal{}).TableName()).Order("created_at desc")
 	}
 
 	// empty params
