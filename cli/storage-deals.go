@@ -367,6 +367,10 @@ part states:
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
+		&cli.BoolFlag{
+			Name:  "oldest",
+			Usage: "sort by oldest first",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
@@ -397,6 +401,9 @@ part states:
 				Offset: cctx.Int(offsetFlag.Name),
 				Limit:  cctx.Int(limitFlag.Name),
 			},
+		}
+		if cctx.Bool("oldest") {
+			params.Asc = true
 		}
 
 		ctx := ReqContext(cctx)

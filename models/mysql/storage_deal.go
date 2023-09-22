@@ -495,6 +495,11 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageD
 			state != storagemarket.StorageDealExpired && state != storagemarket.StorageDealError
 	}
 	query := sdr.Table(storageDealTableName).Offset(params.Offset).Limit(params.Limit)
+	if params.Asc {
+		query.Order("created_at asc")
+	} else {
+		query.Order("created_at desc")
+	}
 	if !params.Miner.Empty() {
 		query.Where("cdp_provider = ?", DBAddress(params.Miner).String())
 	}
