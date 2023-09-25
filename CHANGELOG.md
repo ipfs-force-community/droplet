@@ -1,5 +1,8 @@
 # droplet changelog
 
+## v2.8.3
+* fix(release deals): skip update state if deal expired [[#443](https://github.com/ipfs-force-community/droplet/pull/443)]
+
 ## v2.8.2
 
 * feat: support filter deals by `SectorExpiration` [[#404](https://github.com/ipfs-force-community/droplet/pull/404)]
