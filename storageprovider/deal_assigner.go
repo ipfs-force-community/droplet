@@ -281,6 +281,9 @@ func (ps *dealAssigner) ReleaseDeals(ctx context.Context, miner address.Address,
 			if err != nil {
 				return fmt.Errorf("failed to get deal %d for miner %s: %w", dealID, miner.String(), err)
 			}
+			if deal.State == storagemarket.StorageDealExpired {
+				continue
+			}
 			if err := canBeRelease(deal); err != nil {
 				return err
 			}
