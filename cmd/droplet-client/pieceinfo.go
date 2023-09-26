@@ -59,7 +59,10 @@ var generateManifestFromPieceFileCmd = &cli.Command{
 		isPadding := cliCtx.Bool("is-padding")
 
 		ms := make([]*manifest, 0)
-		err := filepath.Walk(dir, func(path string, d fs.FileInfo, _ error) error {
+		err := filepath.Walk(dir, func(path string, d fs.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
 			if d.IsDir() {
 				return nil
 			}
@@ -101,7 +104,9 @@ func walkFile(path string, d fs.FileInfo, skips map[string]struct{}, isPadding b
 		return nil, nil
 	}
 	// xxxx.car
-	name = strings.TrimRight(name, ".car")
+	if strings.Contains(name, ".car") {
+		name = strings.TrimSuffix(name, ".car")
+	}
 
 	pieceCid, err := cid.Parse(name)
 	if err != nil {
