@@ -43,6 +43,10 @@ issues:
 linters-settings:
   goconst:
     min-occurrences: 6
+  revive:
+    rules:
+      - name: unused-parameter
+        disabled: true
 
 run:
   skip-dirs-use-default: false
