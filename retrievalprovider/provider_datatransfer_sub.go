@@ -6,6 +6,7 @@ import (
 
 	datatransfer "github.com/filecoin-project/go-data-transfer/v2"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/ipfs-force-community/droplet/v2/metrics"
 )
 
 // ProviderDataTransferSubscriber is the function called when an event occurs in a data
@@ -38,6 +39,8 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 				log.Errorf("processing dt event: %s", err)
 			}
 		}
+
+		metrics.RetrievalTransferEvent.Tick(ctx, event.Code.String())
 
 		switch event.Code {
 		case datatransfer.Accept:

@@ -18,7 +18,8 @@ var MetricsOpts = func(scope string, metricsConfig *metrics.MetricsConfig) build
 			return metrics2.CtxScope(context.Background(), scope)
 		}),
 		builder.Override(startMetricsKey, func(mctx metrics.MetricsCtx, lc fx.Lifecycle) error {
-			return SetupMetrics(metrics.LifecycleCtx(mctx, lc), metricsConfig)
+			ctx := metrics.LifecycleCtx(mctx, lc)
+			return metrics.SetupMetrics(ctx, metricsConfig)
 		}),
 	)
 }

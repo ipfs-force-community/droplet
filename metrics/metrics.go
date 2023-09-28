@@ -1,7 +1,8 @@
 package metrics
 
 import (
-	"github.com/filecoin-project/go-jsonrpc/metrics"
+	rpcMetrics "github.com/filecoin-project/go-jsonrpc/metrics"
+	"github.com/ipfs-force-community/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -10,6 +11,12 @@ import (
 // Global Tags
 var (
 	StorageNameTag, _ = tag.NewKey("storage")
+)
+
+var (
+	ApiState               = metrics.NewInt64("api/state", "api service state. 0: down, 1: up", "")
+	RetrievalTransferEvent = metrics.NewCounterWithCategory("retrieval/transfer_event", "retrieval transfer event")
+	ShardNum               = metrics.NewInt64WithCategory("shard/num", "shard num in different state", "")
 )
 
 var (
@@ -127,4 +134,12 @@ var views = append([]*view.View{
 
 	StorageRetrievalHitCountView,
 	StorageSaveHitCountView,
-}, metrics.DefaultViews...)
+}, rpcMetrics.DefaultViews...)
+
+func init() {
+	for _, v := range views {
+		if err := view.Register(v); err != nil {
+			panic(err)
+		}
+	}
+}

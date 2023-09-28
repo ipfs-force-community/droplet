@@ -37,7 +37,7 @@ require (
 	github.com/hannahhoward/go-pubsub v0.0.0-20200423002714-8d62886cc36e
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
-	github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601
+	github.com/ipfs-force-community/metrics v1.0.1-0.20231122034306-983501e1959d
 	github.com/ipfs-force-community/sophon-auth v1.14.0
 	github.com/ipfs-force-community/sophon-gateway v1.14.0
 	github.com/ipfs-force-community/sophon-messager v1.14.0
