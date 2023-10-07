@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,6 +21,8 @@ import (
 	"github.com/howeyc/gopass"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multibase"
@@ -33,10 +36,13 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v9/market"
 	"github.com/filecoin-project/go-state-types/crypto"
+	crypto2 "github.com/libp2p/go-libp2p/core/crypto"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/ipfs-force-community/droplet/v2/api/clients/signer"
 	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
 	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 
 	"github.com/filecoin-project/venus/venus-shared/api"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -157,6 +163,85 @@ func NewFullNode(cctx *cli.Context, legacyRepo string) (v1api.FullNode, jsonrpc.
 	}
 
 	return v1api.NewFullNodeRPC(cctx.Context, addr, apiInfo.AuthHeader())
+}
+
+func getMarketClientConfig(cctx *cli.Context, legacyRepo string) (*config.MarketClientConfig, error) {
+	repoPath, err := GetRepoPath(cctx, "repo", legacyRepo)
+	if err != nil {
+		return nil, err
+	}
+	cfgPath := path.Join(repoPath, "config.toml")
+	marketClientCfg := config.DefaultMarketClientConfig
+	err = config.LoadConfig(cfgPath, marketClientCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return marketClientCfg, nil
+}
+
+func NewHost(cctx *cli.Context, legacyRepo string) (host.Host, error) {
+	cfg, err := getMarketClientConfig(cctx, legacyRepo)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(cfg.Libp2p.PrivateKey) == 0 {
+		return nil, fmt.Errorf("private key is nil")
+	}
+
+	decodePriv, err := hex.DecodeString(cfg.Libp2p.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	peerkey, err := crypto2.UnmarshalPrivateKey(decodePriv)
+	if err != nil {
+		return nil, err
+	}
+
+	h, err := libp2p.New(
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0"),
+		libp2p.Identity(peerkey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return h, nil
+}
+
+func GetSignerFromRepo(cctx *cli.Context, legacyRepo string) (signer.ISigner, jsonrpc.ClientCloser, error) {
+	cfg, err := getMarketClientConfig(cctx, legacyRepo)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return signer.NewISignerClient(false, nil)(cctx.Context, &cfg.Signer)
+}
+
+func GetAddressInfo(ctx context.Context, fapi v1api.FullNode, miner address.Address) (*peer.AddrInfo, error) {
+	minerInfo, err := fapi.StateMinerInfo(ctx, miner, shared.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+	addrs, err := utils.ConvertMultiaddr(minerInfo.Multiaddrs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &peer.AddrInfo{ID: *minerInfo.PeerId, Addrs: addrs}, nil
+}
+
+func AddressFromContextOrDefault(cctx *cli.Context, api clientapi.IMarketClient) (address.Address, error) {
+	if from := cctx.String("from"); from != "" {
+		addr, err := address.NewFromString(from)
+		if err != nil {
+			return address.Undef, fmt.Errorf("failed to parse 'from' address: %w", err)
+		}
+		return addr, nil
+	}
+
+	return api.DefaultAddress(cctx.Context)
 }
 
 func WithCategory(cat string, cmd *cli.Command) *cli.Command {

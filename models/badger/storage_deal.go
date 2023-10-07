@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/google/uuid"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -56,6 +57,24 @@ func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*
 	}
 
 	return &deal, nil
+}
+
+func (sdr *storageDealRepo) GetDealByUUID(ctx context.Context, id uuid.UUID) (*types.MinerDeal, error) {
+	var out *types.MinerDeal
+	if err := travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
+		if deal.ID == id {
+			out = deal
+			return true, nil
+		}
+		return
+	}); err != nil {
+		return nil, err
+	}
+	if out == nil {
+		return nil, repo.ErrNotFound
+	}
+
+	return out, nil
 }
 
 func (sdr *storageDealRepo) GetDeals(ctx context.Context, miner address.Address, pageIndex, pageSize int) ([]*types.MinerDeal, error) {

@@ -24,9 +24,8 @@ type ISigner interface {
 	WalletSign(ctx context.Context, signerAddr address.Address, msg []byte, meta vTypes.MsgMeta) (*vCrypto.Signature, error)
 }
 
-func NewISignerClient(isServer bool, authClient jwtclient.IAuthClient) func(metrics.MetricsCtx, fx.Lifecycle, *config.Signer) (ISigner, error) {
-
-	return func(mCtx metrics.MetricsCtx, lc fx.Lifecycle, signerCfg *config.Signer) (ISigner, error) {
+func NewISignerClient(isServer bool, authClient jwtclient.IAuthClient) func(metrics.MetricsCtx, *config.Signer) (ISigner, jsonrpc.ClientCloser, error) {
+	return func(mCtx metrics.MetricsCtx, signerCfg *config.Signer) (ISigner, jsonrpc.ClientCloser, error) {
 		var (
 			signer ISigner
 			closer jsonrpc.ClientCloser
@@ -43,22 +42,31 @@ func NewISignerClient(isServer bool, authClient jwtclient.IAuthClient) func(metr
 		// Signing through venus chain-service
 		case config.SignerTypeGateway:
 			if !isServer {
-				return nil, fmt.Errorf("signing through the sophon-gateway cannot be used for droplet-clientt")
+				return nil, nil, fmt.Errorf("signing through the sophon-gateway cannot be used for droplet-clientt")
 			}
 			signer, closer, err = newGatewayWalletClient(mCtx, signerCfg, authClient)
 		default:
-			return nil, fmt.Errorf("unsupport signer type %s", signerCfg.SignerType)
+			return nil, nil, fmt.Errorf("unsupport signer type %s", signerCfg.SignerType)
+		}
+
+		return signer, closer, err
+	}
+}
+
+func NewISignerClientWithLifecycle(isServer bool, authClient jwtclient.IAuthClient) func(metrics.MetricsCtx, fx.Lifecycle, *config.Signer) (ISigner, error) {
+	return func(mc metrics.MetricsCtx, lc fx.Lifecycle, signerCfg *config.Signer) (ISigner, error) {
+		signer, closer, err := NewISignerClient(isServer, authClient)(mc, signerCfg)
+		if err != nil {
+			return nil, err
 		}
 
 		lc.Append(fx.Hook{
 			OnStop: func(_ context.Context) error {
-				if closer != nil {
-					closer()
-				}
+				closer()
 				return nil
 			},
 		})
-		return signer, err
-	}
 
+		return signer, nil
+	}
 }

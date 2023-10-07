@@ -688,7 +688,7 @@ func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool) e
 	if verbose {
 		_, _ = fmt.Fprintf(w, "Creation\tVerified\tProposalCid\tDealId\tState\tPieceState\tClient\tProvider\tSize\tPrice\tDuration\tTransferChannelID\tAddFundCid\tPublishCid\tMessage\n")
 	} else {
-		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tPieceState\tClient\tProvider\tSize\tPrice\tDuration\n")
+		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tPieceState\tClient\tProvider\tSize\tPrice\tDuration\nID\n")
 	}
 
 	for _, deal := range deals {
@@ -703,8 +703,8 @@ func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool) e
 			_, _ = fmt.Fprintf(w, "%s\t%t\t", deal.CreationTime.Time().Format(time.Stamp), deal.Proposal.VerifiedDeal)
 		}
 
-		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.PieceStatus,
-			deal.Proposal.Client, deal.Proposal.Provider, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration())
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.PieceStatus,
+			deal.Proposal.Client, deal.Proposal.Provider, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration(), deal.ID)
 		if verbose {
 			tchid := ""
 			if deal.TransferChannelID != nil {
@@ -798,6 +798,7 @@ func outputStorageDeal(deal *market.MinerDeal) error {
 		{"FastRetrieval", deal.FastRetrieval},
 		{"InboundCAR", deal.InboundCAR},
 		{"UpdatedAt", time.Unix(int64(deal.UpdatedAt), 0).Format(time.RFC3339)},
+		{"ID", deal.ID},
 	}
 
 	fillSpaceAndPrint(data, len("AvailableForRetrieval"))

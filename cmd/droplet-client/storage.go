@@ -385,6 +385,8 @@ var storageDealsCmd = &cli.Command{
 		storageDealsInspectCmd,
 		verifiedDealStatsCmd,
 		storageDealsExportCmd,
+		storageDealInitV2,
+		storageDealStatus,
 	},
 }
 
@@ -1557,19 +1559,9 @@ func dealParamsFromContext(cctx *cli.Context, api clientapi.IMarketClient, fapi 
 		return nil, fmt.Errorf("maximum deal duration is %d blocks", MaxDealDuration)
 	}
 
-	var a address.Address
-	if from := cctx.String("from"); from != "" {
-		faddr, err := address.NewFromString(from)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse 'from' address: %w", err)
-		}
-		a = faddr
-	} else {
-		def, err := api.DefaultAddress(cctx.Context)
-		if err != nil {
-			return nil, err
-		}
-		a = def
+	a, err := cli2.AddressFromContextOrDefault(cctx, api)
+	if err != nil {
+		return nil, err
 	}
 
 	// Check if the address is a verified client

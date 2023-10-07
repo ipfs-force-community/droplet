@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -297,8 +298,7 @@ func TestListStorageDealByAddr(t *testing.T) {
 func TestListDeal(t *testing.T) {
 	ctx, r, dealCases := prepareStorageDealTest(t)
 
-	peers := make([]peer.ID, 2)
-	testutil.Provide(t, &peers)
+	peers := []peer.ID{peer.ID("1"), peer.ID("2")}
 	miner := []address.Address{dealCases[0].Proposal.Provider, testutil.AddressProvider()(t)}
 	states := []storagemarket.StorageDealStatus{
 		storagemarket.StorageDealAcceptWait,
@@ -567,4 +567,23 @@ func TestGroupStorageDealNumberByStatus(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, result, result2)
 	})
+}
+
+func TestGetStorageDealByUUID(t *testing.T) {
+	ctx, r, dealCases := prepareStorageDealTest(t)
+
+	for _, deal := range dealCases {
+		err := r.SaveDeal(ctx, &deal)
+		assert.NoError(t, err)
+
+		res, err := r.GetDealByUUID(ctx, deal.ID)
+		assert.NoError(t, err)
+		deal.UpdatedAt = res.UpdatedAt
+		deal.CreationTime = res.CreationTime
+		assert.Equal(t, &deal, res)
+	}
+
+	res, err := r.GetDealByUUID(ctx, uuid.New())
+	assert.Error(t, err)
+	assert.Nil(t, res)
 }
