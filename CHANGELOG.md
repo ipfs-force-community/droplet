@@ -1,5 +1,10 @@
 # droplet changelog
 
+## v2.9.1
+
+* feat: support storage deal protocol v2 [[#435](https://github.com/ipfs-force-community/droplet/pull/435)]
+* feat: support deal status protocol [[#436](https://github.com/ipfs-force-community/droplet/pull/436)]
+
 ## v2.9.0
 
 ## v2.9.0-rc1
