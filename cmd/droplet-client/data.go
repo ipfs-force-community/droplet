@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 )
 
 var dataCmd = &cli.Command{
@@ -205,18 +206,13 @@ var dataCommPCmd = &cli.Command{
 		&cli2.CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := cli2.NewMarketClientNode(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
 		ctx := cli2.ReqContext(cctx)
 
 		if cctx.Args().Len() != 1 {
 			return fmt.Errorf("usage: commP <inputPath>")
 		}
 
-		ret, err := api.ClientCalcCommP(ctx, cctx.Args().Get(0))
+		ret, err := utils.CalcCommP(ctx, cctx.Args().Get(0))
 		if err != nil {
 			return err
 		}
