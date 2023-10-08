@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
+	"time"
 
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
@@ -351,8 +353,14 @@ var clientQueryRetrievalAskCmd = &cli.Command{
 		defer closer()
 		ctx := cli2.ReqContext(cctx)
 
+		ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+		defer cancel()
+
 		ask, err := api.ClientMinerQueryOffer(ctx, maddr, dataCid, nil)
 		if err != nil {
+			if strings.Contains(err.Error(), "context by cancel") {
+				return fmt.Errorf("timeout: %v", err)
+			}
 			return err
 		}
 

@@ -265,6 +265,9 @@ var storageAsksQueryCmd = &cli.Command{
 		defer closer()
 		ctx := cli2.ReqContext(cctx)
 
+		ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+		defer cancel()
+
 		var pid peer.ID
 		if pidstr := cctx.String("peerid"); pidstr != "" {
 			p, err := peer.Decode(pidstr)
@@ -287,6 +290,9 @@ var storageAsksQueryCmd = &cli.Command{
 
 		ask, err := api.ClientQueryAsk(ctx, pid, maddr)
 		if err != nil {
+			if strings.Contains(err.Error(), "context by cancel") {
+				return fmt.Errorf("timeout: %v", err)
+			}
 			return err
 		}
 
