@@ -110,7 +110,7 @@ func NewDAGStore(ctx context.Context,
 		// conditional throttling.
 		MaxConcurrentIndex:        cfg.MaxConcurrentIndex,
 		MaxConcurrentReadyFetches: cfg.MaxConcurrentReadyFetches,
-		RecoverOnStart:            dagstore.RecoverNow,
+		RecoverOnStart:            dagstore.RecoverOnAcquire,
 	}
 
 	if cfg.MongoTopIndex != nil && len(cfg.MongoTopIndex.Url) != 0 {
