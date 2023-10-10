@@ -394,6 +394,12 @@ func (storageDealStream *StorageDealStream) HandleNewDealStream(s network2.Strea
 		return
 	}
 
+	// for offline deal with DealProtocolv120, transferType can be empty
+	transferType := proposal.Transfer.Type
+	if transferType == "" {
+		transferType = storagemarket.TTManual
+	}
+
 	deal := &types.MinerDeal{
 		ID:                 uuid.New(),
 		Client:             s.Conn().RemotePeer(),
