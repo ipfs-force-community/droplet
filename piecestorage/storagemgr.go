@@ -18,7 +18,10 @@ type PieceStorageManager struct {
 }
 
 func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, error) {
-	storages := make(map[string]IPieceStorage)
+	psm := &PieceStorageManager{
+		lk:       sync.RWMutex{},
+		storages: make(map[string]IPieceStorage),
+	}
 
 	// todo: extract name check logic to a function and check blank in name
 
@@ -27,16 +30,15 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 		if fsCfg.Name == "" {
 			return nil, fmt.Errorf("fs piece storage name is empty, must set storage name in piece storage config `name=yourname`")
 		}
-		_, ok := storages[fsCfg.Name]
-		if ok {
-			return nil, fmt.Errorf("duplicate storage name: %s", fsCfg.Name)
-		}
 
 		st, err := NewFsPieceStorage(fsCfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create fs piece storage %w", err)
 		}
-		storages[fsCfg.Name] = st
+
+		if err := psm.AddPieceStorage(st); err != nil {
+			return nil, err
+		}
 	}
 
 	for _, s3Cfg := range cfg.S3 {
@@ -44,21 +46,18 @@ func NewPieceStorageManager(cfg *config.PieceStorage) (*PieceStorageManager, err
 		if s3Cfg.Name == "" {
 			return nil, fmt.Errorf("s3 pieceStorage name is empty, must set storage name in piece storage config `name=yourname`")
 		}
-		_, ok := storages[s3Cfg.Name]
-		if ok {
-			return nil, fmt.Errorf("duplicate storage name: %s", s3Cfg.Name)
-		}
 
 		st, err := NewS3PieceStorage(s3Cfg)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create object piece storage %w", err)
 		}
-		storages[s3Cfg.Name] = st
+
+		if err := psm.AddPieceStorage(st); err != nil {
+			return nil, err
+		}
 	}
-	return &PieceStorageManager{
-		lk:       sync.RWMutex{},
-		storages: storages,
-	}, nil
+
+	return psm, nil
 }
 
 func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) (IPieceStorage, error) {
@@ -66,7 +65,7 @@ func (p *PieceStorageManager) FindStorageForRead(ctx context.Context, s string) 
 	_ = p.EachPieceStorage(func(st IPieceStorage) error {
 		has, err := st.Has(ctx, s)
 		if err != nil {
-			log.Warnf("got error while check avaibale in storage: %s", err.Error())
+			log.Warnf("got error while check available in storage: %s", err.Error())
 			return nil
 		}
 		if has {
@@ -120,7 +119,7 @@ func (p *PieceStorageManager) AddMemPieceStorage(s IPieceStorage) {
 	p.lk.Lock()
 	defer p.lk.Unlock()
 
-	p.storages[s.GetName()] = s
+	p.storages[s.GetName()] = newStoreWrapper(s)
 }
 
 func (p *PieceStorageManager) AddPieceStorage(s IPieceStorage) error {
@@ -132,7 +131,8 @@ func (p *PieceStorageManager) AddPieceStorage(s IPieceStorage) error {
 	if ok {
 		return fmt.Errorf("duplicate storage name: %s", s.GetName())
 	}
-	p.storages[s.GetName()] = s
+	p.storages[s.GetName()] = newStoreWrapper(s)
+
 	return nil
 }
 
@@ -183,7 +183,7 @@ func (p *PieceStorageManager) ListStorageInfos() types.PieceStorageInfos {
 		}
 		switch st.Type() {
 		case S3:
-			cfg := st.(*s3PieceStorage).s3Cfg
+			cfg := st.(*storeWrapper).IPieceStorage.(*s3PieceStorage).s3Cfg
 			s3 = append(s3, types.S3Storage{
 				Name:     cfg.Name,
 				EndPoint: cfg.EndPoint,
@@ -194,7 +194,7 @@ func (p *PieceStorageManager) ListStorageInfos() types.PieceStorageInfos {
 			})
 
 		case FS:
-			cfg := st.(*fsPieceStorage).fsCfg
+			cfg := st.(*storeWrapper).IPieceStorage.(*fsPieceStorage).fsCfg
 			fs = append(fs, types.FsStorage{
 				Name:     cfg.Name,
 				Path:     cfg.Path,
