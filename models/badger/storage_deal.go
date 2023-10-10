@@ -261,6 +261,9 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageD
 			deal.State == storagemarket.StorageDealExpired || deal.State == storagemarket.StorageDealError) {
 			return false, nil
 		}
+		if len(params.PieceCID) != 0 && deal.Proposal.PieceCID.String() != params.PieceCID {
+			return false, nil
+		}
 		if count >= params.Offset && count < end {
 			storageDeals = append(storageDeals, deal)
 		}

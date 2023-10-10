@@ -321,6 +321,17 @@ func TestListDeal(t *testing.T) {
 	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: defPage, DiscardFailedDeal: true})
 	assert.NoError(t, err)
 	assert.Len(t, res, 2)
+
+	// test piece
+	piece := dbStorageDealCases[0].PieceCID.String()
+	rows, err = getFullRows(dbStorageDealCases[0])
+	assert.NoError(t, err)
+	sql, vars, err = getSQL(newQuery().Where("cdp_piece_cid = ?", piece).Limit(caseCount).Find(&storageDeals))
+	assert.NoError(t, err)
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+	res, err = r.StorageDealRepo().ListDeal(ctx, &types.StorageDealQueryParams{Page: defPage, PieceCID: piece})
+	assert.NoError(t, err)
+	assert.Len(t, res, 1)
 }
 
 func TestListDealByAddr(t *testing.T) {

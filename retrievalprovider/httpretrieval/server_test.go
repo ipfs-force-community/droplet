@@ -13,9 +13,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/venus/venus-shared/api/market/v1/mock"
+	"github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/ipfs-force-community/droplet/v2/config"
 	"github.com/ipfs-force-community/droplet/v2/piecestorage"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -67,6 +72,8 @@ func TestRetrievalByPiece(t *testing.T) {
 	assert.NoError(t, config.SaveConfig(cfg))
 
 	pieceStr := "baga6ea4seaqpzcr744w2rvqhkedfqbuqrbo7xtkde2ol6e26khu3wni64nbpaeq"
+	piece, err := cid.Decode(pieceStr)
+	assert.NoError(t, err)
 	buf := &bytes.Buffer{}
 	f, err := os.Create(filepath.Join(tmpDri, pieceStr))
 	assert.NoError(t, err)
@@ -79,7 +86,18 @@ func TestRetrievalByPiece(t *testing.T) {
 
 	pieceStorage, err := piecestorage.NewPieceStorageManager(&cfg.PieceStorage)
 	assert.NoError(t, err)
-	s := NewServer(pieceStorage)
+	ctrl := gomock.NewController(t)
+	m := mock.NewMockIMarket(ctrl)
+	m.EXPECT().MarketListIncompleteDeals(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, p *market.StorageDealQueryParams) ([]market.MinerDeal, error) {
+			if p.PieceCID != pieceStr {
+				return nil, fmt.Errorf("not found deal")
+			}
+			return append([]market.MinerDeal{}, market.MinerDeal{ClientDealProposal: types.ClientDealProposal{Proposal: types.DealProposal{PieceCID: piece}}}), nil
+		}).AnyTimes()
+
+	s, err := NewServer(pieceStorage, m)
+	assert.NoError(t, err)
 	port := "34897"
 	startHTTPServer(ctx, t, port, s)
 
@@ -93,6 +111,15 @@ func TestRetrievalByPiece(t *testing.T) {
 	data, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, buf.Bytes(), data)
+
+	// deal not exist
+	url = fmt.Sprintf("http://127.0.0.1:%s/piece/%s", port, "bafybeiakou6e7hnx4ms2yangplzl6viapsoyo6phlee6bwrg4j2xt37m3q")
+	req, err = http.NewRequest(http.MethodGet, url, nil)
+	assert.NoError(t, err)
+	resp, err = http.DefaultClient.Do(req)
+	assert.NoError(t, err)
+	defer resp.Body.Close() // nolint
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
 func startHTTPServer(ctx context.Context, t *testing.T, port string, s *Server) {
