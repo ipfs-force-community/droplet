@@ -10,6 +10,7 @@ import (
 
 	"github.com/NYTimes/gziphandler"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/stores"
 	marketAPI "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	marketTypes "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -19,22 +20,37 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	pieceBasePath = "/piece/"
+	ipfsBasePath  = "/ipfs/"
+)
+
 var log = logging.Logger("httpserver")
 
 type Server struct {
-	pieceMgr *piecestorage.PieceStorageManager
-	api      marketAPI.IMarket
+	pieceMgr         *piecestorage.PieceStorageManager
+	api              marketAPI.IMarket
+	trustlessHandler *trustlessHandler
 }
 
-func NewServer(pieceMgr *piecestorage.PieceStorageManager, api marketAPI.IMarket) (*Server, error) {
-	return &Server{pieceMgr: pieceMgr, api: api}, nil
+func NewServer(ctx context.Context, pieceMgr *piecestorage.PieceStorageManager, api marketAPI.IMarket, dagStoreWrapper stores.DAGStoreWrapper) (*Server, error) {
+	tlHandler := newTrustlessHandler(ctx, newBSWrap(ctx, dagStoreWrapper), 0)
+	return &Server{pieceMgr: pieceMgr, api: api, trustlessHandler: tlHandler}, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.RetrievalByPieceCID(w, r)
+	if strings.HasPrefix(r.URL.Path, ipfsBasePath) {
+		s.retrievalByIPFS(w, r)
+		return
+	}
+	s.retrievalByPieceCID(w, r)
 }
 
-func (s *Server) RetrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
+func (s *Server) retrievalByIPFS(w http.ResponseWriter, r *http.Request) {
+	s.trustlessHandler.ServeHTTP(w, r)
+}
+
+func (s *Server) retrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 	pieceCID, err := convertPieceCID(r.URL.Path)
 	if err != nil {
 		log.Warn(err)
@@ -161,7 +177,7 @@ func serveContent(w http.ResponseWriter, r *http.Request, content io.ReadSeeker,
 }
 
 func convertPieceCID(path string) (cid.Cid, error) {
-	l := len("/piece/")
+	l := len(pieceBasePath)
 	if len(path) <= l {
 		return cid.Undef, fmt.Errorf("path %s too short", path)
 	}

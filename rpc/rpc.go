@@ -74,6 +74,7 @@ func ServeRPC(
 	authMux.TrustHandle("/debug/pprof/", http.DefaultServeMux)
 	if httpRetrievalServer != nil {
 		authMux.TrustHandle("/piece/", httpRetrievalServer, jwtclient.RegexpOption(regexp.MustCompile(`/piece/[a-z0-9]+`)))
+		authMux.TrustHandle("/ipfs/", httpRetrievalServer, jwtclient.RegexpOption(regexp.MustCompile(`/ipfs/[a-z0-9]+`)))
 	}
 
 	srv := &http.Server{Handler: authMux}

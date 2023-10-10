@@ -96,7 +96,7 @@ func TestRetrievalByPiece(t *testing.T) {
 			return append([]market.MinerDeal{}, market.MinerDeal{ClientDealProposal: types.ClientDealProposal{Proposal: types.DealProposal{PieceCID: piece}}}), nil
 		}).AnyTimes()
 
-	s, err := NewServer(pieceStorage, m)
+	s, err := NewServer(ctx, pieceStorage, m, nil)
 	assert.NoError(t, err)
 	port := "34897"
 	startHTTPServer(ctx, t, port, s)
@@ -124,7 +124,7 @@ func TestRetrievalByPiece(t *testing.T) {
 
 func startHTTPServer(ctx context.Context, t *testing.T, port string, s *Server) {
 	mux := mux.NewRouter()
-	err := mux.HandleFunc("/piece/{cid}", s.RetrievalByPieceCID).GetError()
+	err := mux.HandleFunc("/piece/{cid}", s.retrievalByPieceCID).GetError()
 	assert.NoError(t, err)
 
 	ser := &http.Server{
