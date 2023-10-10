@@ -1,9 +1,11 @@
 package piecestorage
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/filecoin-project/venus/venus-shared/types/market"
@@ -104,7 +106,7 @@ func TestRandSelect(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		st, err := psm.FindStorageForWrite(1024 * 1024)
 		assert.Nil(t, err)
-		selectName = append(selectName, st.(*MemPieceStore).Name)
+		selectName = append(selectName, st.(*storeWrapper).IPieceStorage.(*MemPieceStore).Name)
 	}
 	assert.Contains(t, selectName, "1")
 	assert.Contains(t, selectName, "2")
@@ -148,4 +150,26 @@ func TestEachStorage(t *testing.T) {
 	})
 	assert.NotNil(t, err)
 	assert.Equal(t, 2, count)
+}
+
+func TestMultiFormatFiles(t *testing.T) {
+	assert.Equal(t, []string{"test", "test.car"}, extendPiece("test"))
+	assert.Equal(t, []string{"test", "test.car"}, extendPiece("test.car"))
+
+	tmpDir := t.TempDir()
+	psm, err := NewPieceStorageManager(&config.PieceStorage{
+		Fs: []*config.FsPieceStorage{
+			{Name: "test", Path: tmpDir},
+		},
+	})
+	assert.Nil(t, err)
+
+	assert.NoError(t, os.WriteFile(filepath.Join(tmpDir, "test"), []byte("xxx"), 0777))
+	assert.NoError(t, os.WriteFile(filepath.Join(tmpDir, "test2"+carSuffix), []byte("xxx"), 0777))
+
+	ctx := context.Background()
+	for _, name := range []string{"test", "test2"} {
+		_, err = psm.FindStorageForRead(ctx, name)
+		assert.NoError(t, err)
+	}
 }
