@@ -130,7 +130,10 @@ func (pna *ProviderNodeAdapter) GetProofType(ctx context.Context, maddr address.
 		return 0, err
 	}
 
-	return miner.PreferredSealProofTypeFromWindowPoStType(nver, mi.WindowPoStProofType)
+	// false because this variance is not consumed.
+	const configWantSynthetic = false
+
+	return miner.PreferredSealProofTypeFromWindowPoStType(nver, mi.WindowPoStProofType, configWantSynthetic)
 }
 
 func (pna *ProviderNodeAdapter) Sign(ctx context.Context, data interface{}) (*crypto.Signature, error) {

@@ -1,5 +1,32 @@
 # droplet changelog
 
+## v1.10.0-rc1
+
+* fix: remove trace goroutine for dagstore wrapper [[#419](https://github.com/ipfs-force-community/droplet/pull/419)]
+* feat: handle PreCommitSectorBatch2 message [[#420](https://github.com/ipfs-force-community/droplet/pull/420)]
+* fix: do not cover token of node, auth, messager [[#424](https://github.com/ipfs-force-community/droplet/pull/424)]
+* doc: update doc about unit entry [[#426](https://github.com/ipfs-force-community/droplet/pull/426)]
+* Chore/merge release v2.9 [[#428](https://github.com/ipfs-force-community/droplet/pull/428)]
+* fix: payload size is 0 when generate index [[#429](https://github.com/ipfs-force-community/droplet/pull/429)]
+* docs: update quick start doc [[#430](https://github.com/ipfs-force-community/droplet/pull/430)]
+* feat: generate manifest by piece file [[#431](https://github.com/ipfs-force-community/droplet/pull/431)]
+* feat: support storage deal protocol v2 [[#435](https://github.com/ipfs-force-community/droplet/pull/435)]
+* feat: support deal status protocol [[#436](https://github.com/ipfs-force-community/droplet/pull/436)]
+* feat: list deal descending by default [[#440](https://github.com/ipfs-force-community/droplet/pull/440)]
+* fix(release deals): skip update state if deal expired [[#443](https://github.com/ipfs-force-community/droplet/pull/443)]
+* fix: generate manifest [[#445](https://github.com/ipfs-force-community/droplet/pull/445)]
+* Update 快速启用.md [[#446](https://github.com/ipfs-force-community/droplet/pull/446)]
+* fix: add timeout for query ask [[#449](https://github.com/ipfs-force-community/droplet/pull/449)]
+* Update 批量发单.md [[#450](https://github.com/ipfs-force-community/droplet/pull/450)]
+* opt: support offline compute commp [[#451](https://github.com/ipfs-force-community/droplet/pull/451)]
+* feat: filter retrieval by deal piece [[#454](https://github.com/ipfs-force-community/droplet/pull/454)]
+* fix: Do not recover failed indexes on startup [[#453](https://github.com/ipfs-force-community/droplet/pull/453)]
+* add filter Example [[#455](https://github.com/ipfs-force-community/droplet/pull/455)]
+* fix: could not judge offline deal from boost [[#458](https://github.com/ipfs-force-community/droplet/pull/458)]
+* opt: piece storage supports files with .car suffix [[#459](https://github.com/ipfs-force-community/droplet/pull/459)]
+* chore(deps): bump golang.org/x/net from 0.11.0 to 0.17.0 [[#460](https://github.com/ipfs-force-community/droplet/pull/460)]
+* fix docs droplet actor-funds add command [[#461](https://github.com/ipfs-force-community/droplet/pull/461)]
+
 ## v2.9.0
 
 ## v2.9.0-rc1
