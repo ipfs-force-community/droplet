@@ -42,6 +42,8 @@ import (
 
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+
+	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 )
 
 // TODO: These are copied from spec-actors master, use spec-actors exports when we update
@@ -204,7 +206,7 @@ func (storageDealPorcess *StorageDealProcessImpl) acceptDeal(ctx context.Context
 
 	// Check that the delta between the start and end epochs (the deal
 	// duration) is within acceptable bounds
-	minDuration, maxDuration := vTypes.DealDurationBounds(proposal.PieceSize)
+	minDuration, maxDuration := policy.DealDurationBounds(proposal.PieceSize)
 	if proposal.Duration() < minDuration || proposal.Duration() > maxDuration {
 		return fmt.Errorf("deal duration out of bounds (min, max, provided): %d, %d, %d", minDuration, maxDuration, proposal.Duration())
 	}
