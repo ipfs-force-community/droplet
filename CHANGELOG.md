@@ -1,6 +1,12 @@
 # droplet changelog
 
-## v1.10.0-rc1
+## v2.10.0-rc2
+
+* feat/use deal bound from policy directly [[#467](https://github.com/ipfs-force-community/droplet/pull/467)]
+* fix: check deal end epoch with DealMaxDuration [[#468](https://github.com/ipfs-force-community/droplet/pull/468)]
+* chore: update go-jsonrpc v0.1.8 [[#469](https://github.com/ipfs-force-community/droplet/pull/469)]
+
+## v2.10.0-rc1
 
 * fix: remove trace goroutine for dagstore wrapper [[#419](https://github.com/ipfs-force-community/droplet/pull/419)]
 * feat: handle PreCommitSectorBatch2 message [[#420](https://github.com/ipfs-force-community/droplet/pull/420)]
