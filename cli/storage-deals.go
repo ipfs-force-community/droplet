@@ -13,6 +13,7 @@ import (
 
 	tm "github.com/buger/goterm"
 	"github.com/docker/go-units"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
@@ -79,12 +80,19 @@ var dealsImportDataCmd = &cli.Command{
 			return fmt.Errorf("must specify proposal CID and file path")
 		}
 
-		propCid, err := cid.Decode(cctx.Args().Get(0))
-		if err != nil {
-			return err
+		ref := market.ImportDataRef{
+			File: cctx.Args().Get(1),
 		}
 
-		fpath := cctx.Args().Get(1)
+		propCid, err := cid.Decode(cctx.Args().Get(0))
+		if err == nil {
+			ref.ProposalCID = propCid
+		} else {
+			ref.UUID, err = uuid.Parse(cctx.Args().Get(0))
+			if err != nil {
+				return err
+			}
+		}
 
 		var skipCommP bool
 		if cctx.IsSet("skip-commp") {
@@ -94,7 +102,12 @@ var dealsImportDataCmd = &cli.Command{
 			skipCommP = true
 		}
 
-		return api.DealsImportData(ctx, propCid, fpath, skipCommP)
+		if err := api.DealsImportData(ctx, ref, skipCommP); err != nil {
+			return err
+		}
+		fmt.Println("import data success")
+
+		return nil
 	},
 }
 
@@ -161,16 +174,24 @@ bass-xxx,baefaxxx
 			if len(arr) != 2 {
 				continue
 			}
-			proposalCID, err := cid.Parse(arr[0])
-			if err == nil && len(arr[1]) != 0 {
-				ref := &market.ImportDataRef{
-					ProposalCID: proposalCID,
-					File:        arr[1],
-				}
-				if len(carDir) != 0 {
-					ref.File = filepath.Join(carDir, ref.File)
-				}
 
+			ref := &market.ImportDataRef{
+				File: arr[1],
+			}
+			if len(arr[1]) != 0 && len(carDir) != 0 {
+				ref.File = filepath.Join(carDir, ref.File)
+			}
+
+			proposalCID, err := cid.Parse(arr[0])
+			if err == nil {
+				ref.ProposalCID = proposalCID
+				refs = append(refs, ref)
+				continue
+			}
+
+			id, err := uuid.Parse(arr[0])
+			if err == nil {
+				ref.UUID = id
 				refs = append(refs, ref)
 			}
 		}
@@ -192,9 +213,9 @@ bass-xxx,baefaxxx
 
 		for _, r := range res {
 			if len(r.Message) == 0 {
-				fmt.Printf("import data success: %s\n", r.ProposalCID)
+				fmt.Printf("import data success: %s\n", r.Target)
 			} else {
-				fmt.Printf("import data failed, deal: %s, error: %s\n", r.ProposalCID, r.Message)
+				fmt.Printf("import data failed, deal: %s, error: %s\n", r.Target, r.Message)
 			}
 		}
 
