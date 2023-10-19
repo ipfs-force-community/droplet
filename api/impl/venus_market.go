@@ -1110,8 +1110,8 @@ func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Add
 	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, pieceStatus, dealStatus)
 }
 
-func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string, skipCommP bool) error {
-	deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, dealPropCid)
+func (m *MarketNodeImpl) DealsImportData(ctx context.Context, ref types.ImportDataRef, skipCommP bool) error {
+	deal, _, err := storageprovider.GetDealByDataRef(ctx, m.Repo.StorageDealRepo(), &ref)
 	if err != nil {
 		return err
 	}
@@ -1119,12 +1119,8 @@ func (m *MarketNodeImpl) DealsImportData(ctx context.Context, dealPropCid cid.Ci
 		return err
 	}
 
-	ref := &types.ImportDataRef{
-		ProposalCID: dealPropCid,
-		File:        file,
-	}
 	res, err := m.DealsBatchImportData(ctx, types.ImportDataRefs{
-		Refs:      []*types.ImportDataRef{ref},
+		Refs:      []*types.ImportDataRef{&ref},
 		SkipCommP: skipCommP,
 	})
 	if err != nil {
@@ -1300,19 +1296,20 @@ func (m *MarketNodeImpl) DealsBatchImportData(ctx context.Context, refs types.Im
 	refLen := len(refs.Refs)
 	results := make([]*types.ImportDataResult, 0, refLen)
 	validRefs := make([]*types.ImportDataRef, 0, refLen)
+
 	for _, ref := range refs.Refs {
-		deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, ref.ProposalCID)
+		deal, target, err := storageprovider.GetDealByDataRef(ctx, m.Repo.StorageDealRepo(), ref)
 		if err != nil {
 			results = append(results, &types.ImportDataResult{
-				ProposalCID: ref.ProposalCID,
-				Message:     err.Error(),
+				Target:  target,
+				Message: err.Error(),
 			})
 			continue
 		}
 		if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
 			results = append(results, &types.ImportDataResult{
-				ProposalCID: ref.ProposalCID,
-				Message:     err.Error(),
+				Target:  target,
+				Message: err.Error(),
 			})
 			continue
 		}

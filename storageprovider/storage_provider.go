@@ -283,27 +283,38 @@ func (p *StorageProviderImpl) Stop() error {
 	return p.net.StopHandlingRequests()
 }
 
+func GetDealByDataRef(ctx context.Context, r repo.StorageDealRepo, ref *types.ImportDataRef) (*types.MinerDeal, string, error) {
+	deal, err := r.GetDeal(ctx, ref.ProposalCID)
+	if err == nil {
+		return deal, ref.ProposalCID.String(), nil
+	}
+	deal, err = r.GetDealByUUID(ctx, ref.UUID)
+	return deal, ref.UUID.String(), err
+}
+
 // ImportDataForDeals manually batch imports data for offline storage deals
 func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*types.ImportDataRef, skipCommP bool) ([]*types.ImportDataResult, error) {
 	// TODO: be able to check if we have enough disk space
 	results := make([]*types.ImportDataResult, 0, len(refs))
 	minerDeals := make(map[address.Address][]*types.MinerDeal)
+	targets := make(map[cid.Cid]string, len(refs))
 	for _, ref := range refs {
-		d, err := p.dealStore.GetDeal(ctx, ref.ProposalCID)
+		d, target, err := GetDealByDataRef(ctx, p.dealStore, ref)
 		if err != nil {
 			results = append(results, &types.ImportDataResult{
-				ProposalCID: ref.ProposalCID,
-				Message:     fmt.Errorf("failed getting deal: %v", err).Error(),
+				Target:  target,
+				Message: fmt.Errorf("failed getting deal: %v", err).Error(),
 			})
 			continue
 		}
 		if err := p.importDataForDeal(ctx, d, ref, skipCommP); err != nil {
 			results = append(results, &types.ImportDataResult{
-				ProposalCID: ref.ProposalCID,
-				Message:     err.Error(),
+				Target:  target,
+				Message: err.Error(),
 			})
 			continue
 		}
+		targets[d.ProposalCid] = target
 		minerDeals[d.Proposal.Provider] = append(minerDeals[d.Proposal.Provider], d)
 	}
 
@@ -313,8 +324,8 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 			log.Errorf("batch reserver funds for %s failed: %v", provider, err)
 			for _, deal := range deals {
 				results = append(results, &types.ImportDataResult{
-					ProposalCID: deal.ProposalCid,
-					Message:     err.Error(),
+					Target:  targets[deal.ProposalCid],
+					Message: err.Error(),
 				})
 			}
 			continue
@@ -323,13 +334,13 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 		for _, deal := range deals {
 			if err := res[deal.ProposalCid]; err != nil {
 				results = append(results, &types.ImportDataResult{
-					ProposalCID: deal.ProposalCid,
-					Message:     err.Error(),
+					Target:  targets[deal.ProposalCid],
+					Message: err.Error(),
 				})
 				continue
 			}
 			results = append(results, &types.ImportDataResult{
-				ProposalCID: deal.ProposalCid,
+				Target: targets[deal.ProposalCid],
 			})
 
 			go func(deal *types.MinerDeal) {
