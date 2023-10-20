@@ -401,7 +401,7 @@ func (storageDealStream *StorageDealStream) HandleNewDealStream(s network2.Strea
 	}
 
 	deal := &types.MinerDeal{
-		ID:                 uuid.New(),
+		ID:                 proposal.DealUUID,
 		Client:             s.Conn().RemotePeer(),
 		Miner:              storageDealStream.net.ID(),
 		ClientDealProposal: proposal.ClientDealProposal,
