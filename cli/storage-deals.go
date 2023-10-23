@@ -65,7 +65,7 @@ var dealsImportDataCmd = &cli.Command{
 			Usage: "Actually send transaction performing the action",
 		},
 	},
-	ArgsUsage: "<proposal CID> <file>",
+	ArgsUsage: "<proposal CID or uuid> <file>",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
 		if err != nil {
@@ -104,7 +104,7 @@ var dealsBatchImportDataCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:  "proposals",
-			Usage: "proposal cid and car file, eg. --proposals <proposal_cid>,<path_to_car_file>  --proposals <proposal_cid>,<path_to_car_file>",
+			Usage: "proposal cid(or uuid) and car file, eg. --proposals <proposal_cid>,<path_to_car_file>  --proposals <uuid>,<path_to_car_file>",
 		},
 		&cli.StringFlag{
 			Name: "manifest",
@@ -112,6 +112,10 @@ var dealsBatchImportDataCmd = &cli.Command{
 proposalCID,pieceCID
 baadfdxxx,badddxxx
 basdefxxx,baefaxxx
+or
+uuid,pieceCID
+baad-xxx,badddxxx
+bass-xxx,baefaxxx
 `,
 		},
 		&cli.BoolFlag{
