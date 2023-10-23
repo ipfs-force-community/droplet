@@ -193,6 +193,9 @@ func (a *API) dealStarter(ctx context.Context, params *types.DealParams, isState
 	if err != nil {
 		return nil, fmt.Errorf("failed getting peer ID: %w", err)
 	}
+	if mi.PeerId == nil {
+		return nil, fmt.Errorf("miner %s has no peer id", params.Miner)
+	}
 
 	md, err := a.Full.StateMinerProvingDeadline(ctx, params.Miner, vTypes.EmptyTSK)
 	if err != nil {
@@ -529,6 +532,9 @@ func (a *API) ClientMinerQueryOffer(ctx context.Context, miner address.Address, 
 	if err != nil {
 		return types.QueryOffer{}, err
 	}
+	if mi.PeerId == nil {
+		return types.QueryOffer{}, fmt.Errorf("miner %s has no peer id", miner)
+	}
 	rp := retrievalmarket.RetrievalPeer{
 		Address: miner,
 		ID:      *mi.PeerId,
@@ -856,6 +862,9 @@ func (a *API) doRetrieval(ctx context.Context, order types.RetrievalOrder, sel d
 		mi, err := a.Full.StateMinerInfo(ctx, order.Miner, vTypes.EmptyTSK)
 		if err != nil {
 			return 0, err
+		}
+		if mi.PeerId == nil {
+			return 0, fmt.Errorf("miner %s has no peer id", order.Miner)
 		}
 
 		order.MinerPeer = &retrievalmarket.RetrievalPeer{
