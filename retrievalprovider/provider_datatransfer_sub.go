@@ -24,6 +24,7 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 		dealProposal, err := rm.DealProposalFromNode(voucher.Voucher)
 		// if this event is for a transfer not related to storage, ignore
 		if err != nil {
+			log.Errorf("received wrong voucher type: %s", err)
 			return
 		}
 
@@ -40,26 +41,26 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 
 		switch event.Code {
 		case datatransfer.Accept:
-			mlog.With("retrievalEvent", rm.ProviderEventDealAccepted)
+			mlog = mlog.With("retrievalEvent", rm.ProviderEvents[rm.ProviderEventDealAccepted])
 			err := deals.HandleAcceptFor(ctx, identify, channelState.ChannelID())
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)
 			}
 		case datatransfer.Disconnected:
-			mlog.With("retrievalEvent", rm.ProviderEventDataTransferError)
+			mlog = mlog.With("retrievalEvent", rm.ProviderEvents[rm.ProviderEventDataTransferError])
 			err := deals.HandleDisconnectFor(ctx, identify, fmt.Errorf("deal data transfer stalled (peer hungup)"))
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)
 			}
 		case datatransfer.Error:
-			mlog.With("retrievalEvent", rm.ProviderEventDataTransferError)
+			mlog = mlog.With("retrievalEvent", rm.ProviderEvents[rm.ProviderEventDataTransferError])
 			err := deals.HandleErrorForDeal(ctx, identify, fmt.Errorf("deal data transfer failed: %s", event.Message))
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)
 			}
 		case datatransfer.DataLimitExceeded:
 			// DataLimitExceeded indicates it's time to wait for a payment
-			mlog.With("retrievalEvent", rm.ProviderEventPaymentRequested)
+			mlog = mlog.With("retrievalEvent", rm.ProviderEvents[rm.ProviderEventPaymentRequested])
 			err := deals.HandlePaymentRequested(ctx, identify)
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)
@@ -69,23 +70,31 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 			// Because the legacy client expects a final voucher, we dispatch this event event when
 			// the deal is free -- so that we have a chance to send this final voucher before completion
 			// TODO: do not send the legacy voucher when the client no longer expects it
-			mlog.With("retrievalEvent", rm.ProviderEventLastPaymentRequested)
+			mlog = mlog.With("retrievalEvent", rm.ProviderEvents[rm.ProviderEventLastPaymentRequested])
 			err := deals.HandleLastPayment(ctx, identify)
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)
 			}
 		case datatransfer.NewVoucher:
 			// NewVoucher indicates a potential new payment we should attempt to process
-			mlog.With("retrievalEvent", rm.ProviderEventProcessPayment)
+			mlog = mlog.With("retrievalEvent", rm.ProviderEvents[rm.ProviderEventProcessPayment])
 			err := deals.HandleProcessPayment(ctx, identify)
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)
 			}
 		case datatransfer.Cancel:
-			mlog.With("retrievalEvent", rm.ProviderEventClientCancelled)
+			mlog = mlog.With("retrievalEvent", rm.ProviderEvents[rm.ProviderEventClientCancelled])
 			err := deals.HandleCancelForDeal(ctx, identify)
 			if err != nil {
 				log.Errorf("processing dt event: %s", err)
+			}
+		case datatransfer.NewVoucherResult:
+			mlog = mlog.With("channelStatus", channelState.Status())
+			if channelState.Status() == datatransfer.Finalizing {
+				err := deals.HandleCompleteFor(ctx, identify)
+				if err != nil {
+					log.Errorf("processing dt event: %s", err)
+				}
 			}
 		default:
 			return

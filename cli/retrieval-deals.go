@@ -111,13 +111,12 @@ part statuses:
 			}
 
 			_, _ = fmt.Fprintf(w,
-				"%s\t%d\t%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
+				"%s\t%d\t%s\t%s\t%s\t%d\t%d\t%s\n",
 				deal.Receiver.String(),
 				deal.ID,
 				payloadCid,
 				retrievalmarket.DealStatuses[deal.Status],
 				deal.PricePerByte.String(),
-				deal.TotalSent,
 				deal.FundsReceived,
 				deal.CurrentInterval,
 				deal.Message,
@@ -192,7 +191,6 @@ func outputRetrievalDeal(deal *market.ProviderDealState) error {
 		{"PayloadCID", deal.PayloadCID},
 		{"Status", retrievalmarket.DealStatuses[deal.Status]},
 		{"PricePerByte", deal.PricePerByte.String()},
-		{"BytesSent", deal.TotalSent},
 		{"Paid", deal.FundsReceived},
 		{"Interval", deal.CurrentInterval},
 		{"Message", deal.Message},
