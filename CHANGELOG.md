@@ -1,5 +1,10 @@
 # droplet changelog
 
+## v2.10.0-rc3
+
+* fix: use the received deal uuid [[#473](https://github.com/ipfs-force-community/droplet/pull/473)]
+* fix: clean blockstore after retrieval completed [[#478](https://github.com/ipfs-force-community/droplet/pull/478)]
+
 ## v2.10.0-rc2
 
 * feat/use deal bound from policy directly [[#467](https://github.com/ipfs-force-community/droplet/pull/467)]
