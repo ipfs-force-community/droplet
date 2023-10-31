@@ -18,6 +18,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
+	"github.com/google/uuid"
 	"github.com/howeyc/gopass"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
@@ -552,7 +553,13 @@ func (d *boostDeal) minerDeal() (deal *types.MinerDeal, err error) {
 	}
 	pieceCID := shared.MustParseCid(d.PieceCid)
 
+	id, err := uuid.Parse(d.ID)
+	if err != nil {
+		return nil, err
+	}
+
 	deal = &types.MinerDeal{
+		ID: id,
 		ClientDealProposal: market.ClientDealProposal{
 			Proposal: market.DealProposal{
 				PieceCID:             pieceCID,
