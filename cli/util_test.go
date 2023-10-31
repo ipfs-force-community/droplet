@@ -26,6 +26,10 @@ func TestUnmarshalBoostDeal(t *testing.T) {
 	assert.NoError(t, err)
 	fmt.Println("create at", createAt)
 
+	minerDeal, err := deal.minerDeal()
+	assert.NoError(t, err)
+	assert.Equal(t, "1b4b8f7e-6b55-4f71-93d7-be1b46ea00c6", minerDeal.ID.String())
+
 	data, err = os.ReadFile("./testdata/lotus_miner_query_result.json")
 	assert.NoError(t, err)
 
