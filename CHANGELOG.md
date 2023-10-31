@@ -1,5 +1,10 @@
 # droplet changelog
 
+## v2.10.0-rc4
+
+fix: set deal id when import deal from boost [[#480](https://github.com/ipfs-force-community/droplet/pull/480)]
+feat: import deal data by uuid [[#471](https://github.com/ipfs-force-community/droplet/pull/471)]
+
 ## v2.10.0-rc3
 
 * fix: use the received deal uuid [[#473](https://github.com/ipfs-force-community/droplet/pull/473)]
