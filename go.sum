@@ -707,8 +707,8 @@ github.com/ipfs-force-community/sophon-auth v1.14.0-rc1 h1:r+TSz2r6H7K0ZtsiyS4Hm
 github.com/ipfs-force-community/sophon-auth v1.14.0-rc1/go.mod h1:d6J6u3zyIwcEajRho5BhVBcoIChEf0K76wP4yJEfEhc=
 github.com/ipfs-force-community/sophon-gateway v1.14.0-rc1 h1:PXsKzeQQgeFhdhkRdD7s884b/VAIRZzIef35ABJ/fY0=
 github.com/ipfs-force-community/sophon-gateway v1.14.0-rc1/go.mod h1:IoxmDkC9NG3+HGWizh48fP1cxvbN7fU9dIvRTxupk4Q=
-github.com/ipfs-force-community/sophon-messager v1.14.0-rc1 h1:IkCsbJunxLRE0klOuFK0Be4+T0UqtG4qx1ZnETP+yEM=
-github.com/ipfs-force-community/sophon-messager v1.14.0-rc1/go.mod h1:RtNzCvqbIt3et1g/OErE0ijraAJReCc7Ingz779hrcI=
+github.com/ipfs-force-community/sophon-messager v1.14.0-rc2 h1:v0+MhuohdBUSHO/CE2FH0DgU2qa8g4gndFSb9xiX3RQ=
+github.com/ipfs-force-community/sophon-messager v1.14.0-rc2/go.mod h1:aBI/4LuDGo1P3tpUC6l4KEGkDRCcmlpqcazVdaZPjDo=
 github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7 h1:v/1/INcqm3kHLauWQYB63MwWJRWGz+3WEuUPp0jzIl8=
 github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7/go.mod h1:sSTUXgIu95tPHvgcYhdLuELmgPJWCP/pNMFtsrVtOyA=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=
