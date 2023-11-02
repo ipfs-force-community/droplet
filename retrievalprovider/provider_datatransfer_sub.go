@@ -24,7 +24,6 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 		dealProposal, err := rm.DealProposalFromNode(voucher.Voucher)
 		// if this event is for a transfer not related to storage, ignore
 		if err != nil {
-			log.Errorf("received wrong voucher type: %s", err)
 			return
 		}
 
