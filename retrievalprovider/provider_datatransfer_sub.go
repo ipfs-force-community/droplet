@@ -88,9 +88,10 @@ func ProviderDataTransferSubscriber(deals IDatatransferHandler) datatransfer.Sub
 				log.Errorf("processing dt event: %s", err)
 			}
 		case datatransfer.NewVoucherResult:
+			// todo: 为了解决检索完成后订单状态还是 `DealStatusFinalizing`，在 `go-fil-markets` 中是没有处理这个状态
 			mlog = mlog.With("channelStatus", channelState.Status())
 			if channelState.Status() == datatransfer.Finalizing {
-				err := deals.HandleCompleteFor(ctx, identify)
+				err := deals.TryHandleCompleted(ctx, identify)
 				if err != nil {
 					log.Errorf("processing dt event: %s", err)
 				}
