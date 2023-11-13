@@ -1,6 +1,7 @@
 package httpretrieval
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -34,7 +35,7 @@ type Server struct {
 }
 
 func NewServer(ctx context.Context, pieceMgr *piecestorage.PieceStorageManager, api marketAPI.IMarket, dagStoreWrapper stores.DAGStoreWrapper) (*Server, error) {
-	tlHandler := newTrustlessHandler(ctx, newBSWrap(ctx, dagStoreWrapper), 0)
+	tlHandler := newTrustlessHandler(ctx, newBSWrap(ctx, dagStoreWrapper), gzip.BestSpeed)
 	return &Server{pieceMgr: pieceMgr, api: api, trustlessHandler: tlHandler}, nil
 }
 
@@ -66,7 +67,7 @@ func (s *Server) retrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 	_, err = s.listDealsByPiece(ctx, pieceCIDStr)
 	if err != nil {
 		log.Warn(err)
-		// todo: reject deal?
+		// todo: reject request?
 		// badResponse(w, http.StatusNotFound, err)
 		// return
 	}

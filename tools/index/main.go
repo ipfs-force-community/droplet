@@ -474,7 +474,7 @@ var indexInfoCmd = &cli.Command{
 					offset uint64
 				}{
 					mhash:  mh.HexString(),
-					blkCid: cid.NewCidV1(cid.DagCBOR, mh),
+					blkCid: cid.NewCidV1(cid.Raw, mh),
 					offset: offset,
 				})
 				return nil
