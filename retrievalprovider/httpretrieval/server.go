@@ -50,8 +50,9 @@ func (s *Server) RetrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 	_, err = s.listDealsByPiece(ctx, pieceCIDStr)
 	if err != nil {
 		log.Warn(err)
-		badResponse(w, http.StatusNotFound, err)
-		return
+		// todo: reject deal?
+		// badResponse(w, http.StatusNotFound, err)
+		// return
 	}
 
 	store, err := s.pieceMgr.FindStorageForRead(ctx, pieceCIDStr)
