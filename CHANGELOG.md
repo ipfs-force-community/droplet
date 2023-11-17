@@ -1,5 +1,11 @@
 # droplet changelog
 
+## v2.10.0-rc6
+
+* chore: update venus to v1.14.0-rc6
+* fix: Paid retrieval failed [[#484](https://github.com/ipfs-force-community/droplet/pull/484)]
+
+
 ## v2.10.0-rc5
 
 * chore: update venus to v1.14.0-rc4
