@@ -130,12 +130,12 @@ func testS3PieceStorage(t *testing.T, s3Cfg *config.S3PieceStorage) {
 }
 
 func randomString(n int) string {
-	rand.Seed(time.Now().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	letter := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letter[rand.Intn(len(letter))]
+		b[i] = letter[r.Intn(len(letter))]
 	}
 	return string(b)
 }
