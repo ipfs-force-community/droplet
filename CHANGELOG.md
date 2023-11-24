@@ -1,5 +1,7 @@
 # droplet changelog
 
+## v2.10.0
+
 ## v2.10.0-rc6
 
 * chore: update venus to v1.14.0-rc6
