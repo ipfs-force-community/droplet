@@ -1,5 +1,27 @@
 # droplet changelog
 
+## v2.10.0
+
+## v2.10.0-rc6
+
+* chore: update venus to v1.14.0-rc6
+* fix: Paid retrieval failed [[#484](https://github.com/ipfs-force-community/droplet/pull/484)]
+
+
+## v2.10.0-rc5
+
+* chore: update venus to v1.14.0-rc4
+
+## v2.10.0-rc4
+
+* fix: set deal id when import deal from boost [[#480](https://github.com/ipfs-force-community/droplet/pull/480)]
+* feat: import deal data by uuid [[#471](https://github.com/ipfs-force-community/droplet/pull/471)]
+
+## v2.10.0-rc3
+
+* fix: use the received deal uuid [[#473](https://github.com/ipfs-force-community/droplet/pull/473)]
+* fix: clean blockstore after retrieval completed [[#478](https://github.com/ipfs-force-community/droplet/pull/478)]
+
 ## v2.10.0-rc2
 
 * feat/use deal bound from policy directly [[#467](https://github.com/ipfs-force-community/droplet/pull/467)]

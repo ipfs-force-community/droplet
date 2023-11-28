@@ -21,6 +21,7 @@ type IDatatransferHandler interface {
 
 	HandleCancelForDeal(context.Context, rm.ProviderDealIdentifier) error
 	HandleErrorForDeal(context.Context, rm.ProviderDealIdentifier, error) error
+	TryHandleCompleted(context.Context, rm.ProviderDealIdentifier) error
 }
 
 var _ IDatatransferHandler = (*DataTransferHandler)(nil)
@@ -40,6 +41,17 @@ func (d *DataTransferHandler) HandleCompleteFor(ctx context.Context, identifier 
 		return err
 	}
 	return d.retrievalDealHandler.CleanupDeal(ctx, deal)
+}
+
+func (d *DataTransferHandler) TryHandleCompleted(ctx context.Context, identifier rm.ProviderDealIdentifier) error {
+	deal, err := d.retrievalDealStore.GetDeal(ctx, identifier.Receiver, identifier.DealID)
+	if err != nil {
+		return err
+	}
+	if deal.Status == rm.DealStatusFinalizing {
+		return d.retrievalDealHandler.CleanupDeal(ctx, deal)
+	}
+	return nil
 }
 
 func (d *DataTransferHandler) HandleAcceptFor(ctx context.Context, identifier rm.ProviderDealIdentifier, channelId datatransfer.ChannelID) error {

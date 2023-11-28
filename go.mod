@@ -25,12 +25,12 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.28.4-0.20230816163331-bd08f1651b1d
 	github.com/filecoin-project/go-jsonrpc v0.1.8
 	github.com/filecoin-project/go-padreader v0.0.1
-	github.com/filecoin-project/go-state-types v0.12.5
+	github.com/filecoin-project/go-state-types v0.12.8
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.14.0-rc3.0.20231019071557-12e011e709ac
+	github.com/filecoin-project/venus v1.14.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
@@ -38,9 +38,9 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601
-	github.com/ipfs-force-community/sophon-auth v1.14.0-rc1
-	github.com/ipfs-force-community/sophon-gateway v1.14.0-rc1
-	github.com/ipfs-force-community/sophon-messager v1.14.0-rc1
+	github.com/ipfs-force-community/sophon-auth v1.14.0
+	github.com/ipfs-force-community/sophon-gateway v1.14.0
+	github.com/ipfs-force-community/sophon-messager v1.14.0
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
 	github.com/ipfs/boxo v0.10.1
 	github.com/ipfs/go-blockservice v0.5.0
@@ -92,6 +92,7 @@ require (
 )
 
 require (
+	github.com/hashicorp/golang-lru/arc/v2 v2.0.7 // indirect
 	go.opentelemetry.io/otel/bridge/opencensus v0.39.0 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.14.0 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
@@ -177,7 +178,7 @@ require (
 	github.com/hannahhoward/cbor-gen-for v0.0.0-20230214144701-5d17c9d5243c // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huin/goupnp v1.1.0 // indirect
 	github.com/influxdata/influxdb-client-go/v2 v2.2.2 // indirect
@@ -319,5 +320,5 @@ replace (
 	github.com/filecoin-project/dagstore => github.com/ipfs-force-community/dagstore v0.4.4-0.20230628060530-4b25fff4d833
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-fil-markets => github.com/ipfs-force-community/go-fil-markets v1.2.6-0.20230822060005-aee2cbae5b01
-	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.8
+	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.9
 )
