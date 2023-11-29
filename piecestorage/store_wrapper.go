@@ -35,7 +35,6 @@ func (sw *storeWrapper) Len(ctx context.Context, s string) (int64, error) {
 		if err == nil {
 			return l, nil
 		}
-
 	}
 
 	return l, err
