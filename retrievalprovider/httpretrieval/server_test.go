@@ -190,7 +190,8 @@ func TestTrustless(t *testing.T) {
 
 	piecePath := "./testdata/baga6ea4seaqa6u2eajfj57t2laudfkdmxmzv4nix255qytfgcr2uoexspketoda"
 	resch := make(chan dagstore2.ShardResult, 1)
-	dagStoreWrapper.RegisterShardWithIndex(ctx, piece, piecePath, true, resch, idx)
+	err = dagStoreWrapper.RegisterShardWithIndex(ctx, piece, piecePath, true, resch, idx)
+	assert.NoError(t, err)
 	close(resch)
 
 	s, err := NewServer(ctx, nil, m, dagStoreWrapper)

@@ -62,7 +62,7 @@ func (bs *bsWrap) Get(ctx context.Context, blockCID cid.Cid) (blocks.Block, erro
 			if err != nil {
 				return nil, fmt.Errorf("getting piece reader: %w", err)
 			}
-			defer reader.Close()
+			defer reader.Close() // nolint:errcheck
 
 			return reader.Get(ctx, blockCID)
 		}()
@@ -101,7 +101,7 @@ func (bs *bsWrap) GetSize(ctx context.Context, blockCID cid.Cid) (int, error) {
 			merr = multierror.Append(merr, fmt.Errorf("getting piece reader: %w", err))
 			continue
 		}
-		defer reader.Close()
+		defer reader.Close() // nolint:errcheck
 
 		size, err := reader.GetSize(ctx, blockCID)
 		if err != nil {
