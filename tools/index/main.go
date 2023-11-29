@@ -24,6 +24,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/models/mysql"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/droplet/v2/utils"
+	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car/v2"
 	carindex "github.com/ipld/go-car/v2/index"
 	"github.com/multiformats/go-multihash"
@@ -84,6 +85,7 @@ func main() {
 		Commands: []*cli.Command{
 			generateIndexCmd,
 			migrateIndexCmd,
+			indexInfoCmd,
 		},
 	}
 
@@ -435,4 +437,59 @@ func (it *mhIdx) ForEach(fn func(mh multihash.Multihash) error) error {
 	return it.iterableIdx.ForEach(func(mh multihash.Multihash, _ uint64) error {
 		return fn(mh)
 	})
+}
+
+var indexInfoCmd = &cli.Command{
+	Name:      "index-info",
+	Usage:     "show index detail info",
+	ArgsUsage: "<index file>",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 1 {
+			return fmt.Errorf("must pass index file")
+		}
+
+		indexFile := cctx.Args().First()
+		fmt.Println("index file: ", indexFile)
+		f, err := os.Open(indexFile)
+		if err != nil {
+			return err
+		}
+		defer f.Close() //nolint
+
+		idx, err := carindex.ReadFrom(f)
+		if err != nil {
+			return err
+		}
+		iterableIdx, ok := idx.(carindex.IterableIndex)
+		if ok {
+			items := make([]struct {
+				mhash  string
+				blkCid cid.Cid
+				offset uint64
+			}, 0)
+			if err := iterableIdx.ForEach(func(mh multihash.Multihash, offset uint64) error {
+				items = append(items, struct {
+					mhash  string
+					blkCid cid.Cid
+					offset uint64
+				}{
+					mhash:  mh.HexString(),
+					blkCid: cid.NewCidV1(cid.Raw, mh),
+					offset: offset,
+				})
+				return nil
+			}); err != nil {
+				return err
+			}
+			sort.Slice(items, func(i, j int) bool {
+				return items[i].offset < items[j].offset
+			})
+
+			for _, item := range items {
+				fmt.Printf("block cid: %s, offset: %d\n", item.blkCid, item.offset)
+			}
+		}
+
+		return nil
+	},
 }

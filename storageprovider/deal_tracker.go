@@ -103,7 +103,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 			if err != nil {
 				return fmt.Errorf("update deal %d status to of miner %s expired %w", deal.DealID, addr, err)
 			}
-			log.Info("update deal %d status to of miner %s  expired", deal.DealID, addr)
+			log.Infof("update deal %d status to of miner %s expired", deal.DealID, addr)
 		}
 
 		// not check market piece status , maybe skip Packing and update to proving status directly

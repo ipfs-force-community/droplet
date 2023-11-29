@@ -21,6 +21,7 @@ import (
 type Registration struct {
 	CarPath   string
 	EagerInit bool
+	Index     carindex.Index
 }
 
 // MockDagStoreWrapper is used to mock out the DAG store wrapper operations
@@ -40,6 +41,20 @@ func NewMockDagStoreWrapper() *MockDagStoreWrapper {
 		registrations:   make(map[cid.Cid]Registration),
 		piecesWithBlock: make(map[cid.Cid][]cid.Cid),
 	}
+}
+
+func (m *MockDagStoreWrapper) RegisterShardWithIndex(ctx context.Context, pieceCid cid.Cid, carPath string, eagerInit bool, resch chan dagstore.ShardResult, index carindex.Index) error {
+	m.lk.Lock()
+	defer m.lk.Unlock()
+
+	m.registrations[pieceCid] = Registration{
+		CarPath:   carPath,
+		EagerInit: eagerInit,
+		Index:     index,
+	}
+
+	resch <- dagstore.ShardResult{}
+	return nil
 }
 
 func (m *MockDagStoreWrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath string, eagerInit bool, resch chan dagstore.ShardResult) error {
@@ -98,7 +113,11 @@ func (m *MockDagStoreWrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (
 	if err != nil {
 		return nil, err
 	}
-	return getBlockstoreFromReader(fileR, pieceCid)
+	if pieceInfo.Index == nil {
+		return getBlockstoreFromReader(fileR, pieceCid)
+	}
+
+	return blockstore.NewReadOnly(fileR, pieceInfo.Index, carv2.ZeroLengthSectionAsEOF(true), blockstore.UseWholeCIDs(true))
 }
 
 func (m *MockDagStoreWrapper) DestroyShard(ctx context.Context, pieceCid cid.Cid, resch chan dagstore.ShardResult) error {
