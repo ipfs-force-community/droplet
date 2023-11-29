@@ -101,13 +101,17 @@ func (f *fsPieceStorage) GetPieceTransfer(_ context.Context, pieceCid string) (s
 }
 
 func (f *fsPieceStorage) Has(_ context.Context, resourceId string) (bool, error) {
-	_, err := os.Stat(path.Join(f.baseUrl, resourceId))
+	s, err := os.Stat(path.Join(f.baseUrl, resourceId))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
 		return false, err
 	}
+	if !s.Mode().IsRegular() {
+		return false, nil
+	}
+
 	return true, nil
 }
 
