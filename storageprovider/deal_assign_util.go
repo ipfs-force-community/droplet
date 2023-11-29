@@ -20,7 +20,12 @@ var (
 
 func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *mtypes.GetDealSpec) ([]*mtypes.DealInfoIncludePath, error) {
 	space := abi.PaddedPieceSize(ssize)
+	if spec != nil {
+		log.Infof("spec: %v", *spec)
 
+	} else {
+		log.Infof("spec is nil")
+	}
 	if err := space.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %d", errInvalidSpaceSize, space)
 	}
@@ -36,6 +41,7 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, cur
 		picked := make([]*mtypes.DealInfoIncludePath, 0, len(deals))
 		for di := range deals {
 			deal := deals[di]
+			log.Infof("deal: %v\n", deal)
 			if spec.StartEpoch > 0 && deal.DealProposal.StartEpoch <= spec.StartEpoch {
 				continue
 			}
@@ -66,6 +72,8 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, cur
 	if len(deals) > 0 && deals[0].PieceSize.Validate() != nil {
 		return nil, fmt.Errorf("%w: first deal size: %d", errInvalidDealPieceSize, deals[0].PieceSize)
 	}
+
+	log.Infof("picked deals: %v\n", deals)
 
 	// 过滤掉太小的 deals
 	if spec != nil && spec.MinPieceSize > 0 {
