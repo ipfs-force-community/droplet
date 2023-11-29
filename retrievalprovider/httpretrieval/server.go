@@ -3,15 +3,20 @@ package httpretrieval
 import (
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/textproto"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/NYTimes/gziphandler"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/abi"
 	marketAPI "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	marketTypes "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -25,6 +30,10 @@ const (
 	pieceBasePath = "/piece/"
 	ipfsBasePath  = "/ipfs/"
 )
+
+// errNoOverlap is returned by serveContent's parseRange if first-byte-pos of
+// all of the byte-range-spec values is greater than the content size.
+var errNoOverlap = errors.New("invalid range: failed to overlap")
 
 var log = logging.Logger("httpserver")
 
@@ -97,7 +106,14 @@ func (s *Server) retrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 	}
 	defer mountReader.Close() // nolint
 
-	serveContent(w, r, mountReader, log)
+	contentReader, err := handleRangeHeader(r.Header.Get("Range"), mountReader, len)
+	if err != nil {
+		log.Warnf("handleRangeHeader failed, Range: %s, error: %v", r.Header.Get("Range"), err)
+		badResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	serveContent(w, r, contentReader, log)
 	log.Info("end retrieval deal")
 }
 
@@ -195,6 +211,102 @@ func convertPieceCID(path string) (cid.Cid, error) {
 func badResponse(w http.ResponseWriter, code int, err error) {
 	w.WriteHeader(code)
 	w.Write([]byte("Error: " + err.Error())) // nolint
+}
+
+func handleRangeHeader(r string, mountReader io.ReadSeeker, carSize int64) (io.ReadSeeker, error) {
+	paddedSize := padreader.PaddedSize(uint64(carSize))
+	if paddedSize == abi.UnpaddedPieceSize(carSize) {
+		return mountReader, nil
+	}
+
+	ranges, err := parseRange(r, int64(paddedSize))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range ranges {
+		if r[0]+r[1] >= carSize {
+			return newMultiReader(mountReader, uint64(carSize)), nil
+		}
+	}
+
+	return mountReader, nil
+}
+
+// parseRange parses a Range header string as per RFC 7233.
+// errNoOverlap is returned if none of the ranges overlap.
+func parseRange(s string, size int64) ([][2]int64, error) {
+	if s == "" {
+		return nil, nil // header not present
+	}
+	const b = "bytes="
+	if !strings.HasPrefix(s, b) {
+		return nil, errors.New("invalid range")
+	}
+	var ranges [][2]int64
+	noOverlap := false
+	for _, ra := range strings.Split(s[len(b):], ",") {
+		ra = textproto.TrimString(ra)
+		if ra == "" {
+			continue
+		}
+		start, end, ok := strings.Cut(ra, "-")
+		if !ok {
+			return nil, errors.New("invalid range")
+		}
+		start, end = textproto.TrimString(start), textproto.TrimString(end)
+		r := [2]int64{}
+		if start == "" {
+			// If no start is specified, end specifies the
+			// range start relative to the end of the file,
+			// and we are dealing with <suffix-length>
+			// which has to be a non-negative integer as per
+			// RFC 7233 Section 2.1 "Byte-Ranges".
+			if end == "" || end[0] == '-' {
+				return nil, errors.New("invalid range")
+			}
+			i, err := strconv.ParseInt(end, 10, 64)
+			if i < 0 || err != nil {
+				return nil, errors.New("invalid range")
+			}
+			if i > size {
+				i = size
+			}
+			r[0] = size - i
+			r[1] = size - r[0]
+		} else {
+			i, err := strconv.ParseInt(start, 10, 64)
+			if err != nil || i < 0 {
+				return nil, errors.New("invalid range")
+			}
+			if i >= size {
+				// If the range begins after the size of the content,
+				// then it does not overlap.
+				noOverlap = true
+				continue
+			}
+			r[0] = i
+			if end == "" {
+				// If no end is specified, range extends to end of the file.
+				r[1] = size - r[0]
+			} else {
+				i, err := strconv.ParseInt(end, 10, 64)
+				if err != nil || r[0] > i {
+					return nil, errors.New("invalid range")
+				}
+				if i >= size {
+					i = size - 1
+				}
+				r[1] = i - r[0] + 1
+			}
+		}
+		ranges = append(ranges, r)
+	}
+	if noOverlap && len(ranges) == 0 {
+		// The specified ranges did not overlap with the content.
+		return nil, errNoOverlap
+	}
+	return ranges, nil
 }
 
 // writeErrorWatcher calls onError if there is an error writing to the writer
