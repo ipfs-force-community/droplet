@@ -205,6 +205,10 @@ func (m *MarketConfig) GetMessager() Messager {
 }
 
 func (m *MarketConfig) GetAuthNode() AuthNode {
+	if m.Signer.SignerType == SignerTypeWallet {
+		return AuthNode{}
+	}
+
 	ret := AuthNode{}
 	if m.AuthNode != nil {
 		ret = *m.AuthNode
