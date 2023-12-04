@@ -232,7 +232,6 @@ func (sdr *storageDealRepo) ListDealByAddr(ctx context.Context, miner address.Ad
 }
 
 func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageDealQueryParams) ([]*types.MinerDeal, error) {
-	var count int
 	var storageDeals []*types.MinerDeal
 	end := params.Limit + params.Offset
 
@@ -243,6 +242,7 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageD
 			state != storagemarket.StorageDealExpired && state != storagemarket.StorageDealError
 	}
 
+	var count int
 	if err := travelCborAbleDS(ctx, sdr.ds, func(deal *types.MinerDeal) (stop bool, err error) {
 		if count >= end {
 			return true, nil
@@ -262,6 +262,11 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageD
 			return false, nil
 		}
 		if len(params.PieceCID) != 0 && deal.Proposal.PieceCID.String() != params.PieceCID {
+			return false, nil
+		}
+		// attention: deal id can not be zero in mainnet, but it can be zero in testnet
+		// is is a compromise for forward compatibility
+		if params.DealID != 0 && deal.DealID != params.DealID {
 			return false, nil
 		}
 		if count >= params.Offset && count < end {

@@ -21,6 +21,7 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/ipfs-force-community/droplet/v2/storageprovider"
 
@@ -623,12 +624,33 @@ var dealsPendingPublish = &cli.Command{
 }
 
 var getDealCmd = &cli.Command{
-	Name:      "get",
-	Usage:     "Print a storage deal",
-	ArgsUsage: "<proposal cid>",
+	Name:  "get",
+	Usage: "Print a storage deal",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "deal-id",
+			Usage: "deal id assign by chain, eg. 1",
+		},
+		&cli.StringFlag{
+			Name:  "proposal-cid",
+			Usage: "cid of deal proposal",
+		},
+	},
 	Action: func(cliCtx *cli.Context) error {
-		if cliCtx.NArg() != 1 {
-			return fmt.Errorf("expected 1 arguments")
+		if !cliCtx.IsSet("deal-id") && !cliCtx.IsSet("proposal-cid") {
+			return fmt.Errorf("must specify deal id or proposal cid")
+		}
+		var dealID abi.DealID
+		var proposalCid cid.Cid
+
+		if cliCtx.IsSet("deal-id") {
+			dealID = abi.DealID(cliCtx.Int64("deal-id"))
+		} else {
+			var err error
+			proposalCid, err = cid.Decode(cliCtx.String("proposal-cid"))
+			if err != nil {
+				return err
+			}
 		}
 
 		api, closer, err := NewMarketNode(cliCtx)
@@ -636,17 +658,28 @@ var getDealCmd = &cli.Command{
 			return err
 		}
 		defer closer()
-
-		proposalCid, err := cid.Decode(cliCtx.Args().First())
-		if err != nil {
-			return err
-		}
-
 		ctx := ReqContext(cliCtx)
 
-		deal, err := api.MarketGetDeal(ctx, proposalCid)
-		if err != nil {
-			return err
+		var deal *market.MinerDeal
+		if cliCtx.IsSet("deal-id") {
+			deals, err := api.MarketListIncompleteDeals(ctx, &market.StorageDealQueryParams{
+				DealID: dealID,
+				Page: market.Page{
+					Limit: 1,
+				},
+			})
+			if err != nil {
+				return err
+			}
+			if len(deals) == 0 {
+				return fmt.Errorf("deal %d not found", dealID)
+			}
+			deal = &deals[0]
+		} else {
+			deal, err = api.MarketGetDeal(ctx, proposalCid)
+			if err != nil {
+				return err
+			}
 		}
 
 		return outputStorageDeal(deal)

@@ -512,6 +512,11 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageD
 	if len(params.PieceCID) != 0 {
 		query.Where("cdp_piece_cid = ?", params.PieceCID)
 	}
+	// attention: deal id can not be zero in mainnet, but it can be zero in testnet
+	// is is a compromise for forward compatibility
+	if params.DealID != 0 {
+		query.Where("deal_id = ?", params.DealID)
+	}
 	if discardFailedDeal {
 		states := []storagemarket.StorageDealStatus{storagemarket.StorageDealFailing,
 			storagemarket.StorageDealExpired, storagemarket.StorageDealError, storagemarket.StorageDealSlashed}
