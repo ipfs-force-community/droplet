@@ -770,7 +770,8 @@ func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool, i
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(out, string(data))
+		_, err = fmt.Fprintln(out, string(data))
+		return err
 	}
 
 	w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
