@@ -397,6 +397,10 @@ part states:
 			Name:  "oldest",
 			Usage: "sort by oldest first",
 		},
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "output deal info as json format",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := NewMarketNode(cctx)
@@ -451,7 +455,7 @@ part states:
 				tm.Clear()
 				tm.MoveCursor(1, 1)
 
-				err = outputStorageDeals(tm.Output, deals, verbose)
+				err = outputStorageDeals(tm.Output, deals, verbose, cctx.Bool("json"))
 				if err != nil {
 					return err
 				}
@@ -477,7 +481,7 @@ part states:
 			}
 		}
 
-		return outputStorageDeals(os.Stdout, deals, verbose)
+		return outputStorageDeals(os.Stdout, deals, verbose, cctx.Bool("json"))
 	},
 }
 
@@ -635,6 +639,10 @@ var getDealCmd = &cli.Command{
 			Name:  "proposal-cid",
 			Usage: "cid of deal proposal",
 		},
+		&cli.BoolFlag{
+			Name:  "json",
+			Usage: "output deal info as json format",
+		},
 	},
 	Action: func(cliCtx *cli.Context) error {
 		if !cliCtx.IsSet("deal-id") && !cliCtx.IsSet("proposal-cid") {
@@ -680,6 +688,15 @@ var getDealCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
+		}
+
+		if cliCtx.Bool("json") {
+			data, err := json.MarshalIndent(deal, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(data))
+			return nil
 		}
 
 		return outputStorageDeal(deal)
@@ -743,10 +760,19 @@ func printStates(data interface{}) error {
 	return nil
 }
 
-func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool) error {
+func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool, inJson bool) error {
 	sort.Slice(deals, func(i, j int) bool {
 		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
 	})
+
+	if inJson {
+		data, err := json.MarshalIndent(deals, "", "  ")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintln(out, string(data))
+		return err
+	}
 
 	w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
 
