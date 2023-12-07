@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
 	"github.com/ipfs-force-community/droplet/v2/storageprovider"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -409,6 +410,17 @@ part states:
 		}
 		defer closer()
 
+		fapi, fcloser, err := NewFullNode(cctx, OldMarketRepoPath)
+		if err != nil {
+			return err
+		}
+		defer fcloser()
+
+		networkParams, err := fapi.StateGetNetworkParams(cctx.Context)
+		if err != nil {
+			return err
+		}
+
 		mAddr := address.Undef
 		if cctx.IsSet("miner") {
 			mAddr, err = address.NewFromString(cctx.String("miner"))
@@ -455,7 +467,7 @@ part states:
 				tm.Clear()
 				tm.MoveCursor(1, 1)
 
-				err = outputStorageDeals(tm.Output, deals, verbose, cctx.Bool("json"))
+				err = outputStorageDeals(tm.Output, deals, verbose, cctx.Bool("json"), networkParams.BlockDelaySecs)
 				if err != nil {
 					return err
 				}
@@ -481,7 +493,7 @@ part states:
 			}
 		}
 
-		return outputStorageDeals(os.Stdout, deals, verbose, cctx.Bool("json"))
+		return outputStorageDeals(os.Stdout, deals, verbose, cctx.Bool("json"), networkParams.BlockDelaySecs)
 	},
 }
 
@@ -760,7 +772,7 @@ func printStates(data interface{}) error {
 	return nil
 }
 
-func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool, inJson bool) error {
+func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool, inJson bool, blockDelay uint64) error {
 	sort.Slice(deals, func(i, j int) bool {
 		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
 	})
@@ -774,54 +786,80 @@ func outputStorageDeals(out io.Writer, deals []market.MinerDeal, verbose bool, i
 		return err
 	}
 
-	w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
+	extendCols := []tablewriter.Column{
+		tablewriter.Col("Creation"),
+		tablewriter.Col("Verified"),
+		tablewriter.Col("TransferChannelID"),
+		tablewriter.Col("AddFundCid"),
+		tablewriter.Col("PublishCid"),
+		tablewriter.Col("Message"),
+	}
+	cols := []tablewriter.Column{
+		tablewriter.Col("ProposalCid"),
+		tablewriter.Col("DealId"),
+		tablewriter.Col("Sector"),
+		tablewriter.Col("State"),
+		tablewriter.Col("PieceState"),
+		tablewriter.Col("Client"),
+		tablewriter.Col("Provider"),
+		tablewriter.Col("Size"),
+		tablewriter.Col("Price"),
+		tablewriter.Col("Duration"),
+		tablewriter.Col("DealUUID"),
+	}
 
 	if verbose {
-		_, _ = fmt.Fprintf(w, "Creation\tVerified\tProposalCid\tDealId\tState\tPieceState\tClient\tProvider\tSize\tPrice\tDuration\tTransferChannelID\tAddFundCid\tPublishCid\tMessage\n")
-	} else {
-		_, _ = fmt.Fprintf(w, "ProposalCid\tDealId\tState\tPieceState\tClient\tProvider\tSize\tPrice\tDuration\nID\n")
+		cols = append(extendCols[:2], cols...)
+		cols = append(cols, extendCols[2:]...)
 	}
+	w := tablewriter.New(cols...)
+
+	oneDayEpoch := 24 * 60 * 60 / blockDelay
 
 	for _, deal := range deals {
 		propcid := deal.ProposalCid.String()
 		if !verbose {
 			propcid = "..." + propcid[len(propcid)-8:]
 		}
+		client := deal.Proposal.Client.String()
+		if !verbose && len(client) > 8 {
+			client = "..." + client[len(client)-8:]
+		}
 
 		fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
+		days := uint64(deal.Proposal.Duration()) / oneDayEpoch
 
-		if verbose {
-			_, _ = fmt.Fprintf(w, "%s\t%t\t", deal.CreationTime.Time().Format(time.Stamp), deal.Proposal.VerifiedDeal)
+		data := map[string]any{
+			"ProposalCid": propcid,
+			"DealId":      deal.DealID,
+			"Sector":      deal.SectorNumber,
+			"State":       storagemarket.DealStates[deal.State],
+			"PieceState":  deal.PieceStatus,
+			"Client":      client,
+			"Provider":    deal.Proposal.Provider,
+			"Size":        units.BytesSize(float64(deal.Proposal.PieceSize)),
+			"Price":       fil,
+			"Duration":    fmt.Sprintf("%d days", days),
+			"DealUUID":    deal.ID,
 		}
 
-		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s", propcid, deal.DealID, storagemarket.DealStates[deal.State], deal.PieceStatus,
-			deal.Proposal.Client, deal.Proposal.Provider, units.BytesSize(float64(deal.Proposal.PieceSize)), fil, deal.Proposal.Duration(), deal.ID)
 		if verbose {
-			tchid := ""
+			data["Creation"] = deal.CreationTime.Time().Format(time.Stamp)
+			data["Verified"] = deal.Proposal.VerifiedDeal
 			if deal.TransferChannelID != nil {
-				tchid = deal.TransferChannelID.String()
+				data["TransferChannelID"] = deal.TransferChannelID.String()
 			}
-
-			addFundcid := ""
 			if deal.AddFundsCid != nil {
-				addFundcid = deal.AddFundsCid.String()
+				data["AddFundCid"] = deal.AddFundsCid.String()
 			}
-
-			pubcid := ""
 			if deal.PublishCid != nil {
-				pubcid = deal.PublishCid.String()
+				data["PublishCid"] = deal.PublishCid.String()
 			}
-
-			_, _ = fmt.Fprintf(w, "\t%s", tchid)
-			_, _ = fmt.Fprintf(w, "\t%s", addFundcid)
-			_, _ = fmt.Fprintf(w, "\t%s", pubcid)
-			_, _ = fmt.Fprintf(w, "\t%s", deal.Message)
 		}
-
-		_, _ = fmt.Fprintln(w)
+		w.Write(data)
 	}
 
-	return w.Flush()
+	return w.Flush(out)
 }
 
 type kv struct {
