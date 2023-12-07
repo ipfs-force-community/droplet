@@ -21,6 +21,7 @@ import (
 	"github.com/ipfs-force-community/sophon-auth/jwtclient"
 
 	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/metrics"
 	"github.com/ipfs-force-community/droplet/v2/retrievalprovider/httpretrieval"
 )
 
@@ -89,6 +90,7 @@ func ServeRPC(
 			log.Errorf("shutting down RPC server failed: %s", err)
 		}
 		log.Warn("RPC Graceful shutdown successful")
+		metrics.ApiState.Set(ctx, 0)
 	}()
 
 	addr, err := multiaddr.NewMultiaddr(apiCfg.ListenAddress)
@@ -100,6 +102,7 @@ func ServeRPC(
 	if err != nil {
 		return err
 	}
+	metrics.ApiState.Set(ctx, 1)
 	log.Infof("start rpc listen %s", addr)
 
 	if err := srv.Serve(manet.NetListener(nl)); err != nil && err != http.ErrServerClosed {
