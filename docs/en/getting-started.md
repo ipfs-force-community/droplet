@@ -319,10 +319,18 @@ Price per GiB/Epoch Verified Min. Piece Size (padded) Max. Piece Size (padded) E
 
 ### Retrieve Deal
 
-The storage provider should at least set the payment address
+The beneficiary address of storage provider should be configured before retrieval.
+
+```toml
+[[Miners]]
+Addr = "t01002"
+RetrievalPaymentAddress = "f3umdpich3a7xpm3bgtn4cr3k3w7auck2waw4pk76vye5tqm7zxeaq5yuewy75p63gzc5bhzhmfyhuyltcro4a"
+```
+
+Set the default ask for miner.
 
 ```bash
-./droplet retrieve ask set t3ueb62v5kbyuvwo5tuyzpvds2bfakdjeg2s33p47buvbfiyd7w5fwmeilobt5cqzi673s5z6i267igkgxum6a
+./droplet retrieve ask set f01002
 ```
 
 At the same time, you can also set the price of the data retrieval request, if not set, the default is 0.
@@ -331,7 +339,7 @@ At the same time, you can also set the price of the data retrieval request, if n
 --price 0.02fil \
 --unseal-price 0.01fil \
 --payment-interval 1MB \
-t3ueb62v5kbyuvwo5tuyzpvds2bfakdjeg2s33p47buvbfiyd7w5fwmeilobt5cqzi673s5z6i267igkgxum6a
+f01002
 ```
 
 
