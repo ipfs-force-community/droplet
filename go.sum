@@ -698,8 +698,8 @@ github.com/ipfs-force-community/go-fil-markets v1.2.6-0.20230822060005-aee2cbae5
 github.com/ipfs-force-community/go-fil-markets v1.2.6-0.20230822060005-aee2cbae5b01/go.mod h1:eryxo/oVgIxaR5g5CNr9PlvZOi+u/bak0IsPL/PT1hk=
 github.com/ipfs-force-community/go-jsonrpc v0.1.9 h1:5QavBltfvV6fz/+EbYsCkVxJ1MSJncZm6YuPs1SLdZU=
 github.com/ipfs-force-community/go-jsonrpc v0.1.9/go.mod h1:jBSvPTl8V1N7gSTuCR4bis8wnQnIjHbRPpROol6iQKM=
-github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601 h1:zxKQ30KAD6KfvSFAx9tuqQXLDsEHyF+eVaUBXXYC2bU=
-github.com/ipfs-force-community/metrics v1.0.1-0.20231011024528-8c881d456601/go.mod h1:wM6EmkEcnJgWOFcVytgvK0u15awEmt8He0f2kAdsFDA=
+github.com/ipfs-force-community/metrics v1.0.1-0.20231207081445-30178e706d09 h1:qEI6ItxKtgOupMMuGJwqK5zEzztKKPUP1QKq9g+X5bM=
+github.com/ipfs-force-community/metrics v1.0.1-0.20231207081445-30178e706d09/go.mod h1:wM6EmkEcnJgWOFcVytgvK0u15awEmt8He0f2kAdsFDA=
 github.com/ipfs-force-community/sophon-auth v1.14.0 h1:ctBJ6UHkcytEzfVPgiiHo0cW4FGQrE7r1H3Um0FcHbo=
 github.com/ipfs-force-community/sophon-auth v1.14.0/go.mod h1:d6J6u3zyIwcEajRho5BhVBcoIChEf0K76wP4yJEfEhc=
 github.com/ipfs-force-community/sophon-gateway v1.14.0 h1:nl4RnYiwVwviYbi0qhdisUHqHaOdoux1BbT6ps/F1iY=

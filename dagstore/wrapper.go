@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/go-statemachine/fsm"
 	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/metrics"
 	"github.com/ipfs-force-community/droplet/v2/models/badger"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	carindex "github.com/ipld/go-car/v2/index"
@@ -126,6 +127,30 @@ func NewDAGStore(ctx context.Context,
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create DAG store: %w", err)
 	}
+
+	// thread for metrics
+	go func() {
+		tick := time.NewTicker(1 * time.Minute)
+		defer tick.Stop()
+		for {
+			select {
+			case <-tick.C:
+				infos := dagst.AllShardsInfo()
+				stateCount := make(map[dagstore.ShardState]int)
+				for _, info := range infos {
+					if _, ok := stateCount[info.ShardState]; !ok {
+						stateCount[info.ShardState] = 0
+					}
+					stateCount[info.ShardState]++
+				}
+				for state, count := range stateCount {
+					metrics.ShardNum.Set(ctx, state.String(), int64(count))
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	w := &Wrapper{
 		cfg:        cfg,
