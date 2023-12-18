@@ -199,7 +199,9 @@ func (w *Wrapper) Start(ctx context.Context) error {
 		go dagstore.RecoverImmediately(w.ctx, dss, w.failureCh, maxRecoverAttempts, w.backgroundWg.Done)
 	}
 
-	return w.dagst.Start(ctx)
+	go w.dagst.Start(ctx)
+
+	return nil
 }
 
 func (w *Wrapper) gcLoop() {
