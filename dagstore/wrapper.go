@@ -199,7 +199,12 @@ func (w *Wrapper) Start(ctx context.Context) error {
 		go dagstore.RecoverImmediately(w.ctx, dss, w.failureCh, maxRecoverAttempts, w.backgroundWg.Done)
 	}
 
-	go w.dagst.Start(ctx)
+	go func() {
+		err := w.dagst.Start(ctx)
+		if err != nil {
+			log.Errorf("failed to start dagstore: %s", err)
+		}
+	}()
 
 	return nil
 }
