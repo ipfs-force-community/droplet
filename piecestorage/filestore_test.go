@@ -5,10 +5,12 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	rand2 "math/rand"
 	"os"
 	path2 "path"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -24,6 +26,7 @@ func TestReWrite(t *testing.T) {
 	name := "market-test-tmp"
 	filePath := path2.Join(path, name)
 	_ = os.Remove(filePath)
+	defer os.RemoveAll(path) // nolint
 
 	ctx := context.TODO()
 	ifs, err := NewFsPieceStorage(&config.FsPieceStorage{ReadOnly: false, Path: path})
@@ -129,4 +132,48 @@ func TestReWrite(t *testing.T) {
 	mounterReader, err = ifs.GetMountReader(ctx, noExistFile)
 	require.Error(t, err)
 	assert.Nil(t, mounterReader)
+}
+
+func TestLargeFile(t *testing.T) {
+	path := path2.Join(os.TempDir(), "market-test-tmp")
+	_ = os.MkdirAll(path, os.ModePerm)
+	defer os.RemoveAll(path) // nolint
+
+	ctx := context.TODO()
+	ifs, err := NewFsPieceStorage(&config.FsPieceStorage{ReadOnly: false, Path: path})
+	require.NoErrorf(t, err, "open file storage")
+
+	for i := 0; i < 100; i++ {
+		if i%2 == 0 {
+			tmpDir := fmt.Sprintf("tmp_%d", i)
+			require.NoError(t, os.MkdirAll(filepath.Join(path, tmpDir), os.ModePerm))
+			for j := 0; j < 3000; j++ {
+				assert.NoError(t, os.WriteFile(filepath.Join(path, tmpDir, fmt.Sprintf("tmp_%d_%d", i, j)), []byte("test"), os.ModePerm))
+			}
+			continue
+		}
+		for j := 0; j < 600; j++ {
+			assert.NoError(t, os.WriteFile(filepath.Join(path, fmt.Sprintf("%d_%d", i, j)), []byte("test"), os.ModePerm))
+		}
+	}
+
+	var fileName string
+	for i := 0; i < 100; i += 3 {
+		if i%2 == 0 {
+			fileName = fmt.Sprintf("tmp_%d_%d", i, rand2.Intn(3000))
+		} else {
+			fileName = fmt.Sprintf("%d_%d", i, rand2.Intn(600))
+		}
+
+		start := time.Now()
+		_, err = ifs.GetMountReader(ctx, fileName)
+		require.NoError(t, err)
+		fmt.Println("file name", fileName, "took", time.Since(start))
+	}
+
+	start := time.Now()
+	list, err := ifs.ListResourceIds(ctx)
+	require.NoError(t, err)
+	require.Len(t, list, 180000, fmt.Sprintf("not match %d", len(list)))
+	fmt.Println("list took", time.Since(start))
 }
