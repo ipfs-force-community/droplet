@@ -335,6 +335,12 @@ func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.Min
 		Create(deal).Error
 }
 
+func (sdr *storageDealRepo) UpdateDealByStatus(ctx context.Context, storageDeal *types.MinerDeal, status storagemarket.StorageDealStatus) error {
+	deal := fromStorageDeal(storageDeal)
+	deal.TimeStampOrm.Refresh()
+	return sdr.Debug().WithContext(ctx).Where("status = ?", status).Save(deal).Error
+}
+
 func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error) {
 	var md storageDeal
 	err := sdr.WithContext(ctx).Take(&md, "proposal_cid = ?", DBCid(proposalCid).String()).Error

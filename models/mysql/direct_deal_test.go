@@ -75,6 +75,27 @@ func TestGetDirectDealByAllocationID(t *testing.T) {
 	assert.NoError(t, closeDB(mock, sqlDB))
 }
 
+func TestGetDirectDealMinerAndState(t *testing.T) {
+	ctx := context.Background()
+	r, mock, sqlDB := setup(t)
+
+	var deal types.DirectDeal
+	testutil.Provide(t, &deal)
+	dbDeal := fromDirectDeal(&deal)
+
+	rows, err := getFullRows(dbDeal)
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `direct_deals` WHERE state = ? and provider = ?")).
+		WithArgs(types.DealActive, dbDeal.Provider).WillReturnRows(rows)
+
+	res, err := r.DirectDealRepo().GetDealsByMinerAndState(ctx, deal.Provider, types.DealActive)
+	assert.Nil(t, err)
+	assert.NotNil(t, res)
+
+	assert.NoError(t, closeDB(mock, sqlDB))
+}
+
 func TestListDirectDeal(t *testing.T) {
 	ctx := context.Background()
 	r, mock, sqlDB := setup(t)
@@ -86,12 +107,26 @@ func TestListDirectDeal(t *testing.T) {
 		dbDeals = append(dbDeals, fromDirectDeal(deal))
 	}
 
+	firstDeal := deals[0]
+	queryParams := types.DirectDealQueryParams{
+		Client:   firstDeal.Client,
+		Provider: firstDeal.Provider,
+		State:    &firstDeal.State,
+		Asc:      true,
+		Page: types.Page{
+			Limit:  10,
+			Offset: 0,
+		},
+	}
+
 	rows, err := getFullRows(dbDeals)
 	assert.NoError(t, err)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `direct_deals`")).WillReturnRows(rows)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `direct_deals` WHERE state = ? AND provider = ? AND client = ?")).
+		WithArgs(firstDeal.State, DBAddress(firstDeal.Provider), DBAddress(firstDeal.Client)).
+		WillReturnRows(rows)
 
-	res, err := r.DirectDealRepo().ListDeal(ctx)
+	res, err := r.DirectDealRepo().ListDeal(ctx, queryParams)
 	assert.Nil(t, err)
 	assert.Len(t, res, len(deals))
 

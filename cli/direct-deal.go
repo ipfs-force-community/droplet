@@ -1,16 +1,18 @@
 package cli
 
 import (
+	"bytes"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 	"text/tabwriter"
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	shared "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -25,6 +27,7 @@ var directDealCmds = &cli.Command{
 		getDirectDeal,
 		listDirectDealCmd,
 		importDirectDealCmd,
+		importDirectDealsCmd,
 	},
 }
 
@@ -62,7 +65,6 @@ var getDirectDeal = &cli.Command{
 			{"AllocationID", deal.AllocationID},
 			{"ClaimID", deal.ClaimID},
 			{"State", deal.State.String()},
-			{"PieceStatus", deal.PieceStatus},
 			{"Message", deal.Message},
 			{"SectorID", deal.SectorID},
 			{"Offset", deal.Offset},
@@ -80,7 +82,30 @@ var getDirectDeal = &cli.Command{
 var listDirectDealCmd = &cli.Command{
 	Name:  "list",
 	Usage: "list direct deal",
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "miner",
+			Usage: "provider address",
+		},
+		offsetFlag,
+		limitFlag,
+		&cli.Uint64Flag{
+			Name: "state",
+			Usage: `
+deal states:
+1  DealAllocation
+2  DealSealing
+3  DealActive
+4  DealExpired
+5  DealSlashed
+6  DealError
+`,
+		},
+		&cli.BoolFlag{
+			Name:  "asc",
+			Value: true,
+		},
+	},
 	Action: func(cliCtx *cli.Context) error {
 		api, closer, err := NewMarketNode(cliCtx)
 		if err != nil {
@@ -88,7 +113,31 @@ var listDirectDealCmd = &cli.Command{
 		}
 		defer closer()
 
-		deals, err := api.ListDirectDeals(cliCtx.Context)
+		params := types.DirectDealQueryParams{
+			Page: types.Page{
+				Offset: cliCtx.Int("offset"),
+				Limit:  cliCtx.Int("limit"),
+			},
+			Asc: cliCtx.Bool("asc"),
+		}
+		if cliCtx.IsSet("miner") {
+			params.Provider, err = address.NewFromString(cliCtx.String("miner"))
+			if err != nil {
+				return fmt.Errorf("para `miner` is invalid: %w", err)
+			}
+		}
+		if cliCtx.IsSet("client") {
+			params.Client, err = address.NewFromString(cliCtx.String("client"))
+			if err != nil {
+				return fmt.Errorf("para `client` is invalid: %w", err)
+			}
+		}
+		if cliCtx.IsSet("state") {
+			state := types.DirectDealState(cliCtx.Uint64("state"))
+			params.State = &state
+		}
+
+		deals, err := api.ListDirectDeals(cliCtx.Context, params)
 		if err != nil {
 			return err
 		}
@@ -103,8 +152,8 @@ var listDirectDealCmd = &cli.Command{
 		_, _ = fmt.Fprintf(w, "Creation\tID\tAllocationId\tPieceCid\tState\tPieceState\tClient\tProvider\tSize\tMessage\n")
 		for _, deal := range deals {
 			createTime := time.Unix(int64(deal.CreatedAt), 0).Format(time.RFC3339)
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%d\t%s", createTime, deal.ID, deal.AllocationID,
-				deal.PieceCID, deal.State, deal.PieceStatus, deal.Client, deal.Provider, deal.PieceSize, deal.Message)
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%d\t%s", createTime, deal.ID, deal.AllocationID,
+				deal.PieceCID, deal.State, deal.Client, deal.Provider, deal.PieceSize, deal.Message)
 		}
 
 		return nil
@@ -116,37 +165,27 @@ var importDirectDealCmd = &cli.Command{
 	Usage:     "import direct deal",
 	ArgsUsage: "<pieceCid> <file>",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "client",
-			Usage:    "",
-			Required: true,
-		},
 		&cli.Uint64Flag{
 			Name:     "allocation-id",
 			Usage:    "",
 			Required: true,
 		},
-		&cli.IntFlag{
-			Name:  "start-epoch",
-			Usage: "start epoch by when the deal should be proved by provider on-chain",
-			Value: 35000, // default is 35000, handy for tests with 2k/devnet build
-		},
-		&cli.IntFlag{
-			Name:  "duration",
-			Usage: "duration of the deal in epochs",
-			Value: 518400, // default is 2880 * 180 == 180 days
+		&cli.StringFlag{
+			Name:     "client",
+			Usage:    "",
+			Required: true,
 		},
 		&cli.BoolFlag{
 			Name:  "skip-commp",
 			Usage: "skip calculate the piece-cid, please use with caution",
 		},
 		&cli.BoolFlag{
-			Name:  "no-copy-car-file",
-			Usage: "not copy car files to piece storage and skip calculate the piece-cid",
+			Name:  "skip-index",
+			Usage: "skip generate index",
 		},
 		&cli.BoolFlag{
-			Name:  "really-do-it",
-			Usage: "Actually send transaction performing the action",
+			Name:  "no-copy-car-file",
+			Usage: "not copy car files to piece storage",
 		},
 	},
 	Action: func(cliCtx *cli.Context) error {
@@ -182,28 +221,187 @@ var importDirectDealCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("could not parse piece cid: %w", err)
 		}
-
-		clientAddr, err := address.NewFromString(cliCtx.String("client"))
+		client, err := address.NewFromString(cliCtx.String("client"))
 		if err != nil {
-			return fmt.Errorf("failed to parse client param: %w", err)
+			return fmt.Errorf("para `client` is invalid: %w", err)
 		}
 
 		allocationID := cliCtx.Uint64("allocation-id")
 
-		startEpoch := abi.ChainEpoch(cliCtx.Int("start-epoch"))
-		endEpoch := startEpoch + abi.ChainEpoch(cliCtx.Int("duration"))
-
 		params := types.DirectDealParams{
-			PieceCID:      pieceCid,
-			FilePath:      filepath,
-			SkipCommP:     cliCtx.Bool("skip-commp"),
-			NoCopyCarFile: cliCtx.Bool("no-copy-car-file"),
-			AllocationID:  shared.AllocationId(allocationID),
-			Client:        clientAddr,
-			StartEpoch:    startEpoch,
-			EndEpoch:      endEpoch,
+			SkipCommP:         cliCtx.Bool("skip-commp"),
+			SkipGenerateIndex: cliCtx.Bool("skip-generate-index"),
+			NoCopyCarFile:     cliCtx.Bool("no-copy-car-file"),
+			DealParams: []types.DirectDealParam{
+				{
+					DealUUID:     uuid.New(),
+					AllocationID: allocationID,
+					Client:       client,
+					PieceCID:     pieceCid,
+					FilePath:     filepath,
+				},
+			},
 		}
 
 		return api.ImportDirectDeal(cliCtx.Context, &params)
 	},
+}
+
+var importDirectDealsCmd = &cli.Command{
+	Name:  "import-deals",
+	Usage: "import direct deal",
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name: "allocation-info",
+			Usage: "Allocation id and piece cid and client, separated by comma. " +
+				"e.g. --allocation-id-piece 1:QmTzXp8PqXgX8i9qUQn4UzJtC7aCqkLp2qJn7Rq2JyH1D:t01001 --allocation-id-piece 2:QmTzXp8PqXgX8i9qUQn4UzJtC7aCqkLp2qJn7Rq2JyH1D:t01001",
+		},
+		&cli.StringFlag{
+			Name: "allocation-file",
+		},
+		&cli.StringFlag{
+			Name:  "car-dir",
+			Usage: "Car file directory",
+		},
+		&cli.BoolFlag{
+			Name:  "skip-commp",
+			Usage: "skip calculate the piece-cid, please use with caution",
+		},
+		&cli.BoolFlag{
+			Name:  "skip-index",
+			Usage: "skip generate index",
+		},
+		&cli.BoolFlag{
+			Name:  "no-copy-car-file",
+			Usage: "not copy car files to piece storage",
+		},
+	},
+	Action: func(cliCtx *cli.Context) error {
+		if cliCtx.IsSet("allocation-id-piece") == cliCtx.IsSet("allocation-file") {
+			return fmt.Errorf("must specify one of allocation-id or allocation-file")
+		}
+
+		api, closer, err := NewMarketNode(cliCtx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		carDir := cliCtx.String("car-dir")
+
+		var directDealParams []types.DirectDealParam
+		if cliCtx.IsSet("allocation-info") {
+			for _, ai := range cliCtx.StringSlice("allocation-info") {
+				parts := strings.Split(ai, ":")
+				if len(parts) != 3 {
+					return fmt.Errorf("invalid allocation-id and piece cid pair: %s", ai)
+				}
+				allocationID, err := strconv.ParseUint(parts[0], 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid allocation-id: %w", err)
+				}
+				pieceCid, err := cid.Decode(parts[1])
+				if err != nil {
+					return fmt.Errorf("invalid piece cid: %w", err)
+				}
+				client, err := address.NewFromString(parts[2])
+				if err != nil {
+					return fmt.Errorf("invalid client: %w", err)
+				}
+				param := types.DirectDealParam{
+					DealUUID:     uuid.New(),
+					AllocationID: allocationID,
+					PieceCID:     pieceCid,
+					Client:       client,
+				}
+
+				if len(carDir) == 0 {
+					return fmt.Errorf("must specify car-dir")
+				}
+				param.FilePath = filepath.Join(carDir, pieceCid.String())
+				directDealParams = append(directDealParams, param)
+			}
+		}
+		if cliCtx.IsSet("allocation-file") {
+			allocations, err := loadAllocations(cliCtx.String("allocation-file"))
+			if err != nil {
+				return fmt.Errorf("failed to load allocations: %w", err)
+			}
+			for _, a := range allocations {
+				param := types.DirectDealParam{
+					DealUUID:     uuid.New(),
+					AllocationID: a.AllocationID,
+					Client:       a.Client,
+					PieceCID:     a.PieceCID,
+					PayloadSize:  a.PayloadSize,
+				}
+				if param.PayloadSize == 0 && len(carDir) == 0 {
+					return fmt.Errorf("must specify car-dir")
+				}
+				if len(carDir) != 0 {
+					param.FilePath = filepath.Join(carDir, a.PieceCID.String())
+				}
+				directDealParams = append(directDealParams, param)
+			}
+		}
+
+		params := types.DirectDealParams{
+			SkipCommP:         cliCtx.Bool("skip-commp"),
+			SkipGenerateIndex: cliCtx.Bool("skip-generate-index"),
+			NoCopyCarFile:     cliCtx.Bool("no-copy-car-file"),
+			DealParams:        directDealParams,
+		}
+
+		return api.ImportDirectDeal(cliCtx.Context, &params)
+	},
+}
+
+type allocationWithPiece struct {
+	AllocationID uint64
+	Client       address.Address
+	PieceCID     cid.Cid
+	PayloadSize  uint64
+}
+
+func loadAllocations(path string) ([]*allocationWithPiece, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	records, err := csv.NewReader(bytes.NewReader(data)).ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var allocations []*allocationWithPiece
+	for _, record := range records {
+		if len(record) < 3 {
+			return nil, fmt.Errorf("invalid record: %s", record)
+		}
+		allocationID, err := strconv.ParseUint(record[0], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		pieceCID, err := cid.Decode(record[1])
+		if err != nil {
+			return nil, err
+		}
+		client, err := address.NewFromString(record[2])
+		if err != nil {
+			return nil, err
+		}
+		var payloadSize uint64
+		if len(record) == 4 {
+			payloadSize, err = strconv.ParseUint(record[3], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		allocations = append(allocations, &allocationWithPiece{AllocationID: allocationID, Client: client,
+			PieceCID: pieceCID, PayloadSize: payloadSize})
+	}
+
+	return allocations, nil
 }

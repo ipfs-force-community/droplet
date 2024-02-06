@@ -31,7 +31,8 @@ type FundRepo interface {
 
 type StorageDealRepo interface {
 	CreateDeals(ctx context.Context, deals []*types.MinerDeal) error
-	SaveDeal(ctx context.Context, StorageDeal *types.MinerDeal) error
+	SaveDeal(ctx context.Context, storageDeal *types.MinerDeal) error
+	UpdateDealByStatus(ctx context.Context, storageDeal *types.MinerDeal, status storagemarket.StorageDealStatus) error
 	UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState types.PieceStatus) error
 
 	GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error)
@@ -123,6 +124,7 @@ type Repo interface {
 
 type TxRepo interface {
 	StorageDealRepo() StorageDealRepo
+	DirectDealRepo() DirectDealRepo
 }
 
 type ClientOfflineDealRepo interface {
@@ -135,7 +137,8 @@ type DirectDealRepo interface {
 	SaveDeal(ctx context.Context, deal *types.DirectDeal) error
 	GetDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error)
 	GetDealByAllocationID(ctx context.Context, id uint64) (*types.DirectDeal, error)
-	ListDeal(ctx context.Context) ([]*types.DirectDeal, error)
+	GetDealsByMinerAndState(ctx context.Context, miner address.Address, state types.DirectDealState) ([]*types.DirectDeal, error)
+	ListDeal(ctx context.Context, params types.DirectDealQueryParams) ([]*types.DirectDeal, error)
 }
 
 var ErrNotFound = errors.New("record not found")

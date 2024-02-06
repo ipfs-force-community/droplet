@@ -3,8 +3,8 @@ package mysql
 import (
 	"context"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
@@ -14,14 +14,14 @@ import (
 const directDealTableName = "direct_deals"
 
 type directDeal struct {
-	ID        string    `gorm:"column:id;type:varchar(128);primary_key"`
-	PieceCID  DBCid     `gorm:"column:piece_cid;type:varchar(256);index"`
-	PieceSize uint64    `gorm:"column:piece_size;type:bigint unsigned;NOT NULL"`
-	Client    DBAddress `gorm:"column:client;type:varchar(256);index"`
-	Provider  DBAddress `gorm:"column:provider;type:varchar(256);index"`
+	ID          string    `gorm:"column:id;type:varchar(128);primary_key"`
+	PieceCID    DBCid     `gorm:"column:piece_cid;type:varchar(256);index"`
+	PieceSize   uint64    `gorm:"column:piece_size;type:bigint unsigned;NOT NULL"`
+	Client      DBAddress `gorm:"column:client;type:varchar(256);index"`
+	Provider    DBAddress `gorm:"column:provider;type:varchar(256);index"`
+	PayloadSize uint64    `gorm:"column:payload_size;type:bigint unsigned;NOT NULL"`
 
 	State   types.DirectDealState `gorm:"column:state;type:int;NOT NULL"`
-	Status  types.PieceStatus     `gorm:"column:status;type:varchar(32);NOT NULL"`
 	Message string                `gorm:"column:message;type:varchar(256)"`
 
 	AllocationID uint64 `gorm:"column:allocation_id;type:bigint unsigned;index;NOT NULL"`
@@ -48,16 +48,17 @@ func (dd *directDeal) toDirectDeal() (*types.DirectDeal, error) {
 		Client:       dd.Client.addr(),
 		Provider:     dd.Provider.addr(),
 		State:        dd.State,
-		PieceStatus:  dd.Status,
+		PayloadSize:  dd.PayloadSize,
 		Message:      dd.Message,
-		AllocationID: verifreg.AllocationId(dd.AllocationID),
-		ClaimID:      verifreg.ClaimId(dd.ClaimID),
-		SectorID:     abi.SectorNumber(dd.SectorID),
-		Length:       abi.PaddedPieceSize(dd.Length),
-		Offset:       abi.PaddedPieceSize(dd.Offset),
-		StartEpoch:   abi.ChainEpoch(dd.StartEpoch),
-		EndEpoch:     abi.ChainEpoch(dd.EndEpoch),
-		TimeStamp:    dd.Timestamp(),
+		AllocationID: dd.AllocationID,
+		ClaimID:      dd.ClaimID,
+
+		SectorID:   abi.SectorNumber(dd.SectorID),
+		Length:     abi.PaddedPieceSize(dd.Length),
+		Offset:     abi.PaddedPieceSize(dd.Offset),
+		StartEpoch: abi.ChainEpoch(dd.StartEpoch),
+		EndEpoch:   abi.ChainEpoch(dd.EndEpoch),
+		TimeStamp:  dd.Timestamp(),
 	}
 	id, err := uuid.Parse(dd.ID)
 	if err != nil {
@@ -76,7 +77,7 @@ func fromDirectDeal(dd *types.DirectDeal) *directDeal {
 		Client:       DBAddress(dd.Client),
 		Provider:     DBAddress(dd.Provider),
 		State:        dd.State,
-		Status:       dd.PieceStatus,
+		PayloadSize:  dd.PayloadSize,
 		Message:      dd.Message,
 		AllocationID: uint64(dd.AllocationID),
 		ClaimID:      uint64(dd.ClaimID),
@@ -118,16 +119,49 @@ func (ddr *directDealRepo) GetDeal(ctx context.Context, id uuid.UUID) (*types.Di
 
 func (ddr *directDealRepo) GetDealByAllocationID(ctx context.Context, allocationID uint64) (*types.DirectDeal, error) {
 	var deal directDeal
-	if err := ddr.DB.WithContext(ctx).Take(&deal, "allocation_id = ? and state != ?", allocationID, types.DealError).Error; err != nil {
+	if err := ddr.DB.WithContext(ctx).Take(&deal, "allocation_id = ?", allocationID).Error; err != nil {
 		return nil, err
 	}
 
 	return deal.toDirectDeal()
 }
 
-func (ddr *directDealRepo) ListDeal(ctx context.Context) ([]*types.DirectDeal, error) {
+func (ddr *directDealRepo) GetDealsByMinerAndState(ctx context.Context, miner address.Address, state types.DirectDealState) ([]*types.DirectDeal, error) {
+	var deals []directDeal
+	if err := ddr.DB.WithContext(ctx).Find(&deals, "state = ? and provider = ?", state, DBAddress(miner)).Error; err != nil {
+		return nil, err
+	}
+
+	out := make([]*types.DirectDeal, 0, len(deals))
+	for _, deal := range deals {
+		d, err := deal.toDirectDeal()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+
+	return out, nil
+}
+
+func (ddr *directDealRepo) ListDeal(ctx context.Context, params types.DirectDealQueryParams) ([]*types.DirectDeal, error) {
 	var deals []*directDeal
-	if err := ddr.DB.WithContext(ctx).Find(&deals).Error; err != nil {
+
+	query := ddr.DB.Debug().WithContext(ctx).Offset(params.Offset).Limit(params.Limit)
+	if params.State != nil {
+		query = query.Where("state = ?", *params.State)
+	}
+	if params.Provider != address.Undef {
+		query = query.Where("provider = ?", DBAddress(params.Provider))
+	}
+	if params.Client != address.Undef {
+		query = query.Where("client = ?", DBAddress(params.Client))
+	}
+	if !params.Asc {
+		query = query.Order("created_at desc")
+	}
+
+	if err := query.Find(&deals).Error; err != nil {
 		return nil, err
 	}
 

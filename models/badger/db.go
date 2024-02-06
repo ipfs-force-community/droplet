@@ -313,6 +313,10 @@ func (r txRepo) StorageDealRepo() repo.StorageDealRepo {
 	return NewStorageDealRepo(r.dsParams.StorageDealsDS)
 }
 
+func (r txRepo) DirectDealRepo() repo.DirectDealRepo {
+	return NewDirectDealRepo(r.dsParams.DirectDealsDs)
+}
+
 // not metadata, just raw data between file transfer
 
 const (

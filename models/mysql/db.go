@@ -97,6 +97,10 @@ func (r txRepo) StorageDealRepo() repo.StorageDealRepo {
 	return NewStorageDealRepo(r.DB)
 }
 
+func (r txRepo) DirectDealRepo() repo.DirectDealRepo {
+	return NewDirectDealRepo(r.DB)
+}
+
 func InitMysql(cfg *config.Mysql) (repo.Repo, error) {
 	db, err := gorm.Open(mysql.Open(cfg.ConnectionString))
 	if err != nil {

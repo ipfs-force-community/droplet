@@ -3,6 +3,7 @@ package badger
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/filecoin-project/go-address"
@@ -45,6 +46,18 @@ func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.Min
 		return err
 	}
 	return sdr.ds.Put(ctx, statestore.ToKey(storageDeal.ProposalCid), b)
+}
+
+func (sdr *storageDealRepo) UpdateDealByStatus(ctx context.Context, storageDeal *types.MinerDeal, status storagemarket.StorageDealStatus) error {
+	deal, err := sdr.GetDeal(ctx, storageDeal.ProposalCid)
+	if err != nil {
+		return err
+	}
+	if deal.State != status {
+		return fmt.Errorf("deal state no match %d != %d", deal.State, status)
+	}
+
+	return sdr.SaveDeal(ctx, storageDeal)
 }
 
 func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error) {

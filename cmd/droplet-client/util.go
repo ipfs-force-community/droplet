@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 
+	"golang.org/x/exp/constraints"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -273,4 +275,11 @@ func printJson(obj interface{}) error {
 
 	fmt.Println(string(resJson))
 	return nil
+}
+
+func Min[T constraints.Ordered](a T, b T) T {
+	if a < b {
+		return a
+	}
+	return b
 }

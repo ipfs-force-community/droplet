@@ -579,3 +579,23 @@ func TestGetDealByUUID(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, storageDealCases[0], res)
 }
+
+func TestUpdateDealByStatus(t *testing.T) {
+	r, mock, dbStorageDealCases, storageDealCases, done := prepareStorageDealRepoTest(t)
+	defer done()
+
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	sql, vars, err := getSQL(db.Where("status = ?", dbStorageDealCases[0].State).Save(dbStorageDealCases[0]))
+	assert.NoError(t, err)
+
+	vars[42] = sqlmock.AnyArg()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	err = r.StorageDealRepo().UpdateDealByStatus(context.Background(), storageDealCases[0], storageDealCases[0].State)
+	assert.NoError(t, err)
+}

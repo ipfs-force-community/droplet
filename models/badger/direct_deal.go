@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	shared "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/go-address"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
@@ -46,7 +46,7 @@ func (r *directDealRepo) GetDeal(ctx context.Context, id uuid.UUID) (*types.Dire
 func (r *directDealRepo) GetDealByAllocationID(ctx context.Context, allocationID uint64) (*types.DirectDeal, error) {
 	var d *types.DirectDeal
 	err := travelJSONAbleDS(ctx, r.ds, func(deal *types.DirectDeal) (bool, error) {
-		if deal.AllocationID == shared.AllocationId(allocationID) && deal.State != types.DealError {
+		if deal.AllocationID == allocationID {
 			d = deal
 			return true, nil
 		}
@@ -62,10 +62,48 @@ func (r *directDealRepo) GetDealByAllocationID(ctx context.Context, allocationID
 	return d, nil
 }
 
-func (r *directDealRepo) ListDeal(ctx context.Context) ([]*types.DirectDeal, error) {
+func (r *directDealRepo) GetDealsByMinerAndState(ctx context.Context, miner address.Address, state types.DirectDealState) ([]*types.DirectDeal, error) {
 	var deals []*types.DirectDeal
 	err := travelJSONAbleDS(ctx, r.ds, func(deal *types.DirectDeal) (bool, error) {
-		deals = append(deals, deal)
+		if deal.Provider == miner && deal.State == state {
+			deals = append(deals, deal)
+		}
+		return false, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return deals, nil
+}
+func (r *directDealRepo) ListDeal(ctx context.Context, params types.DirectDealQueryParams) ([]*types.DirectDeal, error) {
+	var deals []*types.DirectDeal
+	end := params.Limit + params.Offset
+
+	var count int
+	err := travelJSONAbleDS(ctx, r.ds, func(deal *types.DirectDeal) (bool, error) {
+		if count >= end {
+			return true, nil
+		}
+		if params.State != nil && deal.State != *params.State {
+			return false, nil
+		}
+		if deal.Provider != params.Provider {
+			return false, nil
+		}
+		if deal.Client != params.Client {
+			return false, nil
+		}
+		if !params.Asc {
+			deals = append(deals, deal)
+			return false, nil
+		}
+
+		if count >= params.Offset && count < end {
+			deals = append(deals, deal)
+		}
+		count++
+
 		return false, nil
 	})
 	if err != nil {
