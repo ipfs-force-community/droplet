@@ -25,7 +25,7 @@ type DealAssiger interface {
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
 	AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
 	ReleaseDeals(ctx context.Context, miner address.Address, deals []abi.DealID) error
-	AssignDirectDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DirectDealInfo, error)
+	AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoV2, error)
 	ReleaseDirectDeals(ctx context.Context, miner address.Address, allocationIDs []shared.AllocationId) error
 }
 
@@ -408,6 +408,50 @@ func (ps *dealAssigner) AssignDirectDeals(ctx context.Context, sid abi.SectorID,
 	}
 
 	return pieces, nil
+}
+
+func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoV2, error) {
+	deals, err := ps.AssignDirectDeals(ctx, sid, ssize, currentHeight, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []*types.DealInfoV2
+	for _, d := range deals {
+		out = append(out, &types.DealInfoV2{
+			AllocationID: verifreg.AllocationId(d.AllocationID),
+			Provider:     d.Provider,
+			Client:       d.Client,
+			Offset:       d.Offset,
+			Length:       d.Length,
+			PieceCID:     d.PieceCID,
+			PieceSize:    d.PieceSize,
+			StartEpoch:   d.StartEpoch,
+			EndEpoch:     d.EndEpoch,
+		})
+	}
+
+	oldDeals, err := ps.AssignUnPackedDeals(ctx, sid, ssize, currentHeight, spec)
+	if err == nil {
+		for _, d := range oldDeals {
+			out = append(out, &types.DealInfoV2{
+				DealID:     d.DealID,
+				PublishCid: d.PublishCid,
+				Provider:   d.Provider,
+				Client:     d.Client,
+				Offset:     d.Offset,
+				Length:     d.Length,
+				PieceCID:   d.PieceCID,
+				PieceSize:  d.PieceSize,
+				StartEpoch: d.StartEpoch,
+				EndEpoch:   d.EndEpoch,
+			})
+		}
+	} else {
+		directDealLog.Errorf("assign unpacked deals failed: %v", err)
+	}
+
+	return out, nil
 }
 
 type CombinedPieces struct {

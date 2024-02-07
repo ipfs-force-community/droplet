@@ -1106,7 +1106,7 @@ func (m *MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.
 	return m.DealAssigner.UpdateDealOnPacking(ctx, miner, dealId, sectorid, offset)
 }
 
-func (m *MarketNodeImpl) AssignDirectDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DirectDealInfo, error) {
+func (m *MarketNodeImpl) AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoV2, error) {
 	mAddr, err := address.NewIDAddress(uint64(sid.Miner))
 	if err != nil {
 		return nil, err
@@ -1119,7 +1119,7 @@ func (m *MarketNodeImpl) AssignDirectDeals(ctx context.Context, sid abi.SectorID
 	if err != nil {
 		return nil, fmt.Errorf("get chain head %w", err)
 	}
-	return m.DealAssigner.AssignDirectDeals(ctx, sid, ssize, head.Height(), spec)
+	return m.DealAssigner.AssignDeals(ctx, sid, ssize, head.Height(), spec)
 }
 
 func (m *MarketNodeImpl) ReleaseDirectDeals(ctx context.Context, miner address.Address, allocationIDs []vTypes.AllocationId) error {
