@@ -73,7 +73,7 @@ var getDirectDeal = &cli.Command{
 			{"EndEpoch", deal.EndEpoch},
 		}
 
-		fillSpaceAndPrint(data, len(""))
+		fillSpaceAndPrint(data, len("AllocationID"))
 
 		return nil
 	},
@@ -100,6 +100,7 @@ deal states:
 5  DealSlashed
 6  DealError
 `,
+			Value: 1,
 		},
 		&cli.BoolFlag{
 			Name:  "asc",
@@ -132,10 +133,9 @@ deal states:
 				return fmt.Errorf("para `client` is invalid: %w", err)
 			}
 		}
-		if cliCtx.IsSet("state") {
-			state := types.DirectDealState(cliCtx.Uint64("state"))
-			params.State = &state
-		}
+
+		state := types.DirectDealState(cliCtx.Uint64("state"))
+		params.State = &state
 
 		deals, err := api.ListDirectDeals(cliCtx.Context, params)
 		if err != nil {
@@ -149,14 +149,14 @@ deal states:
 		})
 
 		w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintf(w, "Creation\tID\tAllocationId\tPieceCid\tState\tPieceState\tClient\tProvider\tSize\tMessage\n")
+		_, _ = fmt.Fprintf(w, "Creation\tID\tAllocationId\tPieceCid\tState\tClient\tProvider\tSize\tMessage\n")
 		for _, deal := range deals {
 			createTime := time.Unix(int64(deal.CreatedAt), 0).Format(time.RFC3339)
 			_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%d\t%s", createTime, deal.ID, deal.AllocationID,
 				deal.PieceCID, deal.State, deal.Client, deal.Provider, deal.PieceSize, deal.Message)
 		}
 
-		return nil
+		return w.Flush()
 	},
 }
 
@@ -186,6 +186,10 @@ var importDirectDealCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "no-copy-car-file",
 			Usage: "not copy car files to piece storage",
+		},
+		&cli.Uint64Flag{
+			Name:  "payload-size",
+			Usage: "The size of the car file",
 		},
 	},
 	Action: func(cliCtx *cli.Context) error {
@@ -226,6 +230,10 @@ var importDirectDealCmd = &cli.Command{
 			return fmt.Errorf("para `client` is invalid: %w", err)
 		}
 
+		if cliCtx.Bool("no-copy-car-file") && cliCtx.Uint64("payload-size") == 0 {
+			return fmt.Errorf("must specify payload-size when no-copy-car-file is set")
+		}
+
 		allocationID := cliCtx.Uint64("allocation-id")
 
 		params := types.DirectDealParams{
@@ -236,6 +244,7 @@ var importDirectDealCmd = &cli.Command{
 				{
 					DealUUID:     uuid.New(),
 					AllocationID: allocationID,
+					PayloadSize:  cliCtx.Uint64("payload-size"),
 					Client:       client,
 					PieceCID:     pieceCid,
 					FilePath:     filepath,
@@ -352,7 +361,12 @@ var importDirectDealsCmd = &cli.Command{
 			DealParams:        directDealParams,
 		}
 
-		return api.ImportDirectDeal(cliCtx.Context, &params)
+		if err := api.ImportDirectDeal(cliCtx.Context, &params); err != nil {
+			return err
+		}
+		fmt.Println("import deal success")
+
+		return nil
 	},
 }
 

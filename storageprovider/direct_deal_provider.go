@@ -83,13 +83,13 @@ func (ddp *DirectDealProvider) ImportDeals(ctx context.Context, dealParams *type
 		}
 	}
 
-	return nil
+	return errs.ErrorOrNil()
 }
 
 func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.DirectDealParam, cParams *commonParams) error {
 	deal, err := ddp.dealRepo.GetDealByAllocationID(ctx, uint64(dealParam.AllocationID))
 	if err == nil {
-		return fmt.Errorf("deal(%d) exist: %s", deal.ID, deal.State.String())
+		return fmt.Errorf("deal(%v) exist: %s", deal.ID, deal.State.String())
 	}
 	if !errors.Is(err, repo.ErrNotFound) {
 		return err
@@ -101,7 +101,7 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 		Client:       dealParam.Client,
 		State:        types.DealAllocation,
 		AllocationID: dealParam.AllocationID,
-		PayloadSize:  deal.PayloadSize,
+		PayloadSize:  dealParam.PayloadSize,
 	}
 	if err := ddp.accept(ctx, deal); err != nil {
 		return err
@@ -158,7 +158,7 @@ func (ddp *DirectDealProvider) accept(ctx context.Context, deal *types.DirectDea
 		return fmt.Errorf("parse %d to address failed: %v", allocation.Provider, err)
 	}
 
-	directDealLog.Infow("found allocation for client", "allocation", spew.Sdump(allocation))
+	directDealLog.Infow("found allocation for client", "allocation", spew.Sdump(*allocation))
 
 	return nil
 }
@@ -219,9 +219,7 @@ func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.Direc
 		}
 
 		if !pieceCid.Equals(deal.PieceCID) {
-			errMsg := fmt.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, deal.PieceCID)
-			ddp.errorDeal(ctx, deal, err.Error())
-			return errMsg
+			return fmt.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, deal.PieceCID)
 		}
 	}
 

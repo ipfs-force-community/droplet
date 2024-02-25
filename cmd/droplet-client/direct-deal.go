@@ -93,24 +93,6 @@ var directDealAllocate = &cli.Command{
 			Value: "allocation.txt",
 		},
 	},
-	Before: func(cctx *cli.Context) error {
-		if !cctx.IsSet("expiration") {
-			fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
-			if err != nil {
-				return err
-			}
-			defer fcloser()
-			head, err := fapi.ChainHead(cctx.Context)
-			if err != nil {
-				return err
-			}
-			val := types.MaximumVerifiedAllocationExpiration + head.Height()
-
-			return cctx.Set("expiration", strconv.FormatInt(int64(val), 10))
-		}
-
-		return nil
-	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.IsSet("piece-info") && cctx.IsSet("manifest") {
 			return fmt.Errorf("cannot specify both piece-info and manifest")
@@ -160,7 +142,7 @@ var directDealAllocate = &cli.Command{
 		}
 
 		// Get all pieceCIDs from input
-		rDataCap := types.NewInt(0)
+		var rDataCap big.Int
 		var pieceInfos []*pieceInfo
 
 		if cctx.IsSet("piece-info") {
@@ -253,6 +235,11 @@ var directDealAllocate = &cli.Command{
 		fmt.Println("submitted data cap allocation message:", msgCid.String())
 		fmt.Println("waiting for message to be included in a block")
 
+		oldAllocations, err := fapi.StateGetAllocations(ctx, walletAddr, types.EmptyTSK)
+		if err != nil {
+			return fmt.Errorf("failed to get allocations: %w", err)
+		}
+
 		res, err := api.MessagerWaitMessage(ctx, msgCid)
 		if err != nil {
 			return fmt.Errorf("waiting for message to be included in a block: %w", err)
@@ -261,7 +248,7 @@ var directDealAllocate = &cli.Command{
 			return fmt.Errorf("failed to execute the message with error: %s", res.Receipt.ExitCode.Error())
 		}
 
-		return showAllocations(ctx, fapi, walletAddr, cctx.Bool("json"), cctx.Bool("quiet"), cctx.String("output-allocation-to-file"), pieceInfos)
+		return showAllocations(ctx, fapi, walletAddr, oldAllocations, cctx.Bool("json"), cctx.Bool("quiet"), cctx.String("output-allocation-to-file"), pieceInfos)
 	},
 }
 
@@ -362,13 +349,8 @@ type partAllocationInfo struct {
 	Client       address.Address
 }
 
-func showAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.Address, useJSON bool, quite bool, allocationFile string, pieceInfos []*pieceInfo) error {
-	oldallocations, err := fapi.StateGetAllocations(ctx, walletAddr, types.EmptyTSK)
-	if err != nil {
-		return fmt.Errorf("failed to get allocations: %w", err)
-	}
-
-	newallocations, err := fapi.StateGetAllocations(ctx, walletAddr, types.EmptyTSK)
+func showAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.Address, oldAllocations map[types.AllocationId]types.Allocation, useJSON bool, quite bool, allocationFile string, pieceInfos []*pieceInfo) error {
+	newAllocations, err := fapi.StateGetAllocations(ctx, walletAddr, types.EmptyTSK)
 	if err != nil {
 		return fmt.Errorf("failed to get allocations: %w", err)
 	}
@@ -397,8 +379,8 @@ func showAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.A
 
 	var allocs []map[string]interface{}
 	var partAllocationInfos []partAllocationInfo
-	for key, val := range newallocations {
-		_, ok := oldallocations[key]
+	for key, val := range newAllocations {
+		_, ok := oldAllocations[key]
 		if !ok {
 			alloc := map[string]interface{}{
 				allocationID: key,
