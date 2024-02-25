@@ -90,7 +90,7 @@ var directDealAllocate = &cli.Command{
 		&cli.StringFlag{
 			Name:  "output-allocation-to-file",
 			Usage: "Output allocation information to a file.",
-			Value: "allocation.txt",
+			Value: "allocation.csv",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -382,10 +382,12 @@ func showAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.A
 	for key, val := range newAllocations {
 		_, ok := oldAllocations[key]
 		if !ok {
+			clientAddr, _ := address.NewIDAddress(uint64(val.Client))
+			providerAddr, _ := address.NewIDAddress(uint64(val.Provider))
 			alloc := map[string]interface{}{
 				allocationID: key,
-				client:       val.Client,
-				provider:     val.Provider,
+				client:       clientAddr,
+				provider:     providerAddr,
 				pieceCid:     val.Data,
 				pieceSize:    val.Size,
 				tMin:         val.TermMin,
@@ -393,11 +395,11 @@ func showAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.A
 				expr:         val.Expiration,
 			}
 			allocs = append(allocs, alloc)
-			client, _ := address.NewIDAddress(uint64(val.Client))
+
 			partAllocationInfos = append(partAllocationInfos, partAllocationInfo{
 				AllocationID: key,
 				PieceCID:     val.Data,
-				Client:       client,
+				Client:       walletAddr,
 			})
 		}
 	}
@@ -406,7 +408,7 @@ func showAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.A
 		fmt.Println("output allocation to file error: ", err)
 	}
 
-	if !quite {
+	if quite {
 		return nil
 	}
 
@@ -430,7 +432,7 @@ func showAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.A
 		tablewriter.Col(pieceSize),
 		tablewriter.Col(tMin),
 		tablewriter.Col(tMax),
-		tablewriter.NewLineCol(expr),
+		tablewriter.Col(expr),
 	)
 
 	for _, alloc := range allocs {

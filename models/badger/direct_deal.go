@@ -3,6 +3,7 @@ package badger
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
@@ -26,6 +27,17 @@ func (r *directDealRepo) SaveDeal(ctx context.Context, d *types.DirectDeal) erro
 		return err
 	}
 	return r.ds.Put(ctx, key, data)
+}
+
+func (r *directDealRepo) SaveDealWithState(ctx context.Context, deal *types.DirectDeal, state types.DirectDealState) error {
+	d, err := r.GetDeal(ctx, deal.ID)
+	if err != nil {
+		return err
+	}
+	if d.State != state {
+		return fmt.Errorf("expected deal state %d, but got %d", state, d.State)
+	}
+	return r.SaveDeal(ctx, deal)
 }
 
 func (r *directDealRepo) GetDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error) {

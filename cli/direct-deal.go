@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -32,12 +33,21 @@ var directDealCmds = &cli.Command{
 }
 
 var getDirectDeal = &cli.Command{
-	Name:      "get",
-	Usage:     "Print a direct deal by id",
-	ArgsUsage: "<id>",
+	Name:  "get",
+	Usage: "Print a direct deal by id",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "id",
+			Usage: "direct deal id",
+		},
+		&cli.Int64Flag{
+			Name:  "allocation-id",
+			Usage: "allocation id",
+		},
+	},
 	Action: func(cliCtx *cli.Context) error {
-		if cliCtx.Args().Len() < 1 {
-			return fmt.Errorf("must pass id")
+		if !cliCtx.IsSet("id") && !cliCtx.IsSet("allocation-id") {
+			return fmt.Errorf("must pass id or allocation id")
 		}
 
 		api, closer, err := NewMarketNode(cliCtx)
@@ -46,14 +56,22 @@ var getDirectDeal = &cli.Command{
 		}
 		defer closer()
 
-		id, err := uuid.Parse(cliCtx.Args().First())
-		if err != nil {
-			return err
-		}
+		var deal *types.DirectDeal
+		if cliCtx.IsSet("id") {
+			id, err := uuid.Parse(cliCtx.String("id"))
+			if err != nil {
+				return err
+			}
 
-		deal, err := api.GetDirectDeal(cliCtx.Context, id)
-		if err != nil {
-			return err
+			deal, err = api.GetDirectDeal(cliCtx.Context, id)
+			if err != nil {
+				return err
+			}
+		} else {
+			deal, err = api.GetDirectDealByAllocationID(cliCtx.Context, types2.AllocationId(cliCtx.Int64("allocation-id")))
+			if err != nil {
+				return err
+			}
 		}
 
 		data := []kv{
@@ -152,7 +170,7 @@ deal states:
 		_, _ = fmt.Fprintf(w, "Creation\tID\tAllocationId\tPieceCid\tState\tClient\tProvider\tSize\tMessage\n")
 		for _, deal := range deals {
 			createTime := time.Unix(int64(deal.CreatedAt), 0).Format(time.RFC3339)
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%d\t%s", createTime, deal.ID, deal.AllocationID,
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%d\t%s\n", createTime, deal.ID, deal.AllocationID,
 				deal.PieceCID, deal.State, deal.Client, deal.Provider, deal.PieceSize, deal.Message)
 		}
 
@@ -252,7 +270,12 @@ var importDirectDealCmd = &cli.Command{
 			},
 		}
 
-		return api.ImportDirectDeal(cliCtx.Context, &params)
+		if err := api.ImportDirectDeal(cliCtx.Context, &params); err != nil {
+			return err
+		}
+
+		fmt.Println("import deal success")
+		return nil
 	},
 }
 
@@ -263,7 +286,7 @@ var importDirectDealsCmd = &cli.Command{
 		&cli.StringSliceFlag{
 			Name: "allocation-info",
 			Usage: "Allocation id and piece cid and client, separated by comma. " +
-				"e.g. --allocation-id-piece 1:QmTzXp8PqXgX8i9qUQn4UzJtC7aCqkLp2qJn7Rq2JyH1D:t01001 --allocation-id-piece 2:QmTzXp8PqXgX8i9qUQn4UzJtC7aCqkLp2qJn7Rq2JyH1D:t01001",
+				"e.g. --allocation-id-piece 12000:QmTzXp8PqXgX8i9qUQn4UzJtC7aCqkLp2qJn7Rq2JyH1D --allocation-id-piece 12001:QmTzXp8PqXgX8i9qUQn4UzJtC7aCqkLp2qJn7Rq2JyH1D",
 		},
 		&cli.StringFlag{
 			Name: "allocation-file",
@@ -298,6 +321,20 @@ var importDirectDealsCmd = &cli.Command{
 
 		carDir := cliCtx.String("car-dir")
 
+		findCar := func(pieceCID cid.Cid) (string, error) {
+			carPath := filepath.Join(carDir, pieceCID.String())
+			if _, err := os.Stat(carPath); err == nil {
+				return carPath, nil
+			}
+
+			carPath = filepath.Join(carDir, pieceCID.String()+".car")
+			if _, err := os.Stat(carPath); err == nil {
+				return carPath, nil
+			}
+
+			return "", fmt.Errorf("car %s file not found", pieceCID.String())
+		}
+
 		var directDealParams []types.DirectDealParam
 		if cliCtx.IsSet("allocation-info") {
 			for _, ai := range cliCtx.StringSlice("allocation-info") {
@@ -327,7 +364,10 @@ var importDirectDealsCmd = &cli.Command{
 				if len(carDir) == 0 {
 					return fmt.Errorf("must specify car-dir")
 				}
-				param.FilePath = filepath.Join(carDir, pieceCid.String())
+				param.FilePath, err = findCar(pieceCid)
+				if err != nil {
+					return err
+				}
 				directDealParams = append(directDealParams, param)
 			}
 		}
@@ -348,7 +388,10 @@ var importDirectDealsCmd = &cli.Command{
 					return fmt.Errorf("must specify car-dir")
 				}
 				if len(carDir) != 0 {
-					param.FilePath = filepath.Join(carDir, a.PieceCID.String())
+					param.FilePath, err = findCar(param.PieceCID)
+					if err != nil {
+						return err
+					}
 				}
 				directDealParams = append(directDealParams, param)
 			}
@@ -389,7 +432,11 @@ func loadAllocations(path string) ([]*allocationWithPiece, error) {
 	}
 
 	var allocations []*allocationWithPiece
-	for _, record := range records {
+	for i, record := range records {
+		// ignore title
+		if i == 0 {
+			continue
+		}
 		if len(record) < 3 {
 			return nil, fmt.Errorf("invalid record: %s", record)
 		}

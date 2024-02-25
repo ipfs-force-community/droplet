@@ -32,7 +32,7 @@ type FundRepo interface {
 type StorageDealRepo interface {
 	CreateDeals(ctx context.Context, deals []*types.MinerDeal) error
 	SaveDeal(ctx context.Context, storageDeal *types.MinerDeal) error
-	UpdateDealByStatus(ctx context.Context, storageDeal *types.MinerDeal, status storagemarket.StorageDealStatus) error
+	SaveDealWithStatus(ctx context.Context, storageDeal *types.MinerDeal, pieceState []types.PieceStatus) error
 	UpdateDealStatus(ctx context.Context, proposalCid cid.Cid, status storagemarket.StorageDealStatus, pieceState types.PieceStatus) error
 
 	GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error)
@@ -135,6 +135,7 @@ type ClientOfflineDealRepo interface {
 
 type DirectDealRepo interface {
 	SaveDeal(ctx context.Context, deal *types.DirectDeal) error
+	SaveDealWithState(ctx context.Context, deal *types.DirectDeal, state types.DirectDealState) error
 	GetDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error)
 	GetDealByAllocationID(ctx context.Context, id uint64) (*types.DirectDeal, error)
 	GetDealsByMinerAndState(ctx context.Context, miner address.Address, state types.DirectDealState) ([]*types.DirectDeal, error)

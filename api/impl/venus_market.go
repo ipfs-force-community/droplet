@@ -1366,6 +1366,10 @@ func (m *MarketNodeImpl) GetDirectDealByAllocatinoID(ctx context.Context, id uin
 	return m.Repo.DirectDealRepo().GetDealByAllocationID(ctx, id)
 }
 
+func (m *MarketNodeImpl) GetDirectDealByAllocationID(ctx context.Context, id vTypes.AllocationId) (*types.DirectDeal, error) {
+	return m.Repo.DirectDealRepo().GetDealByAllocationID(ctx, uint64(id))
+}
+
 func (m *MarketNodeImpl) ListDirectDeals(ctx context.Context, queryParams types.DirectDealQueryParams) ([]*types.DirectDeal, error) {
 	return m.Repo.DirectDealRepo().ListDeal(ctx, queryParams)
 }

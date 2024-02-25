@@ -1183,12 +1183,12 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 		for _, d := range deals {
 			onChain := "N"
 			if d.OnChainDealState.SectorStartEpoch() != -1 {
-				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch())
 			}
 
 			slashed := "N"
 			if d.OnChainDealState.SlashEpoch() != -1 {
-				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch())
 			}
 
 			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
@@ -1248,12 +1248,12 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 
 		onChain := "N"
 		if d.OnChainDealState.SectorStartEpoch() != -1 {
-			onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+			onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch())
 		}
 
 		slashed := "N"
 		if d.OnChainDealState.SlashEpoch() != -1 {
-			slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+			slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch())
 		}
 
 		piece := ellipsis(d.LocalDeal.PieceCID.String(), 8)

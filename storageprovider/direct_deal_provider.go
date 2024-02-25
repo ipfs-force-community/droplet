@@ -112,7 +112,7 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 	}
 
 	if deal.PayloadSize == 0 {
-		return fmt.Errorf("deal %d payload size is 0", deal.AllocationID)
+		return fmt.Errorf("payload size is 0")
 	}
 
 	if err := ddp.dealRepo.SaveDeal(ctx, deal); err != nil {
@@ -200,6 +200,7 @@ func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.Direc
 			return err
 		}
 	}
+	deal.PayloadSize = uint64(carSize)
 
 	defer func() {
 		if err = r.Close(); err != nil {
@@ -237,7 +238,7 @@ func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.Direc
 	return nil
 }
 
-func (ddp *DirectDealProvider) errorDeal(ctx context.Context, deal *types.DirectDeal, message string) {
+func (ddp *DirectDealProvider) errorDeal(ctx context.Context, deal *types.DirectDeal, message string) { // nolint
 	deal.State = types.DealError
 	deal.Message = message
 	if err := ddp.dealRepo.SaveDeal(ctx, deal); err != nil {

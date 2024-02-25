@@ -108,6 +108,13 @@ func (ddr *directDealRepo) SaveDeal(ctx context.Context, deal *types.DirectDeal)
 	return ddr.DB.WithContext(ctx).Save(d).Error
 }
 
+func (ddr *directDealRepo) SaveDealWithState(ctx context.Context, deal *types.DirectDeal, state types.DirectDealState) error {
+	d := fromDirectDeal(deal)
+	d.TimeStampOrm.Refresh()
+
+	return ddr.DB.WithContext(ctx).Where("state = ?", state).Save(d).Error
+}
+
 func (ddr *directDealRepo) GetDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error) {
 	var deal directDeal
 	if err := ddr.DB.WithContext(ctx).Take(&deal, "id = ?", id.String()).Error; err != nil {

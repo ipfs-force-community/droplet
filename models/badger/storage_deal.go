@@ -48,13 +48,22 @@ func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.Min
 	return sdr.ds.Put(ctx, statestore.ToKey(storageDeal.ProposalCid), b)
 }
 
-func (sdr *storageDealRepo) UpdateDealByStatus(ctx context.Context, storageDeal *types.MinerDeal, status storagemarket.StorageDealStatus) error {
+func (sdr *storageDealRepo) SaveDealWithStatus(ctx context.Context, storageDeal *types.MinerDeal, status []types.PieceStatus) error {
 	deal, err := sdr.GetDeal(ctx, storageDeal.ProposalCid)
 	if err != nil {
 		return err
 	}
-	if deal.State != status {
-		return fmt.Errorf("deal state no match %d != %d", deal.State, status)
+
+	var found bool
+	for _, s := range status {
+		if deal.PieceStatus == s {
+			found = true
+			break
+		}
+	}
+	deal.TimeStamp = makeRefreshedTimeStamp(&deal.TimeStamp)
+	if !found {
+		return fmt.Errorf("deal state no match %d != %v", deal.State, status)
 	}
 
 	return sdr.SaveDeal(ctx, storageDeal)
