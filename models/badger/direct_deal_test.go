@@ -43,7 +43,7 @@ func TestDirectDeal(t *testing.T) {
 	t.Run("get deal by allocation id", func(t *testing.T) {
 		for _, deal := range deals {
 			if deal.State != types.DealError {
-				res, err := r.GetDealByAllocationID(ctx, uint64(deal.AllocationID))
+				res, err := r.GetDealByAllocationID(ctx, deal.AllocationID)
 				assert.NoError(t, err)
 				assert.Equal(t, deal, res)
 			}

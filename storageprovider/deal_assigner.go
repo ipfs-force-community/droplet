@@ -420,7 +420,7 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 	var out []*types.DealInfoV2
 	for _, d := range deals {
 		out = append(out, &types.DealInfoV2{
-			AllocationID: verifreg.AllocationId(d.AllocationID),
+			AllocationID: d.AllocationID,
 			Provider:     d.Provider,
 			Client:       d.Client,
 			Offset:       d.Offset,

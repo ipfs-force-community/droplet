@@ -87,7 +87,7 @@ func (ddp *DirectDealProvider) ImportDeals(ctx context.Context, dealParams *type
 }
 
 func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.DirectDealParam, cParams *commonParams) error {
-	deal, err := ddp.dealRepo.GetDealByAllocationID(ctx, uint64(dealParam.AllocationID))
+	deal, err := ddp.dealRepo.GetDealByAllocationID(ctx, dealParam.AllocationID)
 	if err == nil {
 		return fmt.Errorf("deal(%v) exist: %s", deal.ID, deal.State.String())
 	}

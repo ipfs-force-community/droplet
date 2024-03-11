@@ -77,7 +77,7 @@ func TestGetDirectDealByAllocationID(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `direct_deals` WHERE allocation_id = ? LIMIT 1")).
 		WithArgs(dbDeal.AllocationID).WillReturnRows(rows)
 
-	res, err := r.DirectDealRepo().GetDealByAllocationID(ctx, uint64(deal.AllocationID))
+	res, err := r.DirectDealRepo().GetDealByAllocationID(ctx, deal.AllocationID)
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 
