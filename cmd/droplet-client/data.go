@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -212,6 +213,11 @@ var dataCommPCmd = &cli.Command{
 			return fmt.Errorf("usage: commP <inputPath>")
 		}
 
+		f, err := os.Stat(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
 		ret, err := utils.CalcCommP(ctx, cctx.Args().Get(0))
 		if err != nil {
 			return err
@@ -224,6 +230,7 @@ var dataCommPCmd = &cli.Command{
 
 		fmt.Println("CID: ", encoder.Encode(ret.Root))
 		fmt.Printf("Piece size: %s ( %d B )\n", types.SizeStr(types.NewInt(uint64(ret.Size))), ret.Size)
+		fmt.Printf("Payload size: %s ( %d B )\n", types.SizeStr(types.NewInt(uint64(f.Size()))), f.Size())
 		return nil
 	},
 }

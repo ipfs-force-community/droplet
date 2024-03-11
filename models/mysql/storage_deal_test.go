@@ -510,7 +510,8 @@ func prepareStorageDealRepoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []*st
 					PieceCID: cid1,
 				},
 			},
-			State: storagemarket.StorageDealActive,
+			State:       storagemarket.StorageDealActive,
+			PieceStatus: types.Assigned,
 			TimeStamp: types.TimeStamp{
 				CreatedAt: uint64(time.Now().Unix()),
 				UpdatedAt: uint64(time.Now().Unix()),
@@ -529,7 +530,8 @@ func prepareStorageDealRepoTest(t *testing.T) (repo.Repo, sqlmock.Sqlmock, []*st
 					PieceCID: cid2,
 				},
 			},
-			State: storagemarket.StorageDealActive,
+			State:       storagemarket.StorageDealActive,
+			PieceStatus: types.Packing,
 			TimeStamp: types.TimeStamp{
 				CreatedAt: uint64(time.Now().Unix()),
 				UpdatedAt: uint64(time.Now().Unix()),
@@ -578,4 +580,24 @@ func TestGetDealByUUID(t *testing.T) {
 	res, err := r.StorageDealRepo().GetDealByUUID(context.Background(), storageDealCases[0].ID)
 	assert.NoError(t, err)
 	assert.Equal(t, storageDealCases[0], res)
+}
+
+func TestSaveDealWithStatus(t *testing.T) {
+	r, mock, dbStorageDealCases, storageDealCases, done := prepareStorageDealRepoTest(t)
+	defer done()
+
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	sql, vars, err := getSQL(db.Where("piece_status in ?", []types.PieceStatus{types.PieceStatus(dbStorageDealCases[0].PieceStatus)}).Save(dbStorageDealCases[0]))
+	assert.NoError(t, err)
+
+	vars[42] = sqlmock.AnyArg()
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	err = r.StorageDealRepo().SaveDealWithStatus(context.Background(), storageDealCases[0], []types.PieceStatus{storageDealCases[0].PieceStatus})
+	assert.NoError(t, err)
 }

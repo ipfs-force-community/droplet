@@ -499,8 +499,8 @@ The minimum value is 518400 (6 months).`,
 			}
 
 			ref.PieceSize = abi.UnpaddedPieceSize(psize)
-
 			ref.TransferType = storagemarket.TTManual
+			p.statelessDeal = true
 		}
 
 		sdParams := &client.DealParams{
@@ -1145,7 +1145,7 @@ func dealFromDealInfo(ctx context.Context, full v1api.FullNode, head *types.TipS
 	if v.DealID == 0 {
 		return deal{
 			LocalDeal:        v,
-			OnChainDealState: *market.EmptyDealState(),
+			OnChainDealState: market.EmptyDealState(),
 		}
 	}
 
@@ -1156,7 +1156,7 @@ func dealFromDealInfo(ctx context.Context, full v1api.FullNode, head *types.TipS
 
 	return deal{
 		LocalDeal:        v,
-		OnChainDealState: onChain.State,
+		OnChainDealState: onChain.State.Iface(),
 	}
 }
 
@@ -1182,13 +1182,13 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tDataCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tVerified\tMessage\n")
 		for _, d := range deals {
 			onChain := "N"
-			if d.OnChainDealState.SectorStartEpoch != -1 {
-				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+			if d.OnChainDealState.SectorStartEpoch() != -1 {
+				onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch())
 			}
 
 			slashed := "N"
-			if d.OnChainDealState.SlashEpoch != -1 {
-				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+			if d.OnChainDealState.SlashEpoch() != -1 {
+				slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch())
 			}
 
 			price := types.FIL(types.BigMul(d.LocalDeal.PricePerEpoch, types.NewInt(d.LocalDeal.Duration)))
@@ -1247,13 +1247,13 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 		datacid := ellipsis(d.LocalDeal.DataRef.Root.String(), 8)
 
 		onChain := "N"
-		if d.OnChainDealState.SectorStartEpoch != -1 {
-			onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch)
+		if d.OnChainDealState.SectorStartEpoch() != -1 {
+			onChain = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SectorStartEpoch())
 		}
 
 		slashed := "N"
-		if d.OnChainDealState.SlashEpoch != -1 {
-			slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch)
+		if d.OnChainDealState.SlashEpoch() != -1 {
+			slashed = fmt.Sprintf("Y (epoch %d)", d.OnChainDealState.SlashEpoch())
 		}
 
 		piece := ellipsis(d.LocalDeal.PieceCID.String(), 8)

@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 
+	"golang.org/x/exp/constraints"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 	"github.com/ipfs/go-cid"
@@ -241,4 +246,40 @@ func (s *selector) printError() {
 		fmt.Printf("miner: %s, error: %v\n", miner, err)
 	}
 	fmt.Println()
+}
+
+func getProvidedOrDefaultWallet(ctx context.Context, api clientapi.IMarketClient, addrStr string) (address.Address, error) {
+	var a address.Address
+	if len(addrStr) != 0 {
+		faddr, err := address.NewFromString(addrStr)
+		if err != nil {
+			return address.Undef, fmt.Errorf("failed to parse 'from' address: %w", err)
+		}
+		a = faddr
+	} else {
+		def, err := api.DefaultAddress(ctx)
+		if err != nil {
+			return address.Undef, err
+		}
+		a = def
+	}
+
+	return a, nil
+}
+
+func printJson(obj interface{}) error {
+	resJson, err := json.MarshalIndent(obj, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshalling json: %w", err)
+	}
+
+	fmt.Println(string(resJson))
+	return nil
+}
+
+func Min[T constraints.Ordered](a T, b T) T {
+	if a < b {
+		return a
+	}
+	return b
 }

@@ -187,6 +187,7 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(new(DealAssiger), NewDealAssigner),
 		builder.Override(StartDealTracker, NewDealTracker),
 		builder.Override(new(*EventPublishAdapter), NewEventPublishAdapter),
+		builder.Override(new(*DirectDealProvider), NewDirectDealProvider),
 	)
 }
 

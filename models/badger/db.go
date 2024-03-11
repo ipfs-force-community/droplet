@@ -29,6 +29,7 @@ const (
 	storageDeals      = "/deals"
 	storageAsk        = "/storage-ask"
 	paych             = "/paych/"
+	directDeals       = "/direct-deals"
 
 	// client
 	dealClient      = "/deals/client"
@@ -73,6 +74,9 @@ type StorageDealsDS datastore.Batching
 
 // /metadata/storage/provider/storage-ask
 type StorageAskDS datastore.Batching // key = latest
+
+// /metadata/storage/provider/direct-deals
+type DirectDealsDS datastore.Batching
 
 // /metadata/paych/
 type PayChanDS datastore.Batching
@@ -148,6 +152,10 @@ func NewStorageDealsDS(ds StorageProviderDS) StorageDealsDS {
 	return namespace.Wrap(ds, datastore.NewKey(storageDeals))
 }
 
+func NewDirectDealsDS(ds StorageProviderDS) DirectDealsDS {
+	return namespace.Wrap(ds, datastore.NewKey(directDeals))
+}
+
 func NewStorageAskDS(ds StorageProviderDS) StorageAskDS {
 	return namespace.Wrap(ds, datastore.NewKey(storageAsk))
 }
@@ -203,6 +211,7 @@ type BadgerDSParams struct {
 	RetrAskDs        RetrievalAskDS   `optional:"true"`
 	CidInfoDs        CIDInfoDS        `optional:"true"`
 	RetrievalDealsDs RetrievalDealsDS `optional:"true"`
+	DirectDealsDs    DirectDealsDS    `optional:"true"`
 }
 
 func NewBadgerRepo(params BadgerDSParams) repo.Repo {
@@ -222,6 +231,10 @@ func (r *BadgerRepo) FundRepo() repo.FundRepo {
 
 func (r *BadgerRepo) StorageDealRepo() repo.StorageDealRepo {
 	return NewStorageDealRepo(r.dsParams.StorageDealsDS)
+}
+
+func (r *BadgerRepo) DirectDealRepo() repo.DirectDealRepo {
+	return NewDirectDealRepo(r.dsParams.DirectDealsDs)
 }
 
 func (r *BadgerRepo) PaychMsgInfoRepo() repo.PaychMsgInfoRepo {
@@ -298,6 +311,10 @@ type txRepo struct {
 
 func (r txRepo) StorageDealRepo() repo.StorageDealRepo {
 	return NewStorageDealRepo(r.dsParams.StorageDealsDS)
+}
+
+func (r txRepo) DirectDealRepo() repo.DirectDealRepo {
+	return NewDirectDealRepo(r.dsParams.DirectDealsDs)
 }
 
 // not metadata, just raw data between file transfer

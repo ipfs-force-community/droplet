@@ -37,6 +37,7 @@ var StorageCmds = &cli.Command{
 		storageDealsCmds,
 		storageAsksCmds,
 		storageCfgCmds,
+		directDealCmds,
 	},
 }
 

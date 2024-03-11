@@ -42,6 +42,7 @@ var DBOptions = func(server bool, mysqlCfg *config.Mysql) builder.Option {
 					builder.Override(new(badger2.PayChanMsgDs), badger2.NewPayChanMsgDs),
 					builder.Override(new(badger2.FundMgrDS), badger2.NewFundMgrDS),
 					builder.Override(new(badger2.RetrievalDealsDS), badger2.NewRetrievalDealsDS),
+					builder.Override(new(badger2.DirectDealsDS), badger2.NewDirectDealsDS),
 					builder.Override(new(repo.Repo), badger2.NewMigratedBadgerRepo),
 				),
 			),

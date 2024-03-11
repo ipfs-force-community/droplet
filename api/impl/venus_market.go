@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -65,6 +66,8 @@ type MarketNodeImpl struct {
 	DataTransfer      network.ProviderDataTransfer
 	DealPublisher     *storageprovider.DealPublisher
 	DealAssigner      storageprovider.DealAssiger
+
+	DirectDealProvider *storageprovider.DirectDealProvider
 
 	AuthClient jwtclient.IAuthClient
 
@@ -1103,6 +1106,29 @@ func (m *MarketNodeImpl) UpdateDealOnPacking(ctx context.Context, miner address.
 	return m.DealAssigner.UpdateDealOnPacking(ctx, miner, dealId, sectorid, offset)
 }
 
+func (m *MarketNodeImpl) AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, spec *types.GetDealSpec) ([]*types.DealInfoV2, error) {
+	mAddr, err := address.NewIDAddress(uint64(sid.Miner))
+	if err != nil {
+		return nil, err
+	}
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, mAddr); err != nil {
+		return nil, err
+	}
+
+	head, err := m.FullNode.ChainHead(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get chain head %w", err)
+	}
+	return m.DealAssigner.AssignDeals(ctx, sid, ssize, head.Height(), spec)
+}
+
+func (m *MarketNodeImpl) ReleaseDirectDeals(ctx context.Context, miner address.Address, allocationIDs []vTypes.AllocationId) error {
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
+		return err
+	}
+	return m.DealAssigner.ReleaseDirectDeals(ctx, miner, allocationIDs)
+}
+
 func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Address, dealId abi.DealID, pieceStatus types.PieceStatus, dealStatus storagemarket.StorageDealStatus) error {
 	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, miner); err != nil {
 		return err
@@ -1323,4 +1349,23 @@ func (m *MarketNodeImpl) DealsBatchImportData(ctx context.Context, refs types.Im
 	results = append(results, res...)
 
 	return results, nil
+}
+
+func (m *MarketNodeImpl) ImportDirectDeal(ctx context.Context, dealParams *types.DirectDealParams) error {
+	if len(dealParams.DealParams) == 0 {
+		return errors.New("deal params is empty")
+	}
+	return m.DirectDealProvider.ImportDeals(ctx, dealParams)
+}
+
+func (m *MarketNodeImpl) GetDirectDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error) {
+	return m.Repo.DirectDealRepo().GetDeal(ctx, id)
+}
+
+func (m *MarketNodeImpl) GetDirectDealByAllocationID(ctx context.Context, id vTypes.AllocationId) (*types.DirectDeal, error) {
+	return m.Repo.DirectDealRepo().GetDealByAllocationID(ctx, uint64(id))
+}
+
+func (m *MarketNodeImpl) ListDirectDeals(ctx context.Context, queryParams types.DirectDealQueryParams) ([]*types.DirectDeal, error) {
+	return m.Repo.DirectDealRepo().ListDeal(ctx, queryParams)
 }

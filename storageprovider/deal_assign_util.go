@@ -230,3 +230,183 @@ func fillersFromRem(in abi.PaddedPieceSize) ([]abi.PaddedPieceSize, error) {
 
 	return out, nil
 }
+
+func pickAndAlignDirectDeal(deals []*mtypes.DirectDealInfo, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *mtypes.GetDealSpec) ([]*mtypes.DirectDealInfo, error) {
+	space := abi.PaddedPieceSize(ssize)
+
+	if err := space.Validate(); err != nil {
+		return nil, fmt.Errorf("%w: %d", errInvalidSpaceSize, space)
+	}
+
+	// 为了方便测试，将此过滤置于此位置
+	// 如果为了考虑效率，且有合适的方式进行测试，则可以移动到前置逻辑中进行过滤
+	// 确保订单在:
+	//   1. (spec.StartEpoch, spec.EndEpoch)
+	//   2. (0, spec.EndEpoch)
+	//   3. (spec.StartEpoch, +inf)
+	// 范围内
+	if spec != nil && (spec.StartEpoch > 0 || spec.EndEpoch > 0) {
+		picked := make([]*mtypes.DirectDealInfo, 0, len(deals))
+		for di := range deals {
+			deal := deals[di]
+			if spec.StartEpoch > 0 && deal.StartEpoch <= spec.StartEpoch {
+				continue
+			}
+
+			if spec.EndEpoch > 0 && deal.EndEpoch >= spec.EndEpoch {
+				continue
+			}
+
+			// See: https://github.com/filecoin-project/builtin-actors/blob/c0aed11801cb434c989695ad67721c410b9ada33/actors/market/src/lib.rs#L1073-L1094
+			// https://github.com/filecoin-project/builtin-actors/blob/c0aed11801cb434c989695ad67721c410b9ada33/actors/verifreg/src/lib.rs#L1056-L1071
+			if spec.SectorExpiration != nil {
+				allocTermMin := deal.EndEpoch - deal.StartEpoch
+				allocTermMax := allocTermMin + market.MarketDefaultAllocationTermBuffer
+				if allocTermMax > types.MaximumVerifiedAllocationTerm {
+					allocTermMax = types.MaximumVerifiedAllocationTerm
+				}
+				sectorLifetime := *spec.SectorExpiration - currentHeight
+				if !(sectorLifetime >= allocTermMin && sectorLifetime <= allocTermMax) {
+					continue
+				}
+			}
+			picked = append(picked, deal)
+		}
+
+		deals = picked
+	}
+
+	if len(deals) > 0 && deals[0].PieceSize.Validate() != nil {
+		return nil, fmt.Errorf("%w: first deal size: %d", errInvalidDealPieceSize, deals[0].PieceSize)
+	}
+
+	// 过滤掉太小的 deals
+	if spec != nil && spec.MinPieceSize > 0 {
+		limit := abi.PaddedPieceSize(spec.MinPieceSize)
+		first := len(deals)
+
+		// find the first deal index with piece size >= limit,
+		// or all deals are too small
+		for i := 0; i < len(deals); i++ {
+			if deals[i].PieceSize >= limit {
+				first = i
+				break
+			}
+		}
+
+		deals = deals[first:]
+	}
+
+	// 过滤掉太大的 deals
+	if spec != nil && spec.MaxPieceSize > 0 {
+		limit := abi.PaddedPieceSize(spec.MaxPieceSize)
+
+		last := 0
+
+		// find the last deal index with piece size <= limit,
+		// or all deals are too large
+		for i := len(deals); i > 0; i-- {
+			if deals[i-1].PieceSize <= limit {
+				last = i
+				break
+			}
+		}
+
+		deals = deals[:last]
+	}
+
+	// only the deals left
+	dealCount := len(deals)
+	if dealCount == 0 {
+		return nil, nil
+	}
+
+	res := make([]*mtypes.DirectDealInfo, 0)
+	di := 0
+	checked := 0
+
+	pickedDeals := 0
+	pickedSpace := abi.PaddedPieceSize(0)
+
+	var offset abi.UnpaddedPieceSize
+	for di < dealCount {
+		deal := deals[di]
+		if di != checked {
+			if psize := deal.PieceSize; psize.Validate() != nil {
+				return nil, fmt.Errorf("%w: #%d deal size: %d", errInvalidDealPieceSize, di, psize)
+			}
+
+			// deals unordered
+			if di > 0 && deal.PieceSize < deals[di-1].PieceSize {
+				return nil, errDealsUnOrdered
+			}
+
+			checked = di
+		}
+
+		// deal limit
+		if spec != nil && spec.MaxPiece > 0 && pickedDeals >= spec.MaxPiece {
+			break
+		}
+
+		// not enough for next deal
+		if deal.PieceSize > space {
+			break
+		}
+
+		nextPiece := nextAlignedPiece(space)
+		// next piece cantainer is not enough, we should put a zeroed-piece
+		if deal.PieceSize > nextPiece {
+			res = append(res, &mtypes.DirectDealInfo{
+				PieceSize: nextPiece,
+				PieceCID:  zerocomm.ZeroPieceCommitment(nextPiece.Unpadded()),
+			})
+
+			space -= nextPiece
+			offset += nextPiece.Unpadded()
+			continue
+		}
+
+		deal.Offset = offset.Padded()
+		res = append(res, deal)
+
+		pickedDeals++
+		pickedSpace += deal.PieceSize
+
+		space -= deal.PieceSize
+		offset += deal.PieceSize.Unpadded()
+		di++
+	}
+
+	// no deals picked, we just do nothing here
+	if len(res) == 0 {
+		return nil, nil
+	}
+
+	// not enough deals
+	if spec != nil && spec.MinPiece > 0 && pickedDeals < spec.MinPiece {
+		return nil, nil
+	}
+
+	// not enough space for deals
+	if spec != nil && spec.MinUsedSpace > 0 && uint64(pickedSpace) < spec.MinUsedSpace {
+		return nil, nil
+	}
+
+	// still have space left, we should fill in more zeroed-pieces
+	if space > 0 {
+		fillers, err := fillersFromRem(space)
+		if err != nil {
+			return nil, fmt.Errorf("get filler pieces for the remaining space %d: %w", space, err)
+		}
+
+		for _, fillSize := range fillers {
+			res = append(res, &mtypes.DirectDealInfo{
+				PieceSize: fillSize,
+				PieceCID:  zerocomm.ZeroPieceCommitment(fillSize.Unpadded()),
+			})
+		}
+	}
+
+	return res, nil
+}

@@ -11,6 +11,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
+	shared "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 )
@@ -23,6 +25,8 @@ type DealAssiger interface {
 	GetUnPackedDeals(ctx context.Context, miner address.Address, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
 	AssignUnPackedDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoIncludePath, error)
 	ReleaseDeals(ctx context.Context, miner address.Address, deals []abi.DealID) error
+	AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoV2, error)
+	ReleaseDirectDeals(ctx context.Context, miner address.Address, allocationIDs []shared.AllocationId) error
 }
 
 var _ DealAssiger = (*dealAssigner)(nil)
@@ -254,7 +258,7 @@ func (ps *dealAssigner) AssignUnPackedDeals(ctx context.Context, sid abi.SectorI
 			md.PieceStatus = types.Assigned
 			md.Offset = piece.Offset
 			md.SectorNumber = sid.Number
-			if err := txRepo.StorageDealRepo().SaveDeal(ctx, md); err != nil {
+			if err := txRepo.StorageDealRepo().SaveDealWithStatus(ctx, md, []types.PieceStatus{types.Undefine}); err != nil {
 				return err
 			}
 		}
@@ -289,12 +293,166 @@ func (ps *dealAssigner) ReleaseDeals(ctx context.Context, miner address.Address,
 			}
 			deal.PieceStatus = types.Undefine
 			deal.State = storagemarket.StorageDealAwaitingPreCommit
-			if err := storageDealRepo.SaveDeal(ctx, deal); err != nil {
+			if err := storageDealRepo.SaveDealWithStatus(ctx, deal, []types.PieceStatus{types.Assigned, types.Packing}); err != nil {
 				return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 			}
 		}
 		return nil
 	})
+}
+
+func (ps *dealAssigner) ReleaseDirectDeals(ctx context.Context, miner address.Address, allocationIDs []shared.AllocationId) error {
+	return ps.repo.Transaction(func(txRepo repo.TxRepo) error {
+		directDealRepo := txRepo.DirectDealRepo()
+		for _, allocationID := range allocationIDs {
+			deal, err := directDealRepo.GetDealByAllocationID(ctx, uint64(allocationID))
+			if err != nil {
+				return fmt.Errorf("failed to get deal %d for miner %s: %w", allocationID, miner.String(), err)
+			}
+			if deal.State == types.DealExpired {
+				continue
+			}
+			if deal.Provider != miner {
+				return fmt.Errorf("cannot release a deal that is not belong to the miner. miner: %s != %s, deal: %d", miner.String(), deal.Provider, deal.AllocationID)
+			}
+			if deal.State != types.DealSealing {
+				return fmt.Errorf("cannot release a deal that is activated or not ready. miner: %s, deal: %d", deal.Provider, deal.AllocationID)
+			}
+
+			deal.State = types.DealAllocation
+			if err := directDealRepo.SaveDealWithState(ctx, deal, types.DealSealing); err != nil {
+				return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", allocationID, miner.String(), err)
+			}
+		}
+		return nil
+	})
+}
+
+func (ps *dealAssigner) AssignDirectDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DirectDealInfo, error) {
+	maddr, err := address.NewIDAddress(uint64(sid.Miner))
+	if err != nil {
+		return nil, err
+	}
+
+	if spec == nil {
+		spec = defaultGetDealSpec
+	}
+
+	var pieces []*types.DirectDealInfo
+
+	// TODO: is this concurrent safe?
+	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
+		mds, err := txRepo.DirectDealRepo().GetDealsByMinerAndState(ctx, maddr, types.DealAllocation)
+		if err != nil {
+			return err
+		}
+
+		var deals []*types.DirectDealInfo
+
+		for _, md := range mds {
+			// 订单筛选和组合的逻辑完全由 pickAndAlign 完成
+			deals = append(deals, &types.DirectDealInfo{
+				AllocationID: verifreg.AllocationId(md.AllocationID),
+				Provider:     md.Provider,
+				Client:       md.Client,
+				PieceCID:     md.PieceCID,
+				PieceSize:    md.PieceSize,
+				Offset:       md.Offset,
+				Length:       md.PieceSize,
+				PayloadSize:  md.PayloadSize,
+				StartEpoch:   md.StartEpoch,
+			})
+		}
+
+		if len(deals) == 0 {
+			return nil
+		}
+
+		// 按照尺寸, 时间, 价格排序
+		sort.Slice(deals, func(i, j int) bool {
+			left, right := deals[i], deals[j]
+			if left.PieceSize != right.PieceSize {
+				return left.PieceSize < right.PieceSize
+			}
+
+			return left.StartEpoch < right.StartEpoch
+		})
+
+		pieces, err = pickAndAlignDirectDeal(deals, ssize, currentHeight, spec)
+		if err != nil {
+			return fmt.Errorf("unable to pick and align pieces from deals: %w", err)
+		}
+
+		if len(pieces) == 0 {
+			return nil
+		}
+
+		for _, piece := range pieces {
+			if piece.AllocationID <= 0 {
+				continue
+			}
+			md, err := txRepo.DirectDealRepo().GetDealByAllocationID(ctx, uint64(piece.AllocationID))
+			if err != nil {
+				return err
+			}
+
+			md.Offset = piece.Offset
+			md.SectorID = sid.Number
+			md.State = types.DealSealing
+			if err := txRepo.DirectDealRepo().SaveDealWithState(ctx, md, types.DealAllocation); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return pieces, nil
+}
+
+func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoV2, error) {
+	deals, err := ps.AssignDirectDeals(ctx, sid, ssize, currentHeight, spec)
+	if err != nil {
+		directDealLog.Errorf("assign direct deals failed: %v", err)
+	}
+
+	var out []*types.DealInfoV2
+	for _, d := range deals {
+		out = append(out, &types.DealInfoV2{
+			AllocationID: d.AllocationID,
+			Provider:     d.Provider,
+			Client:       d.Client,
+			Offset:       d.Offset,
+			Length:       d.Length,
+			PieceCID:     d.PieceCID,
+			PieceSize:    d.PieceSize,
+			StartEpoch:   d.StartEpoch,
+			EndEpoch:     d.EndEpoch,
+		})
+	}
+
+	oldDeals, err := ps.AssignUnPackedDeals(ctx, sid, ssize, currentHeight, spec)
+	if err == nil {
+		for _, d := range oldDeals {
+			out = append(out, &types.DealInfoV2{
+				DealID:     d.DealID,
+				PublishCid: d.PublishCid,
+				Provider:   d.Provider,
+				Client:     d.Client,
+				Offset:     d.Offset,
+				Length:     d.Length,
+				PieceCID:   d.PieceCID,
+				PieceSize:  d.PieceSize,
+				StartEpoch: d.StartEpoch,
+				EndEpoch:   d.EndEpoch,
+			})
+		}
+	} else {
+		directDealLog.Errorf("assign unpacked deals failed: %v", err)
+	}
+
+	return out, nil
 }
 
 type CombinedPieces struct {
