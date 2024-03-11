@@ -100,14 +100,10 @@ func (r *directDealRepo) ListDeal(ctx context.Context, params types.DirectDealQu
 		if params.State != nil && deal.State != *params.State {
 			return false, nil
 		}
-		if deal.Provider != params.Provider {
+		if !params.Provider.Empty() && deal.Provider != params.Provider {
 			return false, nil
 		}
-		if deal.Client != params.Client {
-			return false, nil
-		}
-		if !params.Asc {
-			deals = append(deals, deal)
+		if !params.Client.Empty() && deal.Client != params.Client {
 			return false, nil
 		}
 

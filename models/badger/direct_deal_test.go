@@ -97,7 +97,15 @@ func TestDirectDeal(t *testing.T) {
 		}
 		res, err := r.ListDeal(ctx, params)
 		assert.NoError(t, err)
-
 		assert.Len(t, res, 1)
+
+		res, err = r.ListDeal(ctx, types.DirectDealQueryParams{
+			Page: types.Page{
+				Offset: 0,
+				Limit:  10,
+			},
+		})
+		assert.NoError(t, err)
+		assert.Len(t, res, 10)
 	})
 }

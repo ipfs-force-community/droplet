@@ -120,7 +120,7 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 	}
 
 	if !cParams.noCopyCarFile && !cParams.skipCommP {
-		directDealLog.Infof("register shard. deal:%d, allocationID:%s, pieceCid:%s", deal.ID, deal.AllocationID, deal.PieceCID)
+		directDealLog.Infof("register shard. deal:%v, allocationID:%d, pieceCid:%s", deal.ID, deal.AllocationID, deal.PieceCID)
 		// Register the deal data as a "shard" with the DAG store. Later it can be
 		// fetched from the DAG store during retrieval.
 		if err := ddp.dagStoreWrapper.RegisterShard(ctx, deal.PieceCID, "", true, nil); err != nil {
@@ -236,14 +236,6 @@ func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.Direc
 	}
 
 	return nil
-}
-
-func (ddp *DirectDealProvider) errorDeal(ctx context.Context, deal *types.DirectDeal, message string) { // nolint
-	deal.State = types.DealError
-	deal.Message = message
-	if err := ddp.dealRepo.SaveDeal(ctx, deal); err != nil {
-		directDealLog.Errorf("save direct deal failed: %s, %v", deal.ID, err)
-	}
 }
 
 type tracker struct {
