@@ -14,7 +14,6 @@ var (
 )
 
 var (
-	ApiState               = metrics.NewInt64("api/state", "api service state. 0: down, 1: up", "")
 	RetrievalTransferEvent = metrics.NewCounterWithCategory("retrieval/transfer_event", "retrieval transfer event")
 	ShardNum               = metrics.NewInt64WithCategory("shard/num", "shard num in different state", "")
 )
