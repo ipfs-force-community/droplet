@@ -1,5 +1,30 @@
 # droplet changelog
 
+## v2.11.0-rc1
+
+* feat: import data by uuid [[#471](https://github.com/ipfs-force-community/droplet/pull/471)]
+* fix: use the received deal uuid [[#472](https://github.com/ipfs-force-community/droplet/pull/472)]
+* fix: peer id is nil [[#474](https://github.com/ipfs-force-community/droplet/pull/474)]
+* fix: clean blockstore after retrieval completed [[#477](https://github.com/ipfs-force-community/droplet/pull/477)]
+* fix: set deal id when import deal from boost [[#480](https://github.com/ipfs-force-community/droplet/pull/480)]
+* chore: merge release v2.10 to master [[#490](https://github.com/ipfs-force-community/droplet/pull/490)]
+* feat: retrieval trustless [[#486](https://github.com/ipfs-force-community/droplet/pull/486)]
+* feat: add regular file check [[#492](https://github.com/ipfs-force-community/droplet/pull/492)]
+* feat: retrieval padding piece [[#491](https://github.com/ipfs-force-community/droplet/pull/491)]
+* fix: disable auth when off chain service [[#493](https://github.com/ipfs-force-community/droplet/pull/493)]
+* opt: split into droplet and droplet-client [[#494](https://github.com/ipfs-force-community/droplet/pull/494)]
+* feat: get deal by deal id  [[#495](https://github.com/ipfs-force-community/droplet/pull/495)]
+* Feat/ouput deal with json format [[#497](https://github.com/ipfs-force-community/droplet/pull/497)]
+* chore: update doc about retrieval [[#498](https://github.com/ipfs-force-community/droplet/pull/498)]
+* Feat/add more metrics [[#499](https://github.com/ipfs-force-community/droplet/pull/499)]
+* opt: cmd: adjust display information [[#500](https://github.com/ipfs-force-community/droplet/pull/500)]
+* feat: piecestorage support recursive lookup file [[#501](https://github.com/ipfs-force-community/droplet/pull/501)]
+* chore(deps): bump golang.org/x/crypto from 0.14.0 to 0.17.0 [[#505](https://github.com/ipfs-force-community/droplet/pull/505)]
+* Feat/start dagstore in goroutine [[#506](https://github.com/ipfs-force-community/droplet/pull/506)]
+* test: Querying files from a large number of files takes time [[#507](https://github.com/ipfs-force-community/droplet/pull/507)]
+* chore(deps): bump github.com/quic-go/quic-go from 0.38.1 to 0.38.2 [[#508](https://github.com/ipfs-force-community/droplet/pull/508)]
+* feat: implement direct deal [[#509](https://github.com/ipfs-force-community/droplet/pull/509)]
+
 ## v2.10.0
 
 ## v2.10.0-rc6
