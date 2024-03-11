@@ -153,7 +153,7 @@ func NewStorageDealsDS(ds StorageProviderDS) StorageDealsDS {
 }
 
 func NewDirectDealsDS(ds StorageProviderDS) DirectDealsDS {
-	return namespace.Wrap(ds, datastore.NewKey(storageDeals))
+	return namespace.Wrap(ds, datastore.NewKey(directDeals))
 }
 
 func NewStorageAskDS(ds StorageProviderDS) StorageAskDS {
