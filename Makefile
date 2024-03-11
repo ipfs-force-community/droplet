@@ -56,11 +56,7 @@ dist-clean:
 	git clean -xdff
 	git submodule deinit --all -f
 
-build: $(BUILD_DEPS)
-	rm -f droplet-client
-	rm -f droplet
-	go build -o ./droplet-client $(GOFLAGS) ./cmd/droplet-client
-	go build -o ./droplet $(GOFLAGS) ./cmd/droplet
+build: droplet droplet-client
 
 droplet: $(BUILD_DEPS)
 	rm -f droplet
