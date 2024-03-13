@@ -25,6 +25,7 @@ type directDealRepo struct {
 
 func (r *directDealRepo) SaveDeal(ctx context.Context, d *types.DirectDeal) error {
 	key := keyFromID(d.ID)
+	d.TimeStamp = makeRefreshedTimeStamp(&d.TimeStamp)
 	data, err := json.Marshal(d)
 	if err != nil {
 		return err
