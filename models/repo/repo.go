@@ -139,6 +139,8 @@ type DirectDealRepo interface {
 	GetDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error)
 	GetDealByAllocationID(ctx context.Context, id uint64) (*types.DirectDeal, error)
 	GetDealsByMinerAndState(ctx context.Context, miner address.Address, state types.DirectDealState) ([]*types.DirectDeal, error)
+	GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error)
+	GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error)
 	ListDeal(ctx context.Context, params types.DirectDealQueryParams) ([]*types.DirectDeal, error)
 }
 

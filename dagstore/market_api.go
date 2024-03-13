@@ -14,7 +14,9 @@ import (
 
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/dagstore/throttle"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/abi"
 	gatewayAPIV2 "github.com/filecoin-project/venus/venus-shared/api/gateway/v2"
 
 	marketMetrics "github.com/ipfs-force-community/droplet/v2/metrics"
@@ -31,8 +33,9 @@ type MarketAPI interface {
 }
 
 type marketAPI struct {
-	pieceStorageMgr     *piecestorage.PieceStorageManager
-	pieceRepo           repo.StorageDealRepo
+	pieceStorageMgr *piecestorage.PieceStorageManager
+	repo            repo.Repo
+
 	useTransient        bool
 	metricsCtx          metrics.MetricsCtx
 	gatewayMarketClient gatewayAPIV2.IMarketClient
@@ -51,7 +54,7 @@ func NewMarketAPI(
 	concurrency int) MarketAPI {
 
 	return &marketAPI{
-		pieceRepo:           repo.StorageDealRepo(),
+		repo:                repo,
 		pieceStorageMgr:     pieceStorageMgr,
 		useTransient:        useTransient,
 		metricsCtx:          ctx,
@@ -63,6 +66,24 @@ func NewMarketAPI(
 
 func (m *marketAPI) Start(_ context.Context) error {
 	return nil
+}
+
+func (m *marketAPI) getPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
+	pieceInfo, err := m.repo.StorageDealRepo().GetPieceInfo(ctx, pieceCID)
+	if err == nil {
+		return pieceInfo, nil
+	}
+
+	return m.repo.DirectDealRepo().GetPieceInfo(ctx, pieceCID)
+}
+
+func (m *marketAPI) getPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error) {
+	payloadSize, pieceSize, err := m.repo.StorageDealRepo().GetPieceSize(ctx, pieceCID)
+	if err == nil {
+		return payloadSize, pieceSize, nil
+	}
+
+	return m.repo.DirectDealRepo().GetPieceSize(ctx, pieceCID)
 }
 
 func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
@@ -79,7 +100,7 @@ func (m *marketAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, err
 }
 
 func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
-	payloadSize, pieceSize, err := m.pieceRepo.GetPieceSize(ctx, pieceCid)
+	payloadSize, pieceSize, err := m.getPieceSize(ctx, pieceCid)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +142,7 @@ func (m *marketAPI) FetchFromPieceStorage(ctx context.Context, pieceCid cid.Cid)
 }
 
 func (m *marketAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
-	pieceInfo, err := m.pieceRepo.GetPieceInfo(ctx, pieceCid)
+	pieceInfo, err := m.getPieceInfo(ctx, pieceCid)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch pieceInfo for piece %s: %w", pieceCid, err)
 	}
