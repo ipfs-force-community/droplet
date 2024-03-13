@@ -428,7 +428,7 @@ func (sdr *storageDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) 
 		return false, nil
 	})
 	if err != nil {
-		return 0, 0, nil
+		return 0, 0, err
 	}
 	if deal == nil {
 		return 0, 0, repo.ErrNotFound
