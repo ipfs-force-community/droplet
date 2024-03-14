@@ -87,6 +87,7 @@ var getDirectDeal = &cli.Command{
 			{"SectorID", deal.SectorID},
 			{"Offset", deal.Offset},
 			{"Length", deal.Length},
+			{"PayloadSize", deal.PayloadSize},
 			{"StartEpoch", deal.StartEpoch},
 			{"EndEpoch", deal.EndEpoch},
 		}

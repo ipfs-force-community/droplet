@@ -6,9 +6,12 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-state-types/abi"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 )
 
@@ -22,6 +25,7 @@ type directDealRepo struct {
 
 func (r *directDealRepo) SaveDeal(ctx context.Context, d *types.DirectDeal) error {
 	key := keyFromID(d.ID)
+	d.TimeStamp = makeRefreshedTimeStamp(&d.TimeStamp)
 	data, err := json.Marshal(d)
 	if err != nil {
 		return err
@@ -88,6 +92,51 @@ func (r *directDealRepo) GetDealsByMinerAndState(ctx context.Context, miner addr
 
 	return deals, nil
 }
+
+func (r *directDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
+	pieceInfo := piecestore.PieceInfo{
+		PieceCID: pieceCID,
+		Deals:    nil,
+	}
+	var err error
+	if err = travelJSONAbleDS(ctx, r.ds, func(deal *types.DirectDeal) (bool, error) {
+		if deal.PieceCID.Equals(pieceCID) {
+			pieceInfo.Deals = append(pieceInfo.Deals, piecestore.DealInfo{
+				SectorID: deal.SectorID,
+				Offset:   deal.Offset,
+				Length:   deal.PieceSize,
+			})
+		}
+		return false, nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if len(pieceInfo.Deals) == 0 {
+		err = repo.ErrNotFound
+	}
+
+	return &pieceInfo, err
+}
+
+func (r *directDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error) {
+	var deal *types.DirectDeal
+	err := travelJSONAbleDS(ctx, r.ds, func(inDeal *types.DirectDeal) (stop bool, err error) {
+		if inDeal.PieceCID == pieceCID && inDeal.State != types.DealExpired {
+			deal = inDeal
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+	if deal == nil {
+		return 0, 0, repo.ErrNotFound
+	}
+	return deal.PayloadSize, deal.PieceSize, nil
+}
+
 func (r *directDealRepo) ListDeal(ctx context.Context, params types.DirectDealQueryParams) ([]*types.DirectDeal, error) {
 	var deals []*types.DirectDeal
 	end := params.Limit + params.Offset

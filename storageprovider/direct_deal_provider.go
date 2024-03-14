@@ -171,34 +171,39 @@ func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.Direc
 
 	var r io.ReadCloser
 	var carSize int64
-
+	var pieceStore piecestorage.IPieceStorage
+	var err error
 	pieceCIDStr := deal.PieceCID.String()
-	pieceStore, err := ddp.pieceStorageMgr.FindStorageForRead(ctx, pieceCIDStr)
-	if err == nil {
-		directDealLog.Debugf("found %v already in piece storage", pieceCIDStr)
 
-		carSize, err = pieceStore.Len(ctx, pieceCIDStr)
-		if err != nil {
-			return fmt.Errorf("got piece size from piece store failed: %v", err)
+	getReader := func() (io.ReadCloser, error) {
+		pieceStore, err = ddp.pieceStorageMgr.FindStorageForRead(ctx, pieceCIDStr)
+		if err == nil {
+			directDealLog.Debugf("found %v already in piece storage", pieceCIDStr)
+
+			carSize, err = pieceStore.Len(ctx, pieceCIDStr)
+			if err != nil {
+				return nil, fmt.Errorf("got piece size from piece store failed: %v", err)
+			}
+			readerCloser, err := pieceStore.GetReaderCloser(ctx, pieceCIDStr)
+			if err != nil {
+				return nil, fmt.Errorf("got reader from piece store failed: %v", err)
+			}
+			return readerCloser, nil
 		}
-		readerCloser, err := pieceStore.GetReaderCloser(ctx, pieceCIDStr)
-		if err != nil {
-			return fmt.Errorf("got reader from piece store failed: %v", err)
-		}
-		r = readerCloser
-	} else {
 		directDealLog.Debugf("not found %s in piece storage", pieceCIDStr)
 
 		info, err := os.Stat(cParams.filePath)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		carSize = info.Size()
 
-		r, err = os.Open(cParams.filePath)
-		if err != nil {
-			return err
-		}
+		return os.Open(cParams.filePath)
+	}
+
+	r, err = getReader()
+	if err != nil {
+		return err
 	}
 	deal.PayloadSize = uint64(carSize)
 
@@ -221,6 +226,15 @@ func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.Direc
 
 		if !pieceCid.Equals(deal.PieceCID) {
 			return fmt.Errorf("given data does not match expected commP (got: %s, expected %s)", pieceCid, deal.PieceCID)
+		}
+
+		if err := r.Close(); err != nil {
+			log.Errorf("unable to close reader: %v, %v", pieceCIDStr, err)
+		}
+
+		r, err = getReader()
+		if err != nil {
+			return err
 		}
 	}
 

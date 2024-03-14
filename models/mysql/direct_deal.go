@@ -4,10 +4,12 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-state-types/abi"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
+	"github.com/ipfs/go-cid"
 	"gorm.io/gorm"
 )
 
@@ -149,6 +151,37 @@ func (ddr *directDealRepo) GetDealsByMinerAndState(ctx context.Context, miner ad
 	}
 
 	return out, nil
+}
+
+func (ddr *directDealRepo) GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error) {
+	var deals []*directDeal
+	if err := ddr.DB.WithContext(ctx).Table(directDealTableName).Find(&deals, "piece_cid = ?", pieceCID.String()).Error; err != nil {
+		return nil, err
+	}
+
+	pieceInfo := piecestore.PieceInfo{
+		PieceCID: pieceCID,
+		Deals:    nil,
+	}
+
+	for _, d := range deals {
+		pieceInfo.Deals = append(pieceInfo.Deals, piecestore.DealInfo{
+			SectorID: abi.SectorNumber(d.SectorID),
+			Offset:   abi.PaddedPieceSize(d.Offset),
+			Length:   abi.PaddedPieceSize(d.PieceSize),
+		})
+	}
+	return &pieceInfo, nil
+}
+
+func (ddr *directDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error) {
+	var deal directDeal
+	if err := ddr.WithContext(ctx).Table(directDealTableName).Take(&deal, "piece_cid = ? and state != ?",
+		pieceCID.String(), types.DealError).Error; err != nil {
+		return 0, 0, err
+	}
+
+	return deal.PayloadSize, abi.PaddedPieceSize(deal.PieceSize), nil
 }
 
 func (ddr *directDealRepo) ListDeal(ctx context.Context, params types.DirectDealQueryParams) ([]*types.DirectDeal, error) {

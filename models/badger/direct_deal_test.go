@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
+	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -108,4 +110,65 @@ func TestDirectDeal(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, res, 10)
 	})
+}
+
+func prepareDirectDealTest(t *testing.T) (context.Context, repo.DirectDealRepo, []types.DirectDeal) {
+	ctx := context.Background()
+	repo := setup(t)
+	r := repo.DirectDealRepo()
+
+	dealCases := make([]types.DirectDeal, 10)
+	testutil.Provide(t, &dealCases)
+	dealCases[0].State = types.DealAllocation
+	return ctx, r, dealCases
+}
+
+func TestGetDirectDealPieceInfo(t *testing.T) {
+	ctx, r, dealCases := prepareDirectDealTest(t)
+
+	for _, deal := range dealCases {
+		err := r.SaveDeal(ctx, &deal)
+		assert.NoError(t, err)
+	}
+
+	// refresh UpdatedAt
+	for i := range dealCases {
+		res, err := r.GetDeal(ctx, dealCases[i].ID)
+		assert.NoError(t, err)
+		dealCases[i].UpdatedAt = res.UpdatedAt
+	}
+
+	res, err := r.GetPieceInfo(ctx, dealCases[0].PieceCID)
+	assert.NoError(t, err)
+	expect := piecestore.PieceInfo{
+		PieceCID: dealCases[0].PieceCID,
+		Deals:    nil,
+	}
+	expect.Deals = append(expect.Deals, piecestore.DealInfo{
+		SectorID: dealCases[0].SectorID,
+		Offset:   dealCases[0].Offset,
+		Length:   dealCases[0].PieceSize,
+	})
+	assert.Equal(t, expect, *res)
+}
+
+func TestGetDirectDealPieceSize(t *testing.T) {
+	ctx, r, dealCases := prepareDirectDealTest(t)
+
+	for _, deal := range dealCases {
+		err := r.SaveDeal(ctx, &deal)
+		assert.NoError(t, err)
+	}
+
+	// refresh UpdatedAt
+	for i := range dealCases {
+		res, err := r.GetDeal(ctx, dealCases[i].ID)
+		assert.NoError(t, err)
+		dealCases[i].UpdatedAt = res.UpdatedAt
+	}
+
+	PLSize, PSize, err := r.GetPieceSize(ctx, dealCases[0].PieceCID)
+	assert.NoError(t, err)
+	assert.Equal(t, dealCases[0].PieceSize, PSize)
+	assert.Equal(t, dealCases[0].PayloadSize, PLSize)
 }

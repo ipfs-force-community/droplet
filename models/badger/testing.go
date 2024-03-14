@@ -35,6 +35,7 @@ func WrapDbToRepo(db datastore.Batching) repo.Repo {
 		RetrAskDs:        NewRetrievalAskDS(NewRetrievalProviderDS(db)),
 		CidInfoDs:        NewCidInfoDs(NewPieceMetaDs(db)),
 		RetrievalDealsDs: NewRetrievalDealsDS(NewRetrievalProviderDS(db)),
+		DirectDealsDs:    NewDirectDealsDS(db),
 	})
 }
 

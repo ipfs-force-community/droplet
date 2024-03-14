@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/venus/venus-shared/testutil"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/stretchr/testify/assert"
@@ -138,6 +140,84 @@ func TestListDirectDeal(t *testing.T) {
 	res, err := r.DirectDealRepo().ListDeal(ctx, queryParams)
 	assert.Nil(t, err)
 	assert.Len(t, res, len(deals))
+
+	assert.NoError(t, closeDB(mock, sqlDB))
+}
+
+func TestGetDirectDealPieceSize(t *testing.T) {
+	ctx := context.Background()
+	r, mock, sqlDB := setup(t)
+
+	var deals []*types.DirectDeal
+	testutil.Provide(t, &deals)
+	dbDeals := make([]*directDeal, 0, len(deals))
+	for _, deal := range deals {
+		dbDeals = append(dbDeals, fromDirectDeal(deal))
+	}
+
+	deal := deals[0]
+	dbDeal := dbDeals[0]
+
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	rows, err := getFullRows(dbDeal)
+	assert.NoError(t, err)
+
+	var nullDeal *directDeal
+	sql, vars, err := getSQL(db.Table(directDealTableName).Take(&nullDeal, "piece_cid = ? and state != ?", DBCid(deal.PieceCID).String(), types.DealError))
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+
+	playLoadSize, paddedPieceSize, err := r.DirectDealRepo().GetPieceSize(ctx, deal.PieceCID)
+	assert.NoError(t, err)
+	assert.Equal(t, dbDeal.PayloadSize, playLoadSize)
+	assert.Equal(t, abi.PaddedPieceSize(dbDeal.PieceSize), paddedPieceSize)
+
+	assert.NoError(t, closeDB(mock, sqlDB))
+}
+
+func TestGetDirectDealPieceInfo(t *testing.T) {
+	ctx := context.Background()
+	r, mock, sqlDB := setup(t)
+
+	var deals []*types.DirectDeal
+	testutil.Provide(t, &deals)
+	dbDeals := make([]*directDeal, 0, len(deals))
+	for _, deal := range deals {
+		dbDeals = append(dbDeals, fromDirectDeal(deal))
+	}
+
+	deal := deals[0]
+	dbDeal := dbDeals[0]
+
+	db, err := getMysqlDryrunDB()
+	assert.NoError(t, err)
+
+	rows, err := getFullRows(dbDeal)
+	assert.NoError(t, err)
+
+	var nullDeal *directDeal
+	sql, vars, err := getSQL(db.Table(directDealTableName).Find(&nullDeal, "piece_cid = ?", DBCid(deal.PieceCID).String()))
+	assert.NoError(t, err)
+
+	mock.ExpectQuery(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnRows(rows)
+
+	pInfo := &piecestore.PieceInfo{
+		PieceCID: deal.PieceCID,
+		Deals: []piecestore.DealInfo{
+			{
+				Offset:   deal.Offset,
+				Length:   deal.PieceSize,
+				SectorID: deal.SectorID,
+			},
+		},
+	}
+
+	res, err := r.DirectDealRepo().GetPieceInfo(ctx, deal.PieceCID)
+	assert.NoError(t, err)
+	assert.Equal(t, pInfo, res)
 
 	assert.NoError(t, closeDB(mock, sqlDB))
 }
