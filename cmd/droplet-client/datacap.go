@@ -120,6 +120,8 @@ var datacapExtendCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		fmt.Println("len: ", len(claims))
+		expirationCount := 0
 
 		for id, claim := range claims {
 			// if err := checkClaim(ctx, fapi, head, provider, fromID, termMax, claim, cutoff); err != nil {
@@ -129,12 +131,16 @@ var datacapExtendCmd = &cli.Command{
 			// 	continue
 			// }
 			expiration := claim.TermStart + claim.TermMax - head.Height()
+
 			if expiration <= 0 {
-				if 7*builtin.EpochsInDay > -expiration {
+				expirationCount++
+				if 120*builtin.EpochsInDay > -expiration {
 					fmt.Printf("%v %v\n", id, claim.Data)
 				}
 			}
 		}
+		fmt.Println("expiration count: ", expirationCount)
+
 		return nil
 
 		claimTermsParams := &types.ExtendClaimTermsParams{}
