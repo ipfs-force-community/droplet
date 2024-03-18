@@ -121,6 +121,22 @@ var datacapExtendCmd = &cli.Command{
 			return err
 		}
 
+		for id, claim := range claims {
+			// if err := checkClaim(ctx, fapi, head, provider, fromID, termMax, claim, cutoff); err != nil {
+			// 	if !errors.Is(err, errNotNeedExtend) {
+			// 		fmt.Printf("check claim %d error: %v\n", id, err)
+			// 	}
+			// 	continue
+			// }
+			expiration := claim.TermStart + claim.TermMax - head.Height()
+			if expiration <= 0 {
+				if 7*builtin.EpochsInDay > -expiration {
+					fmt.Printf("%v %v\n", id, claim.Data)
+				}
+			}
+		}
+		return nil
+
 		claimTermsParams := &types.ExtendClaimTermsParams{}
 		if cliCtx.Bool("auto") {
 			cutoff := abi.ChainEpoch(cliCtx.Int64("expiration-cutoff"))
@@ -131,6 +147,14 @@ var datacapExtendCmd = &cli.Command{
 					}
 					continue
 				}
+				expiration := claim.TermStart + claim.TermMax - head.Height()
+				if expiration <= 0 {
+					if 7*builtin.EpochsInDay > -expiration {
+						fmt.Printf("%v %v\n", id, claim.Data)
+					}
+				}
+				continue
+
 				claimTermsParams.Terms = append(claimTermsParams.Terms, types.ClaimTerm{
 					Provider: providerID,
 					ClaimId:  id,
