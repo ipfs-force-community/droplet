@@ -27,7 +27,6 @@ type directDeal struct {
 	Message string                `gorm:"column:message;type:varchar(256)"`
 
 	AllocationID uint64 `gorm:"column:allocation_id;type:bigint unsigned;index;NOT NULL"`
-	ClaimID      uint64 `gorm:"column:claim_id;type:bigint unsigned;NOT NULL"`
 
 	SectorID uint64 `gorm:"column:sector_id;type:bigint unsigned;NOT NULL"`
 	Offset   uint64 `gorm:"column:offset;type:bigint unsigned;NOT NULL"`
@@ -53,7 +52,6 @@ func (dd *directDeal) toDirectDeal() (*types.DirectDeal, error) {
 		PayloadSize:  dd.PayloadSize,
 		Message:      dd.Message,
 		AllocationID: dd.AllocationID,
-		ClaimID:      dd.ClaimID,
 
 		SectorID:   abi.SectorNumber(dd.SectorID),
 		Length:     abi.PaddedPieceSize(dd.Length),
@@ -82,7 +80,6 @@ func fromDirectDeal(dd *types.DirectDeal) *directDeal {
 		PayloadSize:  dd.PayloadSize,
 		Message:      dd.Message,
 		AllocationID: dd.AllocationID,
-		ClaimID:      dd.ClaimID,
 		SectorID:     uint64(dd.SectorID),
 		Length:       uint64(dd.Length),
 		Offset:       uint64(dd.Offset),

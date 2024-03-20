@@ -81,7 +81,6 @@ var getDirectDeal = &cli.Command{
 			{"Client", deal.Client},
 			{"Provider", deal.Provider},
 			{"AllocationID", deal.AllocationID},
-			{"ClaimID", deal.ClaimID},
 			{"State", deal.State.String()},
 			{"Message", deal.Message},
 			{"SectorID", deal.SectorID},

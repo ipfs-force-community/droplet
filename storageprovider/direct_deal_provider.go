@@ -265,7 +265,7 @@ func newTracker(directDealRepo repo.DirectDealRepo, fullNode v1.FullNode) *track
 }
 
 func (t *tracker) start(ctx context.Context) {
-	ticker := time.NewTicker(time.Minute * 2)
+	ticker := time.NewTicker(time.Minute * 5)
 	defer ticker.Stop()
 
 	slashTicker := time.NewTicker(time.Hour * 6)
@@ -336,14 +336,17 @@ func (t *tracker) checkActive(ctx context.Context) error {
 	}
 
 	for _, d := range deals {
+		// allocation id and claim id are the same
 		claim, err := t.fullNode.StateGetClaim(ctx, d.Provider, verifreg.ClaimId(d.AllocationID), shared.EmptyTSK)
 		if err != nil {
-			directDealLog.Debugf("get claim %d failed: %v", d.AllocationID, err)
+			directDealLog.Debugf("get claim %d by allocation id %d failed: %v", d.AllocationID, err)
 			continue
 		}
-		d.ClaimID = d.AllocationID
+		if claim == nil {
+			continue
+		}
+
 		d.State = types.DealActive
-		d.SectorID = claim.Sector
 		if err := t.directDealRepo.SaveDeal(ctx, d); err != nil {
 			return err
 		}
@@ -370,14 +373,17 @@ func (t *tracker) checkSlash(ctx context.Context) error {
 	}
 
 	for _, deal := range deals {
-		claim, err := t.fullNode.StateGetClaim(ctx, deal.Provider, verifreg.ClaimId(deal.ClaimID), shared.EmptyTSK)
+		claim, err := t.fullNode.StateGetClaim(ctx, deal.Provider, verifreg.ClaimId(deal.AllocationID), shared.EmptyTSK)
 		if err != nil {
 			directDealLog.Debugf("get claim %d failed: %v", deal.AllocationID, err)
 			continue
 		}
+		if claim == nil {
+			continue
+		}
 
 		if head.Height() >= claim.TermStart+claim.TermMax {
-			deal.State = types.DealExpired
+			deal.State = types.DealSlashed
 			if err := t.directDealRepo.SaveDeal(ctx, deal); err != nil {
 				return err
 			}
