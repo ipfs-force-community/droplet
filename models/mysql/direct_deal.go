@@ -184,7 +184,7 @@ func (ddr *directDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (
 func (ddr *directDealRepo) ListDeal(ctx context.Context, params types.DirectDealQueryParams) ([]*types.DirectDeal, error) {
 	var deals []*directDeal
 
-	query := ddr.DB.Debug().WithContext(ctx).Offset(params.Offset).Limit(params.Limit)
+	query := ddr.DB.WithContext(ctx).Offset(params.Offset).Limit(params.Limit)
 	if params.State != nil {
 		query = query.Where("state = ?", *params.State)
 	}
