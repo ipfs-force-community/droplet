@@ -282,7 +282,7 @@ func pieceInfosFromCtx(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
 		}
 
 		pieceInfos = append(pieceInfos, &pieceInfo{
-			pieceSize: abi.PaddedPieceSize(n),
+			pieceSize: abi.UnpaddedPieceSize(n).Padded(),
 			pieceCID:  pcid,
 		})
 		rDataCap += n
