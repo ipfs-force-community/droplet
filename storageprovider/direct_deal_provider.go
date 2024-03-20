@@ -99,7 +99,7 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 		ID:           uuid.New(),
 		PieceCID:     dealParam.PieceCID,
 		Client:       dealParam.Client,
-		State:        types.DealAllocation,
+		State:        types.DealAllocated,
 		AllocationID: dealParam.AllocationID,
 		PayloadSize:  dealParam.PayloadSize,
 	}
@@ -297,7 +297,7 @@ func (t *tracker) trackDeals(ctx context.Context) error {
 		return err
 	}
 
-	dealAllocation := types.DealAllocation
+	dealAllocation := types.DealAllocated
 	deals, err := t.directDealRepo.ListDeal(ctx, types.DirectDealQueryParams{
 		State: &dealAllocation,
 		Page: types.Page{

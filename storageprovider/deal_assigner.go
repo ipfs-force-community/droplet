@@ -319,7 +319,7 @@ func (ps *dealAssigner) ReleaseDirectDeals(ctx context.Context, miner address.Ad
 				return fmt.Errorf("cannot release a deal that is activated or not ready. miner: %s, deal: %d", deal.Provider, deal.AllocationID)
 			}
 
-			deal.State = types.DealAllocation
+			deal.State = types.DealAllocated
 			if err := directDealRepo.SaveDealWithState(ctx, deal, types.DealSealing); err != nil {
 				return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", allocationID, miner.String(), err)
 			}
@@ -328,7 +328,7 @@ func (ps *dealAssigner) ReleaseDirectDeals(ctx context.Context, miner address.Ad
 	})
 }
 
-func (ps *dealAssigner) AssignDirectDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DirectDealInfo, error) {
+func (ps *dealAssigner) assignDirectDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DirectDealInfo, error) {
 	maddr, err := address.NewIDAddress(uint64(sid.Miner))
 	if err != nil {
 		return nil, err
@@ -342,7 +342,7 @@ func (ps *dealAssigner) AssignDirectDeals(ctx context.Context, sid abi.SectorID,
 
 	// TODO: is this concurrent safe?
 	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
-		mds, err := txRepo.DirectDealRepo().GetDealsByMinerAndState(ctx, maddr, types.DealAllocation)
+		mds, err := txRepo.DirectDealRepo().GetDealsByMinerAndState(ctx, maddr, types.DealAllocated)
 		if err != nil {
 			return err
 		}
@@ -399,7 +399,7 @@ func (ps *dealAssigner) AssignDirectDeals(ctx context.Context, sid abi.SectorID,
 			md.Offset = piece.Offset
 			md.SectorID = sid.Number
 			md.State = types.DealSealing
-			if err := txRepo.DirectDealRepo().SaveDealWithState(ctx, md, types.DealAllocation); err != nil {
+			if err := txRepo.DirectDealRepo().SaveDealWithState(ctx, md, types.DealAllocated); err != nil {
 				return err
 			}
 		}
@@ -412,7 +412,7 @@ func (ps *dealAssigner) AssignDirectDeals(ctx context.Context, sid abi.SectorID,
 }
 
 func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoV2, error) {
-	deals, err := ps.AssignDirectDeals(ctx, sid, ssize, currentHeight, spec)
+	deals, err := ps.assignDirectDeals(ctx, sid, ssize, currentHeight, spec)
 	if err != nil {
 		directDealLog.Errorf("assign direct deals failed: %v", err)
 	}
