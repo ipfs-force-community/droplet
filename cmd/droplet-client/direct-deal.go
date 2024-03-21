@@ -281,11 +281,12 @@ func pieceInfosFromCtx(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
 			return nil, 0, fmt.Errorf("failed to parse the pieceCid for %s: %w", pieceDetail[0], err)
 		}
 
+		pieceSize := abi.UnpaddedPieceSize(n).Padded()
 		pieceInfos = append(pieceInfos, &pieceInfo{
-			pieceSize: abi.UnpaddedPieceSize(n).Padded(),
+			pieceSize: pieceSize,
 			pieceCID:  pcid,
 		})
-		rDataCap += n
+		rDataCap += uint64(pieceSize)
 	}
 
 	return pieceInfos, rDataCap, nil
