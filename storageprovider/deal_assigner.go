@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
@@ -412,9 +413,12 @@ func (ps *dealAssigner) assignDirectDeals(ctx context.Context, sid abi.SectorID,
 }
 
 func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoV2, error) {
+	var errs *multierror.Error
+
 	deals, err := ps.assignDirectDeals(ctx, sid, ssize, currentHeight, spec)
 	if err != nil {
 		directDealLog.Errorf("assign direct deals failed: %v", err)
+		multierror.Append(errs, err)
 	}
 
 	var out []*types.DealInfoV2
@@ -450,6 +454,11 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 		}
 	} else {
 		directDealLog.Errorf("assign unpacked deals failed: %v", err)
+		multierror.Append(errs, err)
+	}
+
+	if len(out) == 0 {
+		return out, errs.ErrorOrNil()
 	}
 
 	return out, nil
