@@ -147,7 +147,7 @@ func (ddp *DirectDealProvider) accept(ctx context.Context, deal *types.DirectDea
 	if chainHead.Height() > allocation.Expiration {
 		return fmt.Errorf(
 			"cannot propose direct deal with piece CID %s: current epoch %d has passed direct deal proposal start epoch %d",
-			deal.PieceCID, chainHead.Height(), deal.StartEpoch)
+			deal.PieceCID, chainHead.Height(), allocation.Expiration)
 	}
 
 	deal.StartEpoch = allocation.Expiration

@@ -425,12 +425,13 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 	for _, d := range deals {
 		out = append(out, &types.DealInfoV2{
 			AllocationID: d.AllocationID,
-			Provider:     d.Provider,
-			Client:       d.Client,
-			Offset:       d.Offset,
-			Length:       d.Length,
 			PieceCID:     d.PieceCID,
 			PieceSize:    d.PieceSize,
+			Client:       d.Client,
+			Provider:     d.Provider,
+			Offset:       d.Offset,
+			Length:       d.Length,
+			PayloadSize:  d.PayloadSize,
 			StartEpoch:   d.StartEpoch,
 			EndEpoch:     d.EndEpoch,
 		})
@@ -440,16 +441,17 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 	if err == nil {
 		for _, d := range oldDeals {
 			out = append(out, &types.DealInfoV2{
-				DealID:     d.DealID,
-				PublishCid: d.PublishCid,
-				Provider:   d.Provider,
-				Client:     d.Client,
-				Offset:     d.Offset,
-				Length:     d.Length,
-				PieceCID:   d.PieceCID,
-				PieceSize:  d.PieceSize,
-				StartEpoch: d.StartEpoch,
-				EndEpoch:   d.EndEpoch,
+				DealID:      d.DealID,
+				PublishCid:  d.PublishCid,
+				PieceCID:    d.PieceCID,
+				PieceSize:   d.PieceSize,
+				Client:      d.Client,
+				Provider:    d.Provider,
+				Offset:      d.Offset,
+				Length:      d.Length,
+				PayloadSize: d.PayloadSize,
+				StartEpoch:  d.StartEpoch,
+				EndEpoch:    d.EndEpoch,
 			})
 		}
 	} else {
