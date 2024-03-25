@@ -418,7 +418,7 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 	deals, err := ps.assignDirectDeals(ctx, sid, ssize, currentHeight, spec)
 	if err != nil {
 		directDealLog.Errorf("assign direct deals failed: %v", err)
-		multierror.Append(errs, err)
+		errs = multierror.Append(errs, err)
 	}
 
 	var out []*types.DealInfoV2
@@ -456,7 +456,7 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 		}
 	} else {
 		directDealLog.Errorf("assign unpacked deals failed: %v", err)
-		multierror.Append(errs, err)
+		errs = multierror.Append(errs, err)
 	}
 
 	if len(out) == 0 {
