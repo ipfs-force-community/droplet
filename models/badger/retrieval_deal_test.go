@@ -138,7 +138,7 @@ func TestListDeals(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		deals, err = r.ListDeals(ctx, &types.RetrievalDealQueryParams{
-			Receiver: peers[i].Pretty(),
+			Receiver: peers[i].String(),
 			Page:     defPage,
 		})
 		assert.NoError(t, err)

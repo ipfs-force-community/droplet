@@ -102,6 +102,8 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 		State:        types.DealAllocated,
 		AllocationID: dealParam.AllocationID,
 		PayloadSize:  dealParam.PayloadSize,
+		StartEpoch:   dealParam.StartEpoch,
+		EndEpoch:     dealParam.EndEpoch,
 	}
 	if err := ddp.accept(ctx, deal); err != nil {
 		return err
@@ -150,8 +152,6 @@ func (ddp *DirectDealProvider) accept(ctx context.Context, deal *types.DirectDea
 			deal.PieceCID, chainHead.Height(), allocation.Expiration)
 	}
 
-	deal.StartEpoch = allocation.Expiration
-	deal.EndEpoch = allocation.Expiration + allocation.TermMin
 	deal.PieceSize = allocation.Size
 	deal.Provider, err = address.NewIDAddress(uint64(allocation.Provider))
 	if err != nil {

@@ -273,7 +273,7 @@ func (sdr *storageDealRepo) ListDeal(ctx context.Context, params *types.StorageD
 		if !params.Miner.Empty() && deal.ClientDealProposal.Proposal.Provider != params.Miner {
 			return false, nil
 		}
-		if len(params.Client) != 0 && deal.Client.Pretty() != params.Client {
+		if len(params.Client) != 0 && deal.Client.String() != params.Client {
 			return false, nil
 		}
 		if params.State != nil && deal.State != *params.State {

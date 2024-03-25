@@ -92,7 +92,7 @@ func (r retrievalDealRepo) ListDeals(ctx context.Context, params *types.Retrieva
 			return true, nil
 		}
 
-		if len(params.Receiver) > 0 && deal.Receiver.Pretty() != params.Receiver {
+		if len(params.Receiver) > 0 && deal.Receiver.String() != params.Receiver {
 			return false, nil
 		}
 		if len(params.PayloadCID) > 0 && deal.PayloadCID.String() != params.PayloadCID {

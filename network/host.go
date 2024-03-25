@@ -26,7 +26,7 @@ type P2PHostIn struct {
 func Host(mctx metrics.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (host.Host, error) {
 	pkey := params.Peerstore.PrivKey(params.ID)
 	if pkey == nil {
-		return nil, fmt.Errorf("missing private key for node ID: %s", params.ID.Pretty())
+		return nil, fmt.Errorf("missing private key for node ID: %s", params.ID.String())
 	}
 
 	opts := []libp2p.Option{
