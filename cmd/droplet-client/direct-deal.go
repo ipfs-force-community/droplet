@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	datacap2 "github.com/filecoin-project/go-state-types/builtin/v9/datacap"
+	verifregst "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/datacap"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
@@ -36,25 +37,23 @@ var walletFlag = &cli.StringFlag{
 	Usage: "the wallet address that will used create the allocation",
 }
 var termMinFlag = &cli.Int64Flag{
-	Name: "term-min",
-	Usage: "The minimum duration which the provider must commit to storing the piece to avoid early-termination penalties (days).\n" +
+	Usage: "The minimum duration which the provider must commit to storing the piece to avoid early-termination penalties (epochs).\n" +
 		"Default is 180 days.",
-	// Value: types.MinimumVerifiedAllocationTerm,
-	Value: 180,
+	Aliases: []string{"tmin"},
+	Value:   verifregst.MinimumVerifiedAllocationTerm,
 }
-var termMaxFlag = &cli.Int64Flag{ // nolint
+var termMaxFlag = &cli.Int64Flag{
 	Name: "term-max",
-	// Usage: "The maximum period for which a provider can earn quality-adjusted power for the piece (epochs).\n",
 	Usage: "The maximum period for which a provider can earn quality-adjusted power for the piece (epochs).\n" +
-		"Default is min(5 years, term-min + 90 days).",
-	// Value: types.MaximumVerifiedAllocationTerm,
+		"Default is 5 years.",
+	Aliases: []string{"tmax"},
+	Value:   verifregst.MaximumVerifiedAllocationTerm,
 }
 var expirationFlag = &cli.Int64Flag{
 	Name: "expiration",
-	Usage: "The latest epoch by which a provider must commit data before the allocation expires (days).\n" +
-		"Default is 8 days, max is 60 days.",
-	// Value: types.DefaultAllocationExpiration,
-	Value: 8,
+	Usage: "The latest epoch by which a provider must commit data before the allocation expires (epochs).\n" +
+		"Default is 60 days.",
+	Value: verifregst.MaximumVerifiedAllocationExpiration,
 }
 
 var directDealCommands = &cli.Command{
@@ -72,7 +71,7 @@ var directDealAllocate = &cli.Command{
 		minerFlag,
 		walletFlag,
 		termMinFlag,
-		// termMaxFlag,
+		termMaxFlag,
 		expirationFlag,
 		&cli.StringSliceFlag{
 			Name:  "piece-info",
@@ -329,17 +328,17 @@ type allocationParams struct {
 
 func getAllocationParams(cctx *cli.Context, currentHeight abi.ChainEpoch) (*allocationParams, error) {
 	var params allocationParams
-	termMin := cctx.Int64("term-min")
-	expiration := cctx.Int64("expiration")
-	if termMin < 180 || termMin > 5*365 {
-		return nil, fmt.Errorf("invalid term-min: %d", termMin)
+	termMin := cctx.Int64(termMinFlag.Name)
+	termMax := cctx.Int64(termMaxFlag.Name)
+	expiration := cctx.Int64(expirationFlag.Name)
+
+	if termMax < termMin {
+		return nil, fmt.Errorf("maximum duration %d cannot be smaller than minimum duration %d", termMax, termMin)
 	}
-	params.termMin = abi.ChainEpoch(termMin) * builtin.EpochsInDay
-	params.termMax = Min[abi.ChainEpoch](params.termMin+90*builtin.EpochsInDay, types.MaximumVerifiedAllocationTerm)
-	if expiration <= 0 || expiration > 60 {
-		return nil, fmt.Errorf("invalid expiration: %d", expiration)
-	}
-	params.expiration = abi.ChainEpoch(expiration)*builtin.EpochsInDay + currentHeight
+
+	params.termMin = abi.ChainEpoch(termMin)
+	params.termMax = abi.ChainEpoch(termMax)
+	params.expiration = abi.ChainEpoch(expiration) + currentHeight
 
 	return &params, nil
 }
