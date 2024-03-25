@@ -111,7 +111,7 @@ func (ddr *directDealRepo) SaveDealWithState(ctx context.Context, deal *types.Di
 	d := fromDirectDeal(deal)
 	d.TimeStampOrm.Refresh()
 
-	return ddr.DB.WithContext(ctx).Where("state = ?", state).Save(d).Error
+	return ddr.DB.WithContext(ctx).Where("id = ? and state = ?", d.ID, state).Save(d).Error
 }
 
 func (ddr *directDealRepo) GetDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error) {

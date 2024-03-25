@@ -589,7 +589,7 @@ func TestSaveDealWithStatus(t *testing.T) {
 	db, err := getMysqlDryrunDB()
 	assert.NoError(t, err)
 
-	sql, vars, err := getSQL(db.Where("piece_status in ?", []types.PieceStatus{types.PieceStatus(dbStorageDealCases[0].PieceStatus)}).Save(dbStorageDealCases[0]))
+	sql, vars, err := getSQL(db.Where("id = ? and piece_status in ?", dbStorageDealCases[0].ID, []types.PieceStatus{types.PieceStatus(dbStorageDealCases[0].PieceStatus)}).Save(dbStorageDealCases[0]))
 	assert.NoError(t, err)
 
 	vars[42] = sqlmock.AnyArg()
