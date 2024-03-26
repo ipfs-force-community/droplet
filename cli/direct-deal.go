@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	shared "github.com/filecoin-project/venus/venus-shared/types"
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -74,7 +73,7 @@ var getDirectDeal = &cli.Command{
 				return err
 			}
 		} else {
-			deal, err = api.GetDirectDealByAllocationID(cliCtx.Context, types2.AllocationId(cliCtx.Int64("allocation-id")))
+			deal, err = api.GetDirectDealByAllocationID(cliCtx.Context, shared.AllocationId(cliCtx.Int64("allocation-id")))
 			if err != nil {
 				return err
 			}
