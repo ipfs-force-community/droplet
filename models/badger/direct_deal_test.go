@@ -119,7 +119,7 @@ func prepareDirectDealTest(t *testing.T) (context.Context, repo.DirectDealRepo, 
 
 	dealCases := make([]types.DirectDeal, 10)
 	testutil.Provide(t, &dealCases)
-	dealCases[0].State = types.DealAllocation
+	dealCases[0].State = types.DealAllocated
 	return ctx, r, dealCases
 }
 

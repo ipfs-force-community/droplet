@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
@@ -319,7 +320,7 @@ func (ps *dealAssigner) ReleaseDirectDeals(ctx context.Context, miner address.Ad
 				return fmt.Errorf("cannot release a deal that is activated or not ready. miner: %s, deal: %d", deal.Provider, deal.AllocationID)
 			}
 
-			deal.State = types.DealAllocation
+			deal.State = types.DealAllocated
 			if err := directDealRepo.SaveDealWithState(ctx, deal, types.DealSealing); err != nil {
 				return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", allocationID, miner.String(), err)
 			}
@@ -328,7 +329,7 @@ func (ps *dealAssigner) ReleaseDirectDeals(ctx context.Context, miner address.Ad
 	})
 }
 
-func (ps *dealAssigner) AssignDirectDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DirectDealInfo, error) {
+func (ps *dealAssigner) assignDirectDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DirectDealInfo, error) {
 	maddr, err := address.NewIDAddress(uint64(sid.Miner))
 	if err != nil {
 		return nil, err
@@ -342,7 +343,7 @@ func (ps *dealAssigner) AssignDirectDeals(ctx context.Context, sid abi.SectorID,
 
 	// TODO: is this concurrent safe?
 	if err := ps.repo.Transaction(func(txRepo repo.TxRepo) error {
-		mds, err := txRepo.DirectDealRepo().GetDealsByMinerAndState(ctx, maddr, types.DealAllocation)
+		mds, err := txRepo.DirectDealRepo().GetDealsByMinerAndState(ctx, maddr, types.DealAllocated)
 		if err != nil {
 			return err
 		}
@@ -399,7 +400,7 @@ func (ps *dealAssigner) AssignDirectDeals(ctx context.Context, sid abi.SectorID,
 			md.Offset = piece.Offset
 			md.SectorID = sid.Number
 			md.State = types.DealSealing
-			if err := txRepo.DirectDealRepo().SaveDealWithState(ctx, md, types.DealAllocation); err != nil {
+			if err := txRepo.DirectDealRepo().SaveDealWithState(ctx, md, types.DealAllocated); err != nil {
 				return err
 			}
 		}
@@ -412,21 +413,25 @@ func (ps *dealAssigner) AssignDirectDeals(ctx context.Context, sid abi.SectorID,
 }
 
 func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *types.GetDealSpec) ([]*types.DealInfoV2, error) {
-	deals, err := ps.AssignDirectDeals(ctx, sid, ssize, currentHeight, spec)
+	var errs *multierror.Error
+
+	deals, err := ps.assignDirectDeals(ctx, sid, ssize, currentHeight, spec)
 	if err != nil {
 		directDealLog.Errorf("assign direct deals failed: %v", err)
+		errs = multierror.Append(errs, err)
 	}
 
 	var out []*types.DealInfoV2
 	for _, d := range deals {
 		out = append(out, &types.DealInfoV2{
 			AllocationID: d.AllocationID,
-			Provider:     d.Provider,
-			Client:       d.Client,
-			Offset:       d.Offset,
-			Length:       d.Length,
 			PieceCID:     d.PieceCID,
 			PieceSize:    d.PieceSize,
+			Client:       d.Client,
+			Provider:     d.Provider,
+			Offset:       d.Offset,
+			Length:       d.Length,
+			PayloadSize:  d.PayloadSize,
 			StartEpoch:   d.StartEpoch,
 			EndEpoch:     d.EndEpoch,
 		})
@@ -436,20 +441,26 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 	if err == nil {
 		for _, d := range oldDeals {
 			out = append(out, &types.DealInfoV2{
-				DealID:     d.DealID,
-				PublishCid: d.PublishCid,
-				Provider:   d.Provider,
-				Client:     d.Client,
-				Offset:     d.Offset,
-				Length:     d.Length,
-				PieceCID:   d.PieceCID,
-				PieceSize:  d.PieceSize,
-				StartEpoch: d.StartEpoch,
-				EndEpoch:   d.EndEpoch,
+				DealID:      d.DealID,
+				PublishCid:  d.PublishCid,
+				PieceCID:    d.PieceCID,
+				PieceSize:   d.PieceSize,
+				Client:      d.Client,
+				Provider:    d.Provider,
+				Offset:      d.Offset,
+				Length:      d.Length,
+				PayloadSize: d.PayloadSize,
+				StartEpoch:  d.StartEpoch,
+				EndEpoch:    d.EndEpoch,
 			})
 		}
 	} else {
 		directDealLog.Errorf("assign unpacked deals failed: %v", err)
+		errs = multierror.Append(errs, err)
+	}
+
+	if len(out) == 0 {
+		return out, errs.ErrorOrNil()
 	}
 
 	return out, nil

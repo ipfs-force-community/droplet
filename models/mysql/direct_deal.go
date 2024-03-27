@@ -27,7 +27,6 @@ type directDeal struct {
 	Message string                `gorm:"column:message;type:varchar(256)"`
 
 	AllocationID uint64 `gorm:"column:allocation_id;type:bigint unsigned;index;NOT NULL"`
-	ClaimID      uint64 `gorm:"column:claim_id;type:bigint unsigned;NOT NULL"`
 
 	SectorID uint64 `gorm:"column:sector_id;type:bigint unsigned;NOT NULL"`
 	Offset   uint64 `gorm:"column:offset;type:bigint unsigned;NOT NULL"`
@@ -53,7 +52,6 @@ func (dd *directDeal) toDirectDeal() (*types.DirectDeal, error) {
 		PayloadSize:  dd.PayloadSize,
 		Message:      dd.Message,
 		AllocationID: dd.AllocationID,
-		ClaimID:      dd.ClaimID,
 
 		SectorID:   abi.SectorNumber(dd.SectorID),
 		Length:     abi.PaddedPieceSize(dd.Length),
@@ -82,7 +80,6 @@ func fromDirectDeal(dd *types.DirectDeal) *directDeal {
 		PayloadSize:  dd.PayloadSize,
 		Message:      dd.Message,
 		AllocationID: dd.AllocationID,
-		ClaimID:      dd.ClaimID,
 		SectorID:     uint64(dd.SectorID),
 		Length:       uint64(dd.Length),
 		Offset:       uint64(dd.Offset),
@@ -114,7 +111,7 @@ func (ddr *directDealRepo) SaveDealWithState(ctx context.Context, deal *types.Di
 	d := fromDirectDeal(deal)
 	d.TimeStampOrm.Refresh()
 
-	return ddr.DB.WithContext(ctx).Where("state = ?", state).Save(d).Error
+	return ddr.DB.WithContext(ctx).Where("id = ? and state = ?", d.ID, state).Save(d).Error
 }
 
 func (ddr *directDealRepo) GetDeal(ctx context.Context, id uuid.UUID) (*types.DirectDeal, error) {
@@ -187,7 +184,7 @@ func (ddr *directDealRepo) GetPieceSize(ctx context.Context, pieceCID cid.Cid) (
 func (ddr *directDealRepo) ListDeal(ctx context.Context, params types.DirectDealQueryParams) ([]*types.DirectDeal, error) {
 	var deals []*directDeal
 
-	query := ddr.DB.Debug().WithContext(ctx).Offset(params.Offset).Limit(params.Limit)
+	query := ddr.DB.WithContext(ctx).Offset(params.Offset).Limit(params.Limit)
 	if params.State != nil {
 		query = query.Where("state = ?", *params.State)
 	}

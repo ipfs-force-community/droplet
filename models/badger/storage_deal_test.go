@@ -360,7 +360,7 @@ func TestListDeal(t *testing.T) {
 		assert.Len(t, deals, 5)
 
 		deals, err = r.ListDeal(ctx, &markettypes.StorageDealQueryParams{
-			Client: peers[i].Pretty(),
+			Client: peers[i].String(),
 			Page:   defPage,
 		})
 		assert.NoError(t, err)

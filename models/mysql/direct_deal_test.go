@@ -33,7 +33,7 @@ func TestSaveDirectDeal(t *testing.T) {
 	err = r.DirectDealRepo().SaveDeal(ctx, &deal)
 	assert.Nil(t, err)
 
-	sql, vars, err = getSQL(db.WithContext(ctx).Where("state = ?", dbDeal.State).Save(dbDeal))
+	sql, vars, err = getSQL(db.WithContext(ctx).Where("id = ? and state = ?", deal.ID, dbDeal.State).Save(dbDeal))
 	assert.NoError(t, err)
 	mock.ExpectBegin()
 	mock.ExpectExec(regexp.QuoteMeta(sql)).WithArgs(vars...).WillReturnResult(sqlmock.NewResult(1, 1))

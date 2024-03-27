@@ -151,8 +151,8 @@ func fromStorageDeal(src *types.MinerDeal) *storageDeal {
 			},
 		},
 		ProposalCid:           DBCid(src.ProposalCid),
-		Miner:                 src.Miner.Pretty(),
-		Client:                src.Client.Pretty(),
+		Miner:                 src.Miner.String(),
+		Client:                src.Client.String(),
 		State:                 src.State,
 		PayloadSize:           src.PayloadSize,
 		PiecePath:             string(src.PiecePath),
@@ -338,7 +338,7 @@ func (sdr *storageDealRepo) SaveDeal(ctx context.Context, storageDeal *types.Min
 func (sdr *storageDealRepo) SaveDealWithStatus(ctx context.Context, storageDeal *types.MinerDeal, pieceStates []types.PieceStatus) error {
 	deal := fromStorageDeal(storageDeal)
 	deal.TimeStampOrm.Refresh()
-	return sdr.WithContext(ctx).Where("piece_status in ?", pieceStates).Save(deal).Error
+	return sdr.WithContext(ctx).Where("id = ? and piece_status in ?", deal.ID, pieceStates).Save(deal).Error
 }
 
 func (sdr *storageDealRepo) GetDeal(ctx context.Context, proposalCid cid.Cid) (*types.MinerDeal, error) {

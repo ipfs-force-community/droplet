@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/csv"
 	"fmt"
 	"os"
@@ -13,7 +14,11 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	types2 "github.com/filecoin-project/venus/venus-shared/types"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	shared "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -68,7 +73,7 @@ var getDirectDeal = &cli.Command{
 				return err
 			}
 		} else {
-			deal, err = api.GetDirectDealByAllocationID(cliCtx.Context, types2.AllocationId(cliCtx.Int64("allocation-id")))
+			deal, err = api.GetDirectDealByAllocationID(cliCtx.Context, shared.AllocationId(cliCtx.Int64("allocation-id")))
 			if err != nil {
 				return err
 			}
@@ -81,7 +86,6 @@ var getDirectDeal = &cli.Command{
 			{"Client", deal.Client},
 			{"Provider", deal.Provider},
 			{"AllocationID", deal.AllocationID},
-			{"ClaimID", deal.ClaimID},
 			{"State", deal.State.String()},
 			{"Message", deal.Message},
 			{"SectorID", deal.SectorID},
@@ -210,6 +214,10 @@ var importDirectDealCmd = &cli.Command{
 			Name:  "payload-size",
 			Usage: "The size of the car file",
 		},
+		&cli.IntFlag{
+			Name:  "start-epoch",
+			Usage: "start epoch by when the deal should be proved by provider on-chain (default: 2 days from now)",
+		},
 	},
 	Action: func(cliCtx *cli.Context) error {
 		if cliCtx.Args().Len() < 2 {
@@ -221,6 +229,12 @@ var importDirectDealCmd = &cli.Command{
 			return err
 		}
 		defer closer()
+
+		fapi, fcloser, err := NewFullNode(cliCtx, OldMarketRepoPath)
+		if err != nil {
+			return err
+		}
+		defer fcloser()
 
 		pieceCidStr := cliCtx.Args().Get(0)
 		path := cliCtx.Args().Get(1)
@@ -255,6 +269,15 @@ var importDirectDealCmd = &cli.Command{
 
 		allocationID := cliCtx.Uint64("allocation-id")
 
+		startEpoch, err := getStartEpoch(cliCtx, fapi)
+		if err != nil {
+			return err
+		}
+		endEpoch, err := checkAndGetEndEpoch(cliCtx.Context, fapi, client, allocationID, startEpoch)
+		if err != nil {
+			return err
+		}
+
 		params := types.DirectDealParams{
 			SkipCommP:         cliCtx.Bool("skip-commp"),
 			SkipGenerateIndex: cliCtx.Bool("skip-generate-index"),
@@ -267,6 +290,8 @@ var importDirectDealCmd = &cli.Command{
 					Client:       client,
 					PieceCID:     pieceCid,
 					FilePath:     filepath,
+					StartEpoch:   startEpoch,
+					EndEpoch:     endEpoch,
 				},
 			},
 		}
@@ -278,6 +303,19 @@ var importDirectDealCmd = &cli.Command{
 		fmt.Println("import deal success")
 		return nil
 	},
+}
+
+func getStartEpoch(cliCtx *cli.Context, fapi v1api.FullNode) (abi.ChainEpoch, error) {
+	startEpoch := abi.ChainEpoch(cliCtx.Int("start-epoch"))
+	if startEpoch == 0 {
+		head, err := fapi.ChainHead(cliCtx.Context)
+		if err != nil {
+			return 0, err
+		}
+		startEpoch = head.Height() + builtin.EpochsInDay*2
+	}
+
+	return startEpoch, nil
 }
 
 var importDirectDealsCmd = &cli.Command{
@@ -308,6 +346,10 @@ var importDirectDealsCmd = &cli.Command{
 			Name:  "no-copy-car-file",
 			Usage: "not copy car files to piece storage",
 		},
+		&cli.IntFlag{
+			Name:  "start-epoch",
+			Usage: "start epoch by when the deal should be proved by provider on-chain (default: 2 days from now)",
+		},
 	},
 	Action: func(cliCtx *cli.Context) error {
 		if cliCtx.IsSet("allocation-id-piece") == cliCtx.IsSet("allocation-file") {
@@ -320,6 +362,13 @@ var importDirectDealsCmd = &cli.Command{
 		}
 		defer closer()
 
+		fapi, fcloser, err := NewFullNode(cliCtx, OldMarketRepoPath)
+		if err != nil {
+			return err
+		}
+		defer fcloser()
+
+		ctx := cliCtx.Context
 		carDir := cliCtx.String("car-dir")
 
 		findCar := func(pieceCID cid.Cid) (string, error) {
@@ -334,6 +383,11 @@ var importDirectDealsCmd = &cli.Command{
 			}
 
 			return "", fmt.Errorf("car %s file not found", pieceCID.String())
+		}
+
+		startEpoch, err := getStartEpoch(cliCtx, fapi)
+		if err != nil {
+			return err
 		}
 
 		var directDealParams []types.DirectDealParam
@@ -355,11 +409,19 @@ var importDirectDealsCmd = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("invalid client: %w", err)
 				}
+
+				endEpoch, err := checkAndGetEndEpoch(ctx, fapi, client, allocationID, startEpoch)
+				if err != nil {
+					return err
+				}
+
 				param := types.DirectDealParam{
 					DealUUID:     uuid.New(),
 					AllocationID: allocationID,
 					PieceCID:     pieceCid,
 					Client:       client,
+					StartEpoch:   startEpoch,
+					EndEpoch:     endEpoch,
 				}
 
 				if len(carDir) == 0 {
@@ -378,12 +440,18 @@ var importDirectDealsCmd = &cli.Command{
 				return fmt.Errorf("failed to load allocations: %w", err)
 			}
 			for _, a := range allocations {
+				endEpoch, err := checkAndGetEndEpoch(ctx, fapi, a.Client, a.AllocationID, startEpoch)
+				if err != nil {
+					return err
+				}
 				param := types.DirectDealParam{
 					DealUUID:     uuid.New(),
 					AllocationID: a.AllocationID,
 					Client:       a.Client,
 					PieceCID:     a.PieceCID,
 					PayloadSize:  a.PayloadSize,
+					StartEpoch:   startEpoch,
+					EndEpoch:     endEpoch,
 				}
 				if param.PayloadSize == 0 && len(carDir) == 0 {
 					return fmt.Errorf("must specify car-dir")
@@ -412,6 +480,28 @@ var importDirectDealsCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func checkAndGetEndEpoch(ctx context.Context,
+	fapi v1api.FullNode,
+	client address.Address,
+	allocationID uint64,
+	startEpoch abi.ChainEpoch,
+) (abi.ChainEpoch, error) {
+	allocation, err := fapi.StateGetAllocation(ctx, client, verifreg.AllocationId(allocationID), shared.EmptyTSK)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get allocation(%d): %w", allocationID, err)
+	}
+
+	if allocation == nil {
+		return 0, fmt.Errorf("allocation %d not found for client %s", allocationID, client)
+	}
+
+	if allocation.Expiration < startEpoch {
+		return 0, fmt.Errorf("allocation %d will expire on %d before start epoch %d", allocationID, allocation.Expiration, startEpoch)
+	}
+
+	return startEpoch + allocation.TermMin, nil
 }
 
 type allocationWithPiece struct {
