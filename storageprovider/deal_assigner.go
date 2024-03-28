@@ -440,6 +440,9 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 			EndEpoch:     d.EndEpoch,
 		})
 	}
+	if len(out) > 0 {
+		return out, nil
+	}
 
 	oldDeals, err := ps.AssignUnPackedDeals(ctx, sid, ssize, currentHeight, spec)
 	if err == nil {
