@@ -1,6 +1,7 @@
 package storageprovider
 
 import (
+	"context"
 	"fmt"
 	"math/bits"
 
@@ -231,7 +232,7 @@ func fillersFromRem(in abi.PaddedPieceSize) ([]abi.PaddedPieceSize, error) {
 	return out, nil
 }
 
-func pickAndAlignDirectDeal(deals []*mtypes.DirectDealInfo, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *mtypes.GetDealSpec) ([]*mtypes.DirectDealInfo, error) {
+func (ps *dealAssigner) pickAndAlignDirectDeal(ctx context.Context, deals []*mtypes.DirectDealInfo, ssize abi.SectorSize, currentHeight abi.ChainEpoch, spec *mtypes.GetDealSpec) ([]*mtypes.DirectDealInfo, error) {
 	space := abi.PaddedPieceSize(ssize)
 
 	if err := space.Validate(); err != nil {
@@ -257,16 +258,19 @@ func pickAndAlignDirectDeal(deals []*mtypes.DirectDealInfo, ssize abi.SectorSize
 				continue
 			}
 
-			// See: https://github.com/filecoin-project/builtin-actors/blob/c0aed11801cb434c989695ad67721c410b9ada33/actors/market/src/lib.rs#L1073-L1094
 			// https://github.com/filecoin-project/builtin-actors/blob/c0aed11801cb434c989695ad67721c410b9ada33/actors/verifreg/src/lib.rs#L1056-L1071
 			if spec.SectorExpiration != nil {
-				allocTermMin := deal.EndEpoch - deal.StartEpoch
-				allocTermMax := allocTermMin + market.MarketDefaultAllocationTermBuffer
-				if allocTermMax > types.MaximumVerifiedAllocationTerm {
-					allocTermMax = types.MaximumVerifiedAllocationTerm
+				alloc, err := ps.full.StateGetAllocation(ctx, deal.Client, deal.AllocationID, types.EmptyTSK)
+				if err != nil {
+					return nil, fmt.Errorf("failed to get deal allocation: %w", err)
 				}
+				if alloc == nil {
+					continue
+				}
+
 				sectorLifetime := *spec.SectorExpiration - currentHeight
-				if !(sectorLifetime >= allocTermMin && sectorLifetime <= allocTermMax) {
+				if !(sectorLifetime >= alloc.TermMin && sectorLifetime <= alloc.TermMax &&
+					currentHeight < alloc.Expiration) {
 					continue
 				}
 			}

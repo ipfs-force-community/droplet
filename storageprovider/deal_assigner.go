@@ -13,6 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/verifreg"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	shared "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
@@ -32,8 +33,8 @@ type DealAssiger interface {
 
 var _ DealAssiger = (*dealAssigner)(nil)
 
-func NewDealAssigner(r repo.Repo) (DealAssiger, error) {
-	ps, err := newPieceStoreEx(r)
+func NewDealAssigner(r repo.Repo, full v1api.FullNode) (DealAssiger, error) {
+	ps, err := newPieceStoreEx(r, full)
 	if err != nil {
 		return nil, fmt.Errorf("construct extend piece store %w", err)
 	}
@@ -42,12 +43,14 @@ func NewDealAssigner(r repo.Repo) (DealAssiger, error) {
 
 type dealAssigner struct {
 	repo repo.Repo
+	full v1api.FullNode
 }
 
 // NewDsPieceStore returns a new piecestore based on the given datastore
-func newPieceStoreEx(r repo.Repo) (DealAssiger, error) {
+func newPieceStoreEx(r repo.Repo, full v1api.FullNode) (DealAssiger, error) {
 	return &dealAssigner{
 		repo: r,
+		full: full,
 	}, nil
 }
 
@@ -362,6 +365,7 @@ func (ps *dealAssigner) assignDirectDeals(ctx context.Context, sid abi.SectorID,
 				Length:       md.PieceSize,
 				PayloadSize:  md.PayloadSize,
 				StartEpoch:   md.StartEpoch,
+				EndEpoch:     md.EndEpoch,
 			})
 		}
 
@@ -379,7 +383,7 @@ func (ps *dealAssigner) assignDirectDeals(ctx context.Context, sid abi.SectorID,
 			return left.StartEpoch < right.StartEpoch
 		})
 
-		pieces, err = pickAndAlignDirectDeal(deals, ssize, currentHeight, spec)
+		pieces, err = ps.pickAndAlignDirectDeal(ctx, deals, ssize, currentHeight, spec)
 		if err != nil {
 			return fmt.Errorf("unable to pick and align pieces from deals: %w", err)
 		}
@@ -435,6 +439,9 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 			StartEpoch:   d.StartEpoch,
 			EndEpoch:     d.EndEpoch,
 		})
+	}
+	if len(out) > 0 {
+		return out, nil
 	}
 
 	oldDeals, err := ps.AssignUnPackedDeals(ctx, sid, ssize, currentHeight, spec)
