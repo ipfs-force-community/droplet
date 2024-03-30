@@ -1369,3 +1369,13 @@ func (m *MarketNodeImpl) GetDirectDealByAllocationID(ctx context.Context, id vTy
 func (m *MarketNodeImpl) ListDirectDeals(ctx context.Context, queryParams types.DirectDealQueryParams) ([]*types.DirectDeal, error) {
 	return m.Repo.DirectDealRepo().ListDeal(ctx, queryParams)
 }
+
+func (m *MarketNodeImpl) UpdateDirectDealState(ctx context.Context, id uuid.UUID, state types.DirectDealState) error {
+	deal, err := m.Repo.DirectDealRepo().GetDeal(ctx, id)
+	if err != nil {
+		return err
+	}
+	deal.State = state
+
+	return m.Repo.DirectDealRepo().SaveDeal(ctx, deal)
+}

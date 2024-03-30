@@ -30,14 +30,15 @@ var directDealCmds = &cli.Command{
 	Name:  "direct-deal",
 	Usage: "the tool for direct deal",
 	Subcommands: []*cli.Command{
-		getDirectDeal,
+		getDirectDealCmd,
 		listDirectDealCmd,
+		updateDirectDealStateCmd,
 		importDirectDealCmd,
 		importDirectDealsCmd,
 	},
 }
 
-var getDirectDeal = &cli.Command{
+var getDirectDealCmd = &cli.Command{
 	Name:  "get",
 	Usage: "Print a direct deal by id",
 	Flags: []cli.Flag{
@@ -556,4 +557,39 @@ func loadAllocations(path string) ([]*allocationWithPiece, error) {
 	}
 
 	return allocations, nil
+}
+
+var updateDirectDealStateCmd = &cli.Command{
+	Name:  "update-state",
+	Usage: "update direct deal state",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "state",
+			Usage: "deal state, 1: DealAllocated, 2: DealSealing, 3: DealActive, 4: DealExpired, 5: DealSlashed, 6: DealError",
+		},
+	},
+	ArgsUsage: "<deal uuid>",
+	Action: func(cliCtx *cli.Context) error {
+		api, closer, err := NewMarketNode(cliCtx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		if cliCtx.Args().Len() != 1 {
+			return fmt.Errorf("must specify deal uuid")
+		}
+
+		dealUUID, err := uuid.Parse(cliCtx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		state := types.DirectDealState(cliCtx.Int("state"))
+		if state < types.DealAllocated || state > types.DealError {
+			return fmt.Errorf("invalid state")
+		}
+
+		return api.UpdateDirectDealState(cliCtx.Context, dealUUID, state)
+	},
 }
