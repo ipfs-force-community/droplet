@@ -160,7 +160,7 @@ func toRetrievalOutput(d client.RetrievalInfo, verbose bool) map[string]interfac
 	return retrievalOutput
 }
 
-func outputRetrievalDeals(ctx context.Context, out io.Writer, localDeals []client.RetrievalInfo, verbose bool, showFailed bool, completed bool) error {
+func outputRetrievalDeals(_ context.Context, out io.Writer, localDeals []client.RetrievalInfo, verbose bool, showFailed bool, completed bool) error {
 	var deals []client.RetrievalInfo
 	for _, deal := range localDeals {
 		if !showFailed && isTerminalError(deal.Status) {
