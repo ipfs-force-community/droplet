@@ -101,3 +101,51 @@ flag 解释：
 # res
 import deal success
 ```
+
+### 查询订单信息
+
+#### 查询单个订单
+
+```
+./droplet storage direct-deal get --allocation-id 32224
+or
+./droplet storage direct-deal get --id 07cd5814-02bf-494d-b81c-87df73b3422b
+
+# res
+Creation     2024-04-01T14:30:39+08:00
+PieceCID     baga6ea4seaqgzkse45r2tinm4cy7pducjt45c2r77qnu4r6uytxlsiazev6xwpy
+PieceSize    2097152
+Client       t018678
+Provider     t060973
+AllocationID 32224
+State        DealAllocated
+Message
+SectorID     0
+Offset       0
+Length       0
+PayloadSize  1048794
+StartEpoch   1510595
+EndEpoch     2028995
+```
+
+#### 列出订单
+
+> 该命令默认只会列出 DealAllocated 状态的订单，可以通过 --state flag 指定特定状态的订单
+
+```
+./droplet storage direct-deal list
+
+# res
+Creation                   ID                                    AllocationId  PieceCid                                                          State          Client   Provider  Size     Message
+2024-04-01T14:30:40+08:00  07cd5814-02bf-494d-b81c-87df73b3422b  32227         baga6ea4seaqhbpwuqszynr4wmtn2osjwkru3nrp6z6bjte6c4rzlntfm4l5s2ia  DealAllocated  t018678  t060973   1048576
+2024-04-01T14:30:40+08:00  aeaf18c5-2d92-4376-9370-594b8536190f  32226         baga6ea4seaqeddngzgmtkxa3wqetu27j5ydqie7hwa5rjrl5de6osamz3ldpegi  DealAllocated  t018678  t060973   2097152
+2024-04-01T14:30:39+08:00  d94f289d-50be-460b-8555-8b9a398e35d6  32223         baga6ea4seaqp6jm4x3pf7llach7tdhbwrwlcetv52dnjicqpcl6lkwib5n76gii  DealAllocated  t018678  t060973   2097152
+2024-04-01T14:30:39+08:00  ea01b452-109f-4373-ab80-6af76d75b6d6  32224         baga6ea4seaqgzkse45r2tinm4cy7pducjt45c2r77qnu4r6uytxlsiazev6xwpy  DealAllocated  t018678  t060973   2097152
+2024-04-01T14:30:39+08:00  f82a5335-6036-4bb5-9d6b-d31030cb3272  32225         baga6ea4seaqdddnss5oalozaqsogmhfohxh2hyclw5ewxdgdme53tn3pidzgeeq  DealAllocated  t018678  t060973   2097152
+```
+
+#### 更新订单状态
+
+```
+./droplet storage direct-deal update-state --state 1 07cd5814-02bf-494d-b81c-87df73b3422b
+```
