@@ -285,6 +285,7 @@ var directDealAllocate = &cli.Command{
 			if err := autoImportDealToDroplet(cctx, newAllocations, pieceInfos); err != nil {
 				return fmt.Errorf("failed to import deal to droplet: %w", err)
 			}
+			fmt.Println("successfully imported deal to droplet")
 		}
 
 		return nil

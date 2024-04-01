@@ -82,6 +82,7 @@ var getDirectDealCmd = &cli.Command{
 
 		data := []kv{
 			{"Creation", time.Unix(int64(deal.CreatedAt), 0).Format(time.RFC3339)},
+			{"ID", deal.ID},
 			{"PieceCID", deal.PieceCID},
 			{"PieceSize", deal.PieceSize},
 			{"Client", deal.Client},
