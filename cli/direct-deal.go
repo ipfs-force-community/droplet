@@ -270,11 +270,11 @@ var importDirectDealCmd = &cli.Command{
 
 		allocationID := cliCtx.Uint64("allocation-id")
 
-		startEpoch, err := getStartEpoch(cliCtx, fapi)
+		startEpoch, err := GetStartEpoch(cliCtx, fapi)
 		if err != nil {
 			return err
 		}
-		endEpoch, err := checkAndGetEndEpoch(cliCtx.Context, fapi, client, allocationID, startEpoch)
+		endEpoch, err := CheckAndGetEndEpoch(cliCtx.Context, fapi, client, allocationID, startEpoch)
 		if err != nil {
 			return err
 		}
@@ -306,14 +306,14 @@ var importDirectDealCmd = &cli.Command{
 	},
 }
 
-func getStartEpoch(cliCtx *cli.Context, fapi v1api.FullNode) (abi.ChainEpoch, error) {
+func GetStartEpoch(cliCtx *cli.Context, fapi v1api.FullNode) (abi.ChainEpoch, error) {
 	startEpoch := abi.ChainEpoch(cliCtx.Int("start-epoch"))
 	if startEpoch == 0 {
 		head, err := fapi.ChainHead(cliCtx.Context)
 		if err != nil {
 			return 0, err
 		}
-		startEpoch = head.Height() + builtin.EpochsInDay*2
+		startEpoch = head.Height() + builtin.EpochsInDay*8
 	}
 
 	return startEpoch, nil
@@ -349,7 +349,7 @@ var importDirectDealsCmd = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:  "start-epoch",
-			Usage: "start epoch by when the deal should be proved by provider on-chain (default: 2 days from now)",
+			Usage: "start epoch by when the deal should be proved by provider on-chain (default: 8 days from now)",
 		},
 	},
 	Action: func(cliCtx *cli.Context) error {
@@ -386,7 +386,7 @@ var importDirectDealsCmd = &cli.Command{
 			return "", fmt.Errorf("car %s file not found", pieceCID.String())
 		}
 
-		startEpoch, err := getStartEpoch(cliCtx, fapi)
+		startEpoch, err := GetStartEpoch(cliCtx, fapi)
 		if err != nil {
 			return err
 		}
@@ -411,7 +411,7 @@ var importDirectDealsCmd = &cli.Command{
 					return fmt.Errorf("invalid client: %w", err)
 				}
 
-				endEpoch, err := checkAndGetEndEpoch(ctx, fapi, client, allocationID, startEpoch)
+				endEpoch, err := CheckAndGetEndEpoch(ctx, fapi, client, allocationID, startEpoch)
 				if err != nil {
 					return err
 				}
@@ -441,7 +441,7 @@ var importDirectDealsCmd = &cli.Command{
 				return fmt.Errorf("failed to load allocations: %w", err)
 			}
 			for _, a := range allocations {
-				endEpoch, err := checkAndGetEndEpoch(ctx, fapi, a.Client, a.AllocationID, startEpoch)
+				endEpoch, err := CheckAndGetEndEpoch(ctx, fapi, a.Client, a.AllocationID, startEpoch)
 				if err != nil {
 					return err
 				}
@@ -483,7 +483,7 @@ var importDirectDealsCmd = &cli.Command{
 	},
 }
 
-func checkAndGetEndEpoch(ctx context.Context,
+func CheckAndGetEndEpoch(ctx context.Context,
 	fapi v1api.FullNode,
 	client address.Address,
 	allocationID uint64,

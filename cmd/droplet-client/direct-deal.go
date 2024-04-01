@@ -18,8 +18,12 @@ import (
 	verifregst "github.com/filecoin-project/go-state-types/builtin/v9/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/datacap"
+	"github.com/filecoin-project/venus/venus-shared/api"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	marketapi "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
+	types2 "github.com/filecoin-project/venus/venus-shared/types/market"
+	"github.com/google/uuid"
 	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
 	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
 	"github.com/ipfs/go-cid"
@@ -74,8 +78,9 @@ var directDealAllocate = &cli.Command{
 		termMaxFlag,
 		expirationFlag,
 		&cli.StringSliceFlag{
-			Name:  "piece-info",
-			Usage: "data pieceInfo[s] to create the allocation. The format must be pieceCid1=pieceSize1 pieceCid2=pieceSize2",
+			Name:   "piece-info",
+			Usage:  "data pieceInfo[s] to create the allocation. The format must be pieceCid1=pieceSize1 pieceCid2=pieceSize2",
+			Hidden: true,
 		},
 		&cli.BoolFlag{
 			Name:  "quiet",
@@ -90,6 +95,18 @@ var directDealAllocate = &cli.Command{
 			Name:  "output-allocation-to-file",
 			Usage: "Output allocation information to a file.",
 			Value: "allocation.csv",
+		},
+		&cli.StringFlag{
+			Name:  "droplet-url",
+			Usage: "Url of the droplet service",
+		},
+		&cli.StringFlag{
+			Name:  "droplet-token",
+			Usage: "Token of the droplet service",
+		},
+		&cli.IntFlag{
+			Name:  "start-epoch",
+			Usage: "start epoch by when the deal should be proved by provider on-chain (default: 8 days from now)",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -250,7 +267,27 @@ var directDealAllocate = &cli.Command{
 			return fmt.Errorf("failed to execute the message with error: %s", res.Receipt.ExitCode.Error())
 		}
 
-		return showAllocations(ctx, fapi, walletAddr, oldAllocations, cctx.Bool("json"), cctx.Bool("quiet"), cctx.String("output-allocation-to-file"), pieceInfos)
+		newAllocations, err := findNewAllocations(ctx, fapi, walletAddr, oldAllocations)
+		if err != nil {
+			return fmt.Errorf("failed to find new allocations: %w", err)
+		}
+
+		if err := writeAllocationsToFile(cctx.String("output-allocation-to-file"), newAllocations, pieceInfos); err != nil {
+			fmt.Println("failed to write allocations to file: ", err)
+		}
+
+		if err := showAllocations(newAllocations, cctx.Bool("json"), cctx.Bool("quiet")); err != nil {
+			fmt.Println("failed to show allocations: ", err)
+		}
+
+		if cctx.IsSet("droplet-url") {
+			fmt.Println("importing deal to droplet")
+			if err := autoImportDealToDroplet(cctx, newAllocations, pieceInfos); err != nil {
+				return fmt.Errorf("failed to import deal to droplet: %w", err)
+			}
+		}
+
+		return nil
 	},
 }
 
@@ -346,18 +383,66 @@ func getAllocationParams(cctx *cli.Context, currentHeight abi.ChainEpoch) (*allo
 	return &params, nil
 }
 
+func findNewAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.Address, oldAllocations map[types.AllocationId]types.Allocation) (map[types.AllocationId]types.Allocation, error) {
+	allAllocations, err := fapi.StateGetAllocations(ctx, walletAddr, types.EmptyTSK)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get allocations: %w", err)
+	}
+
+	newAllocations := make(map[types.AllocationId]types.Allocation, len(allAllocations)-len(oldAllocations))
+	for k, v := range allAllocations {
+		if _, ok := oldAllocations[k]; !ok {
+			newAllocations[k] = v
+		}
+	}
+
+	return newAllocations, nil
+}
+
 type partAllocationInfo struct {
 	AllocationID types.AllocationId
 	PieceCID     cid.Cid
 	Client       address.Address
 }
 
-func showAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.Address, oldAllocations map[types.AllocationId]types.Allocation, useJSON bool, quite bool, allocationFile string, pieceInfos []*pieceInfo) error {
-	newAllocations, err := fapi.StateGetAllocations(ctx, walletAddr, types.EmptyTSK)
-	if err != nil {
-		return fmt.Errorf("failed to get allocations: %w", err)
+func writeAllocationsToFile(allocationFile string, allocations map[types.AllocationId]types.Allocation, pieceInfo []*pieceInfo) error {
+	payloadSizes := make(map[cid.Cid]uint64)
+	for _, info := range pieceInfo {
+		payloadSizes[info.pieceCID] = info.payloadSize
 	}
 
+	infos := make([]partAllocationInfo, 0, len(allocations))
+	for id, v := range allocations {
+		clientAddr, _ := address.NewIDAddress(uint64(v.Client))
+		infos = append(infos, partAllocationInfo{
+			AllocationID: id,
+			PieceCID:     v.Data,
+			Client:       clientAddr,
+		})
+	}
+
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].AllocationID < infos[j].AllocationID
+	})
+
+	buf := &bytes.Buffer{}
+	w := csv.NewWriter(buf)
+	if err := w.Write([]string{"AllocationID", "PieceCID", "Client", "PayloadSize"}); err != nil {
+		return err
+	}
+	for _, info := range infos {
+		if err := w.Write([]string{fmt.Sprintf("%d", info.AllocationID), info.PieceCID.String(), info.Client.String(), fmt.Sprintf("%d", payloadSizes[info.PieceCID])}); err != nil {
+			return err
+		}
+	}
+	w.Flush()
+
+	fmt.Println("writing allocations to:", allocationFile)
+
+	return os.WriteFile(allocationFile, buf.Bytes(), 0644)
+}
+
+func showAllocations(allocations map[types.AllocationId]types.Allocation, useJSON bool, quite bool) error {
 	// Map Keys. Corresponds to the standard tablewriter output
 	allocationID := "AllocationID"
 	client := "Client"
@@ -381,34 +466,20 @@ func showAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.A
 	}
 
 	var allocs []map[string]interface{}
-	var partAllocationInfos []partAllocationInfo
-	for key, val := range newAllocations {
-		_, ok := oldAllocations[key]
-		if !ok {
-			clientAddr, _ := address.NewIDAddress(uint64(val.Client))
-			providerAddr, _ := address.NewIDAddress(uint64(val.Provider))
-			alloc := map[string]interface{}{
-				allocationID: key,
-				client:       clientAddr,
-				provider:     providerAddr,
-				pieceCid:     val.Data,
-				pieceSize:    val.Size,
-				tMin:         val.TermMin,
-				tMax:         val.TermMax,
-				expr:         val.Expiration,
-			}
-			allocs = append(allocs, alloc)
-
-			partAllocationInfos = append(partAllocationInfos, partAllocationInfo{
-				AllocationID: key,
-				PieceCID:     val.Data,
-				Client:       walletAddr,
-			})
+	for key, val := range allocations {
+		clientAddr, _ := address.NewIDAddress(uint64(val.Client))
+		providerAddr, _ := address.NewIDAddress(uint64(val.Provider))
+		alloc := map[string]interface{}{
+			allocationID: key,
+			client:       clientAddr,
+			provider:     providerAddr,
+			pieceCid:     val.Data,
+			pieceSize:    val.Size,
+			tMin:         val.TermMin,
+			tMax:         val.TermMax,
+			expr:         val.Expiration,
 		}
-	}
-
-	if err := outputAllocationToFile(allocationFile, partAllocationInfos, pieceInfos); err != nil {
-		fmt.Println("output allocation to file error: ", err)
+		allocs = append(allocs, alloc)
 	}
 
 	if quite {
@@ -445,26 +516,63 @@ func showAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.A
 	return tw.Flush(os.Stdout)
 }
 
-func outputAllocationToFile(allocationFile string, infos []partAllocationInfo, pieceInfo []*pieceInfo) error {
-	payloadSizes := make(map[cid.Cid]uint64)
-	for _, info := range pieceInfo {
-		payloadSizes[info.pieceCID] = info.payloadSize
-	}
-	sort.Slice(infos, func(i, j int) bool {
-		return infos[i].AllocationID < infos[j].AllocationID
-	})
+func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.AllocationId]types.Allocation, pieceInfos []*pieceInfo) error {
+	ctx := cliCtx.Context
+	dropletURL := cliCtx.String("droplet-url")
+	dropletToken := cliCtx.String("droplet-token")
 
-	buf := &bytes.Buffer{}
-	w := csv.NewWriter(buf)
-	if err := w.Write([]string{"AllocationID", "PieceCID", "Client", "PayloadSize"}); err != nil {
+	apiInfo := api.NewAPIInfo(dropletURL, dropletToken)
+	addr, err := apiInfo.DialArgs("v0")
+	if err != nil {
 		return err
 	}
-	for _, info := range infos {
-		if err := w.Write([]string{fmt.Sprintf("%d", info.AllocationID), info.PieceCID.String(), info.Client.String(), fmt.Sprintf("%d", payloadSizes[info.PieceCID])}); err != nil {
+
+	mapi, close, err := marketapi.NewIMarketRPC(ctx, addr, apiInfo.AuthHeader())
+	if err != nil {
+		return err
+	}
+	defer close()
+
+	fapi, fclose, err := cli2.NewFullNode(cliCtx, cli2.OldClientRepoPath)
+	if err != nil {
+		return err
+	}
+	defer fclose()
+
+	params := types2.DirectDealParams{
+		SkipCommP:         true,
+		SkipGenerateIndex: true,
+		NoCopyCarFile:     true,
+		DealParams:        make([]types2.DirectDealParam, 0, len(allocations)),
+	}
+
+	payloadSizes := make(map[cid.Cid]uint64)
+	for _, info := range pieceInfos {
+		payloadSizes[info.pieceCID] = info.payloadSize
+	}
+
+	startEpoch, err := cli2.GetStartEpoch(cliCtx, fapi)
+	if err != nil {
+		return err
+	}
+
+	for id, alloc := range allocations {
+		clientAddr, _ := address.NewIDAddress(uint64(alloc.Client))
+		endEpoch, err := cli2.CheckAndGetEndEpoch(ctx, fapi, clientAddr, uint64(id), startEpoch)
+		if err != nil {
 			return err
 		}
-	}
-	w.Flush()
 
-	return os.WriteFile(allocationFile, buf.Bytes(), 0644)
+		params.DealParams = append(params.DealParams, types2.DirectDealParam{
+			DealUUID:     uuid.New(),
+			AllocationID: uint64(id),
+			PayloadSize:  payloadSizes[alloc.Data],
+			Client:       clientAddr,
+			PieceCID:     alloc.Data,
+			StartEpoch:   startEpoch,
+			EndEpoch:     endEpoch,
+		})
+	}
+
+	return mapi.ImportDirectDeal(ctx, &params)
 }
