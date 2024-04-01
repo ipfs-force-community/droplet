@@ -30,7 +30,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.15.0-rc1.0.20240325083156-be02046db71b
+	github.com/filecoin-project/venus v1.15.0-rc1.0.20240330062001-1bb8f318c662
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.5.0
 	github.com/gorilla/mux v1.8.0

@@ -169,6 +169,9 @@ var directDealAllocate = &cli.Command{
 		if err != nil {
 			return err
 		}
+		if aDataCap == nil {
+			return fmt.Errorf("datacap not found")
+		}
 
 		// Check that we have enough data cap to make the allocation
 		if rDataCap.GreaterThan(types.NewInt(uint64(aDataCap.Int64()))) {

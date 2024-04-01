@@ -18,7 +18,6 @@ import (
 	types2 "github.com/ipfs-force-community/droplet/v2/types"
 	"github.com/ipfs/go-cid"
 	inet "github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 )
 
@@ -361,7 +360,7 @@ var storageDealStatus = &cli.Command{
 		}
 		defer s.Close() // nolint
 
-		resp, err := sendDealStatusRequest(ctx, s, addrInfo.ID, dealUUID, from, signer)
+		resp, err := sendDealStatusRequest(ctx, s, dealUUID, from, signer)
 		if err != nil {
 			return fmt.Errorf("send deal status request failed: %w", err)
 		}
@@ -407,7 +406,6 @@ var storageDealStatus = &cli.Command{
 
 func sendDealStatusRequest(ctx context.Context,
 	s inet.Stream,
-	id peer.ID,
 	dealUUID uuid.UUID,
 	from address.Address,
 	signer signer.ISigner,
