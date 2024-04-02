@@ -1,6 +1,6 @@
 # droplet changelog
 
-## v2.11.0-rc1
+## v2.11.0
 
 * feat: import data by uuid [[#471](https://github.com/ipfs-force-community/droplet/pull/471)]
 * fix: use the received deal uuid [[#472](https://github.com/ipfs-force-community/droplet/pull/472)]

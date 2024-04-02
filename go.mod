@@ -25,12 +25,12 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.28.4-0.20230816163331-bd08f1651b1d
 	github.com/filecoin-project/go-jsonrpc v0.1.8
 	github.com/filecoin-project/go-padreader v0.0.1
-	github.com/filecoin-project/go-state-types v0.13.0-rc.2
+	github.com/filecoin-project/go-state-types v0.13.1
 	github.com/filecoin-project/go-statemachine v1.0.3
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.15.0-rc1.0.20240330062001-1bb8f318c662
+	github.com/filecoin-project/venus v1.15.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.5.0
 	github.com/gorilla/mux v1.8.0
@@ -38,9 +38,9 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20231207081445-30178e706d09
-	github.com/ipfs-force-community/sophon-auth v1.15.0-rc1
-	github.com/ipfs-force-community/sophon-gateway v1.15.0-rc1
-	github.com/ipfs-force-community/sophon-messager v1.15.0-rc1
+	github.com/ipfs-force-community/sophon-auth v1.15.0
+	github.com/ipfs-force-community/sophon-gateway v1.15.0
+	github.com/ipfs-force-community/sophon-messager v1.15.0
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
 	github.com/ipfs/boxo v0.12.0
 	github.com/ipfs/go-blockservice v0.5.1
