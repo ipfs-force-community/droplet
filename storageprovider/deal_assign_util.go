@@ -55,6 +55,8 @@ func pickAndAlign(deals []*mtypes.DealInfoIncludePath, ssize abi.SectorSize, cur
 				}
 				sectorLifetime := *spec.SectorExpiration - currentHeight
 				if !(sectorLifetime >= allocTermMin && sectorLifetime <= allocTermMax) {
+					log.Debugf("assign snap deal failed, deal id: %d, term min: %d, term max: %d, sector life time: %d",
+						deal.DealID, allocTermMin, allocTermMax, sectorLifetime)
 					continue
 				}
 			}
@@ -271,6 +273,8 @@ func (ps *dealAssigner) pickAndAlignDirectDeal(ctx context.Context, deals []*mty
 				sectorLifetime := *spec.SectorExpiration - currentHeight
 				if !(sectorLifetime >= alloc.TermMin && sectorLifetime <= alloc.TermMax &&
 					currentHeight < alloc.Expiration) {
+					log.Debug("assign snap deal failed, allocation id: %d, term min: %d, term max: %d, sectorLifetime: %d",
+						deal.AllocationID, alloc.TermMin, alloc.TermMax, sectorLifetime)
 					continue
 				}
 			}
