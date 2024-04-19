@@ -297,6 +297,9 @@ func (ps *dealAssigner) ReleaseDeals(ctx context.Context, miner address.Address,
 			}
 			deal.PieceStatus = types.Undefine
 			deal.State = storagemarket.StorageDealAwaitingPreCommit
+			deal.SectorNumber = 0
+			deal.Offset = 0
+			log.Infof("release deal %d for miner %s", dealID, miner.String())
 			if err := storageDealRepo.SaveDealWithStatus(ctx, deal, []types.PieceStatus{types.Assigned, types.Packing}); err != nil {
 				return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", dealID, miner.String(), err)
 			}
@@ -324,6 +327,9 @@ func (ps *dealAssigner) ReleaseDirectDeals(ctx context.Context, miner address.Ad
 			}
 
 			deal.State = types.DealAllocated
+			deal.SectorID = 0
+			deal.Offset = 0
+			log.Infof("release direct deal %d for miner %s", deal.AllocationID, miner.String())
 			if err := directDealRepo.SaveDealWithState(ctx, deal, types.DealSealing); err != nil {
 				return fmt.Errorf("failed to update deal %d piece status for miner %s: %w", allocationID, miner.String(), err)
 			}
@@ -424,6 +430,7 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 		directDealLog.Errorf("assign direct deals failed: %v", err)
 		errs = multierror.Append(errs, err)
 	}
+	log.Infof("assigned direct deals %d for miner %v", len(deals), sid.Miner)
 
 	var out []*types.DealInfoV2
 	for _, d := range deals {
@@ -461,6 +468,7 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 				EndEpoch:    d.EndEpoch,
 			})
 		}
+		log.Infof("assigned deals %d for miner %v", len(oldDeals), sid.Miner)
 	} else {
 		directDealLog.Errorf("assign unpacked deals failed: %v", err)
 		errs = multierror.Append(errs, err)
