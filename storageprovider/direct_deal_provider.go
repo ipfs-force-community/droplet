@@ -89,7 +89,7 @@ func (ddp *DirectDealProvider) ImportDeals(ctx context.Context, dealParams *type
 func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.DirectDealParam, cParams *commonParams) error {
 	deal, err := ddp.dealRepo.GetDealByAllocationID(ctx, dealParam.AllocationID)
 	if err == nil {
-		return fmt.Errorf("deal(%v) exist: %s", deal.ID, deal.State.String())
+		return fmt.Errorf("deal(%v) exist: %s", deal.AllocationID, deal.State.String())
 	}
 	if !errors.Is(err, repo.ErrNotFound) {
 		return err
@@ -116,6 +116,7 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 	if deal.PayloadSize == 0 {
 		return fmt.Errorf("payload size is 0")
 	}
+	directDealLog.Infof("deal piece cid: %s, allocation id: %d, payload size: %d", deal.PieceCID, deal.AllocationID, deal.PayloadSize)
 
 	if err := ddp.dealRepo.SaveDeal(ctx, deal); err != nil {
 		return err
