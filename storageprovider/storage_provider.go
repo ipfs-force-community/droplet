@@ -481,7 +481,7 @@ func (p *StorageProviderImpl) importDataForDeal(ctx context.Context, d *types.Mi
 	// "will fire VerifiedData for imported file
 	d.PiecePath = piecePath
 	d.MetadataPath = filestore.Path("")
-	log.Infof("deal %s piece path: %s", propCid, d.PiecePath)
+	log.Infof("deal %s piece path: %s, payload size: %v", propCid, d.PiecePath, carSize)
 
 	d.State = storagemarket.StorageDealReserveProviderFunds
 	d.PieceStatus = types.Undefine

@@ -542,8 +542,9 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 				return storageDealPorcess.HandleError(ctx, deal, fmt.Errorf("fail to save deal to database: %v", err))
 			}
 		}
+		log.Infof("after publishing deal. piece cid: %s, payload size: %d", deal.Proposal.PieceCID, deal.PayloadSize)
 
-		log.Infof("register shard. deal:%d, proposalCid:%s, pieceCid:%s", deal.DealID, deal.ProposalCid, deal.Proposal.PieceCID)
+		log.Infof("register shard. deal: %d, proposalCid: %s, pieceCid: %s", deal.DealID, deal.ProposalCid, deal.Proposal.PieceCID)
 		// Register the deal data as a "shard" with the DAG store. Later it can be
 		// fetched from the DAG store during retrieval.
 		if err := storageDealPorcess.dagStore.RegisterShard(ctx, deal.Proposal.PieceCID, carFilePath, true, nil); err != nil {
