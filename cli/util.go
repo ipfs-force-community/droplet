@@ -122,6 +122,21 @@ func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, 
 	return marketapi.NewIMarketRPC(cctx.Context, addr, apiInfo.AuthHeader())
 }
 
+func GetMarketConfig(cctx *cli.Context) (*config.MarketConfig, error) {
+	homePath, err := GetRepoPath(cctx, "repo", OldMarketRepoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	cfgPath := path.Join(homePath, "config.toml")
+	marketCfg := config.DefaultMarketConfig
+	err = config.LoadConfig(cfgPath, marketCfg)
+	if err != nil {
+		return nil, err
+	}
+	return marketCfg, nil
+}
+
 func NewMarketClientNode(cctx *cli.Context) (clientapi.IMarketClient, jsonrpc.ClientCloser, error) {
 	homePath, err := GetRepoPath(cctx, "repo", OldClientRepoPath)
 	if err != nil {

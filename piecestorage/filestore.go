@@ -31,6 +31,20 @@ func (f *fsPieceStorage) Len(_ context.Context, resourceId string) (int64, error
 			}
 			size = info.Size()
 
+			if info.Mode() == os.ModeSymlink {
+				targetPath, err := os.Readlink(path)
+				if err != nil {
+					return fmt.Errorf("error reading symlink: %v", err)
+				}
+
+				fi, err := os.Stat(targetPath)
+				if err != nil {
+					return err
+				}
+
+				size = fi.Size()
+			}
+
 			return filepath.SkipDir
 		}
 		return nil
