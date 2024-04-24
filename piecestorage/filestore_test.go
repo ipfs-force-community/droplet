@@ -42,6 +42,12 @@ func TestReWrite(t *testing.T) {
 		}
 	}
 
+	linkPath := path2.Join(path, name+".car")
+	assert.NoError(t, os.Symlink(filePath, linkPath))
+	l, err := ifs.Len(ctx, name+".car")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(100), l)
+
 	buf, err := io.ReadAll(fs)
 	require.NoErrorf(t, err, "expect read file success")
 	if len(buf) != 100 {
@@ -78,7 +84,7 @@ func TestReWrite(t *testing.T) {
 
 		resources, err := ifs.ListResourceIds(ctx)
 		require.NoErrorf(t, err, "expect resource but got err")
-		require.Len(t, resources, 5)
+		require.Len(t, resources, 6)
 		require.Contains(t, resources, name)
 
 		readerCloser, err := ifs.GetReaderCloser(ctx, name)

@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
+	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 	"github.com/ipfs-force-community/droplet/v2/storageprovider"
 
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -53,6 +54,71 @@ var storageDealsCmds = &cli.Command{
 		dealsPendingPublish,
 		getDealCmd,
 		dealStateCmd,
+		autoUpdateDealPayloadSizeCmd,
+	},
+}
+
+var autoUpdateDealPayloadSizeCmd = &cli.Command{
+	Name:  "auto-update-payload-size",
+	Usage: "Manually update payload size for a deal",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "state",
+			Usage: "deal state",
+			Value: storagemarket.StorageDealAwaitingPreCommit,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := DaemonContext(cctx)
+
+		cf, err := GetMarketConfig(cctx)
+		if err != nil {
+			return err
+		}
+		if cf == nil {
+			return fmt.Errorf("no storage deal config found")
+		}
+
+		state := cctx.Uint64("state")
+		params := &market.StorageDealQueryParams{State: &state}
+		deals, err := api.MarketListIncompleteDeals(ctx, params)
+		if err != nil {
+			return err
+		}
+		fmt.Println("found deals:", len(deals))
+
+		psm, err := piecestorage.NewPieceStorageManager(&cf.PieceStorage)
+		if err != nil {
+			return err
+		}
+
+		for _, deal := range deals {
+			piece := deal.Proposal.PieceCID
+			ps, err := psm.FindStorageForRead(ctx, piece.String())
+			if err != nil {
+				fmt.Println("no storage found for piece", piece)
+				continue
+			}
+			size, err := ps.Len(ctx, piece.String())
+			if err != nil {
+				fmt.Println("found no data for piece", piece)
+				continue
+			}
+			if deal.PayloadSize < uint64(size) && deal.PayloadSize < 1<<20 {
+				fmt.Println("piece", piece, "current payload size", deal.PayloadSize, "size", size)
+				if err := api.UpdateStorageDealPayloadSize(ctx, deal.ProposalCid, uint64(size)); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
 	},
 }
 

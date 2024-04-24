@@ -153,8 +153,8 @@ func TestEachStorage(t *testing.T) {
 }
 
 func TestMultiFormatFiles(t *testing.T) {
-	assert.Equal(t, []string{"test", "test.car"}, extendPiece("test"))
-	assert.Equal(t, []string{"test", "test.car"}, extendPiece("test.car"))
+	assert.Equal(t, []string{"test.car", "test"}, extendPiece("test"))
+	assert.Equal(t, []string{"test.car", "test"}, extendPiece("test.car"))
 
 	tmpDir := t.TempDir()
 	psm, err := NewPieceStorageManager(&config.PieceStorage{

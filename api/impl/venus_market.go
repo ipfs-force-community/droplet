@@ -1136,6 +1136,19 @@ func (m *MarketNodeImpl) UpdateDealStatus(ctx context.Context, miner address.Add
 	return m.DealAssigner.UpdateDealStatus(ctx, miner, dealId, pieceStatus, dealStatus)
 }
 
+func (m *MarketNodeImpl) UpdateStorageDealPayloadSize(ctx context.Context, dealProposal cid.Cid, payloadSize uint64) error {
+	deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, dealProposal)
+	if err != nil {
+		return err
+	}
+	if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
+		return err
+	}
+
+	deal.PayloadSize = payloadSize
+	return m.Repo.StorageDealRepo().SaveDeal(ctx, deal)
+}
+
 func (m *MarketNodeImpl) DealsImportData(ctx context.Context, ref types.ImportDataRef, skipCommP bool) error {
 	deal, _, err := storageprovider.GetDealByDataRef(ctx, m.Repo.StorageDealRepo(), &ref)
 	if err != nil {

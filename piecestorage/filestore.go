@@ -29,7 +29,11 @@ func (f *fsPieceStorage) Len(_ context.Context, resourceId string) (int64, error
 			if info.IsDir() {
 				return fmt.Errorf("resource %s expect to be a file but found directory", resourceId)
 			}
-			size = info.Size()
+			fi, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+			size = fi.Size()
 
 			return filepath.SkipDir
 		}
