@@ -1,5 +1,12 @@
 # droplet changelog
 
+## v2.11.1
+
+* opt: add assign log [[#520](https://github.com/ipfs-force-community/droplet/pull/520)]
+* chore: output payload size to log [[#522](https://github.com/ipfs-force-community/droplet/pull/522)]
+* Update 批量发单.md [[#523](https://github.com/ipfs-force-community/droplet/pull/523)]
+* fix: Incorrect payload size [[#524](https://github.com/ipfs-force-community/droplet/pull/524)]
+
 ## v2.11.0
 
 * feat: import data by uuid [[#471](https://github.com/ipfs-force-community/droplet/pull/471)]
