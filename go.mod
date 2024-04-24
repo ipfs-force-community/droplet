@@ -92,6 +92,8 @@ require (
 	gorm.io/gorm v1.23.8
 )
 
+require go.uber.org/mock v0.4.0 // indirect
+
 require (
 	contrib.go.opencensus.io/exporter/graphite v0.0.0-20200424223504-26b90655e0ce // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2 // indirect
@@ -259,8 +261,7 @@ require (
 	github.com/prometheus/procfs v0.11.1 // indirect
 	github.com/prometheus/statsd_exporter v0.23.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-20 v0.3.3 // indirect
-	github.com/quic-go/quic-go v0.38.2 // indirect
+	github.com/quic-go/quic-go v0.42.0 // indirect
 	github.com/quic-go/webtransport-go v0.5.3 // indirect
 	github.com/raulk/clock v1.1.0 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
