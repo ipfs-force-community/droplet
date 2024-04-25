@@ -430,7 +430,6 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 		directDealLog.Errorf("assign direct deals failed: %v", err)
 		errs = multierror.Append(errs, err)
 	}
-	log.Infof("assigned direct deals %d for miner %v", len(deals), sid.Miner)
 
 	var out []*types.DealInfoV2
 	for _, d := range deals {
@@ -448,6 +447,7 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 		})
 	}
 	if len(out) > 0 {
+		log.Infof("assigned direct deals %d for miner %v", len(deals), sid.Miner)
 		return out, nil
 	}
 
@@ -468,7 +468,6 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 				EndEpoch:    d.EndEpoch,
 			})
 		}
-		log.Infof("assigned deals %d for miner %v", len(oldDeals), sid.Miner)
 	} else {
 		directDealLog.Errorf("assign unpacked deals failed: %v", err)
 		errs = multierror.Append(errs, err)
@@ -477,6 +476,7 @@ func (ps *dealAssigner) AssignDeals(ctx context.Context, sid abi.SectorID, ssize
 	if len(out) == 0 {
 		return out, errs.ErrorOrNil()
 	}
+	log.Infof("assigned deals %d for miner %v", len(oldDeals), sid.Miner)
 
 	return out, nil
 }
