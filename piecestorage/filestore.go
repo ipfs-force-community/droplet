@@ -23,44 +23,28 @@ type fsPieceStorage struct {
 }
 
 func (f *fsPieceStorage) Len(_ context.Context, resourceId string) (int64, error) {
-	size := int64(-1)
-	err := filepath.Walk(f.baseUrl, func(path string, info os.FileInfo, _ error) error {
-		if info.Name() == resourceId {
-			if info.IsDir() {
-				return fmt.Errorf("resource %s expect to be a file but found directory", resourceId)
-			}
-			fi, err := os.Stat(path)
-			if err != nil {
-				return err
-			}
-			size = fi.Size()
-
-			return filepath.SkipDir
-		}
-		return nil
-	})
+	st, err := os.Stat(path.Join(f.baseUrl, resourceId))
 	if err != nil {
 		return 0, err
 	}
-	if size == -1 {
-		return 0, fmt.Errorf("resource %s not found", resourceId)
-	}
 
-	return size, nil
+	if st.IsDir() {
+		return 0, fmt.Errorf("resource %s expect to be a file but found directory", resourceId)
+	}
+	return st.Size(), err
 }
 
 func (f *fsPieceStorage) ListResourceIds(_ context.Context) ([]string, error) {
-	var resources []string
-	err := filepath.Walk(f.baseUrl, func(path string, info os.FileInfo, _ error) error {
-		if !info.IsDir() {
-			resources = append(resources, info.Name())
-		}
-		return nil
-	})
+	entries, err := os.ReadDir(f.baseUrl)
 	if err != nil {
 		return nil, err
 	}
-
+	var resources []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			resources = append(resources, entry.Name())
+		}
+	}
 	return resources, nil
 }
 
@@ -107,10 +91,7 @@ func (f *fsPieceStorage) findFile(resourceId string) (string, error) {
 }
 
 func (f *fsPieceStorage) GetReaderCloser(_ context.Context, resourceId string) (io.ReadCloser, error) {
-	dstPath, err := f.findFile(resourceId)
-	if err != nil {
-		return nil, err
-	}
+	dstPath := path.Join(f.baseUrl, resourceId)
 	fs, err := os.Open(dstPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open file %s %w", dstPath, err)
@@ -119,10 +100,7 @@ func (f *fsPieceStorage) GetReaderCloser(_ context.Context, resourceId string) (
 }
 
 func (f *fsPieceStorage) GetMountReader(_ context.Context, resourceId string) (mount.Reader, error) {
-	dstPath, err := f.findFile(resourceId)
-	if err != nil {
-		return nil, err
-	}
+	dstPath := path.Join(f.baseUrl, resourceId)
 	fs, err := os.Open(dstPath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open file %s %w", dstPath, err)
@@ -146,24 +124,14 @@ func (f *fsPieceStorage) GetPieceTransfer(_ context.Context, pieceCid string) (s
 }
 
 func (f *fsPieceStorage) Has(_ context.Context, resourceId string) (bool, error) {
-	var has bool
-	err := filepath.Walk(f.baseUrl, func(path string, info os.FileInfo, _ error) error {
-		if info.Name() == resourceId {
-			if info.IsDir() {
-				return fmt.Errorf("resource %s expect to be a file but found directory", resourceId)
-			}
-			if info.Mode().IsRegular() {
-				has = true
-			}
-			return filepath.SkipDir
-		}
-		return nil
-	})
+	_, err := os.Stat(path.Join(f.baseUrl, resourceId))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
 		return false, err
 	}
-
-	return has, nil
+	return true, nil
 }
 
 func (f *fsPieceStorage) Validate(_ string) error {
