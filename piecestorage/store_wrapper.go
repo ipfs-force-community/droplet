@@ -22,9 +22,9 @@ func newStoreWrapper(s IPieceStorage) IPieceStorage {
 
 func extendPiece(s string) []string {
 	if strings.HasSuffix(s, carSuffix) {
-		return []string{s, strings.Split(s, carSuffix)[0]}
+		return []string{strings.Split(s, carSuffix)[0], s}
 	}
-	return []string{s + carSuffix, s}
+	return []string{s, s + carSuffix}
 }
 
 func (sw *storeWrapper) Len(ctx context.Context, s string) (int64, error) {
