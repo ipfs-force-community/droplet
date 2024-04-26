@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"path/filepath"
 
 	"github.com/filecoin-project/dagstore/mount"
 
@@ -66,28 +65,6 @@ func (f *fsPieceStorage) SaveTo(_ context.Context, resourceId string, r io.Reade
 	}
 	err = utils.Move(tempFile.Name(), dstPath)
 	return wlen, err
-}
-
-func (f *fsPieceStorage) findFile(resourceId string) (string, error) {
-	var dstPath string
-	err := filepath.Walk(f.baseUrl, func(path string, info os.FileInfo, _ error) error {
-		if info.Name() == resourceId {
-			if info.IsDir() {
-				return fmt.Errorf("resource %s expect to be a file but found directory", resourceId)
-			}
-			dstPath = path
-			return filepath.SkipDir
-		}
-		return nil
-	})
-	if err != nil {
-		return "", err
-	}
-	if len(dstPath) == 0 {
-		return "", fmt.Errorf("resource %s not found", resourceId)
-	}
-
-	return dstPath, nil
 }
 
 func (f *fsPieceStorage) GetReaderCloser(_ context.Context, resourceId string) (io.ReadCloser, error) {
