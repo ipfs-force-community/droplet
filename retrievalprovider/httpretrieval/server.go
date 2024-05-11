@@ -106,6 +106,10 @@ func (s *Server) retrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 	}
 	defer mountReader.Close() // nolint
 
+	var buf [32]byte
+	_, _ = mountReader.Read(buf[:])
+	fmt.Println("xxxx", string(buf[:]))
+
 	contentReader, err := handleRangeHeader(r.Header.Get("Range"), mountReader, len)
 	if err != nil {
 		log.Warnf("handleRangeHeader failed, Range: %s, error: %v", r.Header.Get("Range"), err)

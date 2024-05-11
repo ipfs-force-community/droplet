@@ -80,8 +80,9 @@ func TestRetrievalByPiece(t *testing.T) {
 	piece, err := cid.Decode(pieceStr)
 	assert.NoError(t, err)
 	buf := &bytes.Buffer{}
-	f, err := os.Create(filepath.Join(tmpDri, pieceStr))
+	f, err := os.Create(filepath.Join(tmpDri, pieceStr+".car"))
 	assert.NoError(t, err)
+	assert.NoError(t, os.MkdirAll(filepath.Join(tmpDri, pieceStr), os.ModePerm))
 	for i := 0; i < 100; i++ {
 		buf.WriteString("TEST TEST\n")
 	}
