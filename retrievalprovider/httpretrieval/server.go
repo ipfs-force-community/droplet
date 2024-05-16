@@ -106,6 +106,10 @@ func (s *Server) retrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 	}
 	defer mountReader.Close() // nolint
 
+	var buf [32]byte
+	_, _ = mountReader.Read(buf[:])
+	fmt.Println("xxxx", string(buf[:]))
+
 	contentReader, err := handleRangeHeader(r.Header.Get("Range"), mountReader, len)
 	if err != nil {
 		log.Warnf("handleRangeHeader failed, Range: %s, error: %v", r.Header.Get("Range"), err)
@@ -179,7 +183,11 @@ func serveContent(w http.ResponseWriter, r *http.Request, content io.ReadSeeker,
 	// Write a line to the log
 	end := time.Now()
 	total, count := writeErrWatcher.total, writeErrWatcher.count
-	avg := total / count
+	var avg uint64
+	if count != 0 {
+		avg = total / count
+	}
+
 	completeMsg := fmt.Sprintf("GET %s\t%s - %s: %s / %s transferred",
 		r.URL, end.Format(time.RFC3339), start.Format(time.RFC3339), time.Since(start),
 		fmt.Sprintf("total %s (%d B), average write %s ", types.SizeStr(types.NewInt(total)), total, types.SizeStr(types.NewInt(avg))))

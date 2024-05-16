@@ -57,9 +57,12 @@ func (sw *storeWrapper) GetReaderCloser(ctx context.Context, s string) (io.ReadC
 	var rc io.ReadCloser
 	var err error
 	for _, name := range extendPiece(s) {
-		rc, err = sw.IPieceStorage.GetReaderCloser(ctx, name)
-		if err == nil {
-			return rc, nil
+		has, _ := sw.IPieceStorage.Has(ctx, name)
+		if has {
+			rc, err = sw.IPieceStorage.GetReaderCloser(ctx, name)
+			if err == nil {
+				return rc, nil
+			}
 		}
 	}
 
@@ -70,9 +73,12 @@ func (sw *storeWrapper) GetMountReader(ctx context.Context, s string) (mount.Rea
 	var reader mount.Reader
 	var err error
 	for _, name := range extendPiece(s) {
-		reader, err = sw.IPieceStorage.GetMountReader(ctx, name)
-		if err == nil {
-			return reader, nil
+		has, _ := sw.IPieceStorage.Has(ctx, name)
+		if has {
+			reader, err = sw.IPieceStorage.GetMountReader(ctx, name)
+			if err == nil {
+				return reader, nil
+			}
 		}
 	}
 
