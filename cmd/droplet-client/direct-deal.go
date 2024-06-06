@@ -344,6 +344,7 @@ func pieceInfosFromFile(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
 	var pieceInfos []*pieceInfo
 	var rDataCap uint64
 	manifest := cctx.String("manifest")
+	pieceSizePadded := cctx.Bool("piece-size-padded")
 
 	pieces, err := loadManifest(manifest)
 	if err != nil {
@@ -355,6 +356,9 @@ func pieceInfosFromFile(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
 			return nil, 0, fmt.Errorf("invalid piece size: %d", p.pieceSize)
 		}
 		n := p.pieceSize.Padded()
+		if pieceSizePadded {
+			n = abi.PaddedPieceSize(p.pieceSize)
+		}
 		pieceInfos = append(pieceInfos, &pieceInfo{
 			pieceSize:   n,
 			pieceCID:    p.pieceCID,
