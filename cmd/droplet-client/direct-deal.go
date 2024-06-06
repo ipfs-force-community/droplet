@@ -108,6 +108,9 @@ var directDealAllocate = &cli.Command{
 			Name:  "start-epoch",
 			Usage: "start epoch by when the deal should be proved by provider on-chain (default: 8 days from now)",
 		},
+		&cli.BoolFlag{
+			Name: "piece-size-padded",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.IsSet("piece-info") && cctx.IsSet("manifest") {
@@ -302,6 +305,7 @@ func pieceInfosFromCtx(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
 	var pieceInfos []*pieceInfo
 	var rDataCap uint64
 	pieces := cctx.StringSlice("piece-info")
+	pieceSizePadded := cctx.Bool("piece-size-padded")
 
 	for _, p := range pieces {
 		pieceDetail := strings.Split(p, "=")
@@ -322,6 +326,10 @@ func pieceInfosFromCtx(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
 		}
 
 		pieceSize := abi.UnpaddedPieceSize(n).Padded()
+		if pieceSizePadded {
+			pieceSize = abi.PaddedPieceSize(n)
+		}
+
 		pieceInfos = append(pieceInfos, &pieceInfo{
 			pieceSize: pieceSize,
 			pieceCID:  pcid,

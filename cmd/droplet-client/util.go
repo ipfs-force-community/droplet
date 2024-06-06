@@ -84,7 +84,7 @@ func loadManifest(path string) ([]*manifest, error) {
 				manifests = append(manifests, &manifest{payloadCID: payloadCID, payloadSize: payloadSize,
 					pieceCID: pieceCID, pieceSize: abi.UnpaddedPieceSize(pieceSize)})
 			}
-		} else if len(record) == 6 {
+		} else if len(record) >= 5 {
 			// payload_cid,filename,piece_cid,payload_size,piece_size,detail
 			payloadCID, err := cid.Parse(record[0])
 			if err != nil {
