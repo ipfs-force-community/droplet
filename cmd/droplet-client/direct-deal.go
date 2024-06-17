@@ -139,6 +139,7 @@ var directDealAllocate = &cli.Command{
 
 		// Get all minerIDs from input
 		maddrs := make(map[abi.ActorID]types.MinerInfo)
+		mIDs := make(map[abi.ActorID]struct{})
 		minerIds := cctx.StringSlice("miner")
 		for _, id := range minerIds {
 			maddr, err := address.NewFromString(id)
@@ -158,6 +159,7 @@ var directDealAllocate = &cli.Command{
 			}
 
 			maddrs[abi.ActorID(mid)] = m
+			mIDs[abi.ActorID(mid)] = struct{}{}
 		}
 
 		// Get all pieceCIDs from input
@@ -270,7 +272,7 @@ var directDealAllocate = &cli.Command{
 			return fmt.Errorf("failed to execute the message with error: %s", res.Receipt.ExitCode.Error())
 		}
 
-		newAllocations, err := findNewAllocations(ctx, fapi, walletAddr, oldAllocations)
+		newAllocations, err := findNewAllocations(ctx, fapi, walletAddr, oldAllocations, mIDs)
 		if err != nil {
 			return fmt.Errorf("failed to find new allocations: %w", err)
 		}
@@ -396,7 +398,7 @@ func getAllocationParams(cctx *cli.Context, currentHeight abi.ChainEpoch) (*allo
 	return &params, nil
 }
 
-func findNewAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.Address, oldAllocations map[types.AllocationId]types.Allocation) (map[types.AllocationId]types.Allocation, error) {
+func findNewAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.Address, oldAllocations map[types.AllocationId]types.Allocation, mIDs map[abi.ActorID]struct{}) (map[types.AllocationId]types.Allocation, error) {
 	allAllocations, err := fapi.StateGetAllocations(ctx, walletAddr, types.EmptyTSK)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get allocations: %w", err)
@@ -405,6 +407,9 @@ func findNewAllocations(ctx context.Context, fapi v1.FullNode, walletAddr addres
 	newAllocations := make(map[types.AllocationId]types.Allocation, len(allAllocations)-len(oldAllocations))
 	for k, v := range allAllocations {
 		if _, ok := oldAllocations[k]; !ok {
+			if _, ok := mIDs[v.Provider]; !ok {
+				continue
+			}
 			newAllocations[k] = v
 		}
 	}
