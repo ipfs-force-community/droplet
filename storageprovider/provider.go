@@ -271,6 +271,8 @@ func (pna *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context
 	if err != nil {
 		return abi.TokenAmount{}, abi.TokenAmount{}, err
 	}
+	log.Warnf("provider: %v, MaxProviderCollateralMultiplier: %s, min: %v, max: %v", provider,
+		pCfg.MaxProviderCollateralMultiplier, bounds.Min, bounds.Max)
 	max := types.BigMul(bounds.Min, types.NewInt(pCfg.MaxProviderCollateralMultiplier))
 
 	return bounds.Min, max, nil
