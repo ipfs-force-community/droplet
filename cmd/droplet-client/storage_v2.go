@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
-	"errors"
+	"encoding/csv"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -11,27 +13,81 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	v1api "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/google/uuid"
 	"github.com/ipfs-force-community/droplet/v2/api/clients/signer"
 	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
 	types2 "github.com/ipfs-force-community/droplet/v2/types"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/host"
 	inet "github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 )
+
+var commonFlags = []cli.Flag{
+	&cli.StringFlag{
+		Name:     "provider",
+		Usage:    "storage provider on-chain address",
+		Required: true,
+	},
+	&cli.StringFlag{
+		Name:  "from",
+		Usage: "specify address to be used to initiate the deal",
+	},
+	&cli.IntFlag{
+		Name:  "duration",
+		Usage: "duration of the deal in epochs",
+		Value: 518400, // default is 2880 * 180 == 180 days
+	},
+	&cli.IntFlag{
+		Name:  "start-epoch-head-offset",
+		Usage: "start epoch by when the deal should be proved by provider on-chain after current chain head",
+	},
+	&cli.Int64Flag{
+		Name:  "start-epoch",
+		Usage: "specify the epoch that the deal should start at",
+	},
+
+	&cli.BoolFlag{
+		Name:  "fast-retrieval",
+		Usage: "indicates that data should be available for fast retrieval",
+		Value: true,
+	},
+	&cli.BoolFlag{
+		Name:        "verified-deal",
+		Usage:       "indicate that the deal counts towards verified client total",
+		DefaultText: "true if client is verified, false otherwise",
+	},
+	&cli.Int64Flag{
+		Name:  "storage-price",
+		Usage: "storage price in attoFIL per epoch per GiB",
+		Value: 0,
+	},
+	&cli.Int64Flag{
+		Name:  "provider-collateral",
+		Usage: "specify the requested provider collateral the miner should put up",
+		Value: 0,
+	},
+	&cli.BoolFlag{
+		Name:  "remove-unsealed-copy",
+		Usage: "indicates that an unsealed copy of the sector in not required for fast retrieval",
+		Value: false,
+	},
+	&cli.BoolFlag{
+		Name:  "skip-ipni-announce",
+		Usage: "indicates that deal index should not be announced to the IPNI(Network Indexer)",
+	},
+	&cli2.CidBaseFlag,
+}
 
 var storageDealInitV2 = &cli.Command{
 	Name:        "init-v2",
 	Usage:       "Initialize storage offline deal with a miner, use v2 protocol",
 	Description: "Make a deal with a miner.",
 	ArgsUsage:   "[dataCid miner price duration]",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "provider",
-			Usage:    "storage provider on-chain address",
-			Required: true,
-		},
+	Flags: append([]cli.Flag{
 		&cli.StringFlag{
 			Name:     "payload-cid",
 			Usage:    "root CID of the CAR file",
@@ -47,53 +103,7 @@ var storageDealInitV2 = &cli.Command{
 			Usage:    "size of the CAR file as a padded piece",
 			Required: true,
 		},
-		&cli.StringFlag{
-			Name:  "from",
-			Usage: "specify address to be used to initiate the deal",
-		},
-		&cli.IntFlag{
-			Name:  "duration",
-			Usage: "duration of the deal in epochs",
-			Value: 518400, // default is 2880 * 180 == 180 days
-		},
-		&cli.IntFlag{
-			Name:  "start-epoch-head-offset",
-			Usage: "start epoch by when the deal should be proved by provider on-chain after current chain head",
-		},
-		&cli.Int64Flag{
-			Name:  "start-epoch",
-			Usage: "specify the epoch that the deal should start at",
-		},
-		&cli.BoolFlag{
-			Name:  "fast-retrieval",
-			Usage: "indicates that data should be available for fast retrieval",
-			Value: true,
-		},
-		&cli.BoolFlag{
-			Name:        "verified-deal",
-			Usage:       "indicate that the deal counts towards verified client total",
-			DefaultText: "true if client is verified, false otherwise",
-		},
-		&cli.Int64Flag{
-			Name:  "storage-price",
-			Usage: "storage price in attoFIL per epoch per GiB",
-			Value: 0,
-		},
-		&cli.StringFlag{
-			Name:  "provider-collateral",
-			Usage: "specify the requested provider collateral the miner should put up",
-		},
-		&cli.BoolFlag{
-			Name:  "remove-unsealed-copy",
-			Usage: "indicates that an unsealed copy of the sector in not required for fast retrieval",
-			Value: false,
-		},
-		&cli.BoolFlag{
-			Name:  "skip-ipni-announce",
-			Usage: "indicates that deal index should not be announced to the IPNI(Network Indexer)",
-		},
-		&cli2.CidBaseFlag,
-	},
+	}, commonFlags...),
 	Action: func(cctx *cli.Context) error {
 		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
 		if err != nil {
@@ -114,21 +124,17 @@ var storageDealInitV2 = &cli.Command{
 
 		ctx := cli2.ReqContext(cctx)
 
+		params, err := commonParamsFromContext(cctx, fapi)
+		if err != nil {
+			return err
+		}
+
 		payloadCID, err := cid.Parse(cctx.String("payload-cid"))
 		if err != nil {
 			return err
 		}
-		provider, err := address.NewFromString(cctx.String("provider"))
-		if err != nil {
-			return err
-		}
-		from, err := address.NewFromString(cctx.String("from"))
-		if err != nil {
-			return err
-		}
-		duration := abi.ChainEpoch(cctx.Int64("duration"))
 
-		addrInfo, err := cli2.GetAddressInfo(ctx, fapi, provider)
+		addrInfo, err := cli2.GetAddressInfo(ctx, fapi, params.provider)
 		if err != nil {
 			return err
 		}
@@ -142,7 +148,7 @@ var storageDealInitV2 = &cli.Command{
 		}
 
 		if len(x) == 0 {
-			return fmt.Errorf("cannot make a deal with storage provider %s because it does not support protocol version 1.2.0", provider)
+			return fmt.Errorf("cannot make a deal with storage provider %s because it does not support protocol version 1.2.0", params.provider)
 		}
 
 		dealUuid := uuid.New()
@@ -157,37 +163,16 @@ var storageDealInitV2 = &cli.Command{
 		if pieceSize == 0 {
 			return fmt.Errorf("must provide piece-size parameter for CAR url")
 		}
-
-		transfer := types2.Transfer{
-			Type: storagemarket.TTManual,
-		}
-
-		// Check if the address is a verified client
-		dcap, err := fapi.StateVerifiedClientStatus(cctx.Context, from, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		isVerified := dcap != nil
-
-		// If the user has explicitly set the --verified-deal flag
-		if cctx.IsSet("verified-deal") {
-			// If --verified-deal is true, but the address is not a verified
-			// client, return an error
-			verifiedDealParam := cctx.Bool("verified-deal")
-			if verifiedDealParam && !isVerified {
-				return fmt.Errorf("address %s does not have verified client status", from)
-			}
-
-			// Override the default
-			isVerified = verifiedDealParam
+		paddedPieceSize := abi.UnpaddedPieceSize(pieceSize).Padded()
+		if params.isVerified && params.dcap.LessThan(abi.NewTokenAmount(int64(paddedPieceSize))) {
+			return fmt.Errorf("not enough datacap to cover storage price: %v < %v", params.dcap, pieceSize)
 		}
 
 		var providerCollateral abi.TokenAmount
 		if cctx.IsSet("provider-collateral") {
 			providerCollateral = abi.NewTokenAmount(cctx.Int64("provider-collateral"))
 		} else {
-			bounds, err := fapi.StateDealProviderCollateralBounds(ctx, abi.PaddedPieceSize(pieceSize), isVerified, types.EmptyTSK)
+			bounds, err := fapi.StateDealProviderCollateralBounds(ctx, paddedPieceSize, params.isVerified, types.EmptyTSK)
 			if err != nil {
 				return fmt.Errorf("node error getting collateral bounds: %w", err)
 			}
@@ -195,79 +180,158 @@ var storageDealInitV2 = &cli.Command{
 			providerCollateral = big.Div(big.Mul(bounds.Min, big.NewInt(6)), big.NewInt(5)) // add 20%
 		}
 
-		if cctx.IsSet("start-epoch") && cctx.IsSet("start-epoch-head-offset") {
-			return errors.New("only one flag from `start-epoch-head-offset' or `start-epoch` can be specified")
+		m := &manifest{
+			payloadCID: payloadCID,
+			pieceCID:   pieceCid,
+			pieceSize:  abi.UnpaddedPieceSize(pieceSize),
 		}
 
-		ts, err := fapi.ChainHead(ctx)
-		if err != nil {
-			return fmt.Errorf("cannot get chain head: %w", err)
-		}
-		head := ts.Height()
-
-		var startEpoch abi.ChainEpoch
-		if cctx.IsSet("start-epoch-head-offset") {
-			startEpoch = head + abi.ChainEpoch(cctx.Int("start-epoch-head-offset"))
-		} else if cctx.IsSet("start-epoch") {
-			startEpoch = abi.ChainEpoch(cctx.Int("start-epoch"))
-		} else {
-			// default
-			startEpoch = head + abi.ChainEpoch(2880*8) // head + 8 days
-		}
-
-		dealProposal, err := dealProposal(ctx, signer, from, payloadCID, pieceCid,
-			abi.UnpaddedPieceSize(pieceSize).Padded(), provider, startEpoch, duration, isVerified,
-			providerCollateral, abi.NewTokenAmount(cctx.Int64("storage-price")))
-		if err != nil {
+		if err = sendDeal(ctx, h, dealUuid, signer, params, addrInfo.ID, m, providerCollateral); err != nil {
 			return err
-		}
-
-		dealParams := types2.DealParams{
-			DealUUID:           dealUuid,
-			ClientDealProposal: *dealProposal,
-			DealDataRoot:       payloadCID,
-			IsOffline:          true,
-			Transfer:           transfer,
-			RemoveUnsealedCopy: cctx.Bool("remove-unsealed-copy"),
-			SkipIPNIAnnounce:   cctx.Bool("skip-ipni-announce"),
-		}
-
-		log.Debugw("about to submit deal proposal", "uuid", dealUuid.String())
-
-		s, err := h.NewStream(ctx, addrInfo.ID, types2.DealProtocolv120ID)
-		if err != nil {
-			return fmt.Errorf("failed to open stream to peer %s: %w", addrInfo.ID, err)
-		}
-		defer s.Close() // nolint
-
-		var resp types2.DealResponse
-		if err := doRpc(ctx, s, &dealParams, &resp); err != nil {
-			return fmt.Errorf("send proposal rpc: %w", err)
-		}
-
-		if !resp.Accepted {
-			return fmt.Errorf("deal proposal rejected: %s", resp.Message)
 		}
 
 		msg := "sent deal proposal"
 		msg += "\n"
 		msg += fmt.Sprintf("  deal uuid: %s\n", dealUuid)
-		msg += fmt.Sprintf("  storage provider: %s\n", provider)
-		msg += fmt.Sprintf("  client: %s\n", from)
+		msg += fmt.Sprintf("  storage provider: %s\n", params.provider)
+		msg += fmt.Sprintf("  client: %s\n", params.from)
 		msg += fmt.Sprintf("  payload cid: %s\n", payloadCID)
-		msg += fmt.Sprintf("  commp: %s\n", dealProposal.Proposal.PieceCID)
-		msg += fmt.Sprintf("  start epoch: %d\n", dealProposal.Proposal.StartEpoch)
-		msg += fmt.Sprintf("  end epoch: %d\n", dealProposal.Proposal.EndEpoch)
-		msg += fmt.Sprintf("  provider collateral: %s\n", types.FIL(dealProposal.Proposal.ProviderCollateral).Short())
-		proposalNd, err := cborutil.AsIpld(dealProposal)
-		if err == nil {
-			msg += fmt.Sprintf("  proposal cid: %s\n", proposalNd.Cid())
-		}
-
+		msg += fmt.Sprintf("  piece cid: %s\n", pieceCid)
+		msg += fmt.Sprintf("  start epoch: %d\n", params.startEpoch)
+		msg += fmt.Sprintf("  end epoch: %d\n", params.startEpoch+params.duration)
+		msg += fmt.Sprintf("  provider collateral: %s\n", types.FIL(providerCollateral).Short())
 		fmt.Println(msg)
 
 		return nil
 	},
+}
+
+type commonParams struct {
+	provider           address.Address
+	from               address.Address
+	duration           abi.ChainEpoch
+	dcap               abi.TokenAmount
+	isVerified         bool
+	startEpoch         abi.ChainEpoch
+	storagePrice       abi.TokenAmount
+	removeUnsealedCopy bool
+	skipIPNIAnnounce   bool
+}
+
+func commonParamsFromContext(cctx *cli.Context, fapi v1api.FullNode) (*commonParams, error) {
+	ctx := cctx.Context
+	params := &commonParams{}
+	var err error
+	params.provider, err = address.NewFromString(cctx.String("provider"))
+	if err != nil {
+		return nil, err
+	}
+	params.from, err = address.NewFromString(cctx.String("from"))
+	if err != nil {
+		return nil, err
+	}
+	params.duration = abi.ChainEpoch(cctx.Int64("duration"))
+
+	// Check if the address is a verified client
+	dcap, err := fapi.StateVerifiedClientStatus(ctx, params.from, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	var isVerified bool
+	if dcap != nil {
+		isVerified = true
+		params.dcap = *dcap
+	}
+
+	// If the user has explicitly set the --verified-deal flag
+	if cctx.IsSet("verified-deal") {
+		// If --verified-deal is true, but the address is not a verified
+		// client, return an error
+		verifiedDealParam := cctx.Bool("verified-deal")
+		if verifiedDealParam && !isVerified {
+			return nil, fmt.Errorf("address %s does not have verified client status", params.from)
+		}
+
+		// Override the default
+		isVerified = verifiedDealParam
+	}
+	params.isVerified = isVerified
+
+	if cctx.IsSet("start-epoch") && cctx.IsSet("start-epoch-head-offset") {
+		return nil, fmt.Errorf("only one flag from `start-epoch-head-offset' or `start-epoch` can be specified")
+	}
+
+	ts, err := fapi.ChainHead(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get chain head: %w", err)
+	}
+	head := ts.Height()
+
+	var startEpoch abi.ChainEpoch
+	if cctx.IsSet("start-epoch-head-offset") {
+		startEpoch = head + abi.ChainEpoch(cctx.Int("start-epoch-head-offset"))
+	} else if cctx.IsSet("start-epoch") {
+		startEpoch = abi.ChainEpoch(cctx.Int("start-epoch"))
+	} else {
+		// default
+		startEpoch = head + abi.ChainEpoch(2880*8) // head + 8 days
+	}
+	params.startEpoch = startEpoch
+	params.storagePrice = abi.NewTokenAmount(cctx.Int64("storage-price"))
+	params.removeUnsealedCopy = cctx.Bool("remove-unsealed-copy")
+	params.skipIPNIAnnounce = cctx.Bool("skip-ipni-announce")
+
+	return params, nil
+}
+
+func sendDeal(ctx context.Context,
+	h host.Host,
+	dealUUID uuid.UUID,
+	signer signer.ISigner,
+	params *commonParams,
+	peerID peer.ID,
+	m *manifest,
+	providerCollateral abi.TokenAmount,
+) error {
+	dealProposal, err := dealProposal(ctx, signer, params.from, m.payloadCID, m.pieceCID,
+		m.pieceSize.Padded(), params.provider, params.startEpoch, params.duration, params.isVerified,
+		providerCollateral, params.storagePrice)
+	if err != nil {
+		return err
+	}
+	transfer := types2.Transfer{
+		Type: storagemarket.TTManual,
+	}
+
+	dealParams := types2.DealParams{
+		DealUUID:           dealUUID,
+		ClientDealProposal: *dealProposal,
+		DealDataRoot:       m.payloadCID,
+		IsOffline:          true,
+		Transfer:           transfer,
+		RemoveUnsealedCopy: params.removeUnsealedCopy,
+		SkipIPNIAnnounce:   params.skipIPNIAnnounce,
+	}
+
+	log.Debugw("about to submit deal proposal", "uuid", dealUUID.String())
+
+	s, err := h.NewStream(ctx, peerID, types2.DealProtocolv120ID)
+	if err != nil {
+		return fmt.Errorf("failed to open stream to peer %s: %w", peerID, err)
+	}
+	defer s.Close() // nolint
+
+	var resp types2.DealResponse
+	if err := doRpc(ctx, s, &dealParams, &resp); err != nil {
+		return fmt.Errorf("send proposal rpc: %w", err)
+	}
+
+	if !resp.Accepted {
+		return fmt.Errorf("deal proposal rejected: %s", resp.Message)
+	}
+
+	return nil
 }
 
 func dealProposal(ctx context.Context,
@@ -342,6 +406,114 @@ func doRpc(ctx context.Context, s inet.Stream, req interface{}, resp interface{}
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+var batchStorageDealInitV2 = &cli.Command{
+	Name:  "batch-init-v2",
+	Usage: "batch init storage deal",
+	Flags: append([]cli.Flag{
+		&cli.StringFlag{
+			Name:     "manifest",
+			Usage:    "Path to the manifest file",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:  "output",
+			Usage: "Path to the output file. If not specified, output will be `provider-date.csv`.",
+		},
+	}, commonFlags...),
+	Action: func(cctx *cli.Context) error {
+		ctx := cli2.ReqContext(cctx)
+		fapi, fcloser, err := cli2.NewFullNode(cctx, cli2.OldClientRepoPath)
+		if err != nil {
+			return err
+		}
+		defer fcloser()
+
+		signer, scloser, err := cli2.GetSignerFromRepo(cctx, cli2.OldClientRepoPath)
+		if err != nil {
+			return err
+		}
+		defer scloser()
+
+		params, err := commonParamsFromContext(cctx, fapi)
+		if err != nil {
+			return err
+		}
+
+		addrInfo, err := cli2.GetAddressInfo(ctx, fapi, params.provider)
+		if err != nil {
+			return err
+		}
+
+		h, err := cli2.NewHost(cctx, cli2.OldClientRepoPath)
+		if err != nil {
+			return err
+		}
+		if err := h.Connect(ctx, *addrInfo); err != nil {
+			return fmt.Errorf("failed to connect to peer %s: %w", addrInfo.ID, err)
+		}
+		x, err := h.Peerstore().FirstSupportedProtocol(addrInfo.ID, types2.DealProtocolv121ID)
+		if err != nil {
+			return fmt.Errorf("getting protocols for peer %s: %w", addrInfo.ID, err)
+		}
+
+		if len(x) == 0 {
+			return fmt.Errorf("cannot make a deal with storage provider %s because it does not support protocol version 1.2.0", params.provider)
+		}
+
+		manifests, err := loadManifest(cctx.String("manifest"))
+		if err != nil {
+			return fmt.Errorf("load manifest error: %v", err)
+		}
+
+		output := cctx.String("output")
+		if output == "" {
+			output = fmt.Sprintf("%s-%s.csv", params.provider, time.Now().Format("2006-01-02-15-04-05"))
+		}
+
+		buf := &bytes.Buffer{}
+		writer := csv.NewWriter(buf)
+		_ = writer.Write([]string{"DealUUID", "Provider", "Client", "PieceCID", "PieceSize", "PayloadCID"})
+
+		defer func() {
+			writer.Flush()
+			_ = os.WriteFile(output, buf.Bytes(), 0o644)
+		}()
+
+		dcap := params.dcap.Int
+		for _, m := range manifests {
+			paddedPieceSize := m.pieceSize.Padded()
+			dcap = big.NewInt(0).Sub(dcap, big.NewInt(int64(paddedPieceSize)).Int)
+			if dcap.Cmp(big.NewInt(0).Int) < 0 {
+				fmt.Printf("not enough datacap to create deal: %v\n", dcap)
+				break
+			}
+
+			dealUUID := uuid.New()
+			var providerCollateral abi.TokenAmount
+			if cctx.IsSet("provider-collateral") {
+				providerCollateral = abi.NewTokenAmount(cctx.Int64("provider-collateral"))
+			} else {
+				bounds, err := fapi.StateDealProviderCollateralBounds(ctx, paddedPieceSize, params.isVerified, types.EmptyTSK)
+				if err != nil {
+					return fmt.Errorf("node error getting collateral bounds: %w", err)
+				}
+
+				providerCollateral = big.Div(big.Mul(bounds.Min, big.NewInt(6)), big.NewInt(5)) // add 20%
+			}
+
+			if err := sendDeal(ctx, h, dealUUID, signer, params, addrInfo.ID, m, providerCollateral); err != nil {
+				return err
+			}
+			fmt.Println("created deal", dealUUID, ", piece cid", m.pieceCID)
+
+			_ = writer.Write([]string{dealUUID.String(), params.provider.String(), params.from.String(),
+				m.pieceCID.String(), fmt.Sprintf("%d", paddedPieceSize), m.payloadCID.String()})
+		}
+
+		return nil
+	},
 }
 
 var storageDealStatus = &cli.Command{

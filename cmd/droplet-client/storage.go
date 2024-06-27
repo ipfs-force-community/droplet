@@ -392,6 +392,7 @@ var storageDealsCmd = &cli.Command{
 		verifiedDealStatsCmd,
 		storageDealsExportCmd,
 		storageDealInitV2,
+		batchStorageDealInitV2,
 		storageDealStatus,
 	},
 }
