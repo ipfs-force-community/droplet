@@ -22,33 +22,43 @@ import (
 )
 
 var storageDealInitV2 = &cli.Command{
-	Name:  "init-v2",
-	Usage: "Initialize storage offline deal with a miner, use v2 protocol",
-	Description: `Make a deal with a miner.
-dataCid comes from running 'droplet-client data import'.
-miner is the address of the miner you wish to make a deal with.
-price is measured in FIL/Epoch. Miners usually don't accept a bid
-lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
-with './droplet-client storage asks query <miner address>'.
-duration is how long the miner should store the data for, in blocks.
-The minimum value is 518400 (6 months).`,
-	ArgsUsage: "[dataCid miner price duration]",
+	Name:        "init-v2",
+	Usage:       "Initialize storage offline deal with a miner, use v2 protocol",
+	Description: "Make a deal with a miner.",
+	ArgsUsage:   "[dataCid miner price duration]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "piece-cid",
-			Usage: "manually specify piece commitment for data (dataCid must be to a car file)",
+			Name:     "provider",
+			Usage:    "storage provider on-chain address",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "payload-cid",
+			Usage:    "root CID of the CAR file",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "piece-cid",
+			Usage:    "commp of the CAR file",
+			Required: true,
 		},
 		&cli.Int64Flag{
-			Name:  "piece-size",
-			Usage: "if manually specifying piece cid, used to specify size (dataCid must be to a car file)",
-		},
-		&cli.BoolFlag{
-			Name:  "manual-stateless-deal",
-			Usage: "instructs the node to send an offline deal without registering it with the deallist/fsm",
+			Name:     "piece-size",
+			Usage:    "size of the CAR file as a padded piece",
+			Required: true,
 		},
 		&cli.StringFlag{
 			Name:  "from",
 			Usage: "specify address to fund the deal with",
+		},
+		&cli.IntFlag{
+			Name:  "duration",
+			Usage: "duration of the deal in epochs",
+			Value: 518400, // default is 2880 * 180 == 180 days
+		},
+		&cli.IntFlag{
+			Name:  "start-epoch-head-offset",
+			Usage: "start epoch by when the deal should be proved by provider on-chain after current chain head",
 		},
 		&cli.Int64Flag{
 			Name:  "start-epoch",
@@ -64,9 +74,23 @@ The minimum value is 518400 (6 months).`,
 			Usage:       "indicate that the deal counts towards verified client total",
 			DefaultText: "true if client is verified, false otherwise",
 		},
+		&cli.Int64Flag{
+			Name:  "storage-price",
+			Usage: "storage price in attoFIL per epoch per GiB",
+			Value: 0,
+		},
 		&cli.StringFlag{
 			Name:  "provider-collateral",
 			Usage: "specify the requested provider collateral the miner should put up",
+		},
+		&cli.BoolFlag{
+			Name:  "remove-unsealed-copy",
+			Usage: "indicates that an unsealed copy of the sector in not required for fast retrieval",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "skip-ipni-announce",
+			Usage: "indicates that deal index should not be announced to the IPNI(Network Indexer)",
 		},
 		&cli2.CidBaseFlag,
 	},
@@ -76,12 +100,6 @@ The minimum value is 518400 (6 months).`,
 			return err
 		}
 		defer fcloser()
-
-		api, closer, err := cli2.NewMarketClientNode(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
 
 		h, err := cli2.NewHost(cctx, cli2.OldClientRepoPath)
 		if err != nil {
@@ -96,22 +114,21 @@ The minimum value is 518400 (6 months).`,
 
 		ctx := cli2.ReqContext(cctx)
 
-		if cctx.NArg() != 4 {
-			return errors.New("expected 4 args: dataCid, miner, price, duration")
-		}
-
-		// [data, miner, price, dur]
-		p, err := dealParamsFromContext(cctx, api, fapi, false)
+		payloadCID, err := cid.Parse(cctx.String("payload-cid"))
 		if err != nil {
 			return err
 		}
-
-		data, err := cid.Parse(p.firstArg)
+		provider, err := address.NewFromString(cctx.String("provider"))
 		if err != nil {
 			return err
 		}
+		from, err := address.NewFromString(cctx.String("from"))
+		if err != nil {
+			return err
+		}
+		duration := abi.ChainEpoch(cctx.Int64("duration"))
 
-		addrInfo, err := cli2.GetAddressInfo(ctx, fapi, p.miner[0])
+		addrInfo, err := cli2.GetAddressInfo(ctx, fapi, provider)
 		if err != nil {
 			return err
 		}
@@ -125,7 +142,7 @@ The minimum value is 518400 (6 months).`,
 		}
 
 		if len(x) == 0 {
-			return fmt.Errorf("cannot make a deal with storage provider %s because it does not support protocol version 1.2.0", p.miner[0])
+			return fmt.Errorf("cannot make a deal with storage provider %s because it does not support protocol version 1.2.0", provider)
 		}
 
 		dealUuid := uuid.New()
@@ -145,11 +162,32 @@ The minimum value is 518400 (6 months).`,
 			Type: storagemarket.TTManual,
 		}
 
+		// Check if the address is a verified client
+		dcap, err := fapi.StateVerifiedClientStatus(cctx.Context, from, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		isVerified := dcap != nil
+
+		// If the user has explicitly set the --verified-deal flag
+		if cctx.IsSet("verified-deal") {
+			// If --verified-deal is true, but the address is not a verified
+			// client, return an error
+			verifiedDealParam := cctx.Bool("verified-deal")
+			if verifiedDealParam && !isVerified {
+				return fmt.Errorf("address %s does not have verified client status", from)
+			}
+
+			// Override the default
+			isVerified = verifiedDealParam
+		}
+
 		var providerCollateral abi.TokenAmount
 		if cctx.IsSet("provider-collateral") {
 			providerCollateral = abi.NewTokenAmount(cctx.Int64("provider-collateral"))
 		} else {
-			bounds, err := fapi.StateDealProviderCollateralBounds(ctx, abi.PaddedPieceSize(pieceSize), p.isVerified, types.EmptyTSK)
+			bounds, err := fapi.StateDealProviderCollateralBounds(ctx, abi.PaddedPieceSize(pieceSize), isVerified, types.EmptyTSK)
 			if err != nil {
 				return fmt.Errorf("node error getting collateral bounds: %w", err)
 			}
@@ -157,21 +195,29 @@ The minimum value is 518400 (6 months).`,
 			providerCollateral = big.Div(big.Mul(bounds.Min, big.NewInt(6)), big.NewInt(5)) // add 20%
 		}
 
-		tipset, err := fapi.ChainHead(ctx)
+		if cctx.IsSet("start-epoch") && cctx.IsSet("start-epoch-head-offset") {
+			return errors.New("only one flag from `start-epoch-head-offset' or `start-epoch` can be specified")
+		}
+
+		ts, err := fapi.ChainHead(ctx)
 		if err != nil {
 			return fmt.Errorf("cannot get chain head: %w", err)
 		}
-		head := tipset.Height()
+		head := ts.Height()
 
 		var startEpoch abi.ChainEpoch
-		if cctx.IsSet("start-epoch") {
+		if cctx.IsSet("start-epoch-head-offset") {
+			startEpoch = head + abi.ChainEpoch(cctx.Int("start-epoch-head-offset"))
+		} else if cctx.IsSet("start-epoch") {
 			startEpoch = abi.ChainEpoch(cctx.Int("start-epoch"))
 		} else {
+			// default
 			startEpoch = head + abi.ChainEpoch(2880*8) // head + 8 days
 		}
 
-		dealProposal, err := dealProposal(ctx, signer, p.from, data, pieceCid, abi.UnpaddedPieceSize(pieceSize).Padded(),
-			p.miner[0], startEpoch, int(p.dur), p.isVerified, providerCollateral, abi.NewTokenAmount(0))
+		dealProposal, err := dealProposal(ctx, signer, from, payloadCID, pieceCid,
+			abi.UnpaddedPieceSize(pieceSize).Padded(), provider, startEpoch, duration, isVerified,
+			providerCollateral, abi.NewTokenAmount(cctx.Int64("storage-price")))
 		if err != nil {
 			return err
 		}
@@ -179,11 +225,11 @@ The minimum value is 518400 (6 months).`,
 		dealParams := types2.DealParams{
 			DealUUID:           dealUuid,
 			ClientDealProposal: *dealProposal,
-			DealDataRoot:       data,
+			DealDataRoot:       payloadCID,
 			IsOffline:          true,
 			Transfer:           transfer,
-			RemoveUnsealedCopy: false,
-			SkipIPNIAnnounce:   false,
+			RemoveUnsealedCopy: cctx.Bool("remove-unsealed-copy"),
+			SkipIPNIAnnounce:   cctx.Bool("skip-ipni-announce"),
 		}
 
 		log.Debugw("about to submit deal proposal", "uuid", dealUuid.String())
@@ -222,12 +268,12 @@ func dealProposal(ctx context.Context,
 	pieceSize abi.PaddedPieceSize,
 	minerAddr address.Address,
 	startEpoch abi.ChainEpoch,
-	duration int,
+	duration abi.ChainEpoch,
 	verified bool,
 	providerCollateral abi.TokenAmount,
 	storagePrice abi.TokenAmount,
 ) (*types.ClientDealProposal, error) {
-	endEpoch := startEpoch + abi.ChainEpoch(duration)
+	endEpoch := startEpoch + duration
 	// deal proposal expects total storage price for deal per epoch, therefore we
 	// multiply pieceSize * storagePrice (which is set per epoch per GiB) and divide by 2^30
 	storagePricePerEpochForDeal := big.Div(big.Mul(big.NewInt(int64(pieceSize)), storagePrice), big.NewInt(int64(1<<30)))
