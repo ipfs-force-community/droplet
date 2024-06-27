@@ -49,7 +49,7 @@ var storageDealInitV2 = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "from",
-			Usage: "specify address to fund the deal with",
+			Usage: "specify address to be used to initiate the deal",
 		},
 		&cli.IntFlag{
 			Name:  "duration",
@@ -249,12 +249,22 @@ var storageDealInitV2 = &cli.Command{
 			return fmt.Errorf("deal proposal rejected: %s", resp.Message)
 		}
 
-		fmt.Println("deal uuid: ", dealUuid)
-
+		msg := "sent deal proposal"
+		msg += "\n"
+		msg += fmt.Sprintf("  deal uuid: %s\n", dealUuid)
+		msg += fmt.Sprintf("  storage provider: %s\n", provider)
+		msg += fmt.Sprintf("  client: %s\n", from)
+		msg += fmt.Sprintf("  payload cid: %s\n", payloadCID)
+		msg += fmt.Sprintf("  commp: %s\n", dealProposal.Proposal.PieceCID)
+		msg += fmt.Sprintf("  start epoch: %d\n", dealProposal.Proposal.StartEpoch)
+		msg += fmt.Sprintf("  end epoch: %d\n", dealProposal.Proposal.EndEpoch)
+		msg += fmt.Sprintf("  provider collateral: %s\n", types.FIL(dealProposal.Proposal.ProviderCollateral).Short())
 		proposalNd, err := cborutil.AsIpld(dealProposal)
 		if err == nil {
-			fmt.Println("proposal cid: ", proposalNd.Cid())
+			msg += fmt.Sprintf("  proposal cid: %s\n", proposalNd.Cid())
 		}
+
+		fmt.Println(msg)
 
 		return nil
 	},
