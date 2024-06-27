@@ -79,6 +79,9 @@ var commonFlags = []cli.Flag{
 		Name:  "skip-ipni-announce",
 		Usage: "indicates that deal index should not be announced to the IPNI(Network Indexer)",
 	},
+	&cli.BoolFlag{
+		Name: "piece-size-padded",
+	},
 	&cli2.CidBaseFlag,
 }
 
@@ -164,6 +167,10 @@ var storageDealInitV2 = &cli.Command{
 			return fmt.Errorf("must provide piece-size parameter for CAR url")
 		}
 		paddedPieceSize := abi.UnpaddedPieceSize(pieceSize).Padded()
+		if cctx.Bool("piece-size-padded") {
+			paddedPieceSize = abi.PaddedPieceSize(pieceSize)
+		}
+
 		if params.isVerified && params.dcap.LessThan(abi.NewTokenAmount(int64(paddedPieceSize))) {
 			return fmt.Errorf("not enough datacap to cover storage price: %v < %v", params.dcap, pieceSize)
 		}
@@ -183,7 +190,7 @@ var storageDealInitV2 = &cli.Command{
 		m := &manifest{
 			payloadCID: payloadCID,
 			pieceCID:   pieceCid,
-			pieceSize:  abi.UnpaddedPieceSize(pieceSize),
+			pieceSize:  paddedPieceSize.Unpadded(),
 		}
 
 		if err = sendDeal(ctx, h, dealUuid, signer, params, addrInfo.ID, m, providerCollateral); err != nil {
@@ -294,9 +301,7 @@ func sendDeal(ctx context.Context,
 	m *manifest,
 	providerCollateral abi.TokenAmount,
 ) error {
-	dealProposal, err := dealProposal(ctx, signer, params.from, m.payloadCID, m.pieceCID,
-		m.pieceSize.Padded(), params.provider, params.startEpoch, params.duration, params.isVerified,
-		providerCollateral, params.storagePrice)
+	dealProposal, err := dealProposal(ctx, signer, params, m, providerCollateral)
 	if err != nil {
 		return err
 	}
@@ -336,33 +341,27 @@ func sendDeal(ctx context.Context,
 
 func dealProposal(ctx context.Context,
 	signer signer.ISigner,
-	clientAddr address.Address,
-	rootCid cid.Cid,
-	pieceCid cid.Cid,
-	pieceSize abi.PaddedPieceSize,
-	minerAddr address.Address,
-	startEpoch abi.ChainEpoch,
-	duration abi.ChainEpoch,
-	verified bool,
+	params *commonParams,
+	m *manifest,
 	providerCollateral abi.TokenAmount,
-	storagePrice abi.TokenAmount,
 ) (*types.ClientDealProposal, error) {
-	endEpoch := startEpoch + duration
+	endEpoch := params.startEpoch + params.duration
 	// deal proposal expects total storage price for deal per epoch, therefore we
 	// multiply pieceSize * storagePrice (which is set per epoch per GiB) and divide by 2^30
-	storagePricePerEpochForDeal := big.Div(big.Mul(big.NewInt(int64(pieceSize)), storagePrice), big.NewInt(int64(1<<30)))
-	l, err := types.NewLabelFromString(rootCid.String())
+	pieceSize := m.pieceSize.Padded()
+	storagePricePerEpochForDeal := big.Div(big.Mul(big.NewInt(int64(pieceSize)), params.storagePrice), big.NewInt(int64(1<<30)))
+	l, err := types.NewLabelFromString(m.payloadCID.String())
 	if err != nil {
 		return nil, err
 	}
 	proposal := types.DealProposal{
-		PieceCID:             pieceCid,
+		PieceCID:             m.pieceCID,
 		PieceSize:            pieceSize,
-		VerifiedDeal:         verified,
-		Client:               clientAddr,
-		Provider:             minerAddr,
+		VerifiedDeal:         params.isVerified,
+		Client:               params.from,
+		Provider:             params.provider,
 		Label:                l,
-		StartEpoch:           startEpoch,
+		StartEpoch:           params.startEpoch,
 		EndEpoch:             endEpoch,
 		StoragePricePerEpoch: storagePricePerEpochForDeal,
 		ProviderCollateral:   providerCollateral,
@@ -373,7 +372,7 @@ func dealProposal(ctx context.Context,
 		return nil, err
 	}
 
-	sig, err := signer.WalletSign(ctx, clientAddr, buf, types.MsgMeta{Type: types.MTDealProposal, Extra: buf})
+	sig, err := signer.WalletSign(ctx, params.from, buf, types.MsgMeta{Type: types.MTDealProposal, Extra: buf})
 	if err != nil {
 		return nil, fmt.Errorf("wallet sign failed: %w", err)
 	}
@@ -484,6 +483,11 @@ var batchStorageDealInitV2 = &cli.Command{
 		dcap := params.dcap.Int
 		for _, m := range manifests {
 			paddedPieceSize := m.pieceSize.Padded()
+			if cctx.Bool("piece-size-padded") {
+				paddedPieceSize = abi.PaddedPieceSize(m.pieceSize)
+				m.pieceSize = paddedPieceSize.Unpadded()
+			}
+
 			dcap = big.NewInt(0).Sub(dcap, big.NewInt(int64(paddedPieceSize)).Int)
 			if dcap.Cmp(big.NewInt(0).Int) < 0 {
 				fmt.Printf("not enough datacap to create deal: %v\n", dcap)
