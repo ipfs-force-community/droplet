@@ -325,6 +325,7 @@ func sendDeal(ctx context.Context,
 	if err != nil {
 		return fmt.Errorf("failed to open stream to peer %s: %w", peerID, err)
 	}
+	_ = s.SetReadDeadline(time.Now().Add(time.Minute))
 	defer s.Close() // nolint
 
 	var resp types2.DealResponse
@@ -481,7 +482,8 @@ var batchStorageDealInitV2 = &cli.Command{
 		}()
 
 		dcap := params.dcap.Int
-		for _, m := range manifests {
+		for idx := 0; idx < len(manifests); idx++ {
+			m := manifests[idx]
 			paddedPieceSize := m.pieceSize.Padded()
 			if cctx.Bool("piece-size-padded") {
 				paddedPieceSize = abi.PaddedPieceSize(m.pieceSize)
@@ -508,8 +510,11 @@ var batchStorageDealInitV2 = &cli.Command{
 			}
 
 			if err := sendDeal(ctx, h, dealUUID, signer, params, addrInfo.ID, m, providerCollateral); err != nil {
-				return err
+				fmt.Println("failed to create deal: ", err)
+				time.Sleep(time.Second * 2)
+				continue
 			}
+			idx++
 			fmt.Println("created deal", dealUUID, ", piece cid", m.pieceCID)
 
 			_ = writer.Write([]string{dealUUID.String(), params.provider.String(), params.from.String(),
