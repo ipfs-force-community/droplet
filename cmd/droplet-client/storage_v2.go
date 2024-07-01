@@ -187,7 +187,7 @@ var storageDealInitV2 = &cli.Command{
 			providerCollateral = big.Div(big.Mul(bounds.Min, big.NewInt(6)), big.NewInt(5)) // add 20%
 		}
 
-		m := &manifest{
+		m := manifest{
 			payloadCID: payloadCID,
 			pieceCID:   pieceCid,
 			pieceSize:  paddedPieceSize.Unpadded(),
@@ -298,7 +298,7 @@ func sendDeal(ctx context.Context,
 	signer signer.ISigner,
 	params *commonParams,
 	peerID peer.ID,
-	m *manifest,
+	m manifest,
 	providerCollateral abi.TokenAmount,
 ) error {
 	dealProposal, err := dealProposal(ctx, signer, params, m, providerCollateral)
@@ -343,7 +343,7 @@ func sendDeal(ctx context.Context,
 func dealProposal(ctx context.Context,
 	signer signer.ISigner,
 	params *commonParams,
-	m *manifest,
+	m manifest,
 	providerCollateral abi.TokenAmount,
 ) (*types.ClientDealProposal, error) {
 	endEpoch := params.startEpoch + params.duration
@@ -482,10 +482,12 @@ var batchStorageDealInitV2 = &cli.Command{
 		}()
 
 		dcap := params.dcap.Int
+		isPadded := cctx.Bool("piece-size-padded")
 		for idx := 0; idx < len(manifests); {
-			m := manifests[idx]
+			m := *manifests[idx]
+
 			paddedPieceSize := m.pieceSize.Padded()
-			if cctx.Bool("piece-size-padded") {
+			if isPadded {
 				paddedPieceSize = abi.PaddedPieceSize(m.pieceSize)
 				m.pieceSize = paddedPieceSize.Unpadded()
 			}
