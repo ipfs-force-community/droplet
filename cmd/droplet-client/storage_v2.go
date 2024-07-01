@@ -482,7 +482,7 @@ var batchStorageDealInitV2 = &cli.Command{
 		}()
 
 		dcap := params.dcap.Int
-		for idx := 0; idx < len(manifests); idx++ {
+		for idx := 0; idx < len(manifests); {
 			m := manifests[idx]
 			paddedPieceSize := m.pieceSize.Padded()
 			if cctx.Bool("piece-size-padded") {
