@@ -7,9 +7,9 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/hashicorp/go-multierror"
+	bstore "github.com/ipfs/boxo/blockstore"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/multiformats/go-multihash"
 )

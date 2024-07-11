@@ -51,7 +51,7 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 	require.NoError(t, err)
 	defer readOnly.Close() //nolint:errcheck
 
-	dags := merkledag.NewDAGService(blockservice.New(readOnly, offline.Exchange(readOnly)))
+	dags := merkledag.NewDAGService(blockservice.New(readOnly, offline.Exchange(readOnly))) //nolint:staticcheck
 
 	nd, err := dags.Get(ctx, root)
 	require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestRoundtripUnixFS_Filestore(t *testing.T) {
 	require.NoError(t, err)
 	defer fs.Close() //nolint:errcheck
 
-	dags := merkledag.NewDAGService(blockservice.New(fs, offline.Exchange(fs)))
+	dags := merkledag.NewDAGService(blockservice.New(fs, offline.Exchange(fs))) //nolint:staticcheck
 
 	nd, err := dags.Get(ctx, root)
 	require.NoError(t, err)
