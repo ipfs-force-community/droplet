@@ -492,9 +492,9 @@ var batchStorageDealInitV2 = &cli.Command{
 				m.pieceSize = paddedPieceSize.Unpadded()
 			}
 
-			dcap = big.NewInt(0).Sub(dcap, big.NewInt(int64(paddedPieceSize)).Int)
-			if dcap.Cmp(big.NewInt(0).Int) < 0 {
-				fmt.Printf("not enough datacap to create deal: %v\n", dcap)
+			remainDcap := big.NewInt(0).Sub(dcap, big.NewInt(int64(paddedPieceSize)).Int)
+			if remainDcap.Cmp(big.NewInt(0).Int) < 0 {
+				fmt.Printf("not enough datacap to create deal: %v\n", remainDcap)
 				break
 			}
 
@@ -517,6 +517,7 @@ var batchStorageDealInitV2 = &cli.Command{
 				continue
 			}
 			idx++
+			dcap = remainDcap
 			fmt.Println("created deal", dealUUID, ", piece cid", m.pieceCID)
 
 			_ = writer.Write([]string{dealUUID.String(), params.provider.String(), params.from.String(),
