@@ -1011,7 +1011,7 @@ func (a *API) ClientExportInto(ctx context.Context, exportRef types.ExportRef, c
 		retrievalBs = cbs
 	}
 
-	dserv := merkledag.NewDAGService(blockservice.New(retrievalBs, offline.Exchange(retrievalBs)))
+	dserv := merkledag.NewDAGService(blockservice.New(retrievalBs, offline.Exchange(retrievalBs))) //nolint:staticcheck
 
 	// Are we outputting a CAR?
 	if car {
@@ -1357,7 +1357,7 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (types.DataSize,
 	}
 	defer onDone()
 
-	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs))) //nolint:staticcheck
 
 	var w lenWriter
 	err = car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
@@ -1380,7 +1380,7 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (types.DataC
 	}
 	defer onDone()
 
-	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs))) //nolint:staticcheck
 	w := &writer.Writer{}
 	bw := bufio.NewWriterSize(w, int(writer.CommPBuf))
 

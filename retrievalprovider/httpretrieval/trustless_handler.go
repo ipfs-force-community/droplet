@@ -3,8 +3,8 @@ package httpretrieval
 import (
 	"context"
 
+	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-graphsync/storeutil"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/frisbii"
 )
 

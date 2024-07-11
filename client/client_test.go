@@ -112,7 +112,7 @@ func TestImportLocal(t *testing.T) {
 	_, err = car.LoadCar(ctx, bs, dr)
 	require.NoError(t, err)
 
-	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs))) //nolint:staticcheck
 
 	nd, err := dag.Get(ctx, exportedRoots[0])
 	require.NoError(t, err)

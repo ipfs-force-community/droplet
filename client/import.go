@@ -130,7 +130,7 @@ func buildUnixFS(ctx context.Context, reader io.Reader, into bstore.Blockstore, 
 		return cid.Undef, err
 	}
 
-	bsvc := blockservice.New(into, offline.Exchange(into))
+	bsvc := blockservice.New(into, offline.Exchange(into)) //nolint:staticcheck
 	dags := merkledag.NewDAGService(bsvc)
 	bufdag := ipld.NewBufferedDAG(ctx, dags)
 
