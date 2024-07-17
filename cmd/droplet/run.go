@@ -21,6 +21,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/config"
 	"github.com/ipfs-force-community/droplet/v2/dagstore"
 	"github.com/ipfs-force-community/droplet/v2/fundmgr"
+	"github.com/ipfs-force-community/droplet/v2/indexprovider"
 	"github.com/ipfs-force-community/droplet/v2/metrics"
 	"github.com/ipfs-force-community/droplet/v2/minermgr"
 	"github.com/ipfs-force-community/droplet/v2/models"
@@ -252,6 +253,8 @@ func runDaemon(cctx *cli.Context) error {
 		// Markets
 		storageprovider.StorageProviderOpts(cfg),
 		retrievalprovider.RetrievalProviderOpts(cfg),
+
+		indexprovider.IndexProviderOpts,
 
 		func(s *builder.Settings) error {
 			s.Invokes[ExtractApiKey] = builder.InvokeOption{
