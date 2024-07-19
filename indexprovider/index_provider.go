@@ -21,10 +21,10 @@ import (
 	"github.com/multiformats/go-multihash"
 	"go.mongodb.org/mongo-driver/mongo"
 
+	"github.com/filecoin-project/go-fil-markets/stores"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/ipfs-force-community/droplet/v2/config"
-	"github.com/ipfs-force-community/droplet/v2/dagstore"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 )
 
@@ -34,7 +34,7 @@ type Wrapper struct {
 	enabled bool
 
 	h             host.Host
-	dagWrapper    *dagstore.Wrapper
+	dagStore      stores.DAGStoreWrapper
 	full          v1.FullNode
 	cfg           *config.ProviderConfig
 	dealsDB       repo.StorageDealRepo
@@ -53,7 +53,7 @@ func NewWrapper(h host.Host,
 	cfg *config.ProviderConfig,
 	full v1.FullNode,
 	r repo.Repo,
-	dagWrapper *dagstore.Wrapper,
+	dagStore stores.DAGStoreWrapper,
 	prov provider.Interface,
 ) (*Wrapper, error) {
 	_, isDisabled := prov.(*DisabledIndexProvider)
@@ -76,7 +76,7 @@ func NewWrapper(h host.Host,
 		bitswapEnabled: bitswapEnabled,
 		httpEnabled:    httpEnabled,
 		full:           full,
-		dagWrapper:     dagWrapper,
+		dagStore:       dagStore,
 	}
 
 	return w, nil
@@ -317,7 +317,7 @@ func (w *Wrapper) MultihashLister(ctx context.Context, prov peer.ID, contextID [
 			idName = "UUID"
 		}
 		llog := log.With(idName, identifier, "piece", pieceCid)
-		ii, err := w.dagWrapper.GetIterableIndexForPiece(pieceCid)
+		ii, err := w.dagStore.GetIterableIndexForPiece(pieceCid)
 		if err != nil {
 			e := fmt.Errorf("failed to get iterable index: %w", err)
 			if strings.Contains(err.Error(), "file does not exist") ||
@@ -421,13 +421,12 @@ func (w *Wrapper) AnnounceDeal(ctx context.Context, deal *types.MinerDeal) (cid.
 	// 	return cid.Undef, nil
 	// }
 
-	propCid := deal.ProposalCid
 	md := metadata.GraphsyncFilecoinV1{
 		PieceCID:      deal.ClientDealProposal.Proposal.PieceCID,
 		FastRetrieval: deal.FastRetrieval,
 		VerifiedDeal:  deal.ClientDealProposal.Proposal.VerifiedDeal,
 	}
-	return w.AnnounceDealMetadata(ctx, md, propCid.Bytes())
+	return w.AnnounceDealMetadata(ctx, md, deal.ProposalCid.Bytes())
 }
 
 func (w *Wrapper) AnnounceDealMetadata(ctx context.Context, md metadata.GraphsyncFilecoinV1, contextID []byte) (cid.Cid, error) {
@@ -454,7 +453,7 @@ func (w *Wrapper) AnnounceDealMetadata(ctx context.Context, md metadata.Graphsyn
 	return annCid, nil
 }
 
-func (w *Wrapper) AnnounceDealRemoved(ctx context.Context, propCid cid.Cid) (cid.Cid, error) {
+func (w *Wrapper) AnnounceDealRemoved(ctx context.Context, contextID []byte) (cid.Cid, error) {
 	if !w.enabled {
 		return cid.Undef, errors.New("cannot announce deal removal: index provider is disabled")
 	}
@@ -466,26 +465,11 @@ func (w *Wrapper) AnnounceDealRemoved(ctx context.Context, propCid cid.Cid) (cid
 	}
 
 	// Announce deal removal to network Indexer
-	annCid, err := w.prov.NotifyRemove(ctx, "", propCid.Bytes())
+	annCid, err := w.prov.NotifyRemove(ctx, "", contextID)
 	if err != nil {
 		return cid.Undef, fmt.Errorf("failed to announce deal removal to index provider: %w", err)
 	}
 	return annCid, err
-}
-
-func (w *Wrapper) AnnounceLegcayDealToIndexer(ctx context.Context, proposalCid cid.Cid) (cid.Cid, error) {
-	deal, err := w.dealsDB.GetDeal(ctx, proposalCid)
-	if err != nil {
-		return cid.Undef, fmt.Errorf("failed getting deal %s: %w", proposalCid, err)
-	}
-
-	mt := metadata.GraphsyncFilecoinV1{
-		PieceCID:      deal.Proposal.PieceCID,
-		FastRetrieval: deal.FastRetrieval,
-		VerifiedDeal:  deal.Proposal.VerifiedDeal,
-	}
-
-	return w.AnnounceDealMetadata(ctx, mt, proposalCid.Bytes())
 }
 
 func (w *Wrapper) AnnounceDirectDeal(ctx context.Context, entry *types.DirectDeal) (cid.Cid, error) {
@@ -505,28 +489,4 @@ func (w *Wrapper) AnnounceDirectDeal(ctx context.Context, entry *types.DirectDea
 		VerifiedDeal:  true,
 	}
 	return w.AnnounceDealMetadata(ctx, md, contextID)
-}
-
-func (w *Wrapper) AnnounceDirectDealRemoved(ctx context.Context, dealUUID uuid.UUID) (cid.Cid, error) {
-	if !w.enabled {
-		return cid.Undef, errors.New("cannot announce deal removal: index provider is disabled")
-	}
-
-	// Ensure we have a connection with the full node host so that the index provider gossip sub announcements make their
-	// way to the filecoin bootstrapper network
-	if err := w.meshCreator.Connect(ctx); err != nil {
-		log.Errorw("failed to connect  node to full daemon node", "err", err)
-	}
-
-	contextID, err := dealUUID.MarshalBinary()
-	if err != nil {
-		return cid.Undef, fmt.Errorf("marshalling the deal UUID: %w", err)
-	}
-
-	// Announce deal removal to network Indexer
-	annCid, err := w.prov.NotifyRemove(ctx, "", contextID)
-	if err != nil {
-		return cid.Undef, fmt.Errorf("failed to announce deal removal to index provider: %w", err)
-	}
-	return annCid, err
 }

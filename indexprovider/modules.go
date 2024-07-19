@@ -16,8 +16,9 @@ type NetworkName string
 
 var IndexProviderOpts = builder.Options(
 	builder.Override(new(NetworkName), func(mCtx metrics.MetricsCtx, full v1.FullNode) (NetworkName, error) {
-		nn, err := full.StateNetworkName(mCtx)
-		return NetworkName(nn), err
+		// nn, err := full.StateNetworkName(mCtx)
+		// return NetworkName(nn), err
+		return NetworkName("mainnet"), nil
 	}),
 	builder.Override(new(*pubsub.PubSub), NewPubSub),
 	builder.Override(new(*IndexProviderMgr), NewIndexProviderMgr),
