@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/blockstore"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	markettypes "github.com/filecoin-project/venus/venus-shared/types/market"
-	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -84,16 +83,6 @@ func NewIndexProviderMgr(lc fx.Lifecycle,
 			}
 			if err := mgr.initAllIndexProviders(ctx, minerAddrs); err != nil {
 				return err
-			}
-			for _, miner := range cfg.Miners {
-				err := mgr.IndexAnnounceAllDeals(ctx, miner.Addr.Unwrap())
-				fmt.Println("IndexAnnounceAllDeals", miner.Addr.Unwrap().String(), err)
-				if err != nil {
-					fmt.Printf("failed to announce all deals(%v): %v\n", miner.Addr, err)
-				}
-				if miner.Addr.Unwrap().String() == "f03071235" {
-					mgr.IndexerAnnounceLatest(ctx, miner.Addr.Unwrap())
-				}
 			}
 			return nil
 		},
@@ -272,13 +261,13 @@ func (m *IndexProviderMgr) AnnounceDeal(ctx context.Context, deal *markettypes.M
 	return w.AnnounceDeal(ctx, deal)
 }
 
-func (m *IndexProviderMgr) AnnounceDealRemoved(ctx context.Context, minerAddr address.Address, propCid cid.Cid) (cid.Cid, error) {
+func (m *IndexProviderMgr) AnnounceDealRemoved(ctx context.Context, minerAddr address.Address, contextID []byte) (cid.Cid, error) {
 	w, err := m.GetIndexProvider(minerAddr)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	return w.AnnounceDealRemoved(ctx, propCid.Bytes())
+	return w.AnnounceDealRemoved(ctx, contextID)
 }
 
 func (m *IndexProviderMgr) AnnounceDirectDeal(ctx context.Context, deal *markettypes.DirectDeal) (cid.Cid, error) {
@@ -288,20 +277,6 @@ func (m *IndexProviderMgr) AnnounceDirectDeal(ctx context.Context, deal *markett
 	}
 
 	return w.AnnounceDirectDeal(ctx, deal)
-}
-
-func (m *IndexProviderMgr) AnnounceDirectDealRemoved(ctx context.Context, minerAddr address.Address, dealUUID uuid.UUID) (cid.Cid, error) {
-	w, err := m.GetIndexProvider(minerAddr)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	contextID, err := dealUUID.MarshalBinary()
-	if err != nil {
-		return cid.Undef, fmt.Errorf("marshalling the deal UUID: %w", err)
-	}
-
-	return w.AnnounceDealRemoved(ctx, contextID)
 }
 
 func (m *IndexProviderMgr) MultihashLister(ctx context.Context, minerAddr address.Address, prov peer.ID, root []byte) (provider.MultihashIterator, error) {
@@ -344,6 +319,11 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 		return errors.New("cannot announce all deals: index provider is disabled")
 	}
 
+	head, err := m.full.ChainHead(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get chain head: %w", err)
+	}
+
 	// activeSectors, err := m.getActiveSectors(ctx, minerAddr)
 	// if err != nil {
 	// 	return err
@@ -360,7 +340,10 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 		if deal.State != storagemarket.StorageDealActive {
 			continue
 		}
-		if deal.CreatedAt < uint64(filterDealTimestamp) {
+		if deal.CreatedAt < filterDealTimestamp {
+			continue
+		}
+		if deal.Proposal.EndEpoch <= head.Height() {
 			continue
 		}
 
@@ -396,13 +379,11 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 	}
 	success = 0
 	for _, deal := range directDeals {
-		if deal.CreatedAt < uint64(filterDealTimestamp) {
+		if deal.CreatedAt < filterDealTimestamp {
 			continue
 		}
-
-		_, err = m.AnnounceDirectDealRemoved(ctx, deal.Provider, deal.ID)
-		if err != nil {
-			panic(err)
+		if deal.EndEpoch <= head.Height() {
+			continue
 		}
 
 		// present, err := activeSectors.IsSet(uint64(deal.SectorID))

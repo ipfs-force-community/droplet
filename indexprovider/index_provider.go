@@ -171,7 +171,7 @@ func (w *Wrapper) AnnounceExtendedProviders(ctx context.Context) error {
 	// pubsub and reach the indexer
 	err = w.meshCreator.Connect(ctx)
 	if err != nil {
-		log.Warnf("could not connect to pubsub mesh before announcing extended provider: %w", err)
+		log.Warnf("could not connect to pubsub mesh before announcing extended provider: %v", err)
 	}
 
 	// publish the extended providers announcement

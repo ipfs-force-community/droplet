@@ -1486,13 +1486,19 @@ func (m *MarketNodeImpl) IndexerAnnounceLatestHttp(ctx context.Context, urls []s
 	return c, nil
 }
 
-func (m *MarketNodeImpl) IndexerAnnounceDealRemoved(ctx context.Context, propCid cid.Cid) (cid.Cid, error) {
-	deal, err := m.Repo.StorageDealRepo().GetDeal(ctx, propCid)
+func (m *MarketNodeImpl) IndexerAnnounceDealRemoved(ctx context.Context, contextID []byte) (cid.Cid, error) {
+	deal, isDDO, err := m.getDeal(ctx, contextID)
 	if err != nil {
 		return cid.Undef, err
 	}
+	var miner address.Address
+	if isDDO {
+		miner = deal.(*types.DirectDeal).Provider
+	} else {
+		miner = deal.(*types.MinerDeal).Proposal.Provider
+	}
 
-	return m.IndexProviderMgr.AnnounceDealRemoved(ctx, deal.Proposal.Provider, propCid)
+	return m.IndexProviderMgr.AnnounceDealRemoved(ctx, miner, contextID)
 }
 
 func (m *MarketNodeImpl) IndexerAnnounceDeal(ctx context.Context, contextID []byte) (cid.Cid, error) {
