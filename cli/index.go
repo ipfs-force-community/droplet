@@ -10,7 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var indexProvCmd = &cli.Command{
+var IndexProvCmd = &cli.Command{
 	Name:  "index",
 	Usage: "Manage the index provider on Boost",
 	Subcommands: []*cli.Command{

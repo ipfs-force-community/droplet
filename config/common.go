@@ -232,23 +232,23 @@ func defaultProviderConfig() *ProviderConfig {
 		HTTPRetrievalMultiaddr: "",
 
 		IndexProvider: IndexProviderConfig{
-			Enable:               true,
+			Enable:               false,
 			EntriesCacheCapacity: 1024,
 			EntriesChunkSize:     16384,
 			TopicName:            "",
 			PurgeCacheOnStart:    false,
 			WebHost:              "cid.contact",
 			Announce: IndexProviderAnnounceConfig{
-				AnnounceOverHttp:   true,
+				AnnounceOverHttp:   false,
 				DirectAnnounceURLs: []string{"https://cid.contact/ingest/announce"},
 			},
 			HttpPublisher: IndexProviderHttpPublisherConfig{
-				Enabled:        true,
+				Enabled:        false,
 				PublicHostname: "",
 				Port:           0,
-				WithLibp2p:     true,
+				WithLibp2p:     false,
 			},
-			DataTransferPublisher: true,
+			DataTransferPublisher: false,
 		},
 	}
 }

@@ -107,6 +107,7 @@ func main() {
 			cli2.PieceStorageCmd,
 			cli2.MarketCmds,
 			cli2.StatsCmds,
+			cli2.IndexProvCmd,
 		},
 	}
 
