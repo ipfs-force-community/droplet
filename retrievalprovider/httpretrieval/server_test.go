@@ -2,6 +2,7 @@ package httpretrieval
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -102,7 +103,7 @@ func TestRetrievalByPiece(t *testing.T) {
 			return append([]market.MinerDeal{}, market.MinerDeal{ClientDealProposal: types.ClientDealProposal{Proposal: types.DealProposal{PieceCID: piece}}}), nil
 		}).AnyTimes()
 
-	s, err := NewServer(ctx, pieceStorage, m, nil)
+	s, err := NewServer(ctx, pieceStorage, m, nil, gzip.BestSpeed)
 	assert.NoError(t, err)
 	port := "34897"
 	startHTTPServer(ctx, t, port, s)
@@ -196,7 +197,7 @@ func TestTrustless(t *testing.T) {
 	assert.NoError(t, err)
 	close(resch)
 
-	s, err := NewServer(ctx, nil, m, dagStoreWrapper)
+	s, err := NewServer(ctx, nil, m, dagStoreWrapper, gzip.BestSpeed)
 	assert.NoError(t, err)
 	port := "34898"
 	startHTTPServer(ctx, t, port, s)
@@ -258,7 +259,7 @@ func TestRetrievalPaddingPiece(t *testing.T) {
 			return append([]market.MinerDeal{}, market.MinerDeal{ClientDealProposal: types.ClientDealProposal{Proposal: types.DealProposal{PieceCID: piece}}}), nil
 		}).AnyTimes()
 
-	s, err := NewServer(ctx, pieceStorage, m, nil)
+	s, err := NewServer(ctx, pieceStorage, m, nil, gzip.BestSpeed)
 	assert.NoError(t, err)
 	port := "34897"
 	startHTTPServer(ctx, t, port, s)

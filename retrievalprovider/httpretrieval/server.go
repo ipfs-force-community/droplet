@@ -41,11 +41,17 @@ type Server struct {
 	pieceMgr         *piecestorage.PieceStorageManager
 	api              marketAPI.IMarket
 	trustlessHandler *trustlessHandler
+	compressionLevel int
 }
 
-func NewServer(ctx context.Context, pieceMgr *piecestorage.PieceStorageManager, api marketAPI.IMarket, dagStoreWrapper stores.DAGStoreWrapper) (*Server, error) {
+func NewServer(ctx context.Context,
+	pieceMgr *piecestorage.PieceStorageManager,
+	api marketAPI.IMarket,
+	dagStoreWrapper stores.DAGStoreWrapper,
+	compressionLevel int,
+) (*Server, error) {
 	tlHandler := newTrustlessHandler(ctx, newBSWrap(ctx, dagStoreWrapper), gzip.BestSpeed)
-	return &Server{pieceMgr: pieceMgr, api: api, trustlessHandler: tlHandler}, nil
+	return &Server{pieceMgr: pieceMgr, api: api, trustlessHandler: tlHandler, compressionLevel: compressionLevel}, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +59,18 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.retrievalByIPFS(w, r)
 		return
 	}
-	s.retrievalByPieceCID(w, r)
+
+	s.pieceHandler()(w, r)
+}
+
+func (s *Server) pieceHandler() http.HandlerFunc {
+	var pieceHandler http.Handler = http.HandlerFunc(s.retrievalByPieceCID)
+	if s.compressionLevel != gzip.NoCompression {
+		gzipWrapper := gziphandler.MustNewGzipLevelHandler(s.compressionLevel)
+		pieceHandler = gzipWrapper(pieceHandler)
+		log.Debugf("enabling compression with a level of %d", s.compressionLevel)
+	}
+	return pieceHandler.ServeHTTP
 }
 
 func (s *Server) retrievalByIPFS(w http.ResponseWriter, r *http.Request) {
@@ -106,17 +123,13 @@ func (s *Server) retrievalByPieceCID(w http.ResponseWriter, r *http.Request) {
 	}
 	defer mountReader.Close() // nolint
 
-	var buf [32]byte
-	_, _ = mountReader.Read(buf[:])
-	fmt.Println("xxxx", string(buf[:]))
-
 	contentReader, err := handleRangeHeader(r.Header.Get("Range"), mountReader, len)
 	if err != nil {
 		log.Warnf("handleRangeHeader failed, Range: %s, error: %v", r.Header.Get("Range"), err)
 		badResponse(w, http.StatusInternalServerError, err)
 		return
 	}
-
+	setHeaders(w, pieceCID)
 	serveContent(w, r, contentReader, log)
 	log.Info("end retrieval deal")
 }
@@ -137,6 +150,28 @@ func (s *Server) listDealsByPiece(ctx context.Context, piece string) ([]marketTy
 	}
 
 	return deals, nil
+}
+
+func isGzipped(res http.ResponseWriter) bool {
+	switch res.(type) {
+	case *gziphandler.GzipResponseWriter, gziphandler.GzipResponseWriterWithCloseNotify:
+		// there are conditions where we may have a GzipResponseWriter but the
+		// response will not be compressed, but they are related to very small
+		// response sizes so this shouldn't matter (much)
+		return true
+	}
+	return false
+}
+
+func setHeaders(w http.ResponseWriter, pieceCid cid.Cid) {
+	w.Header().Set("Vary", "Accept-Encoding")
+	etag := `"` + pieceCid.String() + `"` // must be quoted
+	if isGzipped(w) {
+		etag = etag[:len(etag)-1] + ".gz\""
+	}
+	w.Header().Set("Etag", etag)
+	w.Header().Set("Content-Type", "application/piece")
+	w.Header().Set("Cache-Control", "public, max-age=29030400, immutable")
 }
 
 func serveContent(w http.ResponseWriter, r *http.Request, content io.ReadSeeker, log *zap.SugaredLogger) {

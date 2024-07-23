@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"fmt"
 	"os"
 
@@ -274,7 +275,7 @@ func runDaemon(cctx *cli.Context) error {
 	if err = router.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorageMgr)).GetError(); err != nil {
 		return fmt.Errorf("handle 'resource' failed: %w", err)
 	}
-	httpRetrievalServer, err := httpretrieval.NewServer(ctx, resAPI.PieceStorageMgr, resAPI, resAPI.DAGStoreWrapper)
+	httpRetrievalServer, err := httpretrieval.NewServer(ctx, resAPI.PieceStorageMgr, resAPI, resAPI.DAGStoreWrapper, gzip.BestSpeed)
 	if err != nil {
 		return err
 	}
