@@ -22,12 +22,22 @@ func NewTransportsListener(h host.Host, cfg *config.MarketConfig) (*TransportsLi
 	var protos []types.Protocol
 
 	// Get the libp2p addresses from the Host
-	if len(h.Addrs()) > 0 {
-		protos = append(protos, types.Protocol{
-			Name:      "libp2p",
-			Addresses: h.Addrs(),
-		})
+	var maddrs []multiaddr.Multiaddr
+	switch {
+	case len(cfg.Libp2p.AnnounceAddresses) > 0:
+		for i, _ := range cfg.Libp2p.AnnounceAddresses {
+			maddr, err := multiaddr.NewMultiaddr(cfg.Libp2p.AnnounceAddresses[i])
+			if err == nil {
+				maddrs = append(maddrs, maddr)
+			}
+		}
+	case len(h.Addrs()) > 0:
+		maddrs = h.Addrs()
 	}
+	protos = append(protos, types.Protocol{
+		Name:      "libp2p",
+		Addresses: maddrs,
+	})
 
 	// If there's an http retrieval address specified, add HTTP to the list
 	// of supported protocols
