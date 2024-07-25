@@ -25,7 +25,7 @@ func NewTransportsListener(h host.Host, cfg *config.MarketConfig) (*TransportsLi
 	var maddrs []multiaddr.Multiaddr
 	switch {
 	case len(cfg.Libp2p.AnnounceAddresses) > 0:
-		for i, _ := range cfg.Libp2p.AnnounceAddresses {
+		for i := range cfg.Libp2p.AnnounceAddresses {
 			maddr, err := multiaddr.NewMultiaddr(cfg.Libp2p.AnnounceAddresses[i])
 			if err == nil {
 				maddrs = append(maddrs, maddr)
