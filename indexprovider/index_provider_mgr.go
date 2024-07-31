@@ -324,10 +324,10 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 		return fmt.Errorf("failed to get chain head: %w", err)
 	}
 
-	// activeSectors, err := m.getActiveSectors(ctx, minerAddr)
-	// if err != nil {
-	// 	return err
-	// }
+	activeSectors, err := m.getActiveSectors(ctx, minerAddr)
+	if err != nil {
+		return err
+	}
 
 	deals, err := m.r.StorageDealRepo().ListDealByAddr(ctx, minerAddr)
 	if err != nil {
@@ -347,14 +347,14 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 			continue
 		}
 
-		// present, err := activeSectors.IsSet(uint64(deal.SectorNumber))
-		// if err != nil {
-		// 	return fmt.Errorf("checking if bitfield is set: %w", err)
-		// }
+		present, err := activeSectors.IsSet(uint64(deal.SectorNumber))
+		if err != nil {
+			return fmt.Errorf("checking if bitfield is set: %w", err)
+		}
 
-		// if !present {
-		// 	continue
-		// }
+		if !present {
+			continue
+		}
 
 		_, err = w.AnnounceDeal(ctx, deal)
 		if err != nil {
@@ -386,14 +386,14 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 			continue
 		}
 
-		// present, err := activeSectors.IsSet(uint64(deal.SectorID))
-		// if err != nil {
-		// 	return fmt.Errorf("checking if bitfield is set: %w", err)
-		// }
+		present, err := activeSectors.IsSet(uint64(deal.SectorID))
+		if err != nil {
+			return fmt.Errorf("checking if bitfield is set: %w", err)
+		}
 
-		// if !present {
-		// 	continue
-		// }
+		if !present {
+			continue
+		}
 
 		_, err = w.AnnounceDirectDeal(ctx, deal)
 		if err != nil {
