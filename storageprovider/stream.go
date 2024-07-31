@@ -222,7 +222,7 @@ func (storageDealStream *StorageDealStream) HandleDealStatusStream(s network.Dea
 	// 1. Lots the deal state from the StorageDealStore
 	request, err := s.ReadDealStatusRequest()
 	if err != nil {
-		log.Errorf("failed to read DealStatusRequest from incoming stream: %s", err)
+		log.Debugf("failed to read DealStatusRequest from incoming stream: %s", err)
 		return
 	}
 

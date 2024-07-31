@@ -66,6 +66,75 @@ type Signer struct {
 	Token      string
 }
 
+type IndexProviderConfig struct {
+	// Enable set whether to enable indexing announcement to the network and expose endpoints that
+	// allow indexer nodes to process announcements. Enabled by default.
+	Enable bool
+
+	// EntriesCacheCapacity sets the maximum capacity to use for caching the indexing advertisement
+	// entries. Defaults to 1024 if not specified. The cache is evicted using LRU policy. The
+	// maximum storage used by the cache is a factor of EntriesCacheCapacity, EntriesChunkSize and
+	// the length of multihashes being advertised. For example, advertising 128-bit long multihashes
+	// with the default EntriesCacheCapacity, and EntriesChunkSize means the cache size can grow to
+	// 256MiB when full.
+	EntriesCacheCapacity int
+
+	// EntriesChunkSize sets the maximum number of multihashes to include in a single entries chunk.
+	// Defaults to 16384 if not specified. Note that chunks are chained together for indexing
+	// advertisements that include more multihashes than the configured EntriesChunkSize.
+	EntriesChunkSize int
+
+	// TopicName sets the topic name on which the changes to the advertised content are announced.
+	// If not explicitly specified, the topic name is automatically inferred from the network name
+	// in following format: '/indexer/ingest/<network-name>'
+	// Defaults to empty, which implies the topic name is inferred from network name.
+	TopicName string
+
+	// PurgeCacheOnStart sets whether to clear any cached entries chunks when the provider engine
+	// starts. By default, the cache is rehydrated from previously cached entries stored in
+	// datastore if any is present.
+	PurgeCacheOnStart bool
+
+	// The network indexer host that the web UI should link to for published announcements
+	WebHost string
+
+	Announce IndexProviderAnnounceConfig
+
+	HttpPublisher IndexProviderHttpPublisherConfig
+
+	// Set this to true to use the legacy data-transfer/graphsync publisher.
+	// This should only be used as a temporary fall-back if publishing ipnisync
+	// over libp2p or HTTP is not working, and publishing over
+	// data-transfer/graphsync was previously working.
+	DataTransferPublisher bool
+}
+
+type IndexProviderAnnounceConfig struct {
+	// Make a direct announcement to a list of indexing nodes over http.
+	// Note that announcements are already made over pubsub regardless
+	// of this setting.
+	AnnounceOverHttp bool
+
+	// The list of URLs of indexing nodes to announce to.
+	DirectAnnounceURLs []string
+}
+
+type IndexProviderHttpPublisherConfig struct {
+	// If enabled, requests are served over HTTP instead of libp2p.
+	Enabled bool
+	// Set the public hostname / IP for the index provider listener.
+	// eg "82.129.73.111"
+	// This is usually the same as the for the boost node.
+	PublicHostname string
+	// Set the port on which to listen for index provider requests over HTTP.
+	// Note that this port must be open on the firewall.
+	Port int
+	// Set this to true to publish HTTP over libp2p in addition to plain HTTP,
+	// Otherwise, the publisher will publish content advertisements using only
+	// plain HTTP if Enabled is true.
+	WithLibp2p bool
+}
+
 // ProviderConfig is common config for provider
 type ProviderConfig struct {
 	// When enabled, the miner can accept online deals
@@ -123,6 +192,8 @@ type ProviderConfig struct {
 	// The public multi-address for retrieving deals with droplet.
 	// Note: Must be in multiaddr format, eg /ip4/127.0.0.1/tcp/41235/http
 	HTTPRetrievalMultiaddr string
+
+	IndexProvider IndexProviderConfig
 }
 
 func defaultProviderConfig() *ProviderConfig {
@@ -159,5 +230,25 @@ func defaultProviderConfig() *ProviderConfig {
 		MaxPublishDealsFee:     types.FIL(types.NewInt(0)),
 		MaxMarketBalanceAddFee: types.FIL(types.NewInt(0)),
 		HTTPRetrievalMultiaddr: "",
+
+		IndexProvider: IndexProviderConfig{
+			Enable:               false,
+			EntriesCacheCapacity: 1024,
+			EntriesChunkSize:     16384,
+			TopicName:            "",
+			PurgeCacheOnStart:    false,
+			WebHost:              "cid.contact",
+			Announce: IndexProviderAnnounceConfig{
+				AnnounceOverHttp:   false,
+				DirectAnnounceURLs: []string{"https://cid.contact/ingest/announce"},
+			},
+			HttpPublisher: IndexProviderHttpPublisherConfig{
+				Enabled:        false,
+				PublicHostname: "",
+				Port:           0,
+				WithLibp2p:     false,
+			},
+			DataTransferPublisher: false,
+		},
 	}
 }

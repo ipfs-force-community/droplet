@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"fmt"
 	"os"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/config"
 	"github.com/ipfs-force-community/droplet/v2/dagstore"
 	"github.com/ipfs-force-community/droplet/v2/fundmgr"
+	"github.com/ipfs-force-community/droplet/v2/indexprovider"
 	"github.com/ipfs-force-community/droplet/v2/metrics"
 	"github.com/ipfs-force-community/droplet/v2/minermgr"
 	"github.com/ipfs-force-community/droplet/v2/models"
@@ -253,6 +255,8 @@ func runDaemon(cctx *cli.Context) error {
 		storageprovider.StorageProviderOpts(cfg),
 		retrievalprovider.RetrievalProviderOpts(cfg),
 
+		indexprovider.IndexProviderOpts,
+
 		func(s *builder.Settings) error {
 			s.Invokes[ExtractApiKey] = builder.InvokeOption{
 				Priority: 10,
@@ -271,7 +275,7 @@ func runDaemon(cctx *cli.Context) error {
 	if err = router.Handle("/resource", rpc.NewPieceStorageServer(resAPI.PieceStorageMgr)).GetError(); err != nil {
 		return fmt.Errorf("handle 'resource' failed: %w", err)
 	}
-	httpRetrievalServer, err := httpretrieval.NewServer(ctx, resAPI.PieceStorageMgr, resAPI, resAPI.DAGStoreWrapper)
+	httpRetrievalServer, err := httpretrieval.NewServer(ctx, resAPI.PieceStorageMgr, resAPI, resAPI.DAGStoreWrapper, gzip.BestSpeed)
 	if err != nil {
 		return err
 	}
