@@ -39,8 +39,8 @@ require (
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20240725062356-39b286636574
 	github.com/ipfs-force-community/sophon-auth v1.16.0
-	github.com/ipfs-force-community/sophon-gateway v1.16.0-rc1
-	github.com/ipfs-force-community/sophon-messager v1.16.0-rc1
+	github.com/ipfs-force-community/sophon-gateway v1.16.0
+	github.com/ipfs-force-community/sophon-messager v1.16.0
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
 	github.com/ipfs/boxo v0.21.0
 	github.com/ipfs/go-blockservice v0.5.2
