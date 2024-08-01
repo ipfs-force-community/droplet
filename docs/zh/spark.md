@@ -36,7 +36,7 @@
 ```bash
 ./droplet index announce-deal <deal uuid> 
 or
-./droplet index announce-deal <provider cid>
+./droplet index announce-deal <proposal cid>
 ```
 
 3. 从 ipni 移除订单
@@ -44,7 +44,7 @@ or
 ```bash
 ./droplet index announce-remove-deal <deal uuid> 
 or
-./droplet index announce-remove-deal <provider cid>
+./droplet index announce-remove-deal <proposal cid>
 ```
 
 ### 检查
