@@ -149,3 +149,11 @@ Creation                   ID                                    AllocationId  P
 ```
 ./droplet storage direct-deal update-state --state 1 07cd5814-02bf-494d-b81c-87df73b3422b
 ```
+
+### 从消息导入订单
+
+发送订单时程序退出，但订单没有导入到 `droplet`，这种情况可以从消息里面获取订单信息并导入到 `droplet`。
+
+```
+./droplet storage direct-deal import-deals-from-msg --msg <msg cid> --manifest <manifest> --skip-commp --skip-index --no-copy-car-file
+```
