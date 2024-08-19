@@ -67,7 +67,7 @@ require (
 	github.com/ipld/go-codec-dagpb v1.6.0
 	github.com/ipld/go-ipld-prime v0.21.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
-	github.com/libp2p/go-libp2p v0.35.4
+	github.com/libp2p/go-libp2p v0.36.1
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.13.0
@@ -106,23 +106,24 @@ require (
 	github.com/libp2p/go-libp2p-record v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.3 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/pion/datachannel v1.5.6 // indirect
-	github.com/pion/dtls/v2 v2.2.11 // indirect
-	github.com/pion/ice/v2 v2.3.25 // indirect
+	github.com/pion/datachannel v1.5.8 // indirect
+	github.com/pion/dtls/v2 v2.2.12 // indirect
+	github.com/pion/ice/v2 v2.3.32 // indirect
 	github.com/pion/interceptor v0.1.29 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/mdns v0.0.12 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/rtcp v1.2.14 // indirect
-	github.com/pion/rtp v1.8.6 // indirect
-	github.com/pion/sctp v1.8.16 // indirect
+	github.com/pion/rtp v1.8.8 // indirect
+	github.com/pion/sctp v1.8.20 // indirect
 	github.com/pion/sdp/v3 v3.0.9 // indirect
-	github.com/pion/srtp/v2 v2.0.18 // indirect
+	github.com/pion/srtp/v2 v2.0.20 // indirect
 	github.com/pion/stun v0.6.1 // indirect
-	github.com/pion/transport/v2 v2.2.5 // indirect
+	github.com/pion/transport/v2 v2.2.9 // indirect
 	github.com/pion/turn/v2 v2.1.6 // indirect
-	github.com/pion/webrtc/v3 v3.2.42 // indirect
+	github.com/pion/webrtc/v3 v3.2.50 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
+	github.com/wlynxg/anet v0.0.3 // indirect
 	go.uber.org/mock v0.4.0 // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
 )
@@ -198,7 +199,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/pprof v0.0.0-20240618054019-d3b898a103f8 // indirect
+	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hannahhoward/cbor-gen-for v0.0.0-20230214144701-5d17c9d5243c // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -273,7 +274,7 @@ require (
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
 	github.com/multiformats/go-multicodec v0.9.0 // indirect
 	github.com/multiformats/go-multistream v0.5.0 // indirect
-	github.com/onsi/ginkgo/v2 v2.19.0 // indirect
+	github.com/onsi/ginkgo/v2 v2.19.1 // indirect
 	github.com/opencontainers/runtime-spec v1.2.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
@@ -290,7 +291,7 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/prometheus/statsd_exporter v0.23.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/quic-go v0.45.0 // indirect
+	github.com/quic-go/quic-go v0.45.2 // indirect
 	github.com/quic-go/webtransport-go v0.8.0 // indirect
 	github.com/raulk/clock v1.1.0 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
@@ -326,15 +327,15 @@ require (
 	go.uber.org/zap v1.27.0
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/crypto v0.24.0 // indirect
-	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8
-	golang.org/x/mod v0.18.0 // indirect
-	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
-	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/crypto v0.25.0 // indirect
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
+	golang.org/x/mod v0.19.0 // indirect
+	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/term v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.22.0 // indirect
+	golang.org/x/tools v0.23.0 // indirect
 	google.golang.org/api v0.155.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
@@ -348,5 +349,6 @@ replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-fil-markets => github.com/ipfs-force-community/go-fil-markets v1.2.6-0.20230822060005-aee2cbae5b01
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.9
+	github.com/ipni/go-libipni => github.com/ipfs-force-community/go-libipni v0.0.0-20240816093253-cdb1f78d3d44
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20240125205218-1f4bbc51befe
 )
