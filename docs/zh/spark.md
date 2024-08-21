@@ -2,7 +2,7 @@
 
 ### 开启
 
-打开 `droplet` 配置文件 `config.toml`，在 `[CommonProvider]` 下面增加下面的配置，`PublicHostname` 是公网 IP 地址。
+1. 打开 `droplet` 配置文件 `config.toml`，在 `[CommonProvider]` 下面增加下面的配置，`PublicHostname` 是公网 IP 地址。
 
 ```
   [CommonProvider.IndexProvider]
@@ -20,7 +20,15 @@
       Enabled = true
       PublicHostname = "127.0.0.1"
       Port = 41263
-      WithLibp2p = false
+      WithLibp2p = true
+```
+
+2. 调整 libp2p 配置
+
+```
+[Libp2p]
+  ListenAddresses = ["/ip4/0.0.0.0/tcp/58418"]
+  AnnounceAddresses = ["/ip4/<YOUR_PUBLIC_IP_ADDRESS>/tcp/58418"]
 ```
 
 ### 命令行命令
@@ -49,7 +57,8 @@ or
 
 ### 检查
 
-通过 https://cid.contact/ 输入订单的 `piece cid`，查看订单是否已经发布到 ipni。
+1. 通过 https://cid.contact/ 输入订单的 `payload cid`，查看订单是否已经发布到 ipni。
+2. 通过 miner peerid 来检查是否已注册到 ipni，https://cid.contact/providers/12D3KooWLR8GZNKpN7zM6T24zw1z4gQrCdk2tFWzG8mfFaaszGay
 
 ### 注意
 
