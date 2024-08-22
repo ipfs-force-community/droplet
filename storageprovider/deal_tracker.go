@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
+	"github.com/ipfs-force-community/droplet/v2/indexprovider"
 	"github.com/ipfs-force-community/droplet/v2/minermgr"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 
@@ -23,22 +24,30 @@ import (
 )
 
 type DealTracker struct {
-	period         time.Duration // TODO: Preferably configurable?
-	storageRepo    repo.StorageDealRepo
-	minerMgr       minermgr.IMinerMgr
-	fullNode       v1api.FullNode
-	eventPublisher *EventPublishAdapter
+	period           time.Duration // TODO: Preferably configurable?
+	storageRepo      repo.StorageDealRepo
+	minerMgr         minermgr.IMinerMgr
+	fullNode         v1api.FullNode
+	eventPublisher   *EventPublishAdapter
+	indexProviderMgr *indexprovider.IndexProviderMgr
 }
 
 var ReadyRetrievalDealStatus = []storagemarket.StorageDealStatus{storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing, storagemarket.StorageDealActive}
 
-func NewDealTracker(lc fx.Lifecycle, r repo.Repo, minerMgr minermgr.IMinerMgr, fullNode v1api.FullNode, pb *EventPublishAdapter) *DealTracker {
+func NewDealTracker(lc fx.Lifecycle,
+	r repo.Repo,
+	minerMgr minermgr.IMinerMgr,
+	fullNode v1api.FullNode,
+	pb *EventPublishAdapter,
+	indexProviderMgr *indexprovider.IndexProviderMgr,
+) *DealTracker {
 	tracker := &DealTracker{
-		period:         time.Minute,
-		storageRepo:    r.StorageDealRepo(),
-		minerMgr:       minerMgr,
-		fullNode:       fullNode,
-		eventPublisher: pb,
+		period:           time.Minute,
+		storageRepo:      r.StorageDealRepo(),
+		minerMgr:         minerMgr,
+		fullNode:         fullNode,
+		eventPublisher:   pb,
+		indexProviderMgr: indexProviderMgr,
 	}
 
 	lc.Append(fx.Hook{
@@ -175,6 +184,12 @@ func (dealTracker *DealTracker) checkSlash(ctx metrics.MetricsCtx, addr address.
 			err = dealTracker.storageRepo.UpdateDealStatus(ctx, deal.ProposalCid, storagemarket.StorageDealSlashed, "")
 			if err != nil {
 				return fmt.Errorf("update deal status to slash for sector %d of miner %s %w", deal.SectorNumber, addr, err)
+			}
+
+			contextID := deal.ProposalCid.Bytes()
+			_, err = dealTracker.indexProviderMgr.AnnounceDealRemoved(ctx, deal.Proposal.Provider, contextID)
+			if err != nil {
+				return fmt.Errorf("announce deal %v removed failed: %v", deal.ProposalCid, err)
 			}
 		}
 	}

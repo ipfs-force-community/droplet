@@ -18,6 +18,7 @@ import (
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs-force-community/droplet/v2/indexprovider"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 	"github.com/ipfs-force-community/droplet/v2/utils"
@@ -28,11 +29,12 @@ import (
 var directDealLog = logging.Logger("direct_deal_provider")
 
 type DirectDealProvider struct {
-	dealRepo        repo.DirectDealRepo
-	pieceStorageMgr *piecestorage.PieceStorageManager
-	spn             StorageProviderNode
-	fullNode        v1.FullNode
-	dagStoreWrapper stores.DAGStoreWrapper
+	dealRepo         repo.DirectDealRepo
+	pieceStorageMgr  *piecestorage.PieceStorageManager
+	spn              StorageProviderNode
+	fullNode         v1.FullNode
+	dagStoreWrapper  stores.DAGStoreWrapper
+	indexProviderMgr *indexprovider.IndexProviderMgr
 }
 
 func NewDirectDealProvider(lc fx.Lifecycle,
@@ -41,16 +43,18 @@ func NewDirectDealProvider(lc fx.Lifecycle,
 	pieceStorageMgr *piecestorage.PieceStorageManager,
 	fullNode v1.FullNode,
 	dagStoreWrapper stores.DAGStoreWrapper,
+	indexProviderMgr *indexprovider.IndexProviderMgr,
 ) (*DirectDealProvider, error) {
 	ddp := &DirectDealProvider{
-		spn:             spn,
-		dealRepo:        repo.DirectDealRepo(),
-		pieceStorageMgr: pieceStorageMgr,
-		fullNode:        fullNode,
-		dagStoreWrapper: dagStoreWrapper,
+		spn:              spn,
+		dealRepo:         repo.DirectDealRepo(),
+		pieceStorageMgr:  pieceStorageMgr,
+		fullNode:         fullNode,
+		dagStoreWrapper:  dagStoreWrapper,
+		indexProviderMgr: indexProviderMgr,
 	}
 
-	t := newTracker(repo.DirectDealRepo(), fullNode)
+	t := newTracker(repo.DirectDealRepo(), fullNode, indexProviderMgr)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go t.start(ctx)
@@ -254,14 +258,19 @@ func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.Direc
 }
 
 type tracker struct {
-	directDealRepo repo.DirectDealRepo
-	fullNode       v1.FullNode
+	directDealRepo   repo.DirectDealRepo
+	fullNode         v1.FullNode
+	indexProviderMgr *indexprovider.IndexProviderMgr
 }
 
-func newTracker(directDealRepo repo.DirectDealRepo, fullNode v1.FullNode) *tracker {
+func newTracker(directDealRepo repo.DirectDealRepo,
+	fullNode v1.FullNode,
+	indexProviderMgr *indexprovider.IndexProviderMgr,
+) *tracker {
 	return &tracker{
-		directDealRepo: directDealRepo,
-		fullNode:       fullNode,
+		directDealRepo:   directDealRepo,
+		fullNode:         fullNode,
+		indexProviderMgr: indexProviderMgr,
 	}
 }
 
@@ -387,6 +396,14 @@ func (t *tracker) checkSlash(ctx context.Context) error {
 			deal.State = types.DealSlashed
 			if err := t.directDealRepo.SaveDeal(ctx, deal); err != nil {
 				return err
+			}
+			contextID, err := deal.ID.MarshalBinary()
+			if err != nil {
+				return fmt.Errorf("deal %s marshal binary failed: %v", deal.ID, err)
+			}
+			_, err = t.indexProviderMgr.AnnounceDealRemoved(ctx, deal.Provider, contextID)
+			if err != nil {
+				return fmt.Errorf("announce deal %s removed failed: %v", deal.ID, err)
 			}
 		}
 	}
