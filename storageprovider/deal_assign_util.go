@@ -252,13 +252,6 @@ func (ps *dealAssigner) pickAndAlignDirectDeal(ctx context.Context, deals []*mty
 		picked := make([]*mtypes.DirectDealInfo, 0, len(deals))
 		for di := range deals {
 			deal := deals[di]
-			if spec.StartEpoch > 0 && deal.StartEpoch <= spec.StartEpoch {
-				continue
-			}
-
-			if spec.EndEpoch > 0 && deal.EndEpoch >= spec.EndEpoch {
-				continue
-			}
 
 			// https://github.com/filecoin-project/builtin-actors/blob/c0aed11801cb434c989695ad67721c410b9ada33/actors/verifreg/src/lib.rs#L1056-L1071
 			if spec.SectorExpiration != nil {
