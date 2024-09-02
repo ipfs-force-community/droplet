@@ -12,8 +12,8 @@ make index
 
 先去 droplet 获取订单状态是 active 的订单，然后去遍历 car 文件，如果被 active 订单使用且未生成索引，则为其生成索引。
 
-* --car-dir：存储 car 文件的目录。
-* --index-dir：存储索引文件的目录，`droplet` 默认在 `~/.droplet/dagstore/index`。
+* --car-dir：存储 car 文件的目录，需要用绝对路径。
+* --index-dir：存储索引文件的目录，需要用绝对路径，`droplet` 默认在 `~/.droplet/dagstore/index`。
 * --mongo-url：MongoDB 的连接地址，用于存储 top index，数据库是 `market_index`，collection 是 `top_index`。
 * --mysql-url：MySQL 的连接地址，用于存储 shard 状态，要和 `droplet` 使用同一个数据库，表名是 `shards`。
 * --droplet-url：droplet 服务的 RPC 地址。

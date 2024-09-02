@@ -55,9 +55,9 @@ var (
 		Required: true,
 	}
 	dropletURLFlag = &cli.StringFlag{
-		Name:     "droplet-url",
-		Usage:    "droplet url",
-		Required: true,
+		Name:  "droplet-url",
+		Usage: "droplet url",
+		Value: "/ip4/127.0.0.1/tcp/41264",
 	}
 	dropletTokenFlag = &cli.StringFlag{
 		Name:     "droplet-token",
@@ -163,6 +163,9 @@ func paramsFromContext(cctx *cli.Context) (*params, error) {
 
 	minerAddrs := make(map[address.Address]struct{})
 	for _, addr := range strings.Split(minerAddrStr, ",") {
+		if len(addr) == 0 {
+			continue
+		}
 		addr, err := address.NewFromString(addr)
 		if err != nil {
 			return nil, err
@@ -240,7 +243,7 @@ func paramsFromContext(cctx *cli.Context) (*params, error) {
 		}
 	}
 
-	fmt.Printf("active deals: %d, valid deals: %d, pieces: %d\n", len(deals), len(pieceInfos), len(pieces))
+	fmt.Printf("active deals: %d, valid deals: %d\n", len(deals)+len(directDeals), len(pieceInfos))
 
 	var topIndexRepo *dagstore.MongoTopIndex
 	if len(mongoURL) != 0 {
@@ -290,7 +293,7 @@ func getStartEndTime(cctx *cli.Context) (*time.Time, *time.Time, error) {
 func generateIndex(ctx context.Context, carDir string, indexDir string, p *params) error {
 	doGenIndex := func(pi *pieceInfo) error {
 		piece := pi.piece
-		f, err := os.Open(filepath.Join(carDir, piece))
+		f, err := openCar(carDir, piece)
 		if err != nil {
 			return err
 		}
@@ -355,6 +358,16 @@ func generateIndex(ctx context.Context, carDir string, indexDir string, p *param
 	wg.Wait()
 
 	return globalErr
+}
+
+func openCar(carDir, pieceCID string) (*os.File, error) {
+	carPath := filepath.Join(carDir, pieceCID+".car")
+	f, err := os.Open(carPath)
+	if err == nil {
+		return f, nil
+	}
+
+	return os.Open(filepath.Join(carDir, pieceCID))
 }
 
 func hasIndex(piece string, indexDir string) (bool, error) {
