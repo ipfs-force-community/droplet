@@ -170,7 +170,7 @@ func paramsFromContext(cctx *cli.Context) (*params, error) {
 		if err != nil {
 			return nil, err
 		}
-		minerAddrs[address.Address(addr)] = struct{}{}
+		minerAddrs[addr] = struct{}{}
 	}
 
 	filter := func(addr address.Address) bool {
