@@ -373,6 +373,12 @@ var importDirectDealsCmd = &cli.Command{
 
 		ctx := cliCtx.Context
 		carDir := cliCtx.String("car-dir")
+		if len(carDir) != 0 {
+			carDir, err = filepath.Abs(carDir)
+			if err != nil {
+				return fmt.Errorf("failed to get absolute path for car-dir: %w", err)
+			}
+		}
 
 		startEpoch, err := GetStartEpoch(cliCtx, fapi)
 		if err != nil {
@@ -489,7 +495,7 @@ var importDirectDealsFromMsgCmd = &cli.Command{
 	Name:  "import-deals-from-msg",
 	Usage: "import direct deal from message",
 	Flags: []cli.Flag{
-		&cli.StringSliceFlag{
+		&cli.StringFlag{
 			Name:     "msg",
 			Usage:    "message cid",
 			Required: true,
@@ -535,6 +541,13 @@ var importDirectDealsFromMsgCmd = &cli.Command{
 
 		ctx := cliCtx.Context
 		carDir := cliCtx.String("car-dir")
+		if len(carDir) != 0 {
+			carDir, err = filepath.Abs(carDir)
+			if err != nil {
+				return fmt.Errorf("failed to get absolute path for car-dir: %w", err)
+			}
+		}
+
 		msgCid, err := cid.Decode(cliCtx.String("msg"))
 		if err != nil {
 			return err
