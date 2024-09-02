@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/dagstore/index"
 	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/dagstore/throttle"
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc"
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market/v1"
@@ -76,6 +77,10 @@ var (
 		Usage: "Concurrent number of indexes generated",
 		Value: 1,
 	}
+	minersAddrFlag = &cli.StringFlag{
+		Name:  "miner-addr",
+		Usage: "miner address, eg --miner-addr t010001 or --miner-addr t010001,t010002",
+	}
 )
 
 func main() {
@@ -106,11 +111,12 @@ var generateIndexCmd = &cli.Command{
 		dropletURLFlag,
 		startFlag,
 		endFlag,
+		minersAddrFlag,
 		concurrencyFlag,
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
-		carDir := cctx.String("car-dir")
+		carDir := cctx.String(carDirFlag.Name)
 		indexDir := cctx.String(indexDirFlag.Name)
 		p, err := paramsFromContext(cctx)
 		if err != nil {
@@ -149,10 +155,30 @@ func paramsFromContext(cctx *cli.Context) (*params, error) {
 	mysqlURL := cctx.String(mysqlURLFlag.Name)
 	url := cctx.String(dropletURLFlag.Name)
 	token := cctx.String(dropletTokenFlag.Name)
-
+	minerAddrStr := cctx.String(minersAddrFlag.Name)
 	fmt.Println("mongo url:", mongoURL)
 	fmt.Println("mysql url:", mysqlURL)
 	fmt.Println("droplet url:", url, "token:", token)
+	fmt.Println("miner addr:", minerAddrStr)
+
+	minerAddrs := make(map[address.Address]struct{})
+	for _, addr := range strings.Split(minerAddrStr, ",") {
+		addr, err := address.NewFromString(addr)
+		if err != nil {
+			return nil, err
+		}
+		minerAddrs[address.Address(addr)] = struct{}{}
+	}
+
+	filter := func(addr address.Address) bool {
+		if len(minerAddrs) == 0 {
+			return false
+		}
+
+		_, ok := minerAddrs[addr]
+
+		return !ok
+	}
 
 	api, close, err := marketapi.DialIMarketRPC(ctx, url, token, nil)
 	if err != nil {
@@ -182,12 +208,38 @@ func paramsFromContext(cctx *cli.Context) (*params, error) {
 		if end != nil && end.Before(deal.CreationTime.Time()) {
 			continue
 		}
+		if filter(deal.Proposal.Provider) {
+			continue
+		}
 		p := deal.Proposal.PieceCID.String()
 		if _, ok := pieces[p]; !ok {
 			pieces[p] = struct{}{}
 			pieceInfos = append(pieceInfos, &pieceInfo{piece: p, payloadSize: deal.PayloadSize, pieceSize: uint64(deal.Proposal.PieceSize)})
 		}
 	}
+
+	activeDirectDeal := market.DealActive
+	directDeals, err := api.ListDirectDeals(ctx, market.DirectDealQueryParams{State: &activeDirectDeal})
+	if err != nil {
+		return nil, fmt.Errorf("list direct deal failed: %v", err)
+	}
+	for _, deal := range directDeals {
+		if start != nil && start.After(time.Unix(int64(deal.CreatedAt), 0)) {
+			continue
+		}
+		if end != nil && end.Before(time.Unix(int64(deal.CreatedAt), 0)) {
+			continue
+		}
+		if filter(deal.Provider) {
+			continue
+		}
+		p := deal.PieceCID.String()
+		if _, ok := pieces[p]; !ok {
+			pieces[p] = struct{}{}
+			pieceInfos = append(pieceInfos, &pieceInfo{piece: p, payloadSize: deal.PayloadSize, pieceSize: uint64(deal.PieceSize)})
+		}
+	}
+
 	fmt.Printf("active deals: %d, valid deals: %d, pieces: %d\n", len(deals), len(pieceInfos), len(pieces))
 
 	var topIndexRepo *dagstore.MongoTopIndex
@@ -272,12 +324,12 @@ func generateIndex(ctx context.Context, carDir string, indexDir string, p *param
 	var globalErr error
 	for _, pi := range p.pieceInfos {
 		pi := pi
-		has, err := hasIndex(ctx, pi.piece, indexDir)
+		has, err := hasIndex(pi.piece, indexDir)
 		if err != nil {
 			return err
 		}
 		if has {
-			fmt.Println("already had index:", pi.piece)
+			// fmt.Println("already had index:", pi.piece)
 			continue
 		}
 		if globalErr != nil {
@@ -305,7 +357,7 @@ func generateIndex(ctx context.Context, carDir string, indexDir string, p *param
 	return globalErr
 }
 
-func hasIndex(ctx context.Context, piece string, indexDir string) (bool, error) {
+func hasIndex(piece string, indexDir string) (bool, error) {
 	_, err := os.Stat(filepath.Join(indexDir, piece+indexSuffix))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -370,8 +422,6 @@ var migrateIndexCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("index dir:", indexDir)
-
 		return migrateIndex(ctx, indexDir, p)
 	},
 }
@@ -396,7 +446,7 @@ func migrateIndex(ctx context.Context, indexDir string, p *params) error {
 			return err
 		}
 		if has {
-			fmt.Println("already had shard:", piece)
+			// fmt.Println("already had shard:", piece)
 			return nil
 		}
 
@@ -449,7 +499,6 @@ var indexInfoCmd = &cli.Command{
 		}
 
 		indexFile := cctx.Args().First()
-		fmt.Println("index file: ", indexFile)
 		f, err := os.Open(indexFile)
 		if err != nil {
 			return err
