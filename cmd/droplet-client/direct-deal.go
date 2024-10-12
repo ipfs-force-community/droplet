@@ -65,6 +65,7 @@ var directDealCommands = &cli.Command{
 	Usage: "direct deal tools",
 	Subcommands: []*cli.Command{
 		directDealAllocate,
+		genDealInfoFromMessage,
 	},
 }
 
@@ -593,4 +594,87 @@ func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.Allocati
 	}
 
 	return mapi.ImportDirectDeal(ctx, &params)
+}
+
+var genDealInfoFromMessage = &cli.Command{
+	Name:  "generate-deal-info-from-message",
+	Usage: "generate deal info from message",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "msg",
+			Usage:    "message cid",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "manifest",
+			Usage:    "Path to the manifest file",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "output",
+			Usage:    "Output deal information to a file.",
+			Required: true,
+		},
+		&cli.BoolFlag{
+			Name:   "piece-size-padded",
+			Hidden: true,
+		},
+	},
+	Action: func(cliCtx *cli.Context) error {
+		fapi, fcloser, err := cli2.NewFullNode(cliCtx, cli2.OldClientRepoPath)
+		if err != nil {
+			return err
+		}
+		defer fcloser()
+
+		msgCid, err := cid.Decode(cliCtx.String("msg"))
+		if err != nil {
+			return err
+		}
+
+		pieceInfos, _, err := pieceInfosFromFile(cliCtx)
+		if err != nil {
+			return err
+		}
+
+		ctx := cliCtx.Context
+		ml, err := fapi.StateSearchMsg(ctx, types.EmptyTSK, msgCid, -1, true)
+		if err != nil {
+			return err
+		}
+
+		if ml.Receipt.ExitCode != 0 {
+			return fmt.Errorf("message execution failed with exit code %d", ml.Receipt.ExitCode)
+		}
+
+		tr := &types.TransferReturn{}
+		err = tr.UnmarshalCBOR(bytes.NewReader(ml.Receipt.Return))
+		if err != nil {
+			return err
+		}
+
+		ar := &types.AllocationsResponse{}
+		err = ar.UnmarshalCBOR(bytes.NewReader(tr.RecipientData))
+		if err != nil {
+			return err
+		}
+		fmt.Println("allocations: ", len(ar.NewAllocations))
+
+		msg, err := fapi.ChainGetMessage(ctx, msgCid)
+		if err != nil {
+			return err
+		}
+
+		allocations := make(map[types.AllocationId]types.Allocation)
+		for _, allocationID := range ar.NewAllocations {
+			a, err := fapi.StateGetAllocation(context.Background(), msg.From, allocationID, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+			allocations[allocationID] = *a
+
+		}
+
+		return writeAllocationsToFile(cliCtx.String("output"), allocations, pieceInfos)
+	},
 }
