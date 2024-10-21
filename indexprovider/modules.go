@@ -26,5 +26,5 @@ var IndexProviderOpts = builder.Options(
 func NewPubSub(mCtx metrics.MetricsCtx, h host.Host, nn NetworkName) (*pubsub.PubSub, error) {
 	drandSchedule := make(map[abi.ChainEpoch]config.DrandEnum)
 	sk := net.NewScoreKeeper()
-	return net.NewGossipSub(mCtx, h, sk, string(nn), drandSchedule, []peer.AddrInfo{}, false, false)
+	return net.NewGossipSub(mCtx, h, sk, string(nn), drandSchedule, []peer.AddrInfo{}, false, nil)
 }
