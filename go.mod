@@ -148,7 +148,7 @@ require (
 	go.uber.org/mock v0.4.0 // indirect
 	gonum.org/v1/gonum v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240617180043-68d350f18fd4 // indirect
-	google.golang.org/grpc v1.64.0 // indirect
+	google.golang.org/grpc v1.64.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
