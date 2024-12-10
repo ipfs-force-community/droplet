@@ -238,7 +238,7 @@ func (p *StorageProviderImpl) start(ctx context.Context) error {
 	// Run datastore and DAG store migrations
 	deals, err := p.dealStore.ListDeal(ctx, &types.StorageDealQueryParams{Page: types.Page{Limit: math.MaxInt32}})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to list deals: %w", err)
 	}
 	// Fire restart event on all active deals
 	if err := p.restartDeals(ctx, deals); err != nil {
