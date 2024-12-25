@@ -299,6 +299,7 @@ func (p *StorageProviderImpl) ImportDataForDeals(ctx context.Context, refs []*ty
 	results := make([]*types.ImportDataResult, 0, len(refs))
 	minerDeals := make(map[address.Address][]*types.MinerDeal)
 	targets := make(map[cid.Cid]string, len(refs))
+	log.Debugf("importing data for %d deals, skipCommP: %v", len(refs), skipCommP)
 	for _, ref := range refs {
 		d, target, err := GetDealByDataRef(ctx, p.dealStore, ref)
 		if err != nil {

@@ -275,10 +275,10 @@ func newTracker(directDealRepo repo.DirectDealRepo,
 }
 
 func (t *tracker) start(ctx context.Context) {
-	ticker := time.NewTicker(time.Minute * 5)
+	ticker := time.NewTicker(time.Minute*15 + time.Minute*time.Duration(globalRand.Intn(15)))
 	defer ticker.Stop()
 
-	slashTicker := time.NewTicker(time.Hour * 6)
+	slashTicker := time.NewTicker(time.Hour*2 + time.Minute*time.Duration(globalRand.Intn(60)))
 	defer slashTicker.Stop()
 
 	if err := t.trackDeals(ctx); err != nil {
