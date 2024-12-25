@@ -1349,6 +1349,7 @@ func (m *MarketNodeImpl) DealsBatchImportData(ctx context.Context, refs types.Im
 			})
 			continue
 		}
+		// todo: cache provider permission, avoid repeated permission check
 		if err := jwtclient.CheckPermissionByMiner(ctx, m.AuthClient, deal.Proposal.Provider); err != nil {
 			results = append(results, &types.ImportDataResult{
 				Target:  target,
