@@ -262,7 +262,6 @@ func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.M
 			continue
 		}
 
-		log.Debugf("restart deal %s, state: %s, piece cid: %s", deal.ProposalCid, deal.State, deal.Proposal.PieceCID)
 		go func(deal *types.MinerDeal) {
 			err := p.dealProcess.HandleOff(ctx, deal)
 			if err != nil {

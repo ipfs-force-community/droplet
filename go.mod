@@ -367,7 +367,7 @@ require (
 )
 
 replace (
-	github.com/filecoin-project/dagstore => github.com/ipfs-force-community/dagstore v0.4.4-0.20241209090026-ab2f6df47e8e
+	github.com/filecoin-project/dagstore => github.com/ipfs-force-community/dagstore v0.4.4-0.20250106083056-4d25bab1601a
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-fil-markets => github.com/ipfs-force-community/go-fil-markets v1.2.6-0.20230822060005-aee2cbae5b01
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.9
