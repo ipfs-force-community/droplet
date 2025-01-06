@@ -219,7 +219,7 @@ func (w *Wrapper) gcLoop() {
 		select {
 		// GC the DAG store on every tick
 		case <-ticker.C:
-			_, _ = w.dagst.GC(w.ctx)
+			// _, _ = w.dagst.GC(w.ctx)
 
 		// Exit when the DAG store wrapper is shutdown
 		case <-w.ctx.Done():
