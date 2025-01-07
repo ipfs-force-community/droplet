@@ -160,6 +160,10 @@ func NewDAGStore(ctx context.Context,
 		gcInterval: time.Duration(cfg.GCInterval),
 	}
 
+	if !cfg.UseTransient && cfg.GCInterval != 0 {
+		w.gcInterval = 0
+	}
+
 	return dagst, w, nil
 }
 
