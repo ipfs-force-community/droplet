@@ -199,18 +199,22 @@ func (w *Wrapper) Start(ctx context.Context) error {
 		go dagstore.RecoverImmediately(w.ctx, dss, w.failureCh, maxRecoverAttempts, w.backgroundWg.Done)
 	}
 
-	go func() {
-		err := w.dagst.Start(ctx)
-		if err != nil {
-			log.Errorf("failed to start dagstore: %s", err)
-		}
-	}()
+	now := time.Now()
+	err := w.dagst.Start(ctx)
+	if err != nil {
+		log.Errorf("failed to start dagstore: %s", err)
+	}
+	log.Debugf("dagstore started in %s, err: %v", time.Since(now), err)
 
 	return nil
 }
 
 func (w *Wrapper) gcLoop() {
 	defer w.backgroundWg.Done()
+
+	if w.gcInterval == 0 {
+		return
+	}
 
 	ticker := time.NewTicker(w.gcInterval)
 	defer ticker.Stop()
@@ -219,7 +223,7 @@ func (w *Wrapper) gcLoop() {
 		select {
 		// GC the DAG store on every tick
 		case <-ticker.C:
-			// _, _ = w.dagst.GC(w.ctx)
+			_, _ = w.dagst.GC(w.ctx)
 
 		// Exit when the DAG store wrapper is shutdown
 		case <-w.ctx.Done():
@@ -315,6 +319,15 @@ func (w *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath s
 	mt, err := NewPieceMount(pieceCid, w.cfg.UseTransient, w.minerAPI)
 	if err != nil {
 		return fmt.Errorf("failed to create lotus mount for piece CID %s: %w", pieceCid, err)
+	}
+
+	if resch == nil {
+		sInfo, err := w.dagst.GetShardInfo(key)
+
+		if err == nil && (sInfo.ShardState == dagstore.ShardStateAvailable ||
+			sInfo.ShardState == dagstore.ShardStateServing || sInfo.ShardState == dagstore.ShardStateNew) {
+			return nil
+		}
 	}
 
 	// Register the shard
