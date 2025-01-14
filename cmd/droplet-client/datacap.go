@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v10/verifreg"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v15/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
@@ -56,6 +56,11 @@ var datacapExtendCmd = &cli.Command{
 		&cli.Int64Flag{
 			Name:  "expiration-cutoff",
 			Usage: "when use --auto flag, skip datacap whose current expiration is more than <cutoff> epochs from now (infinity if unspecified)",
+		},
+		&cli.IntFlag{
+			Name:  "max-claims",
+			Usage: "maximum number of claims to extend (infinity if unspecified)",
+			Value: 0,
 		},
 	},
 	ArgsUsage: "<provider address>",
@@ -121,7 +126,7 @@ var datacapExtendCmd = &cli.Command{
 			return err
 		}
 
-		claimTermsParams := &types.ExtendClaimTermsParams{}
+		claimTermsParams := &verifregtypes.ExtendClaimTermsParams{}
 		if cliCtx.Bool("auto") {
 			cutoff := abi.ChainEpoch(cliCtx.Int64("expiration-cutoff"))
 			for id, claim := range claims {
@@ -131,9 +136,9 @@ var datacapExtendCmd = &cli.Command{
 					}
 					continue
 				}
-				claimTermsParams.Terms = append(claimTermsParams.Terms, types.ClaimTerm{
+				claimTermsParams.Terms = append(claimTermsParams.Terms, verifregtypes.ClaimTerm{
 					Provider: providerID,
-					ClaimId:  id,
+					ClaimId:  verifregtypes.ClaimId(id),
 					TermMax:  termMax,
 				})
 			}
@@ -150,9 +155,9 @@ var datacapExtendCmd = &cli.Command{
 					}
 					continue
 				}
-				claimTermsParams.Terms = append(claimTermsParams.Terms, types.ClaimTerm{
+				claimTermsParams.Terms = append(claimTermsParams.Terms, verifregtypes.ClaimTerm{
 					Provider: providerID,
-					ClaimId:  types.ClaimId(id),
+					ClaimId:  verifregtypes.ClaimId(id),
 					TermMax:  termMax,
 				})
 			}
@@ -163,6 +168,11 @@ var datacapExtendCmd = &cli.Command{
 		if len(claimTermsParams.Terms) == 0 {
 			fmt.Println("no claim need extend")
 			return nil
+		}
+
+		if maxClaims := cliCtx.Int("max-claims"); maxClaims > 0 && len(claimTermsParams.Terms) > maxClaims {
+			fmt.Printf("total claims: %d, limit to %d claims\n", len(claimTermsParams.Terms), maxClaims)
+			claimTermsParams.Terms = claimTermsParams.Terms[:maxClaims]
 		}
 
 		params, err := actors.SerializeParams(claimTermsParams)
