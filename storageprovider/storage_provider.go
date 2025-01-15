@@ -257,6 +257,7 @@ func IsTerminateState(state storagemarket.StorageDealStatus) bool {
 }
 
 func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.MinerDeal) error {
+	log.Infof("restarting %d deals", len(deals))
 	for _, deal := range deals {
 		if IsTerminateState(deal.State) {
 			continue
