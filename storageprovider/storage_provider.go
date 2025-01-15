@@ -258,10 +258,25 @@ func IsTerminateState(state storagemarket.StorageDealStatus) bool {
 
 func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.MinerDeal) error {
 	log.Infof("restarting %d deals", len(deals))
+	miners, err := p.minerMgr.ActorList(ctx)
+	if err != nil {
+		return err
+	}
+	uniqMiners := make(map[address.Address]struct{}, len(miners))
+	for _, miner := range miners {
+		uniqMiners[miner.Addr] = struct{}{}
+	}
+	var count int
 	for _, deal := range deals {
 		if IsTerminateState(deal.State) {
 			continue
 		}
+
+		if _, ok := uniqMiners[deal.Proposal.Provider]; !ok {
+			continue
+		}
+
+		count++
 
 		go func(deal *types.MinerDeal) {
 			err := p.dealProcess.HandleOff(ctx, deal)
@@ -270,6 +285,7 @@ func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.M
 			}
 		}(deal)
 	}
+	log.Infof("restarting for miners: %v, count: %d", miners, count)
 	return nil
 }
 
