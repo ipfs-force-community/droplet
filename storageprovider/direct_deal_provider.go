@@ -275,10 +275,10 @@ func newTracker(directDealRepo repo.DirectDealRepo,
 }
 
 func (t *tracker) start(ctx context.Context) {
-	ticker := time.NewTicker(time.Minute * 5)
+	ticker := time.NewTicker(time.Minute*15 + time.Minute*time.Duration(globalRand.Intn(15)))
 	defer ticker.Stop()
 
-	slashTicker := time.NewTicker(time.Hour * 6)
+	slashTicker := time.NewTicker(time.Hour*2 + time.Minute*time.Duration(globalRand.Intn(60)))
 	defer slashTicker.Stop()
 
 	if err := t.trackDeals(ctx); err != nil {
@@ -366,46 +366,60 @@ func (t *tracker) checkActive(ctx context.Context) error {
 }
 
 func (t *tracker) checkSlash(ctx context.Context) error {
-	dealActive := types.DealActive
-	deals, err := t.directDealRepo.ListDeal(ctx, types.DirectDealQueryParams{
-		State: &dealActive,
-		Page: types.Page{
-			Limit: math.MaxInt64,
-		},
-	})
-	if err != nil {
-		return err
-	}
-
 	head, err := t.fullNode.ChainHead(ctx)
 	if err != nil {
 		return err
 	}
 
-	for _, deal := range deals {
-		claim, err := t.fullNode.StateGetClaim(ctx, deal.Provider, verifreg.ClaimId(deal.AllocationID), shared.EmptyTSK)
+	ctx, cancel := context.WithTimeout(ctx, time.Minute*110)
+	defer cancel()
+
+	// todo: use AllocationID to find deal?
+	offset := 0
+	limit := 1000
+	dealActive := types.DealActive
+	for ctx.Err() == nil {
+		deals, err := t.directDealRepo.ListDeal(ctx, types.DirectDealQueryParams{
+			State: &dealActive,
+			Page: types.Page{
+				Limit:  limit,
+				Offset: offset,
+			},
+		})
 		if err != nil {
-			directDealLog.Debugf("get claim %d failed: %v", deal.AllocationID, err)
-			continue
-		}
-		if claim == nil {
-			continue
+			return err
 		}
 
-		if head.Height() >= claim.TermStart+claim.TermMax {
-			deal.State = types.DealSlashed
-			if err := t.directDealRepo.SaveDeal(ctx, deal); err != nil {
-				return err
-			}
-			contextID, err := deal.ID.MarshalBinary()
+		for _, deal := range deals {
+			claim, err := t.fullNode.StateGetClaim(ctx, deal.Provider, verifreg.ClaimId(deal.AllocationID), shared.EmptyTSK)
 			if err != nil {
-				return fmt.Errorf("deal %s marshal binary failed: %v", deal.ID, err)
+				directDealLog.Debugf("get claim %d failed: %v", deal.AllocationID, err)
+				continue
 			}
-			_, err = t.indexProviderMgr.AnnounceDealRemoved(ctx, deal.Provider, contextID)
-			if err != nil {
-				return fmt.Errorf("announce deal %s removed failed: %v", deal.ID, err)
+			if claim == nil {
+				continue
+			}
+
+			if head.Height() >= claim.TermStart+claim.TermMax {
+				deal.State = types.DealSlashed
+				if err := t.directDealRepo.SaveDeal(ctx, deal); err != nil {
+					return err
+				}
+				contextID, err := deal.ID.MarshalBinary()
+				if err != nil {
+					return fmt.Errorf("deal %s marshal binary failed: %v", deal.ID, err)
+				}
+				_, err = t.indexProviderMgr.AnnounceDealRemoved(ctx, deal.Provider, contextID)
+				if err != nil {
+					return fmt.Errorf("announce deal %s removed failed: %v", deal.ID, err)
+				}
 			}
 		}
+
+		if len(deals) < limit {
+			break
+		}
+		offset += len(deals)
 	}
 
 	return nil

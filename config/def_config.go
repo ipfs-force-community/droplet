@@ -44,7 +44,7 @@ var DefaultMarketConfig = &MarketConfig{
 	DAGStore: DAGStoreConfig{
 		MaxConcurrentIndex:         5,
 		MaxConcurrencyStorageCalls: 100,
-		GCInterval:                 Duration(1 * time.Minute),
+		GCInterval:                 Duration(0),
 	},
 
 	SimultaneousTransfersForRetrieval:        DefaultSimultaneousTransfers,

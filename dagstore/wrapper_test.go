@@ -100,8 +100,9 @@ func TestWrapperBackground(t *testing.T) {
 
 	// Create a DAG store wrapper
 	dagst, w, err := NewDAGStore(ctx, &config.DAGStoreConfig{
-		RootDir:    t.TempDir(),
-		GCInterval: config.Duration(1 * time.Millisecond),
+		RootDir:      t.TempDir(),
+		GCInterval:   config.Duration(1 * time.Millisecond),
+		UseTransient: true,
 	}, mockLotusMount{}, badger.NewBadgerRepo(badger.BadgerDSParams{}))
 	require.NoError(t, err)
 

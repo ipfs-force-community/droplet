@@ -76,7 +76,7 @@ type DAGStoreConfig struct {
 
 	// The time between calls to periodic dagstore GC, in time.Duration string
 	// representation, e.g. 1m, 5m, 1h.
-	// Default value: 1 minute.
+	// Default value: 0, disabled GC.
 	GCInterval Duration
 
 	// MongoTopIndex used to config whether to save top index data to mongo

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -23,8 +24,13 @@ import (
 	"github.com/ipfs-force-community/metrics"
 )
 
+var globalRand *rand.Rand
+
+func init() {
+	globalRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+}
+
 type DealTracker struct {
-	period           time.Duration // TODO: Preferably configurable?
 	storageRepo      repo.StorageDealRepo
 	minerMgr         minermgr.IMinerMgr
 	fullNode         v1api.FullNode
@@ -42,7 +48,6 @@ func NewDealTracker(lc fx.Lifecycle,
 	indexProviderMgr *indexprovider.IndexProviderMgr,
 ) *DealTracker {
 	tracker := &DealTracker{
-		period:           time.Minute,
 		storageRepo:      r.StorageDealRepo(),
 		minerMgr:         minerMgr,
 		fullNode:         fullNode,
@@ -60,14 +65,20 @@ func NewDealTracker(lc fx.Lifecycle,
 }
 
 func (dealTracker *DealTracker) Start(ctx metrics.MetricsCtx) {
-	dealTracker.scanDeal(ctx)
-	ticker := time.NewTicker(dealTracker.period)
+	ticker := time.NewTicker(time.Minute*10 + time.Minute*time.Duration(globalRand.Intn(10)))
 	defer ticker.Stop()
+
+	slashTicker := time.NewTicker(time.Hour*3 + time.Minute*time.Duration(globalRand.Intn(30)))
+	defer slashTicker.Stop()
+
+	dealTracker.scanDeal(ctx, true, true)
 
 	for {
 		select {
 		case <-ticker.C:
-			dealTracker.scanDeal(ctx)
+			dealTracker.scanDeal(ctx, true, false)
+		case <-slashTicker.C:
+			dealTracker.scanDeal(ctx, false, true)
 		case <-ctx.Done():
 			log.Warnf("exit deal tracker by context")
 			return
@@ -75,7 +86,7 @@ func (dealTracker *DealTracker) Start(ctx metrics.MetricsCtx) {
 	}
 }
 
-func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
+func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx, checkPreCommitAndCommit, checkSlash bool) {
 	actors, err := dealTracker.minerMgr.ActorList(ctx)
 	if err != nil {
 		log.Errorf("get actor list err: %s", err)
@@ -86,14 +97,18 @@ func (dealTracker *DealTracker) scanDeal(ctx metrics.MetricsCtx) {
 	}
 
 	for _, actor := range actors {
-		err = dealTracker.checkSlash(ctx, actor.Addr, head)
-		if err != nil {
-			log.Errorf("check slash err: %s", err)
+		if checkSlash {
+			err = dealTracker.checkSlash(ctx, actor.Addr, head)
+			if err != nil {
+				log.Errorf("check slash err: %s", err)
+			}
 		}
 
-		err = dealTracker.checkPreCommitAndCommit(ctx, actor.Addr, head)
-		if err != nil {
-			log.Errorf("check precommit/commit expired err: %s", err)
+		if checkPreCommitAndCommit {
+			err = dealTracker.checkPreCommitAndCommit(ctx, actor.Addr, head)
+			if err != nil {
+				log.Errorf("check precommit/commit expired err: %s", err)
+			}
 		}
 	}
 }

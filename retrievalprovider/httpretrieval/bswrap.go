@@ -22,7 +22,7 @@ type bsWrap struct {
 	dagStoreWrapper stores.DAGStoreWrapper
 }
 
-func newBSWrap(ctx context.Context, dagStoreWrapper stores.DAGStoreWrapper) *bsWrap {
+func newBSWrap(_ context.Context, dagStoreWrapper stores.DAGStoreWrapper) *bsWrap {
 	return &bsWrap{
 		dagStoreWrapper: dagStoreWrapper,
 	}
@@ -39,6 +39,7 @@ func (bs *bsWrap) Has(ctx context.Context, blockCID cid.Cid) (bool, error) {
 
 func (bs *bsWrap) Get(ctx context.Context, blockCID cid.Cid) (blocks.Block, error) {
 	pieces, err := bs.dagStoreWrapper.GetPiecesContainingBlock(blockCID)
+	log.Debugf("bsWrap get %s %v", blockCID, pieces)
 
 	// Check if it's an identity cid, if it is, return its digest
 	if err != nil {
