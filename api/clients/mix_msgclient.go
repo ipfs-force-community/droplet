@@ -122,7 +122,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 		return msgClient.full.StateWaitMsg(ctx, mCid, confidence, loopbackLimit, allowReplaced)
 	}
 
-	tm := time.NewTicker(time.Second * 30)
+	tm := time.NewTicker(time.Second * 120)
 	defer tm.Stop()
 
 	doneCh := make(chan struct{}, 1)

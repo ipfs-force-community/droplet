@@ -5,6 +5,7 @@ package storageprovider
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -52,6 +53,9 @@ type ProviderNodeAdapter struct {
 	dealInfo        *CurrentDealInfoManager
 
 	signer signer.ISigner
+
+	lk          sync.Mutex
+	pendingMsgs map[cid.Cid]*pendingMsg
 }
 
 func NewProviderNodeAdapter(cfg *config.MarketConfig) func(
@@ -79,6 +83,7 @@ func NewProviderNodeAdapter(cfg *config.MarketConfig) func(
 			fundMgr:         fundMgr,
 			cfg:             cfg,
 			signer:          signer,
+			pendingMsgs:     make(map[cid.Cid]*pendingMsg),
 		}
 		na.dealInfo = &CurrentDealInfoManager{
 			CDAPI: &CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: na},
@@ -294,29 +299,87 @@ func (pna *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
+type pendingMsg struct {
+	ctx   context.Context
+	once  sync.Once
+	tasks []msgWaitTask
+}
+
+type msgWaitTask struct {
+	ctx      context.Context
+	proposal types.DealProposal
+	resp     chan msgWaitResp
+}
+type msgWaitResp struct {
+	resp *storagemarket.PublishDealsWaitResult
+	err  error
+}
+
 func (pna *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal types.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
-	// Wait for deal to be published (plus additional time for confidence)
-	receipt, err := pna.msgClient.WaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
-	if err != nil {
-		return nil, fmt.Errorf("WaitForPublishDeals errored: %w", err)
+	resp := make(chan msgWaitResp, 1)
+	pna.lk.Lock()
+	pm, ok := pna.pendingMsgs[publishCid]
+	if !ok {
+		pm = &pendingMsg{
+			ctx: ctx,
+		}
 	}
-	if receipt.Receipt.ExitCode != exitcode.Ok {
-		return nil, fmt.Errorf("WaitForPublishDeals exit code: %s", receipt.Receipt.ExitCode)
-	}
+	pm.tasks = append(pm.tasks, msgWaitTask{
+		ctx:      ctx,
+		proposal: proposal,
+		resp:     resp,
+	})
+	pna.lk.Unlock()
 
-	// The deal ID may have changed since publish if there was a reorg, so
-	// get the current deal ID
-	head, err := pna.ChainHead(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("WaitForPublishDeals failed to get chain head: %w", err)
-	}
+	pm.once.Do(func() {
+		go func() {
+			// Wait for deal to be published (plus additional time for confidence)
+			receipt, err := pna.msgClient.WaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
+			if err != nil {
+				pna.waitMsgResp(ctx, publishCid, receipt, fmt.Errorf("WaitForPublishDeals errored: %w", err))
+				return
+			}
+			if receipt.Receipt.ExitCode != exitcode.Ok {
+				pna.waitMsgResp(ctx, publishCid, receipt, fmt.Errorf("WaitForPublishDeals exit code: %s", receipt.Receipt.ExitCode))
+				return
+			}
+		}()
+	})
 
-	res, err := pna.dealInfo.GetCurrentDealInfo(ctx, head.Key(), &proposal, publishCid)
-	if err != nil {
-		return nil, fmt.Errorf("WaitForPublishDeals getting deal info errored: %w", err)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case res := <-resp:
+		return res.resp, res.err
 	}
+}
 
-	return &storagemarket.PublishDealsWaitResult{DealID: res.DealID, FinalCid: receipt.Message}, nil
+func (pna *ProviderNodeAdapter) waitMsgResp(ctx context.Context, publishCid cid.Cid, receipt *types.MsgLookup, parentErr error) {
+	pna.lk.Lock()
+	defer pna.lk.Unlock()
+
+	for _, task := range pna.pendingMsgs[publishCid].tasks {
+		r, err := func() (*storagemarket.PublishDealsWaitResult, error) {
+			if parentErr != nil {
+				return nil, parentErr
+			}
+			// The deal ID may have changed since publish if there was a reorg, so
+			// get the current deal ID
+			proposal := task.proposal
+			head, err := pna.ChainHead(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("WaitForPublishDeals failed to get chain head: %w", err)
+			}
+
+			res, err := pna.dealInfo.GetCurrentDealInfo(ctx, head.Key(), &proposal, publishCid)
+			if err != nil {
+				return nil, fmt.Errorf("WaitForPublishDeals getting deal info errored: %w", err)
+			}
+
+			return &storagemarket.PublishDealsWaitResult{DealID: res.DealID, FinalCid: receipt.Message}, nil
+		}()
+		task.resp <- msgWaitResp{r, err}
+	}
 }
 
 func (pna *ProviderNodeAdapter) GetDataCap(ctx context.Context, addr address.Address, encodedTs shared.TipSetToken) (*abi.StoragePower, error) {
