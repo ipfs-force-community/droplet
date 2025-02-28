@@ -175,6 +175,7 @@ var datacapExtendCmd = &cli.Command{
 		maxClaims := cliCtx.Int("max-claims")
 
 		var wg sync.WaitGroup
+		var lk sync.Mutex
 		ch := make(chan struct{}, 5)
 		for len(claimTermsParams.Terms) > 0 {
 			ch <- struct{}{}
@@ -198,7 +199,8 @@ var datacapExtendCmd = &cli.Command{
 					wg.Done()
 				}()
 
-				if err := pushAndWaitMsg(ctx, fapi, api, fromAddr, &verifregtypes.ExtendClaimTermsParams{Terms: claimTerms}); err != nil {
+				if err := pushAndWaitMsg(ctx, fapi, api, fromAddr,
+					&verifregtypes.ExtendClaimTermsParams{Terms: claimTerms}, &lk); err != nil {
 					fmt.Println(err)
 				}
 			}(claimTerms)
@@ -215,6 +217,7 @@ func pushAndWaitMsg(ctx context.Context,
 	api clientapi.IMarketClient,
 	fromAddr address.Address,
 	claimTermsParams *verifregtypes.ExtendClaimTermsParams,
+	lk *sync.Mutex,
 ) error {
 	params, serializeErr := actors.SerializeParams(claimTermsParams)
 	if serializeErr != nil {
@@ -242,6 +245,9 @@ func pushAndWaitMsg(ctx context.Context,
 	if msgLookup.Receipt.ExitCode.IsError() {
 		return fmt.Errorf("message execute error, exit code: %v", msgLookup.Receipt.ExitCode)
 	}
+
+	lk.Lock()
+	defer lk.Unlock()
 
 	if err := sharedutils.LoadBuiltinActors(ctx, fapi); err != nil {
 		return err
