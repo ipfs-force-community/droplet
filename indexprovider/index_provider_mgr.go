@@ -106,7 +106,7 @@ func (m *IndexProviderMgr) setTopic(ps *pubsub.PubSub, nn string) error {
 		// filter.
 		//
 		// See: lp2p.GossipSub.
-		topicName = types.IndexerIngestTopic(nn)
+		// topicName = types.IndexerIngestTopic(nn)
 		log.Debugw("Inferred indexer topic from network name", "topic", topicName)
 	}
 	// Join the indexer topic using the market's pubsub instance. Otherwise, the provider
