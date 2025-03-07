@@ -126,14 +126,14 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 		return err
 	}
 
-	if !cParams.noCopyCarFile && !cParams.skipCommP {
+	go func() {
 		directDealLog.Infof("register shard. deal:%v, allocationID:%d, pieceCid:%s", deal.ID, deal.AllocationID, deal.PieceCID)
 		// Register the deal data as a "shard" with the DAG store. Later it can be
 		// fetched from the DAG store during retrieval.
 		if err := ddp.dagStoreWrapper.RegisterShard(ctx, deal.PieceCID, "", true, nil); err != nil {
 			directDealLog.Errorf("failed to register shard: %v", err)
 		}
-	}
+	}()
 
 	return nil
 }
