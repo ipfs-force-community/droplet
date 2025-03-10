@@ -254,9 +254,10 @@ var listStorageAsksCmd = &cli.Command{
 			if dlt > 0 {
 				rem = (time.Second * time.Duration(int64(dlt)*int64(constants.MainNetBlockDelaySecs))).String()
 			}
-			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\t%d\n", ask.Miner.String(), types.FIL(ask.Price).String(),
+			str := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%d\t%s\t%d\n", ask.Miner.String(), types.FIL(ask.Price).String(),
 				types.FIL(ask.VerifiedPrice).String(), types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))),
 				types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
+			_, _ = fmt.Fprint(w, str)
 		}
 		return w.Flush()
 	},
