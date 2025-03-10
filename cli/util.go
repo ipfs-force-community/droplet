@@ -333,7 +333,7 @@ func OutputDataTransferChannels(out io.Writer, channels []types.DataTransferChan
 		}
 	}
 
-	fmt.Fprintf(out, "Sending Channels\n\n")
+	_, _ = fmt.Fprint(out, "Sending Channels\n\n")
 	w := tablewriter.New(tablewriter.Col("ID"),
 		tablewriter.Col("Status"),
 		tablewriter.Col("Sending To"),
@@ -347,7 +347,7 @@ func OutputDataTransferChannels(out io.Writer, channels []types.DataTransferChan
 	}
 	w.Flush(out) //nolint:errcheck
 
-	fmt.Fprintf(out, "\nReceiving Channels\n\n")
+	_, _ = fmt.Fprint(out, "\nReceiving Channels\n\n")
 	w = tablewriter.New(tablewriter.Col("ID"),
 		tablewriter.Col("Status"),
 		tablewriter.Col("Receiving From"),
@@ -432,15 +432,15 @@ func NewAppFmt(a *cli.App) *AppFmt {
 }
 
 func (a *AppFmt) Print(args ...interface{}) {
-	fmt.Fprint(a.app.Writer, args...)
+	_, _ = fmt.Fprint(a.app.Writer, args...)
 }
 
 func (a *AppFmt) Println(args ...interface{}) {
-	fmt.Fprintln(a.app.Writer, args...)
+	_, _ = fmt.Fprintln(a.app.Writer, args...)
 }
 
 func (a *AppFmt) Printf(fmtstr string, args ...interface{}) {
-	fmt.Fprintf(a.app.Writer, fmtstr, args...)
+	_, _ = fmt.Fprintf(a.app.Writer, fmtstr, args...)
 }
 
 func (a *AppFmt) Scan(args ...interface{}) (int, error) {

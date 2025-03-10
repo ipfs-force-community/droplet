@@ -167,13 +167,13 @@ var getRetrievalAskCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Price per Byte\tUnseal Price\tPayment Interval\tPayment Interval Increase\n")
+		_, _ = fmt.Fprintf(w, "Price per Byte\tUnseal Price\tPayment Interval\tPayment Interval Increase\n")
 		if ask == nil {
-			fmt.Fprintf(w, "<miner does not have an retrieval ask set>\n")
+			_, _ = fmt.Fprintf(w, "<miner does not have an retrieval ask set>\n")
 			return w.Flush()
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 			types.FIL(ask.PricePerByte),
 			types.FIL(ask.UnsealPrice),
 			units.BytesSize(float64(ask.PaymentInterval)),
@@ -201,9 +201,9 @@ var listRetrievalAskCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Miner\tPrice per Byte\tUnseal Price\tPayment Interval\tPayment Interval Increase\n")
+		_, _ = fmt.Fprintf(w, "Miner\tPrice per Byte\tUnseal Price\tPayment Interval\tPayment Interval Increase\n")
 		for _, ask := range asks {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 				ask.Miner,
 				types.FIL(ask.PricePerByte),
 				types.FIL(ask.UnsealPrice),

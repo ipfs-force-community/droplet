@@ -1180,7 +1180,7 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 
 	if verbose {
 		w := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tDataCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tVerified\tMessage\n")
+		_, _ = fmt.Fprintf(w, "Created\tDealCid\tDealId\tProvider\tState\tOn Chain?\tSlashed?\tPieceCID\tDataCID\tSize\tPrice\tDuration\tTransferChannelID\tTransferStatus\tVerified\tMessage\n")
 		for _, d := range deals {
 			onChain := "N"
 			if d.OnChainDealState.SectorStartEpoch() != -1 {
@@ -1208,7 +1208,7 @@ func outputClientStorageDeals(ctx context.Context, out io.Writer, full v1api.Ful
 				//	transferPct = fmt.Sprintf("%d%%", pct)
 				//}
 			}
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%v\t%s\n",
+			_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%v\t%s\n",
 				d.LocalDeal.CreationTime.Format(time.Stamp),
 				d.LocalDeal.ProposalCid,
 				d.LocalDeal.DealID,
@@ -1851,10 +1851,10 @@ var verifiedDealStatsCmd = &cli.Command{
 			for _, pd := range rd.ReplicasDistribution {
 				writeProviderDistribution(writer, pd, rd.ReplicasPercentage[pd.Provider.String()])
 			}
-			fmt.Fprintf(buf, "Client: %s\n", rd.Client)
-			fmt.Fprintf(buf, "Total:  %s\n", sizeStr(rd.Total))
-			fmt.Fprintf(buf, "Uniq:   %s\n", sizeStr(rd.Uniq))
-			fmt.Fprintf(buf, "DuplicationPercentage: %.2f%s\n", rd.DuplicationPercentage*100, "%")
+			_, _ = fmt.Fprintf(buf, "Client: %s\n", rd.Client)
+			_, _ = fmt.Fprintf(buf, "Total:  %s\n", sizeStr(rd.Total))
+			_, _ = fmt.Fprintf(buf, "Uniq:   %s\n", sizeStr(rd.Uniq))
+			_, _ = fmt.Fprintf(buf, "DuplicationPercentage: %.2f%s\n", rd.DuplicationPercentage*100, "%")
 			_ = writer.Flush(buf)
 			buf.WriteString("\n")
 		}
@@ -1875,7 +1875,7 @@ var verifiedDealStatsCmd = &cli.Command{
 				break
 			}
 		}
-		fmt.Fprint(os.Stdout, buf.String())
+		_, _ = fmt.Fprint(os.Stdout, buf.String())
 
 		return nil
 	},
