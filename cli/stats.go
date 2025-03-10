@@ -215,15 +215,15 @@ var StatsPowerCmd = &cli.Command{
 
 		if cctx.Bool("list") {
 			w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-			fmt.Fprintln(w, "Miner\tAgent\tQualityAdjPower\tRawBytePower\tHasMinPower")
+			_, _ = fmt.Fprintln(w, "Miner\tAgent\tQualityAdjPower\tRawBytePower\tHasMinPower")
 			for maddr, info := range minerInfos {
 				if info.HasMinPower {
-					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%t\n", maddr, info.Agent, info.Power.QualityAdjPower, info.Power.RawBytePower, info.HasMinPower)
+					_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%t\n", maddr, info.Agent, info.Power.QualityAdjPower, info.Power.RawBytePower, info.HasMinPower)
 				}
 			}
 			for maddr, info := range minerInfos {
 				if !info.HasMinPower && info.Power.RawBytePower.GreaterThan(big.Zero()) && cctx.Bool("min-power") {
-					fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%t\n", maddr, info.Agent, info.Power.QualityAdjPower, info.Power.RawBytePower, info.HasMinPower)
+					_, _ = fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%t\n", maddr, info.Agent, info.Power.QualityAdjPower, info.Power.RawBytePower, info.HasMinPower)
 				}
 			}
 			err := w.Flush()

@@ -189,9 +189,9 @@ var getStorageAskCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Price per GiB/Epoch\tVerified\tMin. Piece Size (padded)\tMax. Piece Size (padded)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
+		_, _ = fmt.Fprint(w, "Price per GiB/Epoch\tVerified\tMin. Piece Size (padded)\tMax. Piece Size (padded)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
 		if ask == nil {
-			fmt.Fprintf(w, "<miner does not have an ask>\n")
+			_, _ = fmt.Fprint(w, "<miner does not have an ask>\n")
 			return w.Flush()
 		}
 
@@ -206,7 +206,9 @@ var getStorageAskCmd = &cli.Command{
 			rem = (time.Second * time.Duration(int64(dlt)*int64(constants.MainNetBlockDelaySecs))).String()
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%d\n", types.FIL(ask.Price), types.FIL(ask.VerifiedPrice), types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%d\n", types.FIL(ask.Price).String(), types.FIL(ask.VerifiedPrice).String(),
+			types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))),
+			ask.Expiry, rem, ask.SeqNo)
 
 		return w.Flush()
 	},
@@ -241,7 +243,7 @@ var listStorageAsksCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Miner\tPrice per GiB/Epoch\tVerified\tMin. Piece Size (padded)\tMax. Piece Size (padded)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
+		_, _ = fmt.Fprint(w, "Miner\tPrice per GiB/Epoch\tVerified\tMin. Piece Size (padded)\tMax. Piece Size (padded)\tExpiry (Epoch)\tExpiry (Appx. Rem. Time)\tSeq. No.\n")
 
 		for _, sask := range asks {
 			var ask *storagemarket.StorageAsk
@@ -254,8 +256,10 @@ var listStorageAsksCmd = &cli.Command{
 			if dlt > 0 {
 				rem = (time.Second * time.Duration(int64(dlt)*int64(constants.MainNetBlockDelaySecs))).String()
 			}
-
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%d\t%s\t%d\n", ask.Miner, types.FIL(ask.Price), types.FIL(ask.VerifiedPrice), types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
+			str := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%d\t%s\t%d\n", ask.Miner.String(), types.FIL(ask.Price).String(),
+				types.FIL(ask.VerifiedPrice).String(), types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))),
+				types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)
+			_, _ = fmt.Fprint(w, str)
 		}
 		return w.Flush()
 	},

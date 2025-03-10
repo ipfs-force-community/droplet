@@ -147,9 +147,9 @@ var piecesInfoCmd = &cli.Command{
 
 		fmt.Println("Piece: ", pi.PieceCID)
 		w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
-		fmt.Fprintln(w, "Deals:\nDealID\tSectorID\tLength\tOffset")
+		_, _ = fmt.Fprintln(w, "Deals:\nDealID\tSectorID\tLength\tOffset")
 		for _, d := range pi.Deals {
-			fmt.Fprintf(w, "%d\t%d\t%d\t%d\n", d.DealID, d.SectorID, d.Length, d.Offset)
+			_, _ = fmt.Fprintf(w, "%d\t%d\t%d\t%d\n", d.DealID, d.SectorID, d.Length, d.Offset)
 		}
 		return w.Flush()
 	},
@@ -183,9 +183,9 @@ var piecesCidInfoCmd = &cli.Command{
 		fmt.Println("Info for: ", ci.CID)
 
 		w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "PieceCid\tOffset\tSize\n")
+		_, _ = fmt.Fprintf(w, "PieceCid\tOffset\tSize\n")
 		for _, loc := range ci.PieceBlockLocations {
-			fmt.Fprintf(w, "%s\t%d\t%d\n", loc.PieceCID, loc.RelOffset, loc.BlockSize)
+			_, _ = fmt.Fprintf(w, "%s\t%d\t%d\n", loc.PieceCID, loc.RelOffset, loc.BlockSize)
 		}
 		return w.Flush()
 	},

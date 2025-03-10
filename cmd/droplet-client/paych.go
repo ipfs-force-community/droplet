@@ -104,7 +104,7 @@ var paychAddFundsCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintln(cctx.App.Writer, chAddr) // nolint:errcheck
+		_, _ = fmt.Fprintln(cctx.App.Writer, chAddr) // nolint:errcheck
 		restartRetrievals := cctx.Bool("restart-retrievals")
 		if restartRetrievals {
 			return api.ClientRetrieveTryRestartInsufficientFunds(ctx, chAddr)
@@ -183,23 +183,23 @@ var paychStatusCmd = &cli.Command{
 func paychStatus(writer io.Writer, avail *types.ChannelAvailableFunds) {
 	if avail.Channel == nil {
 		if avail.PendingWaitSentinel != nil {
-			fmt.Fprint(writer, "Creating channel\n")                                  // nolint:errcheck
-			fmt.Fprintf(writer, "  From:          %s\n", avail.From)                  // nolint:errcheck
-			fmt.Fprintf(writer, "  To:            %s\n", avail.To)                    // nolint:errcheck
-			fmt.Fprintf(writer, "  Pending Amt:   %s\n", types.FIL(avail.PendingAmt)) // nolint:errcheck
-			fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)   // nolint:errcheck
+			_, _ = fmt.Fprint(writer, "Creating channel\n")                                  // nolint:errcheck
+			_, _ = fmt.Fprintf(writer, "  From:          %s\n", avail.From)                  // nolint:errcheck
+			_, _ = fmt.Fprintf(writer, "  To:            %s\n", avail.To)                    // nolint:errcheck
+			_, _ = fmt.Fprintf(writer, "  Pending Amt:   %s\n", types.FIL(avail.PendingAmt)) // nolint:errcheck
+			_, _ = fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)   // nolint:errcheck
 			return
 		}
-		fmt.Fprint(writer, "Channel does not exist\n")  // nolint:errcheck
-		fmt.Fprintf(writer, "  From: %s\n", avail.From) // nolint:errcheck
-		fmt.Fprintf(writer, "  To:   %s\n", avail.To)   // nolint:errcheck
+		_, _ = fmt.Fprint(writer, "Channel does not exist\n")  // nolint:errcheck
+		_, _ = fmt.Fprintf(writer, "  From: %s\n", avail.From) // nolint:errcheck
+		_, _ = fmt.Fprintf(writer, "  To:   %s\n", avail.To)   // nolint:errcheck
 		return
 	}
 
 	if avail.PendingWaitSentinel != nil {
-		fmt.Fprint(writer, "Adding Funds to channel\n") // nolint:errcheck
+		_, _ = fmt.Fprint(writer, "Adding Funds to channel\n") // nolint:errcheck
 	} else {
-		fmt.Fprint(writer, "Channel exists\n") // nolint:errcheck
+		_, _ = fmt.Fprint(writer, "Channel exists\n") // nolint:errcheck
 	}
 
 	nameValues := [][]string{
@@ -219,7 +219,7 @@ func paychStatus(writer io.Writer, avail *types.ChannelAvailableFunds) {
 			avail.PendingWaitSentinel.String(),
 		})
 	}
-	fmt.Fprint(writer, formatNameValues(nameValues)) // nolint:errcheck
+	_, _ = fmt.Fprint(writer, formatNameValues(nameValues)) // nolint:errcheck
 }
 
 func formatNameValues(nameValues [][]string) string {
@@ -255,7 +255,7 @@ var paychListCmd = &cli.Command{
 		}
 
 		for _, v := range chs {
-			fmt.Fprintln(cctx.App.Writer, v.String()) // nolint:errcheck
+			_, _ = fmt.Fprintln(cctx.App.Writer, v.String()) // nolint:errcheck
 		}
 		return nil
 	},
@@ -296,7 +296,7 @@ var paychSettleCmd = &cli.Command{
 			return fmt.Errorf("settle message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "Settled channel %s\n", ch) // nolint:errcheck
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Settled channel %s\n", ch) // nolint:errcheck
 		return nil
 	},
 }
@@ -336,7 +336,7 @@ var paychCloseCmd = &cli.Command{
 			return fmt.Errorf("collect message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "Collected funds for channel %s\n", ch) // nolint:errcheck
+		_, _ = fmt.Fprintf(cctx.App.Writer, "Collected funds for channel %s\n", ch) // nolint:errcheck
 		return nil
 	},
 }
@@ -404,7 +404,7 @@ var paychVoucherCreateCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintln(cctx.App.Writer, enc) // nolint:errcheck
+		_, _ = fmt.Fprintln(cctx.App.Writer, enc) // nolint:errcheck
 		return nil
 	},
 }
@@ -440,7 +440,7 @@ var paychVoucherCheckCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "voucher is valid") // nolint:errcheck
+		_, _ = fmt.Fprintln(cctx.App.Writer, "voucher is valid") // nolint:errcheck
 		return nil
 	},
 }
@@ -595,11 +595,11 @@ func outputVoucher(w io.Writer, v *paych.SignedVoucher, export bool) error {
 		}
 	}
 
-	fmt.Fprintf(w, "Lane %d, Nonce %d: %s", v.Lane, v.Nonce, types.FIL(v.Amount)) // nolint:errcheck
+	_, _ = fmt.Fprintf(w, "Lane %d, Nonce %d: %s", v.Lane, v.Nonce, types.FIL(v.Amount)) // nolint:errcheck
 	if export {
-		fmt.Fprintf(w, "; %s", enc) // nolint:errcheck
+		_, _ = fmt.Fprintf(w, "; %s", enc) // nolint:errcheck
 	}
-	fmt.Fprintln(w) // nolint:errcheck
+	_, _ = fmt.Fprintln(w) // nolint:errcheck
 	return nil
 }
 
@@ -644,7 +644,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return fmt.Errorf("message execution failed (exit code %d)", mwait.Receipt.ExitCode)
 		}
 
-		fmt.Fprintln(cctx.App.Writer, "channel updated successfully") // nolint:errcheck
+		_, _ = fmt.Fprintln(cctx.App.Writer, "channel updated successfully") // nolint:errcheck
 
 		return nil
 	},

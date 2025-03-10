@@ -212,10 +212,10 @@ var datacapExtendCmd = &cli.Command{
 
 		if len(claimTermsReturn.FailCodes) > 0 {
 			w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
-			fmt.Fprintln(w, "\nError occurred:\nClaimID\tErrorCode")
+			_, _ = fmt.Fprintln(w, "\nError occurred:\nClaimID\tErrorCode")
 
 			for _, failCode := range claimTermsReturn.FailCodes {
-				fmt.Fprintf(w, "%d\t%d\n", claimTermsParams.Terms[failCode.Idx], failCode.Code)
+				_, _ = fmt.Fprintf(w, "%d\t%d\n", claimTermsParams.Terms[failCode.Idx], failCode.Code)
 			}
 
 			return w.Flush()
@@ -338,9 +338,9 @@ var datacapClaimsListCmd = &cli.Command{
 		})
 
 		w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
-		fmt.Fprintln(w, "ClaimID\tProvider\tClient\tExpiration\tSize\tTermMin\tTermMax\tTermStart\tSector\tData")
+		_, _ = fmt.Fprintln(w, "ClaimID\tProvider\tClient\tExpiration\tSize\tTermMin\tTermMax\tTermStart\tSector\tData")
 		for _, claim := range claimWithIDs {
-			fmt.Fprintf(w, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%v\n", claim.id, claim.Provider, claim.Client, claim.TermStart+claim.TermMax,
+			_, _ = fmt.Fprintf(w, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%v\n", claim.id, claim.Provider, claim.Client, claim.TermStart+claim.TermMax,
 				claim.Size, claim.TermMin, claim.TermMax, claim.TermStart, claim.Sector, claim.Data)
 		}
 
@@ -419,9 +419,9 @@ var datacapAllocationListCmd = &cli.Command{
 		})
 
 		w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
-		fmt.Fprintln(w, "AllocationID\tClient\tProvider\tExpiration\tSize\tTermMin\tTermMax\tData")
+		_, _ = fmt.Fprintln(w, "AllocationID\tClient\tProvider\tExpiration\tSize\tTermMin\tTermMax\tData")
 		for _, allocation := range allocationWithIDs {
-			fmt.Fprintf(w, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%v\n", allocation.id, allocation.Client, allocation.Provider, allocation.Expiration,
+			_, _ = fmt.Fprintf(w, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%v\n", allocation.id, allocation.Client, allocation.Provider, allocation.Expiration,
 				allocation.Size, allocation.TermMin, allocation.TermMax, allocation.Data)
 		}
 
