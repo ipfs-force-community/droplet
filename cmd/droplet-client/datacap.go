@@ -269,10 +269,10 @@ func pushAndWaitMsg(ctx context.Context,
 
 	if len(claimTermsReturn.FailCodes) > 0 {
 		w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
-		fmt.Fprintln(w, "\nError occurred:\nClaimID\tErrorCode")
+		_, _ = fmt.Fprintln(w, "\nError occurred:\nClaimID\tErrorCode")
 
 		for _, failCode := range claimTermsReturn.FailCodes {
-			fmt.Fprintf(w, "%d\t%d\n", claimTermsParams.Terms[failCode.Idx], failCode.Code)
+			_, _ = fmt.Fprintf(w, "%d\t%d\n", claimTermsParams.Terms[failCode.Idx], failCode.Code)
 		}
 
 		return w.Flush()
