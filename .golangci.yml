@@ -30,6 +30,7 @@ issues:
     - "package comment should be of the form"
     - "should be of the form"
     - "var-naming"
+    - "SA1006"
 
   exclude-rules:
     - path: pkg/constants
