@@ -270,6 +270,7 @@ var filterDealTimestamp = func() uint64 {
 }()
 
 func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr address.Address) error {
+	log.Debugf("IndexAnnounceAllDeals: %s", minerAddr)
 	w, err := m.GetIndexProvider(minerAddr)
 	if err != nil {
 		return err
@@ -292,6 +293,7 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 	if err != nil {
 		return err
 	}
+	log.Debugf("IndexAnnounceAllDeals: %s found %d deals", minerAddr, len(deals))
 
 	merr := &multierror.Error{}
 	success := 0
@@ -336,6 +338,7 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 	if err != nil {
 		return err
 	}
+	log.Debugf("IndexAnnounceAllDeals: %s found %d direct deals", minerAddr, len(directDeals))
 	success = 0
 	for _, deal := range directDeals {
 		if deal.CreatedAt < filterDealTimestamp {
