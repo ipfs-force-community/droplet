@@ -36,14 +36,12 @@ import (
 )
 
 type IndexProviderMgr struct {
-	cfg       *config.ProviderConfig
-	h         host.Host
-	r         repo.Repo
-	full      v1.FullNode
-	dagStore  stores.DAGStoreWrapper
-	topic     *pubsub.Topic
-	topicName string
-	ds        badger.MetadataDS
+	cfg      *config.ProviderConfig
+	h        host.Host
+	r        repo.Repo
+	full     v1.FullNode
+	dagStore stores.DAGStoreWrapper
+	ds       badger.MetadataDS
 
 	indexProviders map[address.Address]*Wrapper
 	lk             sync.Mutex
@@ -70,11 +68,6 @@ func NewIndexProviderMgr(lc fx.Lifecycle,
 		indexProviders: make(map[address.Address]*Wrapper),
 	}
 
-	err := mgr.setTopic(ps, string(nn))
-	if err != nil {
-		return nil, err
-	}
-
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			var minerAddrs []address.Address
@@ -95,32 +88,6 @@ func NewIndexProviderMgr(lc fx.Lifecycle,
 	})
 
 	return mgr, nil
-}
-
-func (m *IndexProviderMgr) setTopic(ps *pubsub.PubSub, nn string) error {
-	topicName := m.cfg.IndexProvider.TopicName
-	// If indexer topic name is left empty, infer it from the network name.
-	if topicName == "" {
-		// Use the same mechanism as the Dependency Injection (DI) to construct the topic name,
-		// so that we are certain it is consistent with the name allowed by the subscription
-		// filter.
-		//
-		// See: lp2p.GossipSub.
-		// topicName = types.IndexerIngestTopic(nn)
-		log.Debugw("Inferred indexer topic from network name", "topic", topicName)
-	}
-	// Join the indexer topic using the market's pubsub instance. Otherwise, the provider
-	// engine would create its own instance of pubsub down the line in dagsync, which has
-	// no validators by default.
-	t, err := ps.Join(topicName)
-	if err != nil {
-		return fmt.Errorf("joining indexer topic %s: %w", topicName, err)
-	}
-
-	m.topic = t
-	m.topicName = topicName
-
-	return nil
 }
 
 func (m *IndexProviderMgr) initAllIndexProviders(ctx context.Context, minerAddrs []address.Address) error {
@@ -159,25 +126,17 @@ func (m *IndexProviderMgr) initIndexProvider(ctx context.Context, minerAddr addr
 		engine.WithRetrievalAddrs(marketHostAddrsStr...),
 		engine.WithEntriesCacheCapacity(cfg.EntriesCacheCapacity),
 		engine.WithChainedEntries(cfg.EntriesChunkSize),
-		engine.WithTopicName(m.topicName),
 		engine.WithPurgeCacheOnStart(cfg.PurgeCacheOnStart),
 	}
 
 	llog := log.With(
 		"idxProvEnabled", cfg.Enable,
 		"pid", m.h.ID(),
-		"topic", m.topicName,
 		"retAddrs", m.h.Addrs())
 
 	// If announcements to the network are enabled, then set options for the publisher.
 	var e *engine.Engine
 	if cfg.Enable {
-		// Get the miner ID and set as extra gossip data.
-		// The extra data is required by the lotus-specific index-provider gossip message validators.
-		opts = append(opts,
-			engine.WithTopic(m.topic),
-			engine.WithExtraGossipData(minerAddr.Bytes()),
-		)
 		if cfg.Announce.AnnounceOverHttp {
 			opts = append(opts, engine.WithDirectAnnounce(cfg.Announce.DirectAnnounceURLs...))
 		}
