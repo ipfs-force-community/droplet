@@ -217,6 +217,7 @@ func (w *Wrapper) gcLoop() {
 	defer w.backgroundWg.Done()
 
 	if w.gcInterval == 0 {
+		log.Infof("DAG store GC is disabled")
 		return
 	}
 

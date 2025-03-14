@@ -131,6 +131,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 	for {
 		select {
 		case <-doneCh:
+			log.Debugf("wait message %v", mCid)
 			msg, err := msgClient.venusMessager.GetMessageByUid(ctx, mCid.String())
 			if err != nil {
 				log.Warnf("get message %s fail while wait %v", mCid, err)
