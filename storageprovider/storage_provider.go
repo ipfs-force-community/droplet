@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -240,10 +241,13 @@ func (p *StorageProviderImpl) start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to list deals: %w", err)
 	}
-	// Fire restart event on all active deals
-	if err := p.restartDeals(ctx, deals); err != nil {
-		return fmt.Errorf("failed to restart deals: %w", err)
-	}
+	go func() {
+		// Fire restart event on all active deals
+		if err := p.restartDeals(ctx, deals); err != nil {
+			log.Errorf("failed to restart deals: %w", err)
+		}
+	}()
+
 	return nil
 }
 
@@ -266,7 +270,11 @@ func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.M
 	for _, miner := range miners {
 		uniqMiners[miner.Addr] = struct{}{}
 	}
+	sort.Slice(deals, func(i, j int) bool {
+		return deals[i].UpdatedAt > (deals[j].UpdatedAt)
+	})
 	var count int
+	ch := make(chan struct{}, 50)
 	for _, deal := range deals {
 		if IsTerminateState(deal.State) {
 			continue
@@ -278,11 +286,13 @@ func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.M
 
 		count++
 
+		ch <- struct{}{}
 		go func(deal *types.MinerDeal) {
 			err := p.dealProcess.HandleOff(ctx, deal)
 			if err != nil {
 				log.Errorf("deal %s handle off err: %s", deal.ProposalCid, err)
 			}
+			<-ch
 		}(deal)
 	}
 	log.Infof("restarting for miners: %v, count: %d", miners, count)
