@@ -329,12 +329,13 @@ func (pna *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publish
 		proposal: proposal,
 		resp:     resp,
 	})
+	pna.pendingMsgs[publishCid] = pm
 	pna.lk.Unlock()
 
 	pm.once.Do(func() {
 		go func() {
 			// Wait for deal to be published (plus additional time for confidence)
-			receipt, err := pna.msgClient.WaitMsg(ctx, publishCid, 2*constants.MessageConfidence, constants.LookbackNoLimit, true)
+			receipt, err := pna.msgClient.WaitMsg(ctx, publishCid, constants.MessageConfidence, constants.LookbackNoLimit, true)
 			if err != nil {
 				pna.waitMsgResp(ctx, publishCid, receipt, fmt.Errorf("WaitForPublishDeals errored: %w", err))
 				return
@@ -343,6 +344,8 @@ func (pna *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publish
 				pna.waitMsgResp(ctx, publishCid, receipt, fmt.Errorf("WaitForPublishDeals exit code: %s", receipt.Receipt.ExitCode))
 				return
 			}
+			log.Debugf("wait message %s success", publishCid)
+			pna.waitMsgResp(ctx, publishCid, receipt, nil)
 		}()
 	})
 
