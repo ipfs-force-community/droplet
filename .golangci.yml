@@ -13,7 +13,7 @@ linters:
     - stylecheck
     - gosimple
     - goimports
-
+concurrency: 2
 issues:
   exclude:
     - "func name will be used as test\\.Test.* by other packages, and that stutters; consider calling this"

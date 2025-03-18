@@ -142,6 +142,11 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 				log.Errorf("update deal status to active for sector %d of miner %s err: %s", deal.SectorNumber, addr, err)
 				continue
 			}
+			if c, err := dealTracker.indexProviderMgr.AnnounceDeal(ctx, deal); err != nil {
+				log.Errorf("announce deal %s err: %s", deal.ProposalCid, err)
+			} else {
+				log.Infof("announce deal %s success, payload cid: %s, cid: %s", deal.ProposalCid, deal.Ref.Root, c)
+			}
 
 			dealTracker.eventPublisher.PublishWithCid(storagemarket.ProviderEventDealActivated, deal.ProposalCid)
 
@@ -206,6 +211,7 @@ func (dealTracker *DealTracker) checkSlash(ctx metrics.MetricsCtx, addr address.
 			if err != nil {
 				return fmt.Errorf("announce deal %v removed failed: %v", deal.ProposalCid, err)
 			}
+			log.Infof("announce deal %s removed", deal.ProposalCid)
 		}
 	}
 	return nil

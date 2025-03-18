@@ -112,6 +112,7 @@ func (p *DealPublisher) Publish(ctx context.Context, deal types.ClientDealPropos
 	if !ok {
 		pCfg, err := p.cfg.MinerProviderConfig(providerAddr, true)
 		if err != nil {
+			p.lk.Unlock()
 			return cid.Undef, err
 		}
 		addrs := config.CfgAddrArrToNative(pCfg.DealPublishAddress)

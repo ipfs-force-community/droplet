@@ -41,7 +41,6 @@ type Wrapper struct {
 	directDealsDB repo.DirectDealRepo
 	prov          provider.Interface
 
-	meshCreator MeshCreator
 	// bitswapEnabled records whether to announce bitswap as an available
 	// protocol to the network indexer
 	bitswapEnabled bool
@@ -70,7 +69,6 @@ func NewWrapper(h host.Host,
 		dealsDB:        r.StorageDealRepo(),
 		directDealsDB:  r.DirectDealRepo(),
 		prov:           prov,
-		meshCreator:    NewMeshCreator(full, h),
 		cfg:            cfg,
 		enabled:        !isDisabled,
 		bitswapEnabled: bitswapEnabled,
@@ -165,13 +163,6 @@ func (w *Wrapper) AnnounceExtendedProviders(ctx context.Context) error {
 	ad, err := adBuilder.BuildAndSign()
 	if err != nil {
 		return err
-	}
-
-	// make sure we're connected to the mesh so that the message will go through
-	// pubsub and reach the indexer
-	err = w.meshCreator.Connect(ctx)
-	if err != nil {
-		log.Warnf("could not connect to pubsub mesh before announcing extended provider: %v", err)
 	}
 
 	// publish the extended providers announcement
@@ -434,12 +425,6 @@ func (w *Wrapper) AnnounceDealMetadata(ctx context.Context, md metadata.Graphsyn
 		return cid.Undef, errors.New("cannot announce deal: index provider is disabled")
 	}
 
-	// Ensure we have a connection with the full node host so that the index provider gossip sub announcements make their
-	// way to the filecoin bootstrapper network
-	if err := w.meshCreator.Connect(ctx); err != nil {
-		log.Errorw("failed to connect node to full daemon node", "err", err)
-	}
-
 	// Announce deal to network Indexer
 	fm := metadata.Default.New(&md)
 	annCid, err := w.prov.NotifyPut(ctx, nil, contextID, fm)
@@ -456,12 +441,6 @@ func (w *Wrapper) AnnounceDealMetadata(ctx context.Context, md metadata.Graphsyn
 func (w *Wrapper) AnnounceDealRemoved(ctx context.Context, contextID []byte) (cid.Cid, error) {
 	if !w.enabled {
 		return cid.Undef, errors.New("cannot announce deal removal: index provider is disabled")
-	}
-
-	// Ensure we have a connection with the full node host so that the index provider gossip sub announcements make their
-	// way to the filecoin bootstrapper network
-	if err := w.meshCreator.Connect(ctx); err != nil {
-		log.Errorw("failed to connect node to full daemon node", "err", err)
 	}
 
 	// Announce deal removal to network Indexer

@@ -408,6 +408,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 	}
 
 	if deal.State == storagemarket.StorageDealPublish {
+		log.Debugf("publish deal %s", deal.ProposalCid)
 		smDeal := types.MinerDeal{
 			Client:             deal.Client,
 			ClientDealProposal: deal.ClientDealProposal,
@@ -433,6 +434,7 @@ func (storageDealPorcess *StorageDealProcessImpl) HandleOff(ctx context.Context,
 	}
 
 	if deal.State == storagemarket.StorageDealPublishing { // WaitForPublish
+		log.Debugf("wait for publish deal %s, publishCid: %s", deal.ProposalCid, deal.PublishCid)
 		if deal.PublishCid != nil {
 			res, err := storageDealPorcess.spn.WaitForPublishDeals(ctx, *deal.PublishCid, deal.Proposal)
 			if err != nil {

@@ -126,14 +126,14 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 		return err
 	}
 
-	if !cParams.noCopyCarFile && !cParams.skipCommP {
+	go func() {
 		directDealLog.Infof("register shard. deal:%v, allocationID:%d, pieceCid:%s", deal.ID, deal.AllocationID, deal.PieceCID)
 		// Register the deal data as a "shard" with the DAG store. Later it can be
 		// fetched from the DAG store during retrieval.
 		if err := ddp.dagStoreWrapper.RegisterShard(ctx, deal.PieceCID, "", true, nil); err != nil {
 			directDealLog.Errorf("failed to register shard: %v", err)
 		}
-	}
+	}()
 
 	return nil
 }
@@ -360,6 +360,11 @@ func (t *tracker) checkActive(ctx context.Context) error {
 		if err := t.directDealRepo.SaveDeal(ctx, d); err != nil {
 			return err
 		}
+		if c, err := t.indexProviderMgr.AnnounceDirectDeal(ctx, d); err != nil {
+			log.Errorf("announce direct deal %s failed: %v", d.ID, err)
+		} else {
+			log.Infof("announce direct deal %s success: %v", d.ID, c)
+		}
 	}
 
 	return nil
@@ -413,6 +418,7 @@ func (t *tracker) checkSlash(ctx context.Context) error {
 				if err != nil {
 					return fmt.Errorf("announce deal %s removed failed: %v", deal.ID, err)
 				}
+				log.Infof("announce deal %s removed", deal.ID)
 			}
 		}
 
