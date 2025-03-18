@@ -290,7 +290,7 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 	if err != nil {
 		return err
 	}
-	_, count := activeSectors.Count()
+	count, _ := activeSectors.Count()
 	log.Debugf("IndexAnnounceAllDeals: %s took %s to get active sectors, count: %d", minerAddr, time.Since(start), count)
 
 	active := storagemarket.StorageDealActive
