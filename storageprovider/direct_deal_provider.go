@@ -360,6 +360,11 @@ func (t *tracker) checkActive(ctx context.Context) error {
 		if err := t.directDealRepo.SaveDeal(ctx, d); err != nil {
 			return err
 		}
+		if c, err := t.indexProviderMgr.AnnounceDirectDeal(ctx, d); err != nil {
+			log.Errorf("announce direct deal %s failed: %v", d.ID, err)
+		} else {
+			log.Infof("announce direct deal %s success: %v", d.ID, c)
+		}
 	}
 
 	return nil
@@ -413,6 +418,7 @@ func (t *tracker) checkSlash(ctx context.Context) error {
 				if err != nil {
 					return fmt.Errorf("announce deal %s removed failed: %v", deal.ID, err)
 				}
+				log.Infof("announce deal %s removed", deal.ID)
 			}
 		}
 

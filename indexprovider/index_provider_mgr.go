@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -284,12 +285,20 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 		return fmt.Errorf("failed to get chain head: %w", err)
 	}
 
+	start := time.Now()
 	activeSectors, err := m.getActiveSectors(ctx, minerAddr)
 	if err != nil {
 		return err
 	}
+	_, count := activeSectors.Count()
+	log.Debugf("IndexAnnounceAllDeals: %s took %s to get active sectors, count: %d", minerAddr, time.Since(start), count)
 
-	deals, err := m.r.StorageDealRepo().ListDealByAddr(ctx, minerAddr)
+	active := storagemarket.StorageDealActive
+	deals, err := m.r.StorageDealRepo().ListDeal(ctx, &markettypes.StorageDealQueryParams{
+		Miner: minerAddr,
+		Page:  markettypes.Page{Limit: math.MaxInt32},
+		State: &active,
+	})
 	if err != nil {
 		return err
 	}
@@ -297,10 +306,8 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 
 	merr := &multierror.Error{}
 	success := 0
+	now := time.Now()
 	for _, deal := range deals {
-		if deal.State != storagemarket.StorageDealActive {
-			continue
-		}
 		if deal.CreatedAt < filterDealTimestamp {
 			continue
 		}
@@ -329,7 +336,8 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 		success++
 	}
 
-	log.Infow("finished announcing deals to Indexer", "number of deals", success)
+	log.Infof("finished announcing deals to indexer, number of deals: %d, took: %v", success, time.Since(now))
+
 	dealActive := markettypes.DealActive
 	directDeals, err := m.r.DirectDealRepo().ListDeal(ctx, markettypes.DirectDealQueryParams{
 		Provider: minerAddr,
@@ -340,6 +348,7 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 	}
 	log.Debugf("IndexAnnounceAllDeals: %s found %d direct deals", minerAddr, len(directDeals))
 	success = 0
+	now = time.Now()
 	for _, deal := range directDeals {
 		if deal.CreatedAt < filterDealTimestamp {
 			continue
@@ -369,7 +378,7 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 		success++
 	}
 
-	log.Infow("finished announcing all direct deals to Indexer", "number of deals", success)
+	log.Infof("finished announcing all direct deals to indexer, number of deals: %d, took: %v", success, time.Since(now))
 
 	return merr.ErrorOrNil()
 }

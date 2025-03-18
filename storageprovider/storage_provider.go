@@ -37,6 +37,7 @@ import (
 
 	"github.com/ipfs-force-community/droplet/v2/api/clients"
 	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/indexprovider"
 	"github.com/ipfs-force-community/droplet/v2/minermgr"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/droplet/v2/network"
@@ -150,6 +151,7 @@ type StorageProviderImpl struct {
 	storageDealStream *StorageDealStream
 	minerMgr          minermgr.IMinerMgr
 	pieceStorageMgr   *piecestorage.PieceStorageManager
+	indexProviderMgr  *indexprovider.IndexProviderMgr
 }
 
 // NewStorageProvider returns a new storage provider
@@ -168,6 +170,7 @@ func NewStorageProvider(
 	mixMsgClient clients.IMixMessage,
 	sdf config.StorageDealFilter,
 	pb *EventPublishAdapter,
+	indexProviderMgr *indexprovider.IndexProviderMgr,
 ) (StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -188,8 +191,9 @@ func NewStorageProvider(
 
 		dealStore: repo.StorageDealRepo(),
 
-		minerMgr:        minerMgr,
-		pieceStorageMgr: pieceStorageMgr,
+		minerMgr:         minerMgr,
+		pieceStorageMgr:  pieceStorageMgr,
+		indexProviderMgr: indexProviderMgr,
 	}
 
 	dealProcess, err := NewStorageDealProcessImpl(mCtx, spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, tf, minerMgr, pieceStorageMgr, dataTransfer, dagStore, sdf, pb)
@@ -269,6 +273,16 @@ func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.M
 	for _, miner := range miners {
 		uniqMiners[miner.Addr] = struct{}{}
 	}
+
+	for miner := range uniqMiners {
+		go func() {
+			err := p.indexProviderMgr.IndexAnnounceAllDeals(ctx, miner)
+			if err != nil {
+				log.Errorf("announce all deals err: %s, miner: %s", err, miner)
+			}
+		}()
+	}
+
 	var count int
 	for _, deal := range deals {
 		if IsTerminateState(deal.State) {
