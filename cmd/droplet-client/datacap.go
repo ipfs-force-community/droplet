@@ -7,14 +7,16 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync"
 	"text/tabwriter"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v10/verifreg"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v15/verifreg"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	clientapi "github.com/filecoin-project/venus/venus-shared/api/market/client"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	sharedutils "github.com/filecoin-project/venus/venus-shared/utils"
 	msgparser "github.com/filecoin-project/venus/venus-shared/utils/msg_parser"
@@ -56,6 +58,11 @@ var datacapExtendCmd = &cli.Command{
 		&cli.Int64Flag{
 			Name:  "expiration-cutoff",
 			Usage: "when use --auto flag, skip datacap whose current expiration is more than <cutoff> epochs from now (infinity if unspecified)",
+		},
+		&cli.IntFlag{
+			Name:  "max-claims",
+			Usage: "maximum number of claims to extend (infinity if unspecified)",
+			Value: 300,
 		},
 	},
 	ArgsUsage: "<provider address>",
@@ -121,7 +128,7 @@ var datacapExtendCmd = &cli.Command{
 			return err
 		}
 
-		claimTermsParams := &types.ExtendClaimTermsParams{}
+		claimTermsParams := &verifregtypes.ExtendClaimTermsParams{}
 		if cliCtx.Bool("auto") {
 			cutoff := abi.ChainEpoch(cliCtx.Int64("expiration-cutoff"))
 			for id, claim := range claims {
@@ -131,9 +138,9 @@ var datacapExtendCmd = &cli.Command{
 					}
 					continue
 				}
-				claimTermsParams.Terms = append(claimTermsParams.Terms, types.ClaimTerm{
+				claimTermsParams.Terms = append(claimTermsParams.Terms, verifregtypes.ClaimTerm{
 					Provider: providerID,
-					ClaimId:  id,
+					ClaimId:  verifregtypes.ClaimId(id),
 					TermMax:  termMax,
 				})
 			}
@@ -150,9 +157,9 @@ var datacapExtendCmd = &cli.Command{
 					}
 					continue
 				}
-				claimTermsParams.Terms = append(claimTermsParams.Terms, types.ClaimTerm{
+				claimTermsParams.Terms = append(claimTermsParams.Terms, verifregtypes.ClaimTerm{
 					Provider: providerID,
-					ClaimId:  types.ClaimId(id),
+					ClaimId:  verifregtypes.ClaimId(id),
 					TermMax:  termMax,
 				})
 			}
@@ -165,64 +172,113 @@ var datacapExtendCmd = &cli.Command{
 			return nil
 		}
 
-		params, err := actors.SerializeParams(claimTermsParams)
-		if err != nil {
-			return err
-		}
+		maxClaims := cliCtx.Int("max-claims")
 
-		msg := types.Message{
-			From:   fromAddr,
-			To:     builtin.VerifiedRegistryActorAddr,
-			Method: builtin.MethodsVerifiedRegistry.ExtendClaimTerms,
-			Params: params,
-		}
+		var wg sync.WaitGroup
+		var lk sync.Mutex
+		ch := make(chan struct{}, 5)
+		for len(claimTermsParams.Terms) > 0 {
+			ch <- struct{}{}
+			wg.Add(1)
 
-		msgCID, err := api.MessagerPushMessage(ctx, &msg, nil)
-		if err != nil {
-			return fmt.Errorf("push message error: %v", err)
-		}
-		fmt.Printf("wait message: %v\n", msgCID)
-
-		msgLookup, err := api.MessagerWaitMessage(ctx, msgCID)
-		if err != nil {
-			return err
-		}
-
-		if msgLookup.Receipt.ExitCode.IsError() {
-			return fmt.Errorf("message execute error, exit code: %v", msgLookup.Receipt.ExitCode)
-		}
-
-		if err := sharedutils.LoadBuiltinActors(ctx, fapi); err != nil {
-			return err
-		}
-		parser, err := msgparser.NewMessageParser(fapi)
-		if err != nil {
-			return err
-		}
-
-		_, ret, err := parser.ParseMessage(ctx, &msg, &msgLookup.Receipt)
-		if err != nil {
-			return fmt.Errorf("parse message error: %v", err)
-		}
-
-		claimTermsReturn, ok := ret.(*verifregtypes.ExtendClaimTermsReturn)
-		if !ok {
-			return fmt.Errorf("expect type %T, actual type %T", &verifregtypes.ExtendClaimTermsReturn{}, ret)
-		}
-
-		if len(claimTermsReturn.FailCodes) > 0 {
-			w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "\nError occurred:\nClaimID\tErrorCode")
-
-			for _, failCode := range claimTermsReturn.FailCodes {
-				_, _ = fmt.Fprintf(w, "%d\t%d\n", claimTermsParams.Terms[failCode.Idx], failCode.Code)
+			var claimTerms []verifregtypes.ClaimTerm
+			if len(claimTermsParams.Terms) > maxClaims {
+				claimTerms = claimTermsParams.Terms[:maxClaims]
+				claimTermsParams.Terms = claimTermsParams.Terms[maxClaims:]
+			} else {
+				claimTerms = claimTermsParams.Terms
+				claimTermsParams.Terms = nil
+			}
+			if len(claimTerms) == 0 {
+				break
 			}
 
-			return w.Flush()
+			go func(claimTerms []verifregtypes.ClaimTerm) {
+				defer func() {
+					<-ch
+					wg.Done()
+				}()
+
+				if err := pushAndWaitMsg(ctx, fapi, api, fromAddr,
+					&verifregtypes.ExtendClaimTermsParams{Terms: claimTerms}, &lk); err != nil {
+					fmt.Println(err)
+				}
+			}(claimTerms)
 		}
+
+		wg.Wait()
 
 		return nil
 	},
+}
+
+func pushAndWaitMsg(ctx context.Context,
+	fapi v1.FullNode,
+	api clientapi.IMarketClient,
+	fromAddr address.Address,
+	claimTermsParams *verifregtypes.ExtendClaimTermsParams,
+	lk *sync.Mutex,
+) error {
+	params, serializeErr := actors.SerializeParams(claimTermsParams)
+	if serializeErr != nil {
+		return fmt.Errorf("serialize params error: %v", serializeErr)
+	}
+
+	msg := types.Message{
+		From:   fromAddr,
+		To:     builtin.VerifiedRegistryActorAddr,
+		Method: builtin.MethodsVerifiedRegistry.ExtendClaimTerms,
+		Params: params,
+	}
+
+	msgCID, err := api.MessagerPushMessage(ctx, &msg, nil)
+	if err != nil {
+		return fmt.Errorf("push message error: %v", err)
+	}
+	fmt.Printf("wait message: %v\n", msgCID)
+
+	msgLookup, err := api.MessagerWaitMessage(ctx, msgCID)
+	if err != nil {
+		return err
+	}
+
+	if msgLookup.Receipt.ExitCode.IsError() {
+		return fmt.Errorf("message execute error, exit code: %v", msgLookup.Receipt.ExitCode)
+	}
+
+	lk.Lock()
+	defer lk.Unlock()
+
+	if err := sharedutils.LoadBuiltinActors(ctx, fapi); err != nil {
+		return err
+	}
+	parser, err := msgparser.NewMessageParser(fapi)
+	if err != nil {
+		return err
+	}
+
+	_, ret, err := parser.ParseMessage(ctx, &msg, &msgLookup.Receipt)
+	if err != nil {
+		return fmt.Errorf("parse message error: %v", err)
+	}
+
+	claimTermsReturn, ok := ret.(*verifregtypes.ExtendClaimTermsReturn)
+	if !ok {
+		return fmt.Errorf("expect type %T, actual type %T", &verifregtypes.ExtendClaimTermsReturn{}, ret)
+	}
+
+	if len(claimTermsReturn.FailCodes) > 0 {
+		w := tabwriter.NewWriter(os.Stdout, 4, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(w, "\nError occurred:\nClaimID\tErrorCode")
+
+		for _, failCode := range claimTermsReturn.FailCodes {
+			_, _ = fmt.Fprintf(w, "%d\t%d\n", claimTermsParams.Terms[failCode.Idx], failCode.Code)
+		}
+
+		return w.Flush()
+	}
+
+	return nil
 }
 
 var errNotNeedExtend = fmt.Errorf("not need extend")

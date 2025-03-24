@@ -122,7 +122,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 		return msgClient.full.StateWaitMsg(ctx, mCid, confidence, loopbackLimit, allowReplaced)
 	}
 
-	tm := time.NewTicker(time.Second * 30)
+	tm := time.NewTicker(time.Second * 60)
 	defer tm.Stop()
 
 	doneCh := make(chan struct{}, 1)
@@ -131,6 +131,7 @@ func (msgClient *MixMsgClient) WaitMsg(ctx context.Context, mCid cid.Cid, confid
 	for {
 		select {
 		case <-doneCh:
+			log.Debugf("wait message %v", mCid)
 			msg, err := msgClient.venusMessager.GetMessageByUid(ctx, mCid.String())
 			if err != nil {
 				log.Warnf("get message %s fail while wait %v", mCid, err)

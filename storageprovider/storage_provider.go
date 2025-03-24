@@ -37,6 +37,7 @@ import (
 
 	"github.com/ipfs-force-community/droplet/v2/api/clients"
 	"github.com/ipfs-force-community/droplet/v2/config"
+	"github.com/ipfs-force-community/droplet/v2/indexprovider"
 	"github.com/ipfs-force-community/droplet/v2/minermgr"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/droplet/v2/network"
@@ -150,6 +151,7 @@ type StorageProviderImpl struct {
 	storageDealStream *StorageDealStream
 	minerMgr          minermgr.IMinerMgr
 	pieceStorageMgr   *piecestorage.PieceStorageManager
+	indexProviderMgr  *indexprovider.IndexProviderMgr
 }
 
 // NewStorageProvider returns a new storage provider
@@ -168,6 +170,7 @@ func NewStorageProvider(
 	mixMsgClient clients.IMixMessage,
 	sdf config.StorageDealFilter,
 	pb *EventPublishAdapter,
+	indexProviderMgr *indexprovider.IndexProviderMgr,
 ) (StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -188,8 +191,9 @@ func NewStorageProvider(
 
 		dealStore: repo.StorageDealRepo(),
 
-		minerMgr:        minerMgr,
-		pieceStorageMgr: pieceStorageMgr,
+		minerMgr:         minerMgr,
+		pieceStorageMgr:  pieceStorageMgr,
+		indexProviderMgr: indexProviderMgr,
 	}
 
 	dealProcess, err := NewStorageDealProcessImpl(mCtx, spV2.conns, newPeerTagger(spV2.net), spV2.spn, spV2.dealStore, spV2.storedAsk, tf, minerMgr, pieceStorageMgr, dataTransfer, dagStore, sdf, pb)
@@ -240,10 +244,13 @@ func (p *StorageProviderImpl) start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to list deals: %w", err)
 	}
-	// Fire restart event on all active deals
-	if err := p.restartDeals(ctx, deals); err != nil {
-		return fmt.Errorf("failed to restart deals: %w", err)
-	}
+	go func() {
+		// Fire restart event on all active deals
+		if err := p.restartDeals(ctx, deals); err != nil {
+			log.Errorf("failed to restart deals: %w", err)
+		}
+	}()
+
 	return nil
 }
 
@@ -257,11 +264,40 @@ func IsTerminateState(state storagemarket.StorageDealStatus) bool {
 }
 
 func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.MinerDeal) error {
+	log.Infof("restarting %d deals", len(deals))
+	miners, err := p.minerMgr.ActorList(ctx)
+	if err != nil {
+		return err
+	}
+	uniqMiners := make(map[address.Address]struct{}, len(miners))
+	for _, miner := range miners {
+		uniqMiners[miner.Addr] = struct{}{}
+	}
+
+	for miner := range uniqMiners {
+		go func() {
+			err := p.indexProviderMgr.IndexAnnounceAllDeals(ctx, miner)
+			if err != nil {
+				log.Errorf("announce all deals err: %s, miner: %s", err, miner)
+			}
+		}()
+	}
+
+	var count int
 	for _, deal := range deals {
 		if IsTerminateState(deal.State) {
 			continue
 		}
 
+		if _, ok := uniqMiners[deal.Proposal.Provider]; !ok {
+			continue
+		}
+
+		count++
+
+		if count%500 == 0 {
+			time.Sleep(time.Second)
+		}
 		go func(deal *types.MinerDeal) {
 			err := p.dealProcess.HandleOff(ctx, deal)
 			if err != nil {
@@ -269,6 +305,7 @@ func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.M
 			}
 		}(deal)
 	}
+	log.Infof("restarting for miners: %v, count: %d", miners, count)
 	return nil
 }
 
