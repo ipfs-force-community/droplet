@@ -274,15 +274,6 @@ func (p *StorageProviderImpl) restartDeals(ctx context.Context, deals []*types.M
 		uniqMiners[miner.Addr] = struct{}{}
 	}
 
-	for miner := range uniqMiners {
-		go func() {
-			err := p.indexProviderMgr.IndexAnnounceAllDeals(ctx, miner)
-			if err != nil {
-				log.Errorf("announce all deals err: %s, miner: %s", err, miner)
-			}
-		}()
-	}
-
 	var count int
 	for _, deal := range deals {
 		if IsTerminateState(deal.State) {
