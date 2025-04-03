@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -326,6 +328,10 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 
 		_, err = w.AnnounceDeal(ctx, deal)
 		if err != nil {
+			if strings.Contains(err.Error(), http.StatusText(http.StatusTooManyRequests)) {
+				log.Errorf("IndexAnnounceAllDeals: %s, err: %s", minerAddr, err.Error())
+				return err
+			}
 			// don't log already advertised errors as errors - just skip them
 			if !errors.Is(err, provider.ErrAlreadyAdvertised) {
 				merr = multierror.Append(merr, err)
@@ -368,6 +374,11 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 
 		_, err = w.AnnounceDirectDeal(ctx, deal)
 		if err != nil {
+			if strings.Contains(err.Error(), http.StatusText(http.StatusTooManyRequests)) {
+				log.Errorf("IndexAnnounceAllDeals: %s, err: %s", minerAddr, err.Error())
+				return err
+			}
+
 			// don't log already advertised errors as errors - just skip them
 			if !errors.Is(err, provider.ErrAlreadyAdvertised) {
 				merr = multierror.Append(merr, err)

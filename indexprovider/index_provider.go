@@ -417,7 +417,13 @@ func (w *Wrapper) AnnounceDeal(ctx context.Context, deal *types.MinerDeal) (cid.
 		FastRetrieval: deal.FastRetrieval,
 		VerifiedDeal:  deal.ClientDealProposal.Proposal.VerifiedDeal,
 	}
-	return w.AnnounceDealMetadata(ctx, md, deal.ProposalCid.Bytes())
+	c, err := w.AnnounceDealMetadata(ctx, md, deal.ProposalCid.Bytes())
+	if err != nil {
+		return c, err
+	}
+	log.Infof("announced deal to index provider success: %s, ad cid: %v", deal.ProposalCid, c)
+
+	return c, nil
 }
 
 func (w *Wrapper) AnnounceDealMetadata(ctx context.Context, md metadata.GraphsyncFilecoinV1, contextID []byte) (cid.Cid, error) {
@@ -467,5 +473,10 @@ func (w *Wrapper) AnnounceDirectDeal(ctx context.Context, entry *types.DirectDea
 		FastRetrieval: true,
 		VerifiedDeal:  true,
 	}
-	return w.AnnounceDealMetadata(ctx, md, contextID)
+	c, err := w.AnnounceDealMetadata(ctx, md, contextID)
+	if err != nil {
+		return c, err
+	}
+	log.Infof("announced direct deal to index provider success: %s, ad cid: %v", entry.ID, c)
+	return c, nil
 }
