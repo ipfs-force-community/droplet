@@ -382,6 +382,6 @@ replace (
 	github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 	github.com/filecoin-project/go-fil-markets => github.com/ipfs-force-community/go-fil-markets v1.2.6-0.20230822060005-aee2cbae5b01
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.9
-	github.com/ipni/index-provider => github.com/ipfs-force-community/index-provider v0.15.6-0.20250403054610-d4423eb001bf
+	github.com/ipni/index-provider => github.com/ipfs-force-community/index-provider v0.15.6-0.20250403063355-35a77ceb5842
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20240125205218-1f4bbc51befe
 )
