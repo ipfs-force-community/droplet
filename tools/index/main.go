@@ -113,6 +113,9 @@ var generateIndexCmd = &cli.Command{
 		endFlag,
 		minersAddrFlag,
 		concurrencyFlag,
+		&cli.BoolFlag{
+			Name: "once",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -122,14 +125,32 @@ var generateIndexCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		p.concurrency = cctx.Int(concurrencyFlag.Name)
-		if p.concurrency < 1 {
-			p.concurrency = 1
-		}
+		p.concurrency = max(cctx.Int(concurrencyFlag.Name), 1)
 
 		fmt.Println("car dir:", carDir, "index dir:", indexDir)
 
-		return generateIndex(ctx, carDir, indexDir, p)
+		if cctx.Bool("once") {
+			return generateIndex(ctx, carDir, indexDir, p)
+		}
+
+		ticker := time.NewTicker(time.Hour * 3)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				fmt.Println("start generate index")
+				start := time.Now()
+				if err := generateIndex(ctx, carDir, indexDir, p); err != nil {
+					fmt.Printf("generate index failed: %v\n", err)
+					continue
+				}
+				fmt.Println("generate index done, took: ", time.Since(start))
+			case <-ctx.Done():
+				fmt.Println("context done")
+				return nil
+			}
+		}
 	},
 }
 
@@ -454,14 +475,14 @@ func migrateIndex(ctx context.Context, indexDir string, p *params) error {
 			return nil
 		}
 		indexPath := filepath.Join(indexDir, name)
-		has, err := p.shardRepo.HasShard(ctx, piece)
-		if err != nil {
-			return err
-		}
-		if has {
-			// fmt.Println("already had shard:", piece)
-			return nil
-		}
+		// has, err := p.shardRepo.HasShard(ctx, piece)
+		// if err != nil {
+		// 	return err
+		// }
+		// if has {
+		// 	// fmt.Println("already had shard:", piece)
+		// 	return nil
+		// }
 
 		f, err := os.Open(indexPath)
 		if err != nil {
