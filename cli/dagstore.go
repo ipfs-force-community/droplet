@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	marketapi "github.com/filecoin-project/venus/venus-shared/api/market/v1"
-	"github.com/filecoin-project/venus/venus-shared/types/market"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/fatih/color"
@@ -234,8 +233,8 @@ func getDeals(ctx context.Context,
 		State: &activeDeal,
 	}
 
-	active := market.DealActive
-	dp := market.DirectDealQueryParams{
+	active := types.DealActive
+	dp := types.DirectDealQueryParams{
 		State: &active,
 	}
 	if cctx.IsSet("miner") {
