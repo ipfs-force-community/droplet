@@ -16,6 +16,8 @@ import (
 	measure "github.com/ipfs/go-ds-measure"
 	logging "github.com/ipfs/go-log/v2"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/go-statemachine/fsm"
 	"github.com/ipfs-force-community/droplet/v2/config"
@@ -237,7 +239,30 @@ func (w *Wrapper) gcLoop() {
 	}
 }
 
-func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (stores.ClosableBlockstore, error) {
+func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (bs stores.ClosableBlockstore, err error) {
+	start := time.Now()
+
+	defer func() {
+		if err != nil {
+			ctx, _ = tag.New(
+				ctx,
+				tag.Upsert(metrics.StatusTag, metrics.StatusErr),
+			)
+		} else {
+			ctx, _ = tag.New(
+				ctx,
+				tag.Upsert(metrics.StatusTag, metrics.StatusOK),
+			)
+		}
+		stats.Record(ctx, metrics.DagStoreLoadShard.M(time.Since(start).Milliseconds()))
+	}()
+
+	bs, err = w.loadShard(ctx, pieceCid)
+
+	return bs, err
+}
+
+func (w *Wrapper) loadShard(ctx context.Context, pieceCid cid.Cid) (stores.ClosableBlockstore, error) {
 	log := log.With("piece-cid", pieceCid)
 	log.Debug("acquiring shard")
 
@@ -246,7 +271,7 @@ func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (stores.Closa
 	// get shard info
 	var sInfo dagstore.ShardInfo
 	var err error
-	retryCount := 5
+	retryCount := 2
 	for i := retryCount; i >= 0; i-- {
 		if i == 0 {
 			return nil, fmt.Errorf("failed to get shard info for piece CID  %s, after %d retry : %w", pieceCid, i, err)
@@ -269,31 +294,35 @@ func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (stores.Closa
 
 	// check state
 	log.Infof("shard state: %s", sInfo.ShardState.String())
-	switch sInfo.ShardState {
-	case dagstore.ShardStateErrored:
-		// try to recover
-		log.Warn("shard is in errored state, try to recover")
-		recoverRes := make(chan dagstore.ShardResult, 1)
-		if err := w.dagst.RecoverShard(ctx, key, recoverRes, dagstore.RecoverOpts{}); err != nil {
-			return nil, fmt.Errorf("failed to recover shard for piece CID %s: %w", pieceCid, err)
-		}
-		select {
-		case res := <-recoverRes:
-			if res.Error != nil {
-				return nil, fmt.Errorf("failed to recover shard for piece CID %s: %w", pieceCid, res.Error)
-			}
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
+	// switch sInfo.ShardState {
+	// case dagstore.ShardStateErrored:
+	// 	// try to recover
+	// 	log.Warn("shard is in errored state, try to recover")
+	// 	recoverRes := make(chan dagstore.ShardResult, 1)
+	// 	if err := w.dagst.RecoverShard(ctx, key, recoverRes, dagstore.RecoverOpts{}); err != nil {
+	// 		return nil, fmt.Errorf("failed to recover shard for piece CID %s: %w", pieceCid, err)
+	// 	}
+	// 	select {
+	// 	case res := <-recoverRes:
+	// 		if res.Error != nil {
+	// 			return nil, fmt.Errorf("failed to recover shard for piece CID %s: %w", pieceCid, res.Error)
+	// 		}
+	// 	case <-ctx.Done():
+	// 		return nil, ctx.Err()
+	// 	}
+	// }
 
 	resCh := make(chan dagstore.ShardResult, 1)
+	now := time.Now()
 	err = w.dagst.AcquireShard(ctx, key, resCh, dagstore.AcquireOpts{})
 	log.Debugf("sent message to acquire shard for piece CID %s", pieceCid)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to acquire shard for piece CID %s: %w", pieceCid, err)
 	}
+
+	defer func() {
+		log.Debugf("acquire shard took %s", time.Since(now))
+	}()
 
 	// TODO: The context is not yet being actively monitored by the DAG store,
 	// so we need to select against ctx.Done() until the following issue is
@@ -314,7 +343,7 @@ func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (stores.Closa
 		return nil, err
 	}
 
-	log.Debugf("successfully loaded blockstore for piece CID %s", pieceCid)
+	log.Debugf("successfully loaded blockstore for piece CID %s, took: %v", pieceCid, time.Since(now))
 	return &Blockstore{ReadBlockstore: bs, Closer: res.Accessor}, nil
 }
 

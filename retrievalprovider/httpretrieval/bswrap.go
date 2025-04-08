@@ -63,10 +63,14 @@ func (bs *bsWrap) Get(ctx context.Context, blockCID cid.Cid) (blocks.Block, erro
 			log.Debugf("retrieval load index %s, %s", blockCID, pieceCid)
 			now := time.Now()
 			reader, err := bs.dagStoreWrapper.LoadShard(ctx, pieceCid)
-			log.Debugf("retrieval load index finish %s, %s, took: %v", blockCID, pieceCid, time.Since(now))
 			if err != nil {
+				log.Debugf("retrieval load index error %s, %s, %v, took: %v", blockCID, pieceCid, err, time.Since(now))
 				return nil, fmt.Errorf("getting piece reader: %w", err)
 			}
+			if time.Now().Sub(now) > 5*time.Second {
+				log.Debugf("retrieval load index slow %s, %s, took: %v", blockCID, pieceCid, time.Since(now))
+			}
+			log.Debugf("retrieval load index finish %s, %s, took: %v", blockCID, pieceCid, time.Since(now))
 			defer reader.Close() // nolint:errcheck
 
 			log.Debugf("retrieval get block data %s from piece %s", blockCID, pieceCid)
