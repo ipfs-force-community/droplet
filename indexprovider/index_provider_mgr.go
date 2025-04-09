@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -306,6 +307,10 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 	}
 	log.Debugf("IndexAnnounceAllDeals: %s found %d deals", minerAddr, len(deals))
 
+	sort.Slice(deals, func(i, j int) bool {
+		return deals[i].UpdatedAt < deals[j].UpdatedAt
+	})
+
 	merr := &multierror.Error{}
 	success := 0
 	now := time.Now()
@@ -353,6 +358,11 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 	if err != nil {
 		return err
 	}
+
+	sort.Slice(directDeals, func(i, j int) bool {
+		return directDeals[i].UpdatedAt < directDeals[j].UpdatedAt
+	})
+
 	log.Debugf("IndexAnnounceAllDeals: %s found %d direct deals", minerAddr, len(directDeals))
 	success = 0
 	now = time.Now()
