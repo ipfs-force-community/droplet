@@ -141,6 +141,11 @@ func (m *IndexProviderMgr) initIndexProvider(ctx context.Context, minerAddr addr
 	// If announcements to the network are enabled, then set options for the publisher.
 	var e *engine.Engine
 	if cfg.Enable {
+		// Get the miner ID and set as extra gossip data.
+		// The extra data is required by the lotus-specific index-provider gossip message validators.
+		opts = append(opts,
+			engine.WithExtraGossipData(minerAddr.Bytes()),
+		)
 		if cfg.Announce.AnnounceOverHttp {
 			opts = append(opts, engine.WithDirectAnnounce(cfg.Announce.DirectAnnounceURLs...))
 		}

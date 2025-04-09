@@ -1141,8 +1141,8 @@ github.com/ipfs-force-community/go-fil-markets v1.2.6-0.20230822060005-aee2cbae5
 github.com/ipfs-force-community/go-fil-markets v1.2.6-0.20230822060005-aee2cbae5b01/go.mod h1:eryxo/oVgIxaR5g5CNr9PlvZOi+u/bak0IsPL/PT1hk=
 github.com/ipfs-force-community/go-jsonrpc v0.1.9 h1:5QavBltfvV6fz/+EbYsCkVxJ1MSJncZm6YuPs1SLdZU=
 github.com/ipfs-force-community/go-jsonrpc v0.1.9/go.mod h1:jBSvPTl8V1N7gSTuCR4bis8wnQnIjHbRPpROol6iQKM=
-github.com/ipfs-force-community/go-libipni v0.0.0-20250403084211-d272c7b1cc4c h1:3qewGM/9jJthsUNoF6k0e4RnQEunYP4aMCiNtVoVtOA=
-github.com/ipfs-force-community/go-libipni v0.0.0-20250403084211-d272c7b1cc4c/go.mod h1:RZMcl81XNFSlENhU0D7BMunG3hr6cR/vnTlinUFTw6E=
+github.com/ipfs-force-community/go-libipni v0.0.0-20250409073656-cc9c8c80e79d h1:fBgC6wFTSlv3dlVXn1AxLE6j8tQs14gifMIU6qyDc6Q=
+github.com/ipfs-force-community/go-libipni v0.0.0-20250409073656-cc9c8c80e79d/go.mod h1:RZMcl81XNFSlENhU0D7BMunG3hr6cR/vnTlinUFTw6E=
 github.com/ipfs-force-community/index-provider v0.15.6-0.20250403063355-35a77ceb5842 h1:Hg84mbDNngMe32A/sqnzEoN7cWLTPc2t+b3H8MDF72k=
 github.com/ipfs-force-community/index-provider v0.15.6-0.20250403063355-35a77ceb5842/go.mod h1:3a0IU4uq9VnbEdZJ/Kz3yVx1bG5bB9YP6ScIQci7ZFg=
 github.com/ipfs-force-community/metrics v1.0.1-0.20240725062356-39b286636574 h1:XOkJFbRIlCkEwjkPnVLL/gDt5sfqrii5An4SzBtBtLM=
