@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -108,90 +106,26 @@ func (storageDealStream *StorageDealStream) HandleAskStream(s network.StorageAsk
 }
 
 func (storageDealStream *StorageDealStream) HandleDealStream(s network.StorageDealStream) {
-	ctx := context.TODO()
 	defer func() {
 		if closeErr := s.Close(); closeErr != nil {
 			log.Warnf("closing connection: %v", closeErr)
 		}
 	}()
 
-	// 1. Calculates the CID for the received ClientDealProposal.
-	proposal, err := s.ReadDealProposal()
+	p, err := s.ReadDealProposal()
 	if err != nil {
 		log.Errorf("failed to read proposal message: %w", err)
 		return
 	}
 
-	proposalNd, err := cborutil.AsIpld(proposal.DealProposal)
+	proposal := p.DealProposal.Proposal
+	cid, err := proposal.Cid()
 	if err != nil {
-		log.Errorf("deal proposal cbor failed: %w", err)
+		log.Errorf("failed to get proposal cid: %w", err)
 		return
 	}
-
-	// Check if we are already tracking this deal
-	md, err := storageDealStream.deals.GetDeal(ctx, proposalNd.Cid())
-	if err == nil {
-		// We are already tracking this deal, for some reason it was re-proposed, perhaps because of a client restart
-		// this is ok, just send a response back.
-		err = storageDealStream.resendProposalResponse(s, md)
-		if err != nil {
-			log.Errorf("unable to market deal proposal %w", err)
-		}
-		return
-	}
-
-	// 2. Constructs a MinerDeal to track the state of this deal.
-	var path string
-	// create an empty CARv2 file at a temp location that Graphysnc will write the incoming blocks to via a CARv2 ReadWrite blockstore wrapper.
-	if proposal.Piece.TransferType != storagemarket.TTManual {
-		fs, err := storageDealStream.tf(proposal.DealProposal.Proposal.Provider)
-		if err != nil {
-			log.Errorf("failed to create temp file store for provider %s: %w", proposal.DealProposal.Proposal.Provider.String(), err)
-			return
-		}
-		tmp, err := fs.CreateTemp()
-		if err != nil {
-			log.Errorf("failed to create an empty temp CARv2 file: %w", err)
-			return
-		}
-		if err := tmp.Close(); err != nil {
-			_ = os.Remove(string(tmp.OsPath()))
-			log.Errorf("failed to close temp file: %w", err)
-			return
-		}
-		path = string(tmp.OsPath())
-	}
-
-	deal := &types.MinerDeal{
-		ID:                 uuid.New(),
-		Client:             s.RemotePeer(),
-		Miner:              storageDealStream.net.ID(),
-		ClientDealProposal: *proposal.DealProposal,
-		ProposalCid:        proposalNd.Cid(),
-		State:              storagemarket.StorageDealUnknown,
-		Ref:                proposal.Piece,
-		FastRetrieval:      proposal.FastRetrieval,
-		CreationTime:       curTime(),
-		InboundCAR:         path,
-	}
-	err = storageDealStream.deals.SaveDeal(ctx, deal)
-	if err != nil {
-		log.Errorf("save miner deal to database %w", err)
-		return
-	}
-
-	storageDealStream.eventPublisher.Publish(storagemarket.ProviderEventOpen, deal)
-
-	err = storageDealStream.conns.AddStream(proposalNd.Cid(), s)
-	if err != nil {
-		log.Errorf("add stream to connection %s %w", proposalNd.Cid(), err)
-		return
-	}
-
-	err = storageDealStream.dealProcess.AcceptLegacyDeal(ctx, deal)
-	if err != nil {
-		log.Errorf("fail accept deal %s %w", proposalNd.Cid(), err)
-	}
+	client := proposal.Client
+	log.Errorf("reject legacy client deal proposal for client %s, deal cid %s", client, cid)
 }
 
 /*
