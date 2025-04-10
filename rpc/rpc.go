@@ -76,6 +76,9 @@ func ServeRPC(
 	if httpRetrievalServer != nil {
 		authMux.TrustHandle("/piece/", httpRetrievalServer, jwtclient.RegexpOption(regexp.MustCompile(`/piece/[a-z0-9]+`)))
 		authMux.TrustHandle("/ipfs/", httpRetrievalServer, jwtclient.RegexpOption(regexp.MustCompile(`/ipfs/[a-z0-9]+`)))
+		authMux.TrustHandle("/agent", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("droplet"))
+		}))
 	}
 
 	srv := &http.Server{Handler: authMux}
