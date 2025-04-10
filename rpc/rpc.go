@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -23,6 +24,8 @@ import (
 
 	"github.com/ipfs-force-community/droplet/v2/config"
 	"github.com/ipfs-force-community/droplet/v2/retrievalprovider/httpretrieval"
+
+	version "github.com/ipfs-force-community/droplet/v2/version"
 )
 
 var log = logging.Logger("modules")
@@ -76,8 +79,12 @@ func ServeRPC(
 	if httpRetrievalServer != nil {
 		authMux.TrustHandle("/piece/", httpRetrievalServer, jwtclient.RegexpOption(regexp.MustCompile(`/piece/[a-z0-9]+`)))
 		authMux.TrustHandle("/ipfs/", httpRetrievalServer, jwtclient.RegexpOption(regexp.MustCompile(`/ipfs/[a-z0-9]+`)))
-		authMux.TrustHandle("/agent", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("droplet"))
+		authMux.TrustHandle("/info", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			basicInfo := map[string]interface{}{
+				"Agent":   "Droplet",
+				"Version": version.UserVersion(),
+			}
+			json.NewEncoder(w).Encode(basicInfo)
 		}))
 	}
 
