@@ -430,7 +430,8 @@ func (w *Wrapper) AnnounceDeal(ctx context.Context, deal *types.MinerDeal) (cid.
 	if err != nil {
 		return c, err
 	}
-	log.Infof("announced deal to index provider success: %s, ad cid: %v", deal.ProposalCid, c)
+	label, _ := deal.Proposal.Label.ToString()
+	log.Infof("announced deal to index provider success: %s, %s, ad cid: %v", deal.ProposalCid, label, c)
 
 	return c, nil
 }
