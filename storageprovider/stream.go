@@ -362,7 +362,7 @@ func (storageDealStream *StorageDealStream) HandleNewDealStream(s network2.Strea
 	accepted := true
 	deal.State = storagemarket.StorageDealWaitingForData
 
-	err = storageDealStream.dealProcess.AcceptNewDeal(ctx, deal)
+	err = storageDealStream.dealProcess.AcceptDeal(ctx, deal, &proposal)
 	if err != nil {
 		reason = err.Error()
 		deal.Message = reason

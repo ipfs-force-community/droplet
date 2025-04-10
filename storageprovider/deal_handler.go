@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -42,6 +41,7 @@ import (
 
 	vTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	types2 "github.com/ipfs-force-community/droplet/v2/types"
 
 	"github.com/filecoin-project/venus/venus-shared/actors/policy"
 )
@@ -50,8 +50,7 @@ import (
 const DealMaxLabelSize = 256
 
 type StorageDealHandler interface {
-	AcceptLegacyDeal(ctx context.Context, deal *types.MinerDeal) error
-	AcceptNewDeal(ctx context.Context, minerDeal *types.MinerDeal) error
+	AcceptDeal(ctx context.Context, minerDeal *types.MinerDeal, dealParams *types2.DealParams) error
 	HandleOff(ctx context.Context, deal *types.MinerDeal) error
 	HandleError(ctx context.Context, deal *types.MinerDeal, err error) error
 	HandleReject(ctx context.Context, deal *types.MinerDeal, event storagemarket.StorageDealStatus, err error) error
@@ -123,48 +122,19 @@ func NewStorageDealProcessImpl(
 	}, nil
 }
 
-func (storageDealPorcess *StorageDealProcessImpl) runDealDecisionLogic(ctx context.Context, minerDeal *types.MinerDeal) (bool, string, error) {
+func (storageDealPorcess *StorageDealProcessImpl) runDealDecisionLogic(ctx context.Context, dealParams *types2.DealParams) (bool, string, error) {
 	if storageDealPorcess.sdf == nil {
 		return true, "", nil
 	}
-	return storageDealPorcess.sdf(ctx, minerDeal.Proposal.Provider, minerDeal)
+	return storageDealPorcess.sdf(ctx, dealParams.ClientDealProposal.Proposal.Provider, dealParams)
 }
 
 // StorageDealUnknown->StorageDealValidating(ValidateDealProposal)->StorageDealAcceptWait(DecideOnProposal)->StorageDealWaitingForData
-func (storageDealPorcess *StorageDealProcessImpl) AcceptLegacyDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
-	storageDealPorcess.peerTagger.TagPeer(minerDeal.Client, minerDeal.ProposalCid.String())
-	err := storageDealPorcess.acceptDeal(ctx, minerDeal)
-	if err != nil {
-		if strings.Contains(err.Error(), nodeErrStr) {
-			storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventNodeErrored, minerDeal)
-		}
-		return storageDealPorcess.HandleReject(ctx, minerDeal, storagemarket.StorageDealRejecting, err)
-	}
-
-	err = storageDealPorcess.SendSignedResponse(ctx, minerDeal.Proposal.Provider, &network.Response{
-		State:    storagemarket.StorageDealWaitingForData,
-		Proposal: minerDeal.ProposalCid,
-	})
-	if err != nil {
-		return storageDealPorcess.HandleError(ctx, minerDeal, err)
-	}
-
-	storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDealAccepted, minerDeal)
-
-	if err := storageDealPorcess.conns.Disconnect(minerDeal.ProposalCid); err != nil {
-		log.Warnf("closing client connection: %+v", err)
-	}
-
-	return storageDealPorcess.SaveState(ctx, minerDeal, storagemarket.StorageDealWaitingForData)
-}
-
-func (storageDealPorcess *StorageDealProcessImpl) AcceptNewDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
-	return storageDealPorcess.acceptDeal(ctx, minerDeal)
-}
 
 var nodeErrStr = "node error:"
 
-func (storageDealPorcess *StorageDealProcessImpl) acceptDeal(ctx context.Context, minerDeal *types.MinerDeal) error {
+func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context, minerDeal *types.MinerDeal, dealParams *types2.DealParams) error {
+
 	tok, curEpoch, err := storageDealPorcess.spn.GetChainHead(ctx)
 	if err != nil {
 		return fmt.Errorf("%s getting most recent state id: %w", nodeErrStr, err)
@@ -281,7 +251,7 @@ func (storageDealPorcess *StorageDealProcessImpl) acceptDeal(ctx context.Context
 	}
 
 	storageDealPorcess.eventPublisher.Publish(storagemarket.ProviderEventDealDeciding, minerDeal)
-	accept, reason, err := storageDealPorcess.runDealDecisionLogic(ctx, minerDeal)
+	accept, reason, err := storageDealPorcess.runDealDecisionLogic(ctx, dealParams)
 	if err != nil {
 		return fmt.Errorf("custom deal decision logic failed: %w", err)
 	}
