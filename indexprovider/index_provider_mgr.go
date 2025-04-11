@@ -349,7 +349,7 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 			}
 			continue
 		}
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 10)
 		success++
 	}
 
@@ -402,7 +402,7 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 			}
 			continue
 		}
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 10)
 		success++
 	}
 
