@@ -5,6 +5,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
+	marketapi "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -37,28 +40,24 @@ var checkDealIndexCmd = &cli.Command{
 			Usage: `specify miner address`,
 		},
 		&cli.StringFlag{
-			Name:     "droplet-url",
-			Usage:    "specify the url of the droplet node",
-			Required: true,
+			Name:  "droplet-url",
+			Usage: "specify the url of the droplet node",
 		},
 		&cli.StringFlag{
-			Name:     "droplet-token",
-			Usage:    "specify the token of the droplet node",
-			Required: true,
+			Name:  "droplet-token",
+			Usage: "specify the token of the droplet node",
 		},
 		&cli.StringFlag{
-			Name:     "node-url",
-			Usage:    "specify the url of the full node",
-			Required: true,
+			Name:  "node-url",
+			Usage: "specify the url of the full node",
 		},
 		&cli.StringFlag{
-			Name:     "node-token",
-			Usage:    "specify the token of the full node",
-			Required: true,
+			Name:  "node-token",
+			Usage: "specify the token of the full node",
 		},
 		&cli.StringFlag{
 			Name:  "start",
-			Usage: "check index from this time, eg. 2024-01-01, default is 1 year ago",
+			Usage: "check index from this time, eg. 2024-01-01, default is 180 days ago",
 		},
 		&cli.BoolFlag{
 			Name:    "verbose",
@@ -69,27 +68,55 @@ var checkDealIndexCmd = &cli.Command{
 			Name:  "ipni-url",
 			Value: "https://cid.contact",
 		},
+		&cli.BoolFlag{
+			Name:  "try-announce",
+			Usage: "try to announce the deal to indexer if not indexed",
+			Value: true,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		token := cctx.String("droplet-token")
 		url := cctx.String("droplet-url")
 		nodeURL := cctx.String("node-url")
 		nodeToken := cctx.String("node-token")
+		tryAnnounce := cctx.Bool("try-announce")
+		fmt.Println("droplet url: ", token)
+		fmt.Println("droplet token: ", url)
+		fmt.Println("node url: ", nodeURL)
+		fmt.Println("node token: ", nodeToken)
 
 		ctx := ReqContext(cctx)
-		nodeAPI, closer, err := DailDropletNode(ctx, url, token)
-		if err != nil {
-			return err
-		}
-		defer closer()
+		var nodeAPI marketapi.IMarket
+		var closer, fcloser jsonrpc.ClientCloser
+		var full v1.FullNode
+		var err error
+		if len(url) == 0 || len(token) == 0 {
+			nodeAPI, closer, err = NewMarketNode(cctx)
+			if err != nil {
+				return err
+			}
+			defer closer()
 
-		full, fcloser, err := DailFullNode(ctx, nodeURL, nodeToken)
-		if err != nil {
-			return err
-		}
-		defer fcloser()
+			full, fcloser, err = NewFullNode(cctx, OldMarketRepoPath)
+			if err != nil {
+				return err
+			}
+			defer fcloser()
+		} else {
+			nodeAPI, closer, err = DailDropletNode(ctx, url, token)
+			if err != nil {
+				return err
+			}
+			defer closer()
 
-		start := time.Now().Add(-365 * 24 * time.Hour)
+			full, fcloser, err = DailFullNode(ctx, nodeURL, nodeToken)
+			if err != nil {
+				return err
+			}
+			defer fcloser()
+		}
+
+		start := time.Now().Add(-180 * 24 * time.Hour)
 		if cctx.IsSet("start") {
 			var err error
 			start, err = time.Parse(time.DateOnly, cctx.String("start"))
@@ -137,7 +164,8 @@ var checkDealIndexCmd = &cli.Command{
 		}
 
 		resCache := make(map[string]*model.FindResponse)
-		fillDealIndex := func(id, miner, payloadCID string) error {
+		fillDealIndex := func(miner, payloadCID string, propoCID cid.Cid) error {
+			id := propoCID.String()
 			di, ok := dealIndexs[miner]
 			if !ok {
 				di = &dealIndex{}
@@ -171,7 +199,25 @@ var checkDealIndexCmd = &cli.Command{
 				}
 			}
 			if verboose {
-				fmt.Printf("miner %s deal %s not indexed: %s\n", miner, id, payloadCID)
+				fmt.Printf("miner %s deal %s not indexed, payload cid: %s\n", miner, id, payloadCID)
+			}
+			if tryAnnounce {
+				fmt.Printf("try announce deal %s, %s\n", id, payloadCID)
+
+				ctxID := propoCID.Bytes()
+				ad, err := nodeAPI.IndexerAnnounceDealRemoved(ctx, ctxID)
+				if err != nil {
+					fmt.Printf("announce deal remove failed: %v\n", err)
+				} else {
+					fmt.Printf("announce deal remove success, cid: %s\n", ad)
+				}
+
+				ad, err = nodeAPI.IndexerAnnounceDeal(ctx, ctxID)
+				if err != nil {
+					fmt.Printf("announce deal failed: %v\n", err)
+				} else {
+					fmt.Printf("announce deal success, ad: %v\n", ad)
+				}
 			}
 
 			return nil
@@ -186,7 +232,7 @@ var checkDealIndexCmd = &cli.Command{
 				fmt.Printf("deal %s label is not string: %v\n", deal.ProposalCid, err)
 				continue
 			}
-			if err := fillDealIndex(deal.ProposalCid.String(), deal.Proposal.Provider.String(), label); err != nil {
+			if err := fillDealIndex(deal.Proposal.Provider.String(), label, deal.ProposalCid); err != nil {
 				fmt.Println("fill deal index failed: ", err)
 				break
 			}
