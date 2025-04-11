@@ -1,7 +1,10 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"sort"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -36,8 +39,9 @@ var checkDealIndexCmd = &cli.Command{
 	Usage: "Check if a deal is indexed by the index provider",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "miner",
-			Usage: `specify miner address`,
+			Name:     "miner",
+			Usage:    `specify miner address`,
+			Required: true,
 		},
 		&cli.StringFlag{
 			Name:  "droplet-url",
@@ -72,6 +76,9 @@ var checkDealIndexCmd = &cli.Command{
 			Name:  "try-announce",
 			Usage: "try to announce the deal to indexer if not indexed",
 			Value: true,
+		},
+		&cli.StringFlag{
+			Name: "output",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -163,7 +170,57 @@ var checkDealIndexCmd = &cli.Command{
 			return mi.PeerId.String(), nil
 		}
 
-		resCache := make(map[string]*model.FindResponse)
+		payloadCIDPeerIDs := make(map[string]map[string]struct{}, 0)
+
+		minerStr := cctx.String("miner")
+		mf := fmt.Sprintf("%s_payload_cid_peer_ids.json", minerStr)
+		if output := cctx.String("output"); len(output) > 0 {
+			mf = output
+		}
+		fmt.Println("payload cid peer ids file: ", mf)
+
+		d, err := os.ReadFile(mf)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return fmt.Errorf("read payload cid peer ids file %s failed: %v", mf, err)
+			}
+			fmt.Printf("read payload cid peer ids file %s not exist\n", mf)
+		} else {
+			if err := json.Unmarshal(d, &payloadCIDPeerIDs); err != nil {
+				fmt.Printf("unmarshal payload cid peer ids file %s failed: %v\n", mf, err)
+				payloadCIDPeerIDs = make(map[string]map[string]struct{}, 0)
+			}
+			fmt.Printf("payload cid peer ids count: %d\n", len(payloadCIDPeerIDs))
+		}
+
+		savePayloadCIDPeerIDs := func(payloadCID string, res *model.FindResponse) {
+			for _, mrs := range res.MultihashResults {
+				for _, pr := range mrs.ProviderResults {
+					if pr.Provider == nil {
+						continue
+					}
+					_, ok := payloadCIDPeerIDs[payloadCID]
+					if !ok {
+						payloadCIDPeerIDs[payloadCID] = make(map[string]struct{})
+					}
+					payloadCIDPeerIDs[payloadCID][pr.Provider.ID.String()] = struct{}{}
+				}
+			}
+		}
+
+		defer func() {
+			data, err := json.Marshal(payloadCIDPeerIDs)
+			if err != nil {
+				fmt.Printf("json marshal payload cid peer ids failed: %v\n", err)
+			} else {
+				if err := os.WriteFile(mf, data, 0644); err != nil {
+					fmt.Printf("write payload cid peer ids to file failed: %v\n", err)
+				} else {
+					fmt.Printf("write payload cid peer ids to file success\n")
+				}
+			}
+		}()
+
 		fillDealIndex := func(miner, payloadCID string, propoCID cid.Cid) error {
 			id := propoCID.String()
 			di, ok := dealIndexs[miner]
@@ -173,30 +230,24 @@ var checkDealIndexCmd = &cli.Command{
 			}
 			di.dealCount++
 
-			res, ok := resCache[payloadCID]
+			_, ok = payloadCIDPeerIDs[payloadCID]
 			if !ok {
-				result, err := cli.FindByPayloadCID(ctx, payloadCID)
+				res, err := cli.FindByPayloadCID(ctx, payloadCID)
 				if err != nil {
 					return fmt.Errorf("get index by miner %s payload cid %s faield: %v", miner, payloadCID, err)
 				}
-				res = result
-				resCache[payloadCID] = res
+				savePayloadCIDPeerIDs(payloadCID, res)
 			}
 
 			peerID, err := getMinerPeerID(miner)
 			if err != nil {
 				return err
 			}
-			for _, mrs := range res.MultihashResults {
-				for _, pr := range mrs.ProviderResults {
-					if pr.Provider == nil {
-						continue
-					}
-					if pr.Provider.ID.String() == peerID {
-						di.indexCount++
-						return nil
-					}
-				}
+
+			_, ok = payloadCIDPeerIDs[payloadCID][peerID]
+			if ok {
+				di.indexCount++
+				return nil
 			}
 			if verboose {
 				fmt.Printf("miner %s deal %s not indexed, payload cid: %s\n", miner, id, payloadCID)
@@ -223,6 +274,10 @@ var checkDealIndexCmd = &cli.Command{
 			return nil
 		}
 
+		sort.Slice(deals, func(i, j int) bool {
+			return deals[i].CreatedAt > deals[j].CreatedAt
+		})
+
 		for _, deal := range deals {
 			if deal.CreatedAt < uint64(startUnix) {
 				continue
@@ -234,7 +289,7 @@ var checkDealIndexCmd = &cli.Command{
 			}
 			if err := fillDealIndex(deal.Proposal.Provider.String(), label, deal.ProposalCid); err != nil {
 				fmt.Println("fill deal index failed: ", err)
-				break
+				time.Sleep(time.Minute * 3)
 			}
 		}
 
