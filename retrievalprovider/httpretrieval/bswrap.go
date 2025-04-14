@@ -67,7 +67,7 @@ func (bs *bsWrap) Get(ctx context.Context, blockCID cid.Cid) (blocks.Block, erro
 				log.Debugf("retrieval load index error %s, %s, %v, took: %v", blockCID, pieceCid, err, time.Since(now))
 				return nil, fmt.Errorf("getting piece reader: %w", err)
 			}
-			if time.Now().Sub(now) > 5*time.Second {
+			if time.Since(now) > 5*time.Second {
 				log.Debugf("retrieval load index slow %s, %s, took: %v", blockCID, pieceCid, time.Since(now))
 			}
 			log.Debugf("retrieval load index finish %s, %s, took: %v", blockCID, pieceCid, time.Since(now))
