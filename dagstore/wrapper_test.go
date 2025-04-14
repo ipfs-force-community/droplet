@@ -77,10 +77,6 @@ func TestWrapperLoadShard(t *testing.T) {
 		w.dagst = dagMock
 
 		dagMock.EXPECT().GetShardInfo(gomock.Any()).Return(dagstore.ShardInfo{ShardState: dagstore.ShardStateErrored}, nil)
-		dagMock.EXPECT().RecoverShard(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.RecoverOpts) error {
-			out <- dagstore.ShardResult{}
-			return nil
-		})
 		dagMock.EXPECT().AcquireShard(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.AcquireOpts) error {
 			out <- dagstore.ShardResult{
 				Accessor: getShardAccessor(t),
