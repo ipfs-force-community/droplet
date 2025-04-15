@@ -121,7 +121,7 @@ var generateIndexCmd = &cli.Command{
 		ctx := cctx.Context
 		carDir := cctx.String(carDirFlag.Name)
 		indexDir := cctx.String(indexDirFlag.Name)
-		p, err := paramsFromContext(cctx)
+		p, err := paramsFromContext(cctx, nil)
 		if err != nil {
 			return err
 		}
@@ -141,6 +141,13 @@ var generateIndexCmd = &cli.Command{
 			case <-ticker.C:
 				fmt.Println("start generate index")
 				start := time.Now()
+				p, err := paramsFromContext(cctx, p.topIndexRepo)
+				if err != nil {
+					fmt.Println("params from context failed: %v", err)
+					continue
+				}
+				p.concurrency = max(cctx.Int(concurrencyFlag.Name), 1)
+
 				if err := generateIndex(ctx, carDir, indexDir, p); err != nil {
 					fmt.Printf("generate index failed: %v\n", err)
 					continue
@@ -170,7 +177,7 @@ type params struct {
 	concurrency  int
 }
 
-func paramsFromContext(cctx *cli.Context) (*params, error) {
+func paramsFromContext(cctx *cli.Context, topIndexRepo *dagstore.MongoTopIndex) (*params, error) {
 	ctx := cctx.Context
 	mongoURL := cctx.String(mongoURLFlag.Name)
 	mysqlURL := cctx.String(mysqlURLFlag.Name)
@@ -266,8 +273,7 @@ func paramsFromContext(cctx *cli.Context) (*params, error) {
 
 	fmt.Printf("active deals: %d, valid deals: %d\n", len(deals)+len(directDeals), len(pieceInfos))
 
-	var topIndexRepo *dagstore.MongoTopIndex
-	if len(mongoURL) != 0 {
+	if len(mongoURL) != 0 && topIndexRepo == nil {
 		topIndexRepo, err = dagstore.NewMongoTopIndex(ctx, mongoURL)
 		if err != nil {
 			return nil, fmt.Errorf("connect to mongo failed: %v", err)
@@ -451,7 +457,7 @@ var migrateIndexCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 		indexDir := cctx.String(indexDirFlag.Name)
-		p, err := paramsFromContext(cctx)
+		p, err := paramsFromContext(cctx, nil)
 		if err != nil {
 			return err
 		}
