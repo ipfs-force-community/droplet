@@ -143,7 +143,7 @@ var generateIndexCmd = &cli.Command{
 				start := time.Now()
 				p, err := paramsFromContext(cctx, p.topIndexRepo)
 				if err != nil {
-					fmt.Println("params from context failed: %v", err)
+					fmt.Printf("params from context failed: %v\n", err)
 					continue
 				}
 				p.concurrency = max(cctx.Int(concurrencyFlag.Name), 1)
