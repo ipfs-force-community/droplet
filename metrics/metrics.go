@@ -11,7 +11,16 @@ import (
 // Global Tags
 var (
 	StorageNameTag, _ = tag.NewKey("storage")
+	StatusTag, _      = tag.NewKey("status")
 )
+
+const (
+	StatusOK  = "OK"
+	StatusErr = "ERR"
+)
+
+// Distribution
+var defaultMillisecondsDistribution = view.Distribution(100, 500, 1000, 3000, 5000, 8000, 10000, 15000, 30000, 60000)
 
 var (
 	RetrievalTransferEvent = metrics.NewCounterWithCategory("retrieval/transfer_event", "retrieval transfer event")
@@ -35,6 +44,8 @@ var (
 
 	DagStorePRInitCount      = stats.Int64("dagstore/pr_init_count", "Retrieval init count", stats.UnitDimensionless)
 	DagStorePRBytesRequested = stats.Int64("dagstore/pr_requested_bytes", "Retrieval requested bytes", stats.UnitBytes)
+
+	DagStoreLoadShard = stats.Int64("dagstore/load_shard", "Load shard", stats.UnitMilliseconds)
 
 	StorageRetrievalHitCount = stats.Int64("piecestorage/retrieval_hit", "PieceStorage hit count for retrieval", stats.UnitDimensionless)
 	StorageSaveHitCount      = stats.Int64("piecestorage/save_hit", "PieceStorage hit count for save piece data", stats.UnitDimensionless)
@@ -101,6 +112,12 @@ var (
 		Aggregation: view.Sum(),
 	}
 
+	DagStoreLoadShardView = &view.View{
+		Measure:     DagStoreLoadShard,
+		TagKeys:     []tag.Key{StatusTag},
+		Aggregation: defaultMillisecondsDistribution,
+	}
+
 	// piece storage
 	StorageRetrievalHitCountView = &view.View{
 		Measure:     StorageRetrievalHitCount,
@@ -130,6 +147,7 @@ var views = append([]*view.View{
 
 	DagStorePRInitCountView,
 	DagStorePRBytesRequestedView,
+	DagStoreLoadShardView,
 
 	StorageRetrievalHitCountView,
 	StorageSaveHitCountView,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/hashicorp/go-multierror"
@@ -39,7 +40,7 @@ func (bs *bsWrap) Has(ctx context.Context, blockCID cid.Cid) (bool, error) {
 
 func (bs *bsWrap) Get(ctx context.Context, blockCID cid.Cid) (blocks.Block, error) {
 	pieces, err := bs.dagStoreWrapper.GetPiecesContainingBlock(blockCID)
-	log.Debugf("bsWrap get %s %v", blockCID, pieces)
+	log.Debugf("retrieval get %s, %v", blockCID, pieces)
 
 	// Check if it's an identity cid, if it is, return its digest
 	if err != nil {
@@ -59,12 +60,20 @@ func (bs *bsWrap) Get(ctx context.Context, blockCID cid.Cid) (blocks.Block, erro
 	for i, pieceCid := range pieces {
 		blk, err := func() (blocks.Block, error) {
 			// Get a reader over the piece data
+			log.Debugf("retrieval load index %s, %s", blockCID, pieceCid)
+			now := time.Now()
 			reader, err := bs.dagStoreWrapper.LoadShard(ctx, pieceCid)
 			if err != nil {
+				log.Debugf("retrieval load index error %s, %s, %v, took: %v", blockCID, pieceCid, err, time.Since(now))
 				return nil, fmt.Errorf("getting piece reader: %w", err)
 			}
+			if time.Since(now) > 5*time.Second {
+				log.Debugf("retrieval load index slow %s, %s, took: %v", blockCID, pieceCid, time.Since(now))
+			}
+			log.Debugf("retrieval load index finish %s, %s, took: %v", blockCID, pieceCid, time.Since(now))
 			defer reader.Close() // nolint:errcheck
 
+			log.Debugf("retrieval get block data %s from piece %s", blockCID, pieceCid)
 			return reader.Get(ctx, blockCID)
 		}()
 		if err != nil {

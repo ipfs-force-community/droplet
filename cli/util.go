@@ -122,6 +122,16 @@ func NewMarketNode(cctx *cli.Context) (marketapi.IMarket, jsonrpc.ClientCloser, 
 	return marketapi.NewIMarketRPC(cctx.Context, addr, apiInfo.AuthHeader())
 }
 
+func DailDropletNode(ctx context.Context, token, url string) (marketapi.IMarket, jsonrpc.ClientCloser, error) {
+	apiInfo := api.NewAPIInfo(url, token)
+	addr, err := apiInfo.DialArgs("v0")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return marketapi.NewIMarketRPC(ctx, addr, apiInfo.AuthHeader())
+}
+
 func GetMarketConfig(cctx *cli.Context) (*config.MarketConfig, error) {
 	homePath, err := GetRepoPath(cctx, "repo", OldMarketRepoPath)
 	if err != nil {
@@ -179,6 +189,16 @@ func NewFullNode(cctx *cli.Context, legacyRepo string) (v1api.FullNode, jsonrpc.
 	}
 
 	return v1api.NewFullNodeRPC(cctx.Context, addr, apiInfo.AuthHeader())
+}
+
+func DailFullNode(ctx context.Context, url, token string) (v1api.FullNode, jsonrpc.ClientCloser, error) {
+	apiInfo := api.NewAPIInfo(url, token)
+	addr, err := apiInfo.DialArgs("v1")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return v1api.NewFullNodeRPC(ctx, addr, apiInfo.AuthHeader())
 }
 
 func getMarketClientConfig(cctx *cli.Context, legacyRepo string) (*config.MarketClientConfig, error) {

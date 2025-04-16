@@ -1,9 +1,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	marketapi "github.com/filecoin-project/venus/venus-shared/api/market/v1"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 
 	"github.com/fatih/color"
@@ -23,6 +28,7 @@ var DagstoreCmd = &cli.Command{
 		dagstoreInitializeStorageCmd,
 		dagstoreGcCmd,
 		dagStoreDestroyShardCmd,
+		dagstoreCheckDealIndexCmd,
 	},
 }
 
@@ -108,6 +114,152 @@ ShardStateUnknown
 
 		return tw.Flush(os.Stdout)
 	},
+}
+
+type dealIndex struct {
+	dealCount  int
+	indexCount int
+}
+
+var dagstoreCheckDealIndexCmd = &cli.Command{
+	Name:  "check-deal-index",
+	Usage: "Check deal index",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "start",
+			Usage: "check index from this time, eg. 2024-01-01, default is 1 year ago",
+		},
+		&cli.StringFlag{
+			Name:  "miner",
+			Usage: "check index for this miner",
+		},
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Usage:   "verbose output",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		marketsApi, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		shards, err := marketsApi.DagstoreListShards(ctx)
+		if err != nil {
+			return err
+		}
+
+		indexs := make(map[string]struct{})
+		for _, shard := range shards {
+			if shard.State != types.ShardStateAvailable && shard.State != types.ShardStateServing {
+				continue
+			}
+			indexs[shard.Key] = struct{}{}
+		}
+		if len(indexs) == 0 {
+			fmt.Println("no good index")
+			return nil
+		}
+
+		start := time.Now().Add(-365 * 24 * time.Hour)
+		if cctx.IsSet("start") {
+			var err error
+			start, err = time.Parse(time.DateOnly, cctx.String("start"))
+			if err != nil {
+				return fmt.Errorf("invalid start time(%s): %v", cctx.String("start"), err)
+			}
+			fmt.Println("check index from: ", start)
+		}
+
+		deals, dDeals, err := getDeals(ctx, cctx, marketsApi, start)
+		if err != nil {
+			return err
+		}
+
+		dealIndexs := make(map[string]*dealIndex)
+		startUnix := start.Unix()
+		verboose := cctx.Bool("verbose")
+
+		fillDealIndex := func(id, miner, pieceCID string) {
+			di, ok := dealIndexs[miner]
+			if !ok {
+				di = &dealIndex{}
+				dealIndexs[miner] = di
+			}
+			di.dealCount++
+
+			_, ok = indexs[pieceCID]
+			if !ok {
+				if verboose {
+					fmt.Printf("deal %s(%s) has no index\n", id, pieceCID)
+				}
+				return
+			}
+			di.indexCount++
+		}
+
+		for _, deal := range deals {
+			if deal.CreatedAt < uint64(startUnix) {
+				continue
+			}
+			fillDealIndex(deal.ProposalCid.String(), deal.Proposal.Provider.String(), deal.Proposal.PieceCID.String())
+		}
+
+		for _, deal := range dDeals {
+			if deal.CreatedAt < uint64(startUnix) {
+				continue
+			}
+			fillDealIndex(deal.ID.String(), deal.Provider.String(), deal.PieceCID.String())
+		}
+
+		for miner, di := range dealIndexs {
+			fmt.Printf("miner %s has %d deals, %d index\n", miner, di.dealCount, di.indexCount)
+		}
+
+		return nil
+	},
+}
+
+func getDeals(ctx context.Context,
+	cctx *cli.Context,
+	marketsApi marketapi.IMarket,
+	start time.Time,
+) ([]types.MinerDeal, []*types.DirectDeal, error) {
+	activeDeal := storagemarket.StorageDealActive
+	params := &types.StorageDealQueryParams{
+		State: &activeDeal,
+	}
+
+	active := types.DealActive
+	dp := types.DirectDealQueryParams{
+		State: &active,
+	}
+	if cctx.IsSet("miner") {
+		minerStr := cctx.String("miner")
+		miner, err := address.NewFromString(minerStr)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid miner address(%s): %v", minerStr, err)
+		}
+		params.Miner = miner
+		dp.Provider = miner
+	}
+
+	deals, err := marketsApi.MarketListIncompleteDeals(ctx, params)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to list incomplete deals: %v", err)
+	}
+	fmt.Println("found active market deals: ", len(deals))
+
+	dDeals, err := marketsApi.ListDirectDeals(ctx, dp)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to list direct deals: %v", err)
+	}
+	fmt.Println("found active ddo deals: ", len(dDeals))
+
+	return deals, dDeals, nil
 }
 
 var dagstoreInitializeShardCmd = &cli.Command{
