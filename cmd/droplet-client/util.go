@@ -2,11 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"os"
-	"strconv"
 
 	"golang.org/x/exp/constraints"
 
@@ -32,81 +29,6 @@ func fillDealParams(cctx *cli.Context, p *params, ref *storagemarket.DataRef, mi
 		VerifiedDeal:       p.isVerified,
 		ProviderCollateral: p.provCol,
 	}
-}
-
-type manifest struct {
-	payloadCID  cid.Cid
-	payloadSize uint64
-	pieceCID    cid.Cid
-	pieceSize   abi.UnpaddedPieceSize
-}
-
-func loadManifest(path string) ([]*manifest, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	records, err := csv.NewReader(f).ReadAll()
-	if err != nil {
-		return nil, err
-	}
-
-	manifests := make([]*manifest, 0, len(records))
-	for i, record := range records {
-		// skip title
-		if i == 0 {
-			continue
-		}
-
-		if len(record) == 3 {
-			// payload_cid,filename,detail
-			payloadCID, err := cid.Parse(record[0])
-			if err == nil {
-				manifests = append(manifests, &manifest{payloadCID: payloadCID})
-			}
-		} else if len(record) == 4 {
-			// payload_cid,piece_cid,payload_size,piece_size
-			payloadCID, err := cid.Parse(record[0])
-			if err != nil {
-				continue
-			}
-			pieceCID, err := cid.Parse(record[1])
-			if err != nil {
-				continue
-			}
-			payloadSize, err := strconv.ParseUint(record[2], 10, 64)
-			if err != nil {
-				continue
-			}
-			pieceSize, err := strconv.Atoi(record[3])
-			if err == nil {
-				manifests = append(manifests, &manifest{payloadCID: payloadCID, payloadSize: payloadSize,
-					pieceCID: pieceCID, pieceSize: abi.UnpaddedPieceSize(pieceSize)})
-			}
-		} else if len(record) >= 5 {
-			// payload_cid,filename,piece_cid,payload_size,piece_size,detail
-			payloadCID, err := cid.Parse(record[0])
-			if err != nil {
-				continue
-			}
-			pieceCID, err := cid.Parse(record[2])
-			if err != nil {
-				continue
-			}
-			payloadSize, err := strconv.ParseUint(record[3], 10, 64)
-			if err != nil {
-				continue
-			}
-			pieceSize, err := strconv.Atoi(record[4])
-			if err == nil {
-				manifests = append(manifests, &manifest{payloadCID: payloadCID, payloadSize: payloadSize,
-					pieceCID: pieceCID, pieceSize: abi.UnpaddedPieceSize(pieceSize)})
-			}
-		}
-	}
-
-	return manifests, nil
 }
 
 type selector struct {

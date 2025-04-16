@@ -21,6 +21,7 @@ import (
 	shared "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
 	"github.com/google/uuid"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
@@ -95,6 +96,7 @@ var getDirectDealCmd = &cli.Command{
 			{"Offset", deal.Offset},
 			{"Length", deal.Length},
 			{"PayloadSize", deal.PayloadSize},
+			{"PayloadCID", deal.PayloadCID},
 			{"StartEpoch", deal.StartEpoch},
 			{"EndEpoch", deal.EndEpoch},
 		}
@@ -193,29 +195,23 @@ var importDirectDealCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.Uint64Flag{
 			Name:     "allocation-id",
-			Usage:    "",
 			Required: true,
 		},
 		&cli.StringFlag{
 			Name:     "client",
-			Usage:    "",
 			Required: true,
 		},
 		&cli.BoolFlag{
 			Name:  "skip-commp",
 			Usage: "skip calculate the piece-cid, please use with caution",
 		},
-		&cli.BoolFlag{
-			Name:  "skip-index",
-			Usage: "skip generate index",
-		},
-		&cli.BoolFlag{
-			Name:  "no-copy-car-file",
-			Usage: "not copy car files to piece storage",
-		},
 		&cli.Uint64Flag{
 			Name:  "payload-size",
 			Usage: "The size of the car file",
+		},
+		&cli.Uint64Flag{
+			Name:  "payload-cid",
+			Usage: "The cid of the car file",
 		},
 		&cli.IntFlag{
 			Name:  "start-epoch",
@@ -266,10 +262,6 @@ var importDirectDealCmd = &cli.Command{
 			return fmt.Errorf("para `client` is invalid: %w", err)
 		}
 
-		if cliCtx.Bool("no-copy-car-file") && cliCtx.Uint64("payload-size") == 0 {
-			return fmt.Errorf("must specify payload-size when no-copy-car-file is set")
-		}
-
 		allocationID := cliCtx.Uint64("allocation-id")
 
 		startEpoch, err := GetStartEpoch(cliCtx, fapi)
@@ -281,18 +273,23 @@ var importDirectDealCmd = &cli.Command{
 			return err
 		}
 
+		var payloadCID cid.Cid
+		if cliCtx.IsSet("payload-cid") {
+			payloadCID, err = cid.Decode(cliCtx.String("payload-cid"))
+			if err != nil {
+				return fmt.Errorf("could not parse payload cid: %w", err)
+			}
+		}
 		params := types.DirectDealParams{
-			SkipCommP:         cliCtx.Bool("skip-commp"),
-			SkipGenerateIndex: cliCtx.Bool("skip-generate-index"),
-			NoCopyCarFile:     cliCtx.Bool("no-copy-car-file"),
+			SkipCommP: cliCtx.Bool("skip-commp"),
 			DealParams: []types.DirectDealParam{
 				{
 					DealUUID:     uuid.New(),
 					AllocationID: allocationID,
 					PayloadSize:  cliCtx.Uint64("payload-size"),
+					PayloadCID:   payloadCID,
 					Client:       client,
 					PieceCID:     pieceCid,
-					FilePath:     filepath,
 					StartEpoch:   startEpoch,
 					EndEpoch:     endEpoch,
 				},
@@ -333,21 +330,9 @@ var importDirectDealsCmd = &cli.Command{
 		&cli.StringFlag{
 			Name: "allocation-file",
 		},
-		&cli.StringFlag{
-			Name:  "car-dir",
-			Usage: "Car file directory",
-		},
 		&cli.BoolFlag{
 			Name:  "skip-commp",
 			Usage: "skip calculate the piece-cid, please use with caution",
-		},
-		&cli.BoolFlag{
-			Name:  "skip-index",
-			Usage: "skip generate index",
-		},
-		&cli.BoolFlag{
-			Name:  "no-copy-car-file",
-			Usage: "not copy car files to piece storage",
 		},
 		&cli.IntFlag{
 			Name:  "start-epoch",
@@ -355,8 +340,8 @@ var importDirectDealsCmd = &cli.Command{
 		},
 	},
 	Action: func(cliCtx *cli.Context) error {
-		if cliCtx.IsSet("allocation-id-piece") == cliCtx.IsSet("allocation-file") {
-			return fmt.Errorf("must specify one of allocation-id or allocation-file")
+		if cliCtx.IsSet("allocation-info") == cliCtx.IsSet("allocation-file") {
+			return fmt.Errorf("must specify one of allocation-info or allocation-file")
 		}
 
 		api, closer, err := NewMarketNode(cliCtx)
@@ -372,14 +357,6 @@ var importDirectDealsCmd = &cli.Command{
 		defer fcloser()
 
 		ctx := cliCtx.Context
-		carDir := cliCtx.String("car-dir")
-		if len(carDir) != 0 {
-			carDir, err = filepath.Abs(carDir)
-			if err != nil {
-				return fmt.Errorf("failed to get absolute path for car-dir: %w", err)
-			}
-		}
-
 		startEpoch, err := GetStartEpoch(cliCtx, fapi)
 		if err != nil {
 			return err
@@ -419,13 +396,6 @@ var importDirectDealsCmd = &cli.Command{
 					EndEpoch:     endEpoch,
 				}
 
-				if len(carDir) == 0 {
-					return fmt.Errorf("must specify car-dir")
-				}
-				param.FilePath, err = findCar(pieceCid, carDir)
-				if err != nil {
-					return err
-				}
 				directDealParams = append(directDealParams, param)
 			}
 		}
@@ -445,27 +415,17 @@ var importDirectDealsCmd = &cli.Command{
 					Client:       a.Client,
 					PieceCID:     a.PieceCID,
 					PayloadSize:  a.PayloadSize,
+					PayloadCID:   a.PayloadCID,
 					StartEpoch:   startEpoch,
 					EndEpoch:     endEpoch,
-				}
-				if param.PayloadSize == 0 && len(carDir) == 0 {
-					return fmt.Errorf("must specify car-dir")
-				}
-				if len(carDir) != 0 {
-					param.FilePath, err = findCar(param.PieceCID, carDir)
-					if err != nil {
-						return err
-					}
 				}
 				directDealParams = append(directDealParams, param)
 			}
 		}
 
 		params := types.DirectDealParams{
-			SkipCommP:         cliCtx.Bool("skip-commp"),
-			SkipGenerateIndex: cliCtx.Bool("skip-generate-index"),
-			NoCopyCarFile:     cliCtx.Bool("no-copy-car-file"),
-			DealParams:        directDealParams,
+			SkipCommP:  cliCtx.Bool("skip-commp"),
+			DealParams: directDealParams,
 		}
 
 		if err := api.ImportDirectDeal(cliCtx.Context, &params); err != nil {
@@ -501,25 +461,13 @@ var importDirectDealsFromMsgCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:   "car-dir",
-			Usage:  "Car file directory",
-			Hidden: true,
-		},
-		&cli.StringFlag{
-			Name:  "manifest",
-			Usage: "Manifest file path",
+			Name:     "manifest",
+			Usage:    "Manifest file path",
+			Required: true,
 		},
 		&cli.BoolFlag{
 			Name:  "skip-commp",
 			Usage: "skip calculate the piece-cid, please use with caution",
-		},
-		&cli.BoolFlag{
-			Name:  "skip-index",
-			Usage: "skip generate index",
-		},
-		&cli.BoolFlag{
-			Name:  "no-copy-car-file",
-			Usage: "not copy car files to piece storage",
 		},
 		&cli.IntFlag{
 			Name:  "start-epoch",
@@ -540,14 +488,6 @@ var importDirectDealsFromMsgCmd = &cli.Command{
 		defer fcloser()
 
 		ctx := cliCtx.Context
-		carDir := cliCtx.String("car-dir")
-		if len(carDir) != 0 {
-			carDir, err = filepath.Abs(carDir)
-			if err != nil {
-				return fmt.Errorf("failed to get absolute path for car-dir: %w", err)
-			}
-		}
-
 		msgCid, err := cid.Decode(cliCtx.String("msg"))
 		if err != nil {
 			return err
@@ -584,10 +524,14 @@ var importDirectDealsFromMsgCmd = &cli.Command{
 			return err
 		}
 
-		payloadSizes, err := loadPayloadSizes(cliCtx.String("manifest"))
+		manifests, err := utils.LoadManifests(cliCtx.String("manifest"))
 		if err != nil {
 			return err
 		}
+
+		pieceMainfests := utils.ToMap(manifests, func(m utils.Manifest) cid.Cid {
+			return m.PieceCID
+		})
 
 		var directDealParams []types.DirectDealParam
 		for _, allocationID := range ar.NewAllocations {
@@ -599,33 +543,27 @@ var importDirectDealsFromMsgCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			payloadSize := payloadSizes[a.Data]
+			mainfest, ok := pieceMainfests[a.Data]
+			if !ok {
+				fmt.Printf("piece %s not found in manifest, please check the manifest file\n", a.Data)
+				continue
+			}
 			param := types.DirectDealParam{
 				DealUUID:     uuid.New(),
 				AllocationID: uint64(allocationID),
 				Client:       msg.From,
 				PieceCID:     a.Data,
-				PayloadSize:  payloadSize,
+				PayloadSize:  mainfest.PayloadSize,
+				PayloadCID:   mainfest.PayloadCID,
 				StartEpoch:   startEpoch,
 				EndEpoch:     endEpoch,
-			}
-			if param.PayloadSize == 0 && len(carDir) == 0 {
-				return fmt.Errorf("payload size is zero, allocation id: %d, piece cid: %s", allocationID, a.Data)
-			}
-			if len(carDir) != 0 {
-				param.FilePath, err = findCar(a.Data, carDir)
-				if err != nil {
-					return err
-				}
 			}
 			directDealParams = append(directDealParams, param)
 		}
 
 		params := types.DirectDealParams{
-			SkipCommP:         cliCtx.Bool("skip-commp"),
-			SkipGenerateIndex: cliCtx.Bool("skip-generate-index"),
-			NoCopyCarFile:     cliCtx.Bool("no-copy-car-file"),
-			DealParams:        directDealParams,
+			SkipCommP:  cliCtx.Bool("skip-commp"),
+			DealParams: directDealParams,
 		}
 
 		if err := api.ImportDirectDeal(cliCtx.Context, &params); err != nil {
@@ -664,6 +602,7 @@ type allocationWithPiece struct {
 	Client       address.Address
 	PieceCID     cid.Cid
 	PayloadSize  uint64
+	PayloadCID   cid.Cid
 }
 
 func loadAllocations(path string) ([]*allocationWithPiece, error) {
@@ -680,37 +619,54 @@ func loadAllocations(path string) ([]*allocationWithPiece, error) {
 	var allocations []*allocationWithPiece
 	for i, record := range records {
 		// ignore title
-		if i == 0 {
+		if i == 0 && len(record) > 0 && strings.Contains(strings.Join(record, ""), "AllocationID") {
 			continue
 		}
-		if len(record) < 3 {
-			return nil, fmt.Errorf("invalid record: %s", record)
-		}
-		allocationID, err := strconv.ParseUint(record[0], 10, 64)
+		a, err := parseRecord(record)
 		if err != nil {
-			return nil, err
-		}
-		pieceCID, err := cid.Decode(record[1])
-		if err != nil {
-			return nil, err
-		}
-		client, err := address.NewFromString(record[2])
-		if err != nil {
-			return nil, err
-		}
-		var payloadSize uint64
-		if len(record) == 4 {
-			payloadSize, err = strconv.ParseUint(record[3], 10, 64)
-			if err != nil {
-				return nil, err
-			}
+			fmt.Printf("failed to parse record %d: %v\n", i, err)
+			continue
 		}
 
-		allocations = append(allocations, &allocationWithPiece{AllocationID: allocationID, Client: client,
-			PieceCID: pieceCID, PayloadSize: payloadSize})
+		allocations = append(allocations, a)
 	}
 
 	return allocations, nil
+}
+
+func parseRecord(record []string) (*allocationWithPiece, error) {
+	if len(record) < 3 {
+		return nil, fmt.Errorf("invalid record: %s", record)
+	}
+	allocationID, err := strconv.ParseUint(record[0], 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid allocation id: %s", record[0])
+	}
+	pieceCID, err := cid.Decode(record[1])
+	if err != nil {
+		return nil, err
+	}
+	client, err := address.NewFromString(record[2])
+	if err != nil {
+		return nil, err
+	}
+	var payloadSize uint64
+	if len(record) >= 4 {
+		payloadSize, err = strconv.ParseUint(record[3], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var payloadCID cid.Cid
+	if len(record) >= 5 {
+		payloadCID, err = cid.Decode(record[4])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &allocationWithPiece{AllocationID: allocationID, Client: client, PieceCID: pieceCID,
+		PayloadSize: payloadSize, PayloadCID: payloadCID}, nil
 }
 
 var updateDirectDealStateCmd = &cli.Command{
@@ -746,50 +702,4 @@ var updateDirectDealStateCmd = &cli.Command{
 
 		return api.UpdateDirectDealState(cliCtx.Context, dealUUID, state)
 	},
-}
-
-func loadPayloadSizes(path string) (map[cid.Cid]uint64, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	records, err := csv.NewReader(f).ReadAll()
-	if err != nil {
-		return nil, err
-	}
-
-	payloadSizes := make(map[cid.Cid]uint64)
-	for i, record := range records {
-		// skip title
-		if i == 0 {
-			continue
-		}
-
-		if len(record) == 4 {
-			// payload_cid,piece_cid,payload_size,piece_size
-			pieceCID, err := cid.Parse(record[1])
-			if err != nil {
-				continue
-			}
-			payloadSize, err := strconv.ParseUint(record[2], 10, 64)
-			if err != nil {
-				continue
-			}
-			payloadSizes[pieceCID] = payloadSize
-		} else if len(record) >= 5 {
-			// payload_cid,filename,piece_cid,payload_size,piece_size,detail
-			pieceCID, err := cid.Parse(record[2])
-			if err != nil {
-				continue
-			}
-			payloadSize, err := strconv.ParseUint(record[3], 10, 64)
-			if err != nil {
-				continue
-			}
-			payloadSizes[pieceCID] = payloadSize
-		}
-	}
-
-	return payloadSizes, nil
 }

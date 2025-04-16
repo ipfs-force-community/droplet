@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
 	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 )
@@ -302,6 +303,7 @@ type pieceInfo struct {
 	pieceCID    cid.Cid
 	pieceSize   abi.PaddedPieceSize
 	payloadSize uint64
+	payloadCID  cid.Cid
 }
 
 func pieceInfosFromCtx(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
@@ -349,25 +351,26 @@ func pieceInfosFromFile(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
 	manifest := cctx.String("manifest")
 	pieceSizePadded := cctx.Bool("piece-size-padded")
 
-	pieces, err := loadManifest(manifest)
+	pieces, err := utils.LoadManifests(manifest)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	for _, p := range pieces {
-		if p.pieceSize <= 0 {
-			return nil, 0, fmt.Errorf("invalid piece size: %d", p.pieceSize)
+		if p.PieceSize <= 0 {
+			return nil, 0, fmt.Errorf("invalid piece size: %d", p.PieceSize)
 		}
-		n := p.pieceSize.Padded()
+		n := p.PieceSize.Padded()
 		if pieceSizePadded {
-			n = abi.PaddedPieceSize(p.pieceSize)
+			n = abi.PaddedPieceSize(p.PieceSize)
 		}
 		pieceInfos = append(pieceInfos, &pieceInfo{
 			pieceSize:   n,
-			pieceCID:    p.pieceCID,
-			payloadSize: p.payloadSize,
+			pieceCID:    p.PieceCID,
+			payloadSize: p.PayloadSize,
+			payloadCID:  p.PayloadCID,
 		})
-		if p.pieceCID == cid.Undef {
+		if p.PieceCID == cid.Undef {
 			return nil, 0, fmt.Errorf("piece cid cannot be undefined")
 		}
 		rDataCap += uint64(n)
@@ -424,11 +427,10 @@ type partAllocationInfo struct {
 	Client       address.Address
 }
 
-func writeAllocationsToFile(allocationFile string, allocations map[types.AllocationId]types.Allocation, pieceInfo []*pieceInfo) error {
-	payloadSizes := make(map[cid.Cid]uint64)
-	for _, info := range pieceInfo {
-		payloadSizes[info.pieceCID] = info.payloadSize
-	}
+func writeAllocationsToFile(allocationFile string, allocations map[types.AllocationId]types.Allocation, pieceInfos []*pieceInfo) error {
+	pieces := utils.ToMap(pieceInfos, func(p *pieceInfo) cid.Cid {
+		return p.pieceCID
+	})
 
 	infos := make([]partAllocationInfo, 0, len(allocations))
 	for id, v := range allocations {
@@ -446,11 +448,17 @@ func writeAllocationsToFile(allocationFile string, allocations map[types.Allocat
 
 	buf := &bytes.Buffer{}
 	w := csv.NewWriter(buf)
-	if err := w.Write([]string{"AllocationID", "PieceCID", "Client", "PayloadSize"}); err != nil {
+	if err := w.Write([]string{"AllocationID", "PieceCID", "Client", "PayloadSize", "PayloadCID"}); err != nil {
 		return err
 	}
 	for _, info := range infos {
-		if err := w.Write([]string{fmt.Sprintf("%d", info.AllocationID), info.PieceCID.String(), info.Client.String(), fmt.Sprintf("%d", payloadSizes[info.PieceCID])}); err != nil {
+		pi, ok := pieces[info.PieceCID]
+		if !ok {
+			fmt.Printf("piece cid %s not found in the piece info\n", info.PieceCID)
+			continue
+		}
+		if err := w.Write([]string{fmt.Sprintf("%d", info.AllocationID), info.PieceCID.String(), info.Client.String(),
+			fmt.Sprintf("%d", pi.payloadSize), pi.payloadCID.String()}); err != nil {
 			return err
 		}
 	}
@@ -559,10 +567,8 @@ func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.Allocati
 	defer fclose()
 
 	params := types2.DirectDealParams{
-		SkipCommP:         true,
-		SkipGenerateIndex: true,
-		NoCopyCarFile:     true,
-		DealParams:        make([]types2.DirectDealParam, 0, len(allocations)),
+		SkipCommP:  true,
+		DealParams: make([]types2.DirectDealParam, 0, len(allocations)),
 	}
 
 	payloadSizes := make(map[cid.Cid]uint64)
