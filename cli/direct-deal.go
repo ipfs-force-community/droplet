@@ -709,7 +709,7 @@ var updateDirectDealPayloadCIDCmd = &cli.Command{
 	Name:  "update-payload-cid",
 	Usage: "update direct deal payload cid",
 	Flags: []cli.Flag{
-		&cli.IntFlag{
+		&cli.StringFlag{
 			Name:  "manifest",
 			Usage: "manifest file path",
 		},
