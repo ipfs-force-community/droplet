@@ -107,7 +107,7 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 		return err
 	}
 
-	if err := ddp.importData(ctx, deal, cParams); err != nil {
+	if err := ddp.checkData(ctx, deal, cParams); err != nil {
 		return err
 	}
 
@@ -163,7 +163,7 @@ func (ddp *DirectDealProvider) accept(ctx context.Context, deal *types.DirectDea
 	return nil
 }
 
-func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.DirectDeal, cParams *commonParams) error {
+func (ddp *DirectDealProvider) checkData(ctx context.Context, deal *types.DirectDeal, cParams *commonParams) error {
 	if cParams.skipCommP && deal.PayloadSize != 0 {
 		directDealLog.Debugf("skip commP for %s", deal.PieceCID)
 		return nil

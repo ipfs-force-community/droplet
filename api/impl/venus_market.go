@@ -1398,6 +1398,16 @@ func (m *MarketNodeImpl) UpdateDirectDealState(ctx context.Context, id uuid.UUID
 	return m.Repo.DirectDealRepo().SaveDeal(ctx, deal)
 }
 
+func (m *MarketNodeImpl) UpdateDirectDealPayloadCID(ctx context.Context, id uuid.UUID, payloadCID cid.Cid) error {
+	deal, err := m.Repo.DirectDealRepo().GetDeal(ctx, id)
+	if err != nil {
+		return err
+	}
+	deal.PayloadCID = payloadCID
+
+	return m.Repo.DirectDealRepo().SaveDeal(ctx, deal)
+}
+
 func (m *MarketNodeImpl) IndexerAnnounceAllDeals(ctx context.Context, minerAddr address.Address) error {
 	return m.IndexProviderMgr.IndexAnnounceAllDeals(ctx, minerAddr)
 }

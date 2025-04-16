@@ -279,7 +279,10 @@ var directDealAllocate = &cli.Command{
 			return fmt.Errorf("failed to find new allocations: %w", err)
 		}
 
-		if err := writeAllocationsToFile(cctx.String("output-allocation-to-file"), newAllocations, pieceInfos); err != nil {
+		byPieces := utils.ToMap(pieceInfos, func(p *pieceInfo) cid.Cid {
+			return p.pieceCID
+		})
+		if err := writeAllocationsToFile(cctx.String("output-allocation-to-file"), newAllocations, byPieces); err != nil {
 			fmt.Println("failed to write allocations to file: ", err)
 		}
 
@@ -289,7 +292,7 @@ var directDealAllocate = &cli.Command{
 
 		if cctx.IsSet("droplet-url") {
 			fmt.Println("importing deal to droplet")
-			if err := autoImportDealToDroplet(cctx, newAllocations, pieceInfos); err != nil {
+			if err := autoImportDealToDroplet(cctx, newAllocations, byPieces); err != nil {
 				return fmt.Errorf("failed to import deal to droplet: %w", err)
 			}
 			fmt.Println("successfully imported deal to droplet")
@@ -427,11 +430,7 @@ type partAllocationInfo struct {
 	Client       address.Address
 }
 
-func writeAllocationsToFile(allocationFile string, allocations map[types.AllocationId]types.Allocation, pieceInfos []*pieceInfo) error {
-	pieces := utils.ToMap(pieceInfos, func(p *pieceInfo) cid.Cid {
-		return p.pieceCID
-	})
-
+func writeAllocationsToFile(allocationFile string, allocations map[types.AllocationId]types.Allocation, pieceInfos map[cid.Cid]*pieceInfo) error {
 	infos := make([]partAllocationInfo, 0, len(allocations))
 	for id, v := range allocations {
 		clientAddr, _ := address.NewIDAddress(uint64(v.Client))
@@ -452,7 +451,7 @@ func writeAllocationsToFile(allocationFile string, allocations map[types.Allocat
 		return err
 	}
 	for _, info := range infos {
-		pi, ok := pieces[info.PieceCID]
+		pi, ok := pieceInfos[info.PieceCID]
 		if !ok {
 			fmt.Printf("piece cid %s not found in the piece info\n", info.PieceCID)
 			continue
@@ -543,7 +542,7 @@ func showAllocations(allocations map[types.AllocationId]types.Allocation, useJSO
 	return tw.Flush(os.Stdout)
 }
 
-func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.AllocationId]types.Allocation, pieceInfos []*pieceInfo) error {
+func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.AllocationId]types.Allocation, pieceInfos map[cid.Cid]*pieceInfo) error {
 	ctx := cliCtx.Context
 	dropletURL := cliCtx.String("droplet-url")
 	dropletToken := cliCtx.String("droplet-token")
@@ -571,11 +570,6 @@ func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.Allocati
 		DealParams: make([]types2.DirectDealParam, 0, len(allocations)),
 	}
 
-	payloadSizes := make(map[cid.Cid]uint64)
-	for _, info := range pieceInfos {
-		payloadSizes[info.pieceCID] = info.payloadSize
-	}
-
 	startEpoch, err := cli2.GetStartEpoch(cliCtx, fapi)
 	if err != nil {
 		return err
@@ -588,15 +582,22 @@ func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.Allocati
 			return err
 		}
 
-		params.DealParams = append(params.DealParams, types2.DirectDealParam{
+		pi, ok := pieceInfos[alloc.Data]
+		if !ok {
+			fmt.Printf("piece cid %s not found in the piece info\n", alloc.Data)
+			continue
+		}
+		param := types2.DirectDealParam{
 			DealUUID:     uuid.New(),
 			AllocationID: uint64(id),
-			PayloadSize:  payloadSizes[alloc.Data],
+			PayloadSize:  pi.payloadSize,
+			PayloadCID:   pi.payloadCID,
 			Client:       clientAddr,
 			PieceCID:     alloc.Data,
 			StartEpoch:   startEpoch,
 			EndEpoch:     endEpoch,
-		})
+		}
+		params.DealParams = append(params.DealParams, param)
 	}
 
 	return mapi.ImportDirectDeal(ctx, &params)
@@ -681,6 +682,10 @@ var genDealInfoFromMessage = &cli.Command{
 
 		}
 
-		return writeAllocationsToFile(cliCtx.String("output"), allocations, pieceInfos)
+		byPieces := utils.ToMap(pieceInfos, func(p *pieceInfo) cid.Cid {
+			return p.pieceCID
+		})
+
+		return writeAllocationsToFile(cliCtx.String("output"), allocations, byPieces)
 	},
 }

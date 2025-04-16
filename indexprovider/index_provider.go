@@ -499,6 +499,6 @@ func (w *Wrapper) AnnounceDirectDeal(ctx context.Context, entry *types.DirectDea
 	if err != nil {
 		return c, err
 	}
-	log.Infof("announced direct deal to index provider success: %s, ad cid: %v", entry.ID, c)
+	log.Infof("announced direct deal to index provider success: %s %s, ad cid: %v", entry.ID, entry.PayloadCID, c)
 	return c, nil
 }

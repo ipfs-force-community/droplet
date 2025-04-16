@@ -37,6 +37,7 @@ var directDealCmds = &cli.Command{
 		importDirectDealCmd,
 		importDirectDealsCmd,
 		importDirectDealsFromMsgCmd,
+		updateDirectDealPayloadCIDCmd,
 	},
 }
 
@@ -701,5 +702,78 @@ var updateDirectDealStateCmd = &cli.Command{
 		}
 
 		return api.UpdateDirectDealState(cliCtx.Context, dealUUID, state)
+	},
+}
+
+var updateDirectDealPayloadCIDCmd = &cli.Command{
+	Name:  "update-payload-cid",
+	Usage: "update direct deal payload cid",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "manifest",
+			Usage: "manifest file path",
+		},
+	},
+	Action: func(cliCtx *cli.Context) error {
+		api, closer, err := NewMarketNode(cliCtx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		mf := cliCtx.String("manifest")
+		ms, err := utils.LoadManifests(mf)
+		if err != nil {
+			return fmt.Errorf("failed to load manifest %s: %w", mf, err)
+		}
+		fmt.Println("loaded manifest:", len(ms))
+		if len(ms) == 0 {
+			return fmt.Errorf("no manifest found")
+
+		}
+
+		byPieces := utils.ToMap(ms, func(m utils.Manifest) cid.Cid {
+			return m.PieceCID
+		})
+
+		ctx := cliCtx.Context
+		limit := 500
+		offset := 0
+		for {
+			deals, err := api.ListDirectDeals(ctx, types.DirectDealQueryParams{
+				Page: types.Page{
+					Offset: offset,
+					Limit:  limit,
+				},
+			})
+			if err != nil {
+				return err
+			}
+			if len(deals) == 0 {
+				break
+			}
+			for _, deal := range deals {
+				if deal.PayloadCID.Defined() {
+					continue
+				}
+				manifest, ok := byPieces[deal.PieceCID]
+				if !ok {
+					fmt.Printf("piece %s not found in manifest\n", deal.PieceCID)
+					continue
+				}
+				if !manifest.PayloadCID.Defined() {
+					fmt.Printf("piece %s payload cid is empty\n", deal.PieceCID)
+					continue
+				}
+				err = api.UpdateDirectDealPayloadCID(ctx, deal.ID, manifest.PayloadCID)
+				if err != nil {
+					return err
+				}
+			}
+			offset += len(deals)
+			fmt.Printf("offset: %d, updated %d deals\n", offset, len(deals))
+		}
+
+		return nil
 	},
 }
