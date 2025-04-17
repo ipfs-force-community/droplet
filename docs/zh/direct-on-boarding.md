@@ -37,8 +37,6 @@ AllocationID  Client    Miner    PieceCid                                       
 flag 解释：
 
 * --skip-commp 跳过计算验证 piece cid，可以减少导入时间
-* --skip-index 不生成索引
-* --no-copy-car-file 不拷贝 piece 到 piece storage
 
 ```
 ./droplet storage direct-deal import-deal --allocation-id 31649 --client t3wivhkdivcxj5zp2l4wjkzon232s52smnd5m3na66ujl5nel75jggguhgaa3zbhjo3as4epf5ytxl6ly3qoha baga6ea4seaqconolebafjmjlqc35z4foyzfipxfuiav25okti22kjof7rbgoipa droplet.car
@@ -92,11 +90,9 @@ AllocationID  Client    Miner    PieceCid                                       
 flag 解释：
 
 * --skip-commp 跳过计算验证 piece cid，可以减少导入时间
-* --skip-index 不生成索引
-* --no-copy-car-file 不拷贝 piece 到 piece storage
 
 ```
-./droplet storage direct-deal import-deals --allocation-file allocation.csv --car-dir ./data2/
+./droplet storage direct-deal import-deals --allocation-file allocation.csv
 
 # res
 import deal success
@@ -155,5 +151,11 @@ Creation                   ID                                    AllocationId  P
 发送订单时程序退出，但订单没有导入到 `droplet`，这种情况可以从消息里面获取订单信息并导入到 `droplet`。
 
 ```
-./droplet storage direct-deal import-deals-from-msg --msg <msg cid> --manifest <manifest> --skip-commp --skip-index --no-copy-car-file
+./droplet storage direct-deal import-deals-from-msg --msg <msg cid> --manifest <manifest> --skip-commp
+```
+
+### 更新订单 payload cid
+
+```
+./droplet storage direct-deal update-payload-cid --manifest <manifest>
 ```
