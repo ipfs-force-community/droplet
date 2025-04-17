@@ -438,20 +438,6 @@ var importDirectDealsCmd = &cli.Command{
 	},
 }
 
-func findCar(pieceCID cid.Cid, carDir string) (string, error) {
-	carPath := filepath.Join(carDir, pieceCID.String())
-	if _, err := os.Stat(carPath); err == nil {
-		return carPath, nil
-	}
-
-	carPath = filepath.Join(carDir, pieceCID.String()+".car")
-	if _, err := os.Stat(carPath); err == nil {
-		return carPath, nil
-	}
-
-	return "", fmt.Errorf("car %s file not found", pieceCID.String())
-}
-
 var importDirectDealsFromMsgCmd = &cli.Command{
 	Name:  "import-deals-from-msg",
 	Usage: "import direct deal from message",
@@ -530,7 +516,7 @@ var importDirectDealsFromMsgCmd = &cli.Command{
 			return err
 		}
 
-		pieceMainfests := utils.ToMap(manifests, func(m utils.Manifest) cid.Cid {
+		pieceManifests := utils.ToMap(manifests, func(m utils.Manifest) cid.Cid {
 			return m.PieceCID
 		})
 
@@ -544,7 +530,7 @@ var importDirectDealsFromMsgCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			mainfest, ok := pieceMainfests[a.Data]
+			manifest, ok := pieceManifests[a.Data]
 			if !ok {
 				fmt.Printf("piece %s not found in manifest, please check the manifest file\n", a.Data)
 				continue
@@ -554,8 +540,8 @@ var importDirectDealsFromMsgCmd = &cli.Command{
 				AllocationID: uint64(allocationID),
 				Client:       msg.From,
 				PieceCID:     a.Data,
-				PayloadSize:  mainfest.PayloadSize,
-				PayloadCID:   mainfest.PayloadCID,
+				PayloadSize:  manifest.PayloadSize,
+				PayloadCID:   manifest.PayloadCID,
 				StartEpoch:   startEpoch,
 				EndEpoch:     endEpoch,
 			}
