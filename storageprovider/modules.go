@@ -26,7 +26,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/utils"
 
 	"github.com/filecoin-project/venus/pkg/constants"
-	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	types2 "github.com/ipfs-force-community/droplet/v2/types"
 )
 
 var (
@@ -87,14 +87,17 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 		startDelay config.GetMaxDealStartDelayFunc,
 		spn StorageProviderNode,
 	) config.StorageDealFilter {
-		return func(ctx context.Context, mAddr address.Address, deal *types.MinerDeal) (bool, string, error) {
+		return func(ctx context.Context, mAddr address.Address, deal *types2.DealParams) (bool, string, error) {
+			proposal := deal.ClientDealProposal.Proposal
+			client := deal.ClientDealProposal.Proposal.Client
+
 			b, err := onlineOk(mAddr)
 			if err != nil {
 				return false, "miner error", err
 			}
 
-			if deal.Ref != nil && deal.Ref.TransferType != storagemarket.TTManual && !b {
-				log.Warnf("online piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", deal.Client.String())
+			if !deal.IsOffline && !b {
+				log.Warnf("online piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", client.String())
 				return false, "miner is not considering online piecestorage deals", nil
 			}
 
@@ -103,8 +106,8 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, "miner error", err
 			}
 
-			if deal.Ref != nil && deal.Ref.TransferType == storagemarket.TTManual && !b {
-				log.Warnf("offline piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", deal.Client.String())
+			if deal.IsOffline && !b {
+				log.Warnf("offline piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", client.String())
 				return false, "miner is not accepting offline piecestorage deals", nil
 			}
 
@@ -113,8 +116,8 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, "miner error", err
 			}
 
-			if deal.Proposal.VerifiedDeal && !b {
-				log.Warnf("verified piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", deal.Client.String())
+			if proposal.VerifiedDeal && !b {
+				log.Warnf("verified piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", client.String())
 				return false, "miner is not accepting verified piecestorage deals", nil
 			}
 
@@ -123,8 +126,8 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, "miner error", err
 			}
 
-			if !deal.Proposal.VerifiedDeal && !b {
-				log.Warnf("unverified piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", deal.Client.String())
+			if !proposal.VerifiedDeal && !b {
+				log.Warnf("unverified piecestorage deal consideration disabled; rejecting piecestorage deal proposal from client: %s", client.String())
 				return false, "miner is not accepting unverified piecestorage deals", nil
 			}
 
@@ -134,9 +137,9 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 			}
 
 			for idx := range blocklist {
-				if deal.Proposal.PieceCID.Equals(blocklist[idx]) {
-					log.Warnf("piece CID in proposal %s is blocklisted; rejecting piecestorage deal proposal from client: %s", deal.Proposal.PieceCID, deal.Client.String())
-					return false, fmt.Sprintf("miner has blocklisted piece CID %s", deal.Proposal.PieceCID), nil
+				if proposal.PieceCID.Equals(blocklist[idx]) {
+					log.Warnf("piece CID in proposal %s is blocklisted; rejecting piecestorage deal proposal from client: %s", proposal.PieceCID, client.String())
+					return false, fmt.Sprintf("miner has blocklisted piece CID %s", proposal.PieceCID), nil
 				}
 			}
 
@@ -151,9 +154,9 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 				return false, "failed to get chain head", err
 			}
 			earliest := abi.ChainEpoch(sealEpochs) + ht
-			if deal.Proposal.StartEpoch < earliest {
-				log.Warnw("proposed deal would start before sealing can be completed; rejecting piecestorage deal proposal from client", "piece_cid", deal.Proposal.PieceCID, "client", deal.Client.String(), "seal_duration", sealDuration, "earliest", earliest, "curepoch", ht)
-				return false, fmt.Sprintf("cannot seal a sector before %s", deal.Proposal.StartEpoch), nil
+			if proposal.StartEpoch < earliest {
+				log.Warnw("proposed deal would start before sealing can be completed; rejecting piecestorage deal proposal from client", "piece_cid", proposal.PieceCID, "client", client.String(), "seal_duration", sealDuration, "earliest", earliest, "curepoch", ht)
+				return false, fmt.Sprintf("cannot seal a sector before %s", proposal.StartEpoch), nil
 			}
 
 			sd, err := startDelay(mAddr)
@@ -164,8 +167,8 @@ func BasicDealFilter(user config.StorageDealFilter) func(onlineOk config.Conside
 			// Reject if it's more than 7 days in the future
 			// TODO: read from cfg how to get block delay
 			maxStartEpoch := earliest + abi.ChainEpoch(uint64(sd.Seconds())/constants.MainNetBlockDelaySecs)
-			if deal.Proposal.StartEpoch > maxStartEpoch {
-				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
+			if proposal.StartEpoch > maxStartEpoch {
+				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", proposal.StartEpoch, maxStartEpoch), nil
 			}
 
 			// user never will be nil?

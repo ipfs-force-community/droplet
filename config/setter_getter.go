@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/filestore"
 	vsTypes "github.com/filecoin-project/venus/venus-shared/types"
 	types "github.com/filecoin-project/venus/venus-shared/types/market"
+	types2 "github.com/ipfs-force-community/droplet/v2/types"
 )
 
 // ConsiderOnlineStorageDealsConfigFunc is a function which reads from miner
@@ -83,7 +84,7 @@ type SetExpectedSealDurationFunc func(address.Address, time.Duration) error
 type GetExpectedSealDurationFunc func(address.Address) (time.Duration, error)
 
 type (
-	StorageDealFilter   func(ctx context.Context, mAddr address.Address, deal *types.MinerDeal) (bool, string, error)
+	StorageDealFilter   func(ctx context.Context, mAddr address.Address, dealParams *types2.DealParams) (bool, string, error)
 	RetrievalDealFilter func(ctx context.Context, mAddr address.Address, deal types.ProviderDealState) (bool, string, error)
 )
 
