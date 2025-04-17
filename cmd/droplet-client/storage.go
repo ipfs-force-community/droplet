@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/venus/venus-shared/types/market/client"
 	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
 	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 )
 
 var storageCmd = &cli.Command{
@@ -1694,7 +1695,7 @@ The minimum value is 518400 (6 months).`,
 			return fmt.Errorf("you must provide a 'price' of 0")
 		}
 
-		manifests, err := loadManifest(cctx.String("manifest"))
+		manifests, err := utils.LoadManifests(cctx.String("manifest"))
 		if err != nil {
 			return fmt.Errorf("load manifest error: %v", err)
 		}
@@ -1724,22 +1725,22 @@ The minimum value is 518400 (6 months).`,
 
 			dataRef := &storagemarket.DataRef{
 				TransferType: transferType,
-				Root:         m.payloadCID,
-				PieceCid:     &m.pieceCID,
-				PieceSize:    m.pieceSize,
-				RawBlockSize: m.payloadSize,
+				Root:         m.PayloadCID,
+				PieceCid:     &m.PieceCID,
+				PieceSize:    m.PieceSize,
+				RawBlockSize: m.PayloadSize,
 			}
 
 			miner := p.miner[i%len(p.miner)]
 			if p.isVerified {
-				paddedPiecedSize := uint64(m.pieceSize.Padded())
+				paddedPiecedSize := uint64(m.PieceSize.Padded())
 				if currDatacap < paddedPiecedSize {
 					fmt.Printf("datacap %d less than piece size %d\n", currDatacap, paddedPiecedSize)
 					break
 				}
 
 				if cctx.IsSet("filter") {
-					miner = selector.selectMiner(m.pieceCID, paddedPiecedSize)
+					miner = selector.selectMiner(m.PieceCID, paddedPiecedSize)
 					if miner.Empty() {
 						selector.printError()
 						break

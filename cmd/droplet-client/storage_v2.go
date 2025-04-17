@@ -19,6 +19,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/api/clients/signer"
 	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
 	types2 "github.com/ipfs-force-community/droplet/v2/types"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
 	inet "github.com/libp2p/go-libp2p/core/network"
@@ -187,10 +188,10 @@ var storageDealInitV2 = &cli.Command{
 			providerCollateral = big.Div(big.Mul(bounds.Min, big.NewInt(6)), big.NewInt(5)) // add 20%
 		}
 
-		m := manifest{
-			payloadCID: payloadCID,
-			pieceCID:   pieceCid,
-			pieceSize:  paddedPieceSize.Unpadded(),
+		m := utils.Manifest{
+			PayloadCID: payloadCID,
+			PieceCID:   pieceCid,
+			PieceSize:  paddedPieceSize.Unpadded(),
 		}
 
 		if err = sendDeal(ctx, h, dealUuid, signer, params, addrInfo.ID, m, providerCollateral); err != nil {
@@ -298,7 +299,7 @@ func sendDeal(ctx context.Context,
 	signer signer.ISigner,
 	params *commonParams,
 	peerID peer.ID,
-	m manifest,
+	m utils.Manifest,
 	providerCollateral abi.TokenAmount,
 ) error {
 	dealProposal, err := dealProposal(ctx, signer, params, m, providerCollateral)
@@ -312,7 +313,7 @@ func sendDeal(ctx context.Context,
 	dealParams := types2.DealParams{
 		DealUUID:           dealUUID,
 		ClientDealProposal: *dealProposal,
-		DealDataRoot:       m.payloadCID,
+		DealDataRoot:       m.PayloadCID,
 		IsOffline:          true,
 		Transfer:           transfer,
 		RemoveUnsealedCopy: params.removeUnsealedCopy,
@@ -343,20 +344,20 @@ func sendDeal(ctx context.Context,
 func dealProposal(ctx context.Context,
 	signer signer.ISigner,
 	params *commonParams,
-	m manifest,
+	m utils.Manifest,
 	providerCollateral abi.TokenAmount,
 ) (*types.ClientDealProposal, error) {
 	endEpoch := params.startEpoch + params.duration
 	// deal proposal expects total storage price for deal per epoch, therefore we
 	// multiply pieceSize * storagePrice (which is set per epoch per GiB) and divide by 2^30
-	pieceSize := m.pieceSize.Padded()
+	pieceSize := m.PieceSize.Padded()
 	storagePricePerEpochForDeal := big.Div(big.Mul(big.NewInt(int64(pieceSize)), params.storagePrice), big.NewInt(int64(1<<30)))
-	l, err := types.NewLabelFromString(m.payloadCID.String())
+	l, err := types.NewLabelFromString(m.PayloadCID.String())
 	if err != nil {
 		return nil, err
 	}
 	proposal := types.DealProposal{
-		PieceCID:             m.pieceCID,
+		PieceCID:             m.PieceCID,
 		PieceSize:            pieceSize,
 		VerifiedDeal:         params.isVerified,
 		Client:               params.from,
@@ -462,7 +463,7 @@ var batchStorageDealInitV2 = &cli.Command{
 			return fmt.Errorf("cannot make a deal with storage provider %s because it does not support protocol version 1.2.0", params.provider)
 		}
 
-		manifests, err := loadManifest(cctx.String("manifest"))
+		manifests, err := utils.LoadManifests(cctx.String("manifest"))
 		if err != nil {
 			return fmt.Errorf("load manifest error: %v", err)
 		}
@@ -484,12 +485,12 @@ var batchStorageDealInitV2 = &cli.Command{
 		dcap := params.dcap.Int
 		isPadded := cctx.Bool("piece-size-padded")
 		for idx := 0; idx < len(manifests); {
-			m := *manifests[idx]
+			m := manifests[idx]
 
-			paddedPieceSize := m.pieceSize.Padded()
+			paddedPieceSize := m.PieceSize.Padded()
 			if isPadded {
-				paddedPieceSize = abi.PaddedPieceSize(m.pieceSize)
-				m.pieceSize = paddedPieceSize.Unpadded()
+				paddedPieceSize = abi.PaddedPieceSize(m.PieceSize)
+				m.PieceSize = paddedPieceSize.Unpadded()
 			}
 
 			remainDcap := big.NewInt(0).Sub(dcap, big.NewInt(int64(paddedPieceSize)).Int)
@@ -518,10 +519,10 @@ var batchStorageDealInitV2 = &cli.Command{
 			}
 			idx++
 			dcap = remainDcap
-			fmt.Println("created deal", dealUUID, ", piece cid", m.pieceCID)
+			fmt.Println("created deal", dealUUID, ", piece cid", m.PieceCID)
 
 			_ = writer.Write([]string{dealUUID.String(), params.provider.String(), params.from.String(),
-				m.pieceCID.String(), fmt.Sprintf("%d", paddedPieceSize), m.payloadCID.String()})
+				m.PieceCID.String(), fmt.Sprintf("%d", paddedPieceSize), m.PayloadCID.String()})
 		}
 
 		return nil

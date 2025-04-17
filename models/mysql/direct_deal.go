@@ -22,6 +22,7 @@ type directDeal struct {
 	Client      DBAddress `gorm:"column:client;type:varchar(256);index"`
 	Provider    DBAddress `gorm:"column:provider;type:varchar(256);index"`
 	PayloadSize uint64    `gorm:"column:payload_size;type:bigint unsigned;NOT NULL"`
+	PayloadCID  DBCid     `gorm:"column:payload_cid;type:varchar(64);"`
 
 	State   types.DirectDealState `gorm:"column:state;type:int;NOT NULL"`
 	Message string                `gorm:"column:message;type:varchar(256)"`
@@ -50,6 +51,7 @@ func (dd *directDeal) toDirectDeal() (*types.DirectDeal, error) {
 		Provider:     dd.Provider.addr(),
 		State:        dd.State,
 		PayloadSize:  dd.PayloadSize,
+		PayloadCID:   dd.PayloadCID.cid(),
 		Message:      dd.Message,
 		AllocationID: dd.AllocationID,
 
@@ -78,6 +80,7 @@ func fromDirectDeal(dd *types.DirectDeal) *directDeal {
 		Provider:     DBAddress(dd.Provider),
 		State:        dd.State,
 		PayloadSize:  dd.PayloadSize,
+		PayloadCID:   DBCid(dd.PayloadCID),
 		Message:      dd.Message,
 		AllocationID: dd.AllocationID,
 		SectorID:     uint64(dd.SectorID),

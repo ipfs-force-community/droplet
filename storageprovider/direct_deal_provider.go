@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"os"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -66,21 +65,15 @@ func NewDirectDealProvider(lc fx.Lifecycle,
 }
 
 type commonParams struct {
-	filePath          string
-	skipCommP         bool
-	noCopyCarFile     bool
-	skipGenerateIndex bool
+	skipCommP bool
 }
 
 func (ddp *DirectDealProvider) ImportDeals(ctx context.Context, dealParams *types.DirectDealParams) error {
 	cParams := &commonParams{
-		skipCommP:         dealParams.SkipCommP,
-		skipGenerateIndex: dealParams.SkipGenerateIndex,
-		noCopyCarFile:     dealParams.NoCopyCarFile,
+		skipCommP: dealParams.SkipCommP,
 	}
 	errs := &multierror.Error{}
 	for idx, dealParam := range dealParams.DealParams {
-		cParams.filePath = dealParam.FilePath
 		if err := ddp.importDeal(ctx, &dealParams.DealParams[idx], cParams); err != nil {
 			errs = multierror.Append(fmt.Errorf("import deal failed, allocation id: %d, error: %v",
 				dealParam.AllocationID, err), errs)
@@ -106,6 +99,7 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 		State:        types.DealAllocated,
 		AllocationID: dealParam.AllocationID,
 		PayloadSize:  dealParam.PayloadSize,
+		PayloadCID:   dealParam.PayloadCID,
 		StartEpoch:   dealParam.StartEpoch,
 		EndEpoch:     dealParam.EndEpoch,
 	}
@@ -113,14 +107,15 @@ func (ddp *DirectDealProvider) importDeal(ctx context.Context, dealParam *types.
 		return err
 	}
 
-	if err := ddp.importData(ctx, deal, cParams); err != nil {
+	if err := ddp.checkData(ctx, deal, cParams); err != nil {
 		return err
 	}
 
 	if deal.PayloadSize == 0 {
 		return fmt.Errorf("payload size is 0")
 	}
-	directDealLog.Infof("deal piece cid: %s, allocation id: %d, payload size: %d", deal.PieceCID, deal.AllocationID, deal.PayloadSize)
+	directDealLog.Infof("deal piece cid: %s, allocation id: %d, payload size: %d, payload cid: %s",
+		deal.PieceCID, deal.AllocationID, deal.PayloadSize, deal.PayloadCID)
 
 	if err := ddp.dealRepo.SaveDeal(ctx, deal); err != nil {
 		return err
@@ -168,9 +163,9 @@ func (ddp *DirectDealProvider) accept(ctx context.Context, deal *types.DirectDea
 	return nil
 }
 
-func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.DirectDeal, cParams *commonParams) error {
-	// not copy file to piece storage and not verify commp and skip generate index
-	if cParams.noCopyCarFile {
+func (ddp *DirectDealProvider) checkData(ctx context.Context, deal *types.DirectDeal, cParams *commonParams) error {
+	if cParams.skipCommP && deal.PayloadSize != 0 {
+		directDealLog.Debugf("skip commP for %s", deal.PieceCID)
 		return nil
 	}
 
@@ -195,20 +190,13 @@ func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.Direc
 			}
 			return readerCloser, nil
 		}
-		directDealLog.Debugf("not found %s in piece storage", pieceCIDStr)
 
-		info, err := os.Stat(cParams.filePath)
-		if err != nil {
-			return nil, err
-		}
-		carSize = info.Size()
-
-		return os.Open(cParams.filePath)
+		return nil, fmt.Errorf("find piece store failed: %v", err)
 	}
 
 	r, err = getReader()
 	if err != nil {
-		return err
+		return fmt.Errorf("get reader for %s failed: %v", pieceCIDStr, err)
 	}
 	deal.PayloadSize = uint64(carSize)
 
@@ -219,7 +207,7 @@ func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.Direc
 	}()
 
 	if !cParams.skipCommP {
-		proofType, err := ddp.spn.GetProofType(ctx, deal.Provider, nil) // TODO: 判断是不是属于此矿池?
+		proofType, err := ddp.spn.GetProofType(ctx, deal.Provider, nil)
 		if err != nil {
 			return fmt.Errorf("failed to determine proof type: %w", err)
 		}
@@ -235,22 +223,6 @@ func (ddp *DirectDealProvider) importData(ctx context.Context, deal *types.Direc
 
 		if err := r.Close(); err != nil {
 			log.Errorf("unable to close reader: %v, %v", pieceCIDStr, err)
-		}
-
-		r, err = getReader()
-		if err != nil {
-			return err
-		}
-	}
-
-	// copy car file to piece storage
-	if pieceStore == nil {
-		pieceStore, err = ddp.pieceStorageMgr.FindStorageForWrite(carSize)
-		if err != nil {
-			return err
-		}
-		if _, err := pieceStore.SaveTo(ctx, pieceCIDStr, r); err != nil {
-			return fmt.Errorf("copy car file to piece storage failed: %v", err)
 		}
 	}
 

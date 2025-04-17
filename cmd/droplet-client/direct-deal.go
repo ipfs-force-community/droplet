@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	cli2 "github.com/ipfs-force-community/droplet/v2/cli"
 	"github.com/ipfs-force-community/droplet/v2/cli/tablewriter"
+	"github.com/ipfs-force-community/droplet/v2/utils"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 )
@@ -278,7 +279,10 @@ var directDealAllocate = &cli.Command{
 			return fmt.Errorf("failed to find new allocations: %w", err)
 		}
 
-		if err := writeAllocationsToFile(cctx.String("output-allocation-to-file"), newAllocations, pieceInfos); err != nil {
+		byPieces := utils.ToMap(pieceInfos, func(p *pieceInfo) cid.Cid {
+			return p.pieceCID
+		})
+		if err := writeAllocationsToFile(cctx.String("output-allocation-to-file"), newAllocations, byPieces); err != nil {
 			fmt.Println("failed to write allocations to file: ", err)
 		}
 
@@ -288,7 +292,7 @@ var directDealAllocate = &cli.Command{
 
 		if cctx.IsSet("droplet-url") {
 			fmt.Println("importing deal to droplet")
-			if err := autoImportDealToDroplet(cctx, newAllocations, pieceInfos); err != nil {
+			if err := autoImportDealToDroplet(cctx, newAllocations, byPieces); err != nil {
 				return fmt.Errorf("failed to import deal to droplet: %w", err)
 			}
 			fmt.Println("successfully imported deal to droplet")
@@ -302,6 +306,7 @@ type pieceInfo struct {
 	pieceCID    cid.Cid
 	pieceSize   abi.PaddedPieceSize
 	payloadSize uint64
+	payloadCID  cid.Cid
 }
 
 func pieceInfosFromCtx(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
@@ -349,25 +354,26 @@ func pieceInfosFromFile(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
 	manifest := cctx.String("manifest")
 	pieceSizePadded := cctx.Bool("piece-size-padded")
 
-	pieces, err := loadManifest(manifest)
+	pieces, err := utils.LoadManifests(manifest)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	for _, p := range pieces {
-		if p.pieceSize <= 0 {
-			return nil, 0, fmt.Errorf("invalid piece size: %d", p.pieceSize)
+		if p.PieceSize <= 0 {
+			return nil, 0, fmt.Errorf("invalid piece size: %d", p.PieceSize)
 		}
-		n := p.pieceSize.Padded()
+		n := p.PieceSize.Padded()
 		if pieceSizePadded {
-			n = abi.PaddedPieceSize(p.pieceSize)
+			n = abi.PaddedPieceSize(p.PieceSize)
 		}
 		pieceInfos = append(pieceInfos, &pieceInfo{
 			pieceSize:   n,
-			pieceCID:    p.pieceCID,
-			payloadSize: p.payloadSize,
+			pieceCID:    p.PieceCID,
+			payloadSize: p.PayloadSize,
+			payloadCID:  p.PayloadCID,
 		})
-		if p.pieceCID == cid.Undef {
+		if p.PieceCID == cid.Undef {
 			return nil, 0, fmt.Errorf("piece cid cannot be undefined")
 		}
 		rDataCap += uint64(n)
@@ -424,12 +430,7 @@ type partAllocationInfo struct {
 	Client       address.Address
 }
 
-func writeAllocationsToFile(allocationFile string, allocations map[types.AllocationId]types.Allocation, pieceInfo []*pieceInfo) error {
-	payloadSizes := make(map[cid.Cid]uint64)
-	for _, info := range pieceInfo {
-		payloadSizes[info.pieceCID] = info.payloadSize
-	}
-
+func writeAllocationsToFile(allocationFile string, allocations map[types.AllocationId]types.Allocation, pieceInfos map[cid.Cid]*pieceInfo) error {
 	infos := make([]partAllocationInfo, 0, len(allocations))
 	for id, v := range allocations {
 		clientAddr, _ := address.NewIDAddress(uint64(v.Client))
@@ -446,11 +447,17 @@ func writeAllocationsToFile(allocationFile string, allocations map[types.Allocat
 
 	buf := &bytes.Buffer{}
 	w := csv.NewWriter(buf)
-	if err := w.Write([]string{"AllocationID", "PieceCID", "Client", "PayloadSize"}); err != nil {
+	if err := w.Write([]string{"AllocationID", "PieceCID", "Client", "PayloadSize", "PayloadCID"}); err != nil {
 		return err
 	}
 	for _, info := range infos {
-		if err := w.Write([]string{fmt.Sprintf("%d", info.AllocationID), info.PieceCID.String(), info.Client.String(), fmt.Sprintf("%d", payloadSizes[info.PieceCID])}); err != nil {
+		pi, ok := pieceInfos[info.PieceCID]
+		if !ok {
+			fmt.Printf("piece cid %s not found in the piece info\n", info.PieceCID)
+			continue
+		}
+		if err := w.Write([]string{fmt.Sprintf("%d", info.AllocationID), info.PieceCID.String(), info.Client.String(),
+			fmt.Sprintf("%d", pi.payloadSize), pi.payloadCID.String()}); err != nil {
 			return err
 		}
 	}
@@ -535,7 +542,7 @@ func showAllocations(allocations map[types.AllocationId]types.Allocation, useJSO
 	return tw.Flush(os.Stdout)
 }
 
-func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.AllocationId]types.Allocation, pieceInfos []*pieceInfo) error {
+func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.AllocationId]types.Allocation, pieceInfos map[cid.Cid]*pieceInfo) error {
 	ctx := cliCtx.Context
 	dropletURL := cliCtx.String("droplet-url")
 	dropletToken := cliCtx.String("droplet-token")
@@ -559,15 +566,8 @@ func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.Allocati
 	defer fclose()
 
 	params := types2.DirectDealParams{
-		SkipCommP:         true,
-		SkipGenerateIndex: true,
-		NoCopyCarFile:     true,
-		DealParams:        make([]types2.DirectDealParam, 0, len(allocations)),
-	}
-
-	payloadSizes := make(map[cid.Cid]uint64)
-	for _, info := range pieceInfos {
-		payloadSizes[info.pieceCID] = info.payloadSize
+		SkipCommP:  true,
+		DealParams: make([]types2.DirectDealParam, 0, len(allocations)),
 	}
 
 	startEpoch, err := cli2.GetStartEpoch(cliCtx, fapi)
@@ -582,15 +582,22 @@ func autoImportDealToDroplet(cliCtx *cli.Context, allocations map[types.Allocati
 			return err
 		}
 
-		params.DealParams = append(params.DealParams, types2.DirectDealParam{
+		pi, ok := pieceInfos[alloc.Data]
+		if !ok {
+			fmt.Printf("piece cid %s not found in the piece info\n", alloc.Data)
+			continue
+		}
+		param := types2.DirectDealParam{
 			DealUUID:     uuid.New(),
 			AllocationID: uint64(id),
-			PayloadSize:  payloadSizes[alloc.Data],
+			PayloadSize:  pi.payloadSize,
+			PayloadCID:   pi.payloadCID,
 			Client:       clientAddr,
 			PieceCID:     alloc.Data,
 			StartEpoch:   startEpoch,
 			EndEpoch:     endEpoch,
-		})
+		}
+		params.DealParams = append(params.DealParams, param)
 	}
 
 	return mapi.ImportDirectDeal(ctx, &params)
@@ -675,6 +682,10 @@ var genDealInfoFromMessage = &cli.Command{
 
 		}
 
-		return writeAllocationsToFile(cliCtx.String("output"), allocations, pieceInfos)
+		byPieces := utils.ToMap(pieceInfos, func(p *pieceInfo) cid.Cid {
+			return p.pieceCID
+		})
+
+		return writeAllocationsToFile(cliCtx.String("output"), allocations, byPieces)
 	},
 }
