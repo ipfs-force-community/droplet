@@ -32,6 +32,7 @@ import (
 var (
 	HandleDealsKey   = builder.NextInvoke()
 	StartDealTracker = builder.NextInvoke()
+	DealMetricKey    = builder.NextInvoke()
 )
 
 func HandleDeals(mctx metrics.MetricsCtx, lc fx.Lifecycle, h StorageProvider, j journal.Journal) {
@@ -191,6 +192,8 @@ var StorageProviderOpts = func(cfg *config.MarketConfig) builder.Option {
 		builder.Override(StartDealTracker, NewDealTracker),
 		builder.Override(new(*EventPublishAdapter), NewEventPublishAdapter),
 		builder.Override(new(*DirectDealProvider), NewDirectDealProvider),
+
+		builder.Override(DealMetricKey, NewDealMetric),
 	)
 }
 

@@ -219,3 +219,15 @@ func (ddr *directDealRepo) ListDeal(ctx context.Context, params types.DirectDeal
 
 	return out, nil
 }
+
+func (ddr *directDealRepo) CountDealByMiner(ctx context.Context,
+	miner address.Address,
+	state types.DirectDealState,
+) (int64, error) {
+	var count int64
+	if err := ddr.WithContext(ctx).Model(&directDeal{}).Where("provider = ? and state = ?", DBAddress(miner), state).
+		Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}

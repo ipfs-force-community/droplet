@@ -446,3 +446,17 @@ func (sdr *storageDealRepo) GroupStorageDealNumberByStatus(ctx context.Context, 
 		return false, nil
 	})
 }
+
+func (sdr *storageDealRepo) CountDealByMiner(ctx context.Context, mAddr address.Address, status storagemarket.StorageDealStatus) (int64, error) {
+	var count int64
+	err := travelCborAbleDS(ctx, sdr.ds, func(inDeal *types.MinerDeal) (stop bool, err error) {
+		if mAddr == inDeal.Proposal.Provider && inDeal.State == status {
+			count++
+		}
+		return false, nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}

@@ -50,6 +50,7 @@ type StorageDealRepo interface {
 	ListDealByAddr(ctx context.Context, mAddr address.Address) ([]*types.MinerDeal, error)
 	ListDeal(ctx context.Context, params *types.StorageDealQueryParams) ([]*types.MinerDeal, error)
 	GroupStorageDealNumberByStatus(ctx context.Context, mAddr address.Address) (map[storagemarket.StorageDealStatus]int64, error)
+	CountDealByMiner(ctx context.Context, mAddr address.Address, status storagemarket.StorageDealStatus) (int64, error)
 
 	GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error)
 	GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error)
@@ -142,6 +143,7 @@ type DirectDealRepo interface {
 	GetPieceInfo(ctx context.Context, pieceCID cid.Cid) (*piecestore.PieceInfo, error)
 	GetPieceSize(ctx context.Context, pieceCID cid.Cid) (uint64, abi.PaddedPieceSize, error)
 	ListDeal(ctx context.Context, params types.DirectDealQueryParams) ([]*types.DirectDeal, error)
+	CountDealByMiner(ctx context.Context, miner address.Address, state types.DirectDealState) (int64, error)
 }
 
 var ErrNotFound = errors.New("record not found")

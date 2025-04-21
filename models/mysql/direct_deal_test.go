@@ -221,3 +221,23 @@ func TestGetDirectDealPieceInfo(t *testing.T) {
 
 	assert.NoError(t, closeDB(mock, sqlDB))
 }
+
+func TestCountDDODealByMiner(t *testing.T) {
+	ctx := context.Background()
+	r, mock, sqlDB := setup(t)
+
+	var deal types.DirectDeal
+	testutil.Provide(t, &deal)
+	deal.State = types.DealActive
+
+	count := int64(1)
+	row := sqlmock.NewRows([]string{"count"})
+	row.AddRow(count)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*) FROM `direct_deals` WHERE provider = ? and state = ?")).
+		WithArgs(DBAddress(deal.Provider), types.DealActive).WillReturnRows(row)
+	count, err := r.DirectDealRepo().CountDealByMiner(ctx, deal.Provider, types.DealActive)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), count)
+
+	assert.NoError(t, closeDB(mock, sqlDB))
+}

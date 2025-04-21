@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"slices"
 	"strings"
 	"time"
 
@@ -166,13 +167,7 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 				continue
 			}
 
-			dealExist := false
-			for _, dealID := range preInfo.Info.DealIDs {
-				if dealID == deal.DealID {
-					dealExist = true
-					break
-				}
-			}
+			dealExist := slices.Contains(preInfo.Info.DealIDs, deal.DealID)
 			if !dealExist {
 				log.Warnf("deal %d does not exist in sector %d of miner %s", deal.DealID, deal.SectorNumber, addr)
 				continue
