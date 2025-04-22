@@ -170,9 +170,9 @@ func (r *directDealRepo) ListDeal(ctx context.Context, params types.DirectDealQu
 	return deals, nil
 }
 
-func (tr *directDealRepo) CountDealByMiner(ctx context.Context, miner address.Address, state types.DirectDealState) (int64, error) {
+func (r *directDealRepo) CountDealByMiner(ctx context.Context, miner address.Address, state types.DirectDealState) (int64, error) {
 	var count int64
-	err := travelJSONAbleDS(ctx, tr.ds, func(deal *types.DirectDeal) (bool, error) {
+	err := travelJSONAbleDS(ctx, r.ds, func(deal *types.DirectDeal) (bool, error) {
 		if deal.Provider == miner && deal.State == state {
 			count++
 		}

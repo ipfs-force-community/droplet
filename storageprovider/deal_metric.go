@@ -95,7 +95,7 @@ func (dm *DealMetric) dealActiveInfo(ctx context.Context, miners []market.User) 
 			return err
 		}
 		_ = stats.RecordWithTags(ctx, []tag.Mutator{tag.Upsert(metrics.MinerAddressTag, minerAddr.String())},
-			metrics.ActiveDealCount.M(int64(dc+c)))
+			metrics.ActiveDealCount.M(dc+c))
 		log.Infof("miner %s active deal count: %d + %d", minerAddr, c, dc)
 	}
 
@@ -138,7 +138,7 @@ func getMinerRetrievalRate(ctx context.Context, minerAddr string) (float64, erro
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("get miner retrieval rate failed: %v", resp.Status)
 	}
@@ -180,7 +180,7 @@ func getMinerEligibleDealCount(ctx context.Context, minerAddr string) (int, erro
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint
 
 	if resp.StatusCode != http.StatusOK {
 		return 0, fmt.Errorf("get miner eligible deal count failed: %v", resp.Status)
