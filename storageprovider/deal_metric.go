@@ -13,8 +13,10 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/metrics"
 	"github.com/ipfs-force-community/droplet/v2/minermgr"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
+	metrics2 "github.com/ipfs-force-community/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
+	"go.uber.org/fx"
 )
 
 type DealMetric struct {
@@ -23,12 +25,27 @@ type DealMetric struct {
 	dagStore *dagstore.DAGStore
 }
 
-func NewDealMetric(r repo.Repo, minerMgr minermgr.IMinerMgr, dagStore *dagstore.DAGStore) *DealMetric {
-	return &DealMetric{
+func NewDealMetric(mCtx metrics2.MetricsCtx,
+	lc fx.Lifecycle,
+	r repo.Repo,
+	minerMgr minermgr.IMinerMgr,
+	dagStore *dagstore.DAGStore,
+) *DealMetric {
+	dm := &DealMetric{
 		r:        r,
 		minerMgr: minerMgr,
 		dagStore: dagStore,
 	}
+
+	lc.Append(fx.Hook{OnStart: func(ctx context.Context) error {
+		ctx = metrics2.LifecycleCtx(mCtx, lc)
+		go func() {
+			dm.Start(ctx)
+		}()
+		return nil
+	}})
+
+	return dm
 }
 
 func (dm *DealMetric) Start(ctx context.Context) {
