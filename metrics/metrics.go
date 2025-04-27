@@ -177,6 +177,11 @@ var views = append([]*view.View{
 	DagStorePRInitCountView,
 	DagStorePRBytesRequestedView,
 	DagStoreLoadShardView,
+	DagStoreActiveShardCountView,
+
+	ActiveDealCountView,
+	SparkRetrievalRateView,
+	SparkEligibleDealCountView,
 
 	StorageRetrievalHitCountView,
 	StorageSaveHitCountView,

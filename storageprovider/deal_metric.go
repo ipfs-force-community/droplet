@@ -68,7 +68,6 @@ func (dm *DealMetric) Start(ctx context.Context) {
 
 			if err := dm.dealActiveInfo(ctx, minerAddrs); err != nil {
 				log.Errorf("get miner active deal info failed: %v", err)
-				continue
 			}
 
 			var count int
