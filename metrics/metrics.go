@@ -122,6 +122,7 @@ var (
 
 	DagStoreLoadShardView = &view.View{
 		Measure:     DagStoreLoadShard,
+		TagKeys:     []tag.Key{StatusTag},
 		Aggregation: defaultMillisecondsDistribution,
 	}
 	DagStoreActiveShardCountView = &view.View{
