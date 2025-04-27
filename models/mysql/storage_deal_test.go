@@ -601,3 +601,20 @@ func TestSaveDealWithStatus(t *testing.T) {
 	err = r.StorageDealRepo().SaveDealWithStatus(context.Background(), storageDealCases[0], []types.PieceStatus{storageDealCases[0].PieceStatus})
 	assert.NoError(t, err)
 }
+
+func TestCountDealByMiner(t *testing.T) {
+	r, mock, dbStorageDealCases, _, done := prepareStorageDealRepoTest(t)
+	defer done()
+
+	addr := dbStorageDealCases[0].Provider
+	state := storagemarket.StorageDealActive
+
+	rows := sqlmock.NewRows([]string{"count"}).AddRow(1)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*) FROM `storage_deals` WHERE cdp_provider = ? and state = ?")).
+		WithArgs(addr.String(), state).WillReturnRows(rows)
+
+	count, err := r.StorageDealRepo().CountDealByMiner(context.Background(), addr.addr(), state)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), count)
+}

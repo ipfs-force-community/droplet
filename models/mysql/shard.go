@@ -16,7 +16,7 @@ type shard struct {
 	TransientPath string              `gorm:"column:transient_path;type:varchar(256)"`
 	State         dagstore.ShardState `gorm:"column:state;type:varchar(32)"`
 	Lazy          bool                `gorm:"column:lazy"`
-	Error         string              `gorm:"column:error;type:varchar(256)"`
+	Error         string              `gorm:"column:error;type:varchar(1024)"`
 }
 
 func (s *shard) TableName() string {

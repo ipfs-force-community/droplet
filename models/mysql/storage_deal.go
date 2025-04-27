@@ -638,6 +638,19 @@ func (sdr *storageDealRepo) GroupStorageDealNumberByStatus(ctx context.Context, 
 	return result, nil
 }
 
+func (sdr *storageDealRepo) CountDealByMiner(ctx context.Context,
+	miner address.Address,
+	state storagemarket.StorageDealStatus,
+) (int64, error) {
+	var count int64
+	if err := sdr.WithContext(ctx).Model(&storageDeal{}).Where("cdp_provider = ? and state = ?",
+		DBAddress(miner).String(), state).
+		Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func fromDbDeals(dbDeals []*storageDeal) ([]*types.MinerDeal, error) {
 	results := make([]*types.MinerDeal, len(dbDeals))
 	for index, dbDeal := range dbDeals {

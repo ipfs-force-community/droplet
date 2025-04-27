@@ -12,6 +12,8 @@ import (
 var (
 	StorageNameTag, _ = tag.NewKey("storage")
 	StatusTag, _      = tag.NewKey("status")
+
+	MinerAddressTag, _ = tag.NewKey("miner")
 )
 
 const (
@@ -45,7 +47,13 @@ var (
 	DagStorePRInitCount      = stats.Int64("dagstore/pr_init_count", "Retrieval init count", stats.UnitDimensionless)
 	DagStorePRBytesRequested = stats.Int64("dagstore/pr_requested_bytes", "Retrieval requested bytes", stats.UnitBytes)
 
-	DagStoreLoadShard = stats.Int64("dagstore/load_shard", "Load shard", stats.UnitMilliseconds)
+	DagStoreLoadShard        = stats.Int64("dagstore/load_shard", "Load shard", stats.UnitMilliseconds)
+	DagStoreActiveShardCount = stats.Int64("dagstore/active_shard_count", "Active shard count", stats.UnitMilliseconds)
+
+	ActiveDealCount = stats.Int64("active_deal_count", "Active deal count", stats.UnitMilliseconds)
+
+	SparkEligibleDealCount = stats.Int64("spark_eligible_deal_count", "Spark eligible deal count", stats.UnitDimensionless)
+	SparkRetrievalRate     = stats.Int64("spark_retrieval_rate", "Spark retrieval rate", stats.UnitDimensionless)
 
 	StorageRetrievalHitCount = stats.Int64("piecestorage/retrieval_hit", "PieceStorage hit count for retrieval", stats.UnitDimensionless)
 	StorageSaveHitCount      = stats.Int64("piecestorage/save_hit", "PieceStorage hit count for save piece data", stats.UnitDimensionless)
@@ -117,6 +125,28 @@ var (
 		TagKeys:     []tag.Key{StatusTag},
 		Aggregation: defaultMillisecondsDistribution,
 	}
+	DagStoreActiveShardCountView = &view.View{
+		Measure:     DagStoreActiveShardCount,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{MinerAddressTag},
+	}
+
+	ActiveDealCountView = &view.View{
+		Measure:     ActiveDealCount,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{MinerAddressTag},
+	}
+
+	SparkRetrievalRateView = &view.View{
+		Measure:     SparkRetrievalRate,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{MinerAddressTag},
+	}
+	SparkEligibleDealCountView = &view.View{
+		Measure:     SparkEligibleDealCount,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{MinerAddressTag},
+	}
 
 	// piece storage
 	StorageRetrievalHitCountView = &view.View{
@@ -148,6 +178,11 @@ var views = append([]*view.View{
 	DagStorePRInitCountView,
 	DagStorePRBytesRequestedView,
 	DagStoreLoadShardView,
+	DagStoreActiveShardCountView,
+
+	ActiveDealCountView,
+	SparkRetrievalRateView,
+	SparkEligibleDealCountView,
 
 	StorageRetrievalHitCountView,
 	StorageSaveHitCountView,
