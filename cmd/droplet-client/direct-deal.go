@@ -106,10 +106,7 @@ var directDealAllocate = &cli.Command{
 			Name:  "droplet-token",
 			Usage: "Token of the droplet service",
 		},
-		&cli.IntFlag{
-			Name:  "start-epoch",
-			Usage: "start epoch by when the deal should be proved by provider on-chain (default: 8 days from now)",
-		},
+		cli2.StartEpochFlag,
 		&cli.BoolFlag{
 			Name: "piece-size-padded",
 		},
