@@ -27,6 +27,21 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var StartEpochFlag = &cli.IntFlag{
+	Name:  "start-epoch",
+	Usage: "start epoch by when the deal should be proved by provider on-chain (default: 30 days from now)",
+}
+
+var payloadCIDFlag = &cli.Uint64Flag{
+	Name:  "payload-cid",
+	Usage: "The cid of the car file",
+}
+
+var skipCommPFlag = &cli.BoolFlag{
+	Name:  "skip-commp",
+	Usage: "skip calculate the piece-cid, please use with caution",
+}
+
 var directDealCmds = &cli.Command{
 	Name:  "direct-deal",
 	Usage: "the tool for direct deal",
@@ -202,22 +217,13 @@ var importDirectDealCmd = &cli.Command{
 			Name:     "client",
 			Required: true,
 		},
-		&cli.BoolFlag{
-			Name:  "skip-commp",
-			Usage: "skip calculate the piece-cid, please use with caution",
-		},
 		&cli.Uint64Flag{
 			Name:  "payload-size",
 			Usage: "The size of the car file",
 		},
-		&cli.Uint64Flag{
-			Name:  "payload-cid",
-			Usage: "The cid of the car file",
-		},
-		&cli.IntFlag{
-			Name:  "start-epoch",
-			Usage: "start epoch by when the deal should be proved by provider on-chain (default: 2 days from now)",
-		},
+		skipCommPFlag,
+		payloadCIDFlag,
+		StartEpochFlag,
 	},
 	Action: func(cliCtx *cli.Context) error {
 		if cliCtx.Args().Len() < 2 {
@@ -313,7 +319,7 @@ func GetStartEpoch(cliCtx *cli.Context, fapi v1api.FullNode) (abi.ChainEpoch, er
 		if err != nil {
 			return 0, err
 		}
-		startEpoch = head.Height() + builtin.EpochsInDay*8
+		startEpoch = head.Height() + builtin.EpochsInDay*30
 	}
 
 	return startEpoch, nil
@@ -331,14 +337,8 @@ var importDirectDealsCmd = &cli.Command{
 		&cli.StringFlag{
 			Name: "allocation-file",
 		},
-		&cli.BoolFlag{
-			Name:  "skip-commp",
-			Usage: "skip calculate the piece-cid, please use with caution",
-		},
-		&cli.IntFlag{
-			Name:  "start-epoch",
-			Usage: "start epoch by when the deal should be proved by provider on-chain (default: 8 days from now)",
-		},
+		skipCommPFlag,
+		StartEpochFlag,
 	},
 	Action: func(cliCtx *cli.Context) error {
 		if cliCtx.IsSet("allocation-info") == cliCtx.IsSet("allocation-file") {
@@ -452,14 +452,8 @@ var importDirectDealsFromMsgCmd = &cli.Command{
 			Usage:    "Manifest file path",
 			Required: true,
 		},
-		&cli.BoolFlag{
-			Name:  "skip-commp",
-			Usage: "skip calculate the piece-cid, please use with caution",
-		},
-		&cli.IntFlag{
-			Name:  "start-epoch",
-			Usage: "start epoch by when the deal should be proved by provider on-chain (default: 8 days from now)",
-		},
+		skipCommPFlag,
+		StartEpochFlag,
 	},
 	Action: func(cliCtx *cli.Context) error {
 		api, closer, err := NewMarketNode(cliCtx)
