@@ -94,7 +94,7 @@ func getAddressAllowanceOnContract(ctx context.Context, api v1.FullNode, wallet 
 	// Parse the contract ABI
 	parsedABI, err := eabi.JSON(strings.NewReader(contractABI))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse contract ABI: %w", err)
+		return nil, fmt.Errorf("failed to parse contract ABI: %w", err)
 	}
 
 	// Convert from Filecoin to Eth Address
@@ -134,7 +134,7 @@ func getAddressAllowanceOnContract(ctx context.Context, api v1.FullNode, wallet 
 	}
 
 	if result.MsgRct.ExitCode.IsError() {
-		return nil, fmt.Errorf("Checking allowance failed with ExitCode %d", result.MsgRct.ExitCode)
+		return nil, fmt.Errorf("checking allowance failed with ExitCode %d", result.MsgRct.ExitCode)
 	}
 
 	// Decode return value (cbor -> evm ABI -> math/big Int -> filecoin big Int)
@@ -155,7 +155,7 @@ func buildTransferViaEVMParams(amount *big.Int, receiverParams []byte) ([]byte, 
 	// Parse the contract's ABI
 	parsedABI, err := eabi.JSON(strings.NewReader(contractABI))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse contract ABI: %w", err)
+		return nil, fmt.Errorf("failed to parse contract ABI: %w", err)
 	}
 
 	// convert amount from Filecoin big.Int to math/big Int
