@@ -140,9 +140,8 @@ var directDealAllocate = &cli.Command{
 			return err
 		}
 
-		// Get all minerIDs from input
-		minerIds := cctx.String("miner")
-		maddr, err := address.NewFromString(minerIds)
+		minerId := cctx.String("miner")
+		maddr, err := address.NewFromString(minerId)
 		if err != nil {
 			return err
 		}
@@ -478,6 +477,9 @@ func writeAllocationsToFile(allocationFile string, allocations map[types.Allocat
 	if err := w.Write([]string{"AllocationID", "PieceCID", "Client", "PayloadSize", "PayloadCID"}); err != nil {
 		return err
 	}
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].AllocationID < infos[j].AllocationID
+	})
 	for _, info := range infos {
 		pi, ok := pieceInfos[info.PieceCID]
 		if !ok {
