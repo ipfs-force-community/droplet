@@ -31,9 +31,9 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var minerFlag = &cli.StringSliceFlag{
+var minerFlag = &cli.StringFlag{
 	Name:     "miner",
-	Usage:    "storage provider address[es]",
+	Usage:    "storage provider address",
 	Required: true,
 	Aliases:  []string{"m"},
 }
@@ -110,6 +110,10 @@ var directDealAllocate = &cli.Command{
 		&cli.BoolFlag{
 			Name: "piece-size-padded",
 		},
+		&cli.StringFlag{
+			Name:  "evm-client-contract",
+			Usage: "f4 address of EVM contract to spend DataCap from",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.IsSet("piece-info") && cctx.IsSet("manifest") {
@@ -136,30 +140,23 @@ var directDealAllocate = &cli.Command{
 			return err
 		}
 
-		// Get all minerIDs from input
-		maddrs := make(map[abi.ActorID]types.MinerInfo)
-		mIDs := make(map[abi.ActorID]struct{})
-		minerIds := cctx.StringSlice("miner")
-		for _, id := range minerIds {
-			maddr, err := address.NewFromString(id)
-			if err != nil {
-				return err
-			}
-
-			// Verify that minerID exists
-			m, err := fapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-			if err != nil {
-				return err
-			}
-
-			mid, err := address.IDFromAddress(maddr)
-			if err != nil {
-				return err
-			}
-
-			maddrs[abi.ActorID(mid)] = m
-			mIDs[abi.ActorID(mid)] = struct{}{}
+		minerId := cctx.String("miner")
+		maddr, err := address.NewFromString(minerId)
+		if err != nil {
+			return err
 		}
+
+		// Verify that minerID exists
+		minerInfo, err := fapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		mid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return err
+		}
+		mActorID := abi.ActorID(mid)
 
 		// Get all pieceCIDs from input
 		var rDataCap big.Int
@@ -185,8 +182,30 @@ var directDealAllocate = &cli.Command{
 			return fmt.Errorf("piece info is empty")
 		}
 
+		dcAddr := walletAddr
+		var evmContractAddr address.Address
+		evmContract := cctx.String("evm-client-contract")
+		if evmContract != "" {
+			evmContractAddr, err = address.NewFromString(evmContract)
+			if err != nil {
+				return err
+			}
+			dcAddr = evmContractAddr
+
+			// Get datacap allowance of the wallet
+			allowance, err := getAddressAllowanceOnContract(ctx, fapi, walletAddr, evmContractAddr)
+			if err != nil {
+				return err
+			}
+
+			// Check that we have enough data cap to make the allocation
+			if rDataCap.GreaterThan(*allowance) {
+				return fmt.Errorf("requested datacap %s is greater then the available datacap allowance %s", rDataCap, allowance)
+			}
+		}
+
 		// Get datacap balance
-		aDataCap, err := fapi.StateVerifiedClientStatus(ctx, walletAddr, types.EmptyTSK)
+		aDataCap, err := fapi.StateVerifiedClientStatus(ctx, dcAddr, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -211,20 +230,18 @@ var directDealAllocate = &cli.Command{
 
 		// Create allocation requests
 		var allocationRequests []types.AllocationRequest
-		for mid, minerInfo := range maddrs {
-			for _, p := range pieceInfos {
-				if uint64(minerInfo.SectorSize) < uint64(p.pieceSize) {
-					return fmt.Errorf("specified piece size %d is bigger than miner's sector size %s", uint64(p.pieceSize), minerInfo.SectorSize.String())
-				}
-				allocationRequests = append(allocationRequests, types.AllocationRequest{
-					Provider:   mid,
-					Data:       p.pieceCID,
-					Size:       p.pieceSize,
-					TermMin:    allocationParams.termMin,
-					TermMax:    allocationParams.termMax,
-					Expiration: allocationParams.expiration,
-				})
+		for _, p := range pieceInfos {
+			if uint64(minerInfo.SectorSize) < uint64(p.pieceSize) {
+				return fmt.Errorf("specified piece size %d is bigger than miner's sector size %s", uint64(p.pieceSize), minerInfo.SectorSize.String())
 			}
+			allocationRequests = append(allocationRequests, types.AllocationRequest{
+				Provider:   mActorID,
+				Data:       p.pieceCID,
+				Size:       p.pieceSize,
+				TermMin:    allocationParams.termMin,
+				TermMax:    allocationParams.termMax,
+				Expiration: allocationParams.expiration,
+			})
 		}
 
 		reqs := &types.AllocationRequests{
@@ -234,6 +251,7 @@ var directDealAllocate = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to serialize the parameters: %w", err)
 		}
+
 		transferParams, err := actors.SerializeParams(&datacap2.TransferParams{
 			To:           builtin.VerifiedRegistryActorAddr,
 			Amount:       big.Mul(rDataCap, builtin.TokenPrecision),
@@ -242,11 +260,23 @@ var directDealAllocate = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to serialize transfer parameters: %w", err)
 		}
+		to := builtin.DatacapActorAddr
+		method := datacap.Methods.TransferExported
+
+		if !evmContractAddr.Empty() {
+			amount := big.Mul(rDataCap, builtin.TokenPrecision)
+			transferParams, err = buildTransferViaEVMParams(&amount, receiverParams)
+			if err != nil {
+				return err
+			}
+			to = evmContractAddr
+			method = builtin.MethodsEVM.InvokeContract
+		}
 
 		msg := &types.Message{
-			To:     builtin.DatacapActorAddr,
+			To:     to,
 			From:   walletAddr,
-			Method: datacap.Methods.TransferExported,
+			Method: method,
 			Params: transferParams,
 			Value:  big.Zero(),
 		}
@@ -258,7 +288,7 @@ var directDealAllocate = &cli.Command{
 		fmt.Println("submitted data cap allocation message:", msgCid.String())
 		fmt.Println("waiting for message to be included in a block")
 
-		oldAllocations, err := fapi.StateGetAllocations(ctx, walletAddr, types.EmptyTSK)
+		oldAllocations, err := fapi.StateGetAllocations(ctx, dcAddr, types.EmptyTSK)
 		if err != nil {
 			return fmt.Errorf("failed to get allocations: %w", err)
 		}
@@ -271,7 +301,7 @@ var directDealAllocate = &cli.Command{
 			return fmt.Errorf("failed to execute the message with error: %s", res.Receipt.ExitCode.Error())
 		}
 
-		newAllocations, err := findNewAllocations(ctx, fapi, walletAddr, oldAllocations, mIDs)
+		newAllocations, err := findNewAllocations(ctx, fapi, dcAddr, oldAllocations, mActorID)
 		if err != nil {
 			return fmt.Errorf("failed to find new allocations: %w", err)
 		}
@@ -402,7 +432,7 @@ func getAllocationParams(cctx *cli.Context, currentHeight abi.ChainEpoch) (*allo
 	return &params, nil
 }
 
-func findNewAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.Address, oldAllocations map[types.AllocationId]types.Allocation, mIDs map[abi.ActorID]struct{}) (map[types.AllocationId]types.Allocation, error) {
+func findNewAllocations(ctx context.Context, fapi v1.FullNode, walletAddr address.Address, oldAllocations map[types.AllocationId]types.Allocation, mid abi.ActorID) (map[types.AllocationId]types.Allocation, error) {
 	allAllocations, err := fapi.StateGetAllocations(ctx, walletAddr, types.EmptyTSK)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get allocations: %w", err)
@@ -411,7 +441,7 @@ func findNewAllocations(ctx context.Context, fapi v1.FullNode, walletAddr addres
 	newAllocations := make(map[types.AllocationId]types.Allocation, len(allAllocations)-len(oldAllocations))
 	for k, v := range allAllocations {
 		if _, ok := oldAllocations[k]; !ok {
-			if _, ok := mIDs[v.Provider]; !ok {
+			if mid != v.Provider {
 				continue
 			}
 			newAllocations[k] = v
@@ -447,6 +477,9 @@ func writeAllocationsToFile(allocationFile string, allocations map[types.Allocat
 	if err := w.Write([]string{"AllocationID", "PieceCID", "Client", "PayloadSize", "PayloadCID"}); err != nil {
 		return err
 	}
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].AllocationID < infos[j].AllocationID
+	})
 	for _, info := range infos {
 		pi, ok := pieceInfos[info.PieceCID]
 		if !ok {
