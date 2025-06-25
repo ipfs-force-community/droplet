@@ -2,15 +2,20 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"strconv"
 
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	markettypes14 "github.com/filecoin-project/go-state-types/builtin/v14/market"
 	"github.com/filecoin-project/venus/venus-shared/actors"
 	"github.com/filecoin-project/venus/venus-shared/actors/builtin/market"
+	v1 "github.com/filecoin-project/venus/venus-shared/api/chain/v1"
 	"github.com/filecoin-project/venus/venus-shared/types"
 	"github.com/urfave/cli/v2"
 )
@@ -22,6 +27,7 @@ var MarketCmds = &cli.Command{
 		marketBalancesCmd,
 		walletMarketAdd,
 		walletMarketWithdraw,
+		dealSettlementCmd,
 	},
 }
 
@@ -297,4 +303,151 @@ var walletMarketWithdraw = &cli.Command{
 
 		return nil
 	},
+}
+
+var dealSettlementCmd = &cli.Command{
+	Name:      "settle-deal",
+	Usage:     "Settle deals manually, if dealIds are not provided all deals will be settled",
+	ArgsUsage: "[...dealIds]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "miner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:   "from",
+			Usage:  "Specify address to send the settlement message from, otherwise it will use the miner owner address",
+			Hidden: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := NewMarketNode(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		fapi, fcloser, err := NewFullNode(cctx, OldMarketRepoPath)
+		if err != nil {
+			return err
+		}
+		defer fcloser()
+
+		ctx := ReqContext(cctx)
+		maddr, err := address.NewFromString(cctx.String("miner"))
+		if err != nil {
+			return err
+		}
+
+		var (
+			dealIDs []uint64
+			dealId  uint64
+		)
+
+		// if no deal ids are provided, get all the deals for the miner
+		if dealsIdArgs := cctx.Args().Slice(); len(dealsIdArgs) != 0 {
+			for _, d := range dealsIdArgs {
+				dealId, err = strconv.ParseUint(d, 10, 64)
+				if err != nil {
+					return fmt.Errorf("error parsing deal id: %w", err)
+				}
+
+				dealIDs = append(dealIDs, dealId)
+			}
+		} else {
+			if dealIDs, err = getMinerAllDeals(ctx, fapi, maddr, types.EmptyTSK); err != nil {
+				return fmt.Errorf("error getting all deals for miner: %w", err)
+			}
+		}
+
+		mi, err := fapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return fmt.Errorf("error getting miner info: %w", err)
+		}
+
+		from := mi.Owner // default to miner address
+		if fromStr := cctx.String("from"); fromStr != "" {
+			from, err = address.NewFromString(fromStr)
+			if err != nil {
+				return fmt.Errorf("error parsing from address: %w", err)
+			}
+		}
+
+		dealParams := bitfield.NewFromSet(dealIDs)
+		params, err := actors.SerializeParams(&dealParams)
+		if err != nil {
+			return err
+		}
+
+		msgCID, err := api.MessagerPushMessage(ctx, &types.Message{
+			To:     market.Address,
+			From:   from,
+			Value:  types.NewInt(0),
+			Method: market.Methods.SettleDealPaymentsExported,
+			Params: params,
+		}, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Requested deal settlement in message %s\nwaiting for it to be included in a block..\n", msgCID)
+
+		// wait for it to get mined into a block
+		wait, err := api.MessagerWaitMessage(ctx, msgCID)
+		if err != nil {
+			return fmt.Errorf("timeout waiting for deal settlement message %s", msgCID)
+		}
+
+		if wait.Receipt.ExitCode.IsError() {
+			return fmt.Errorf("failed to execute withdrawal message %s: %v", wait.Message, wait.Receipt.ExitCode.Error())
+		}
+
+		var settlementReturn markettypes14.SettleDealPaymentsReturn
+		if err = settlementReturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+			return err
+		}
+
+		fmt.Printf("Settled %d out of %d deals\n", settlementReturn.Results.SuccessCount, len(dealIDs))
+
+		var (
+			totalPayment        = big.Zero()
+			totalCompletedDeals = 0
+		)
+
+		for _, s := range settlementReturn.Settlements {
+			totalPayment = big.Add(totalPayment, s.Payment)
+			if s.Completed {
+				totalCompletedDeals++
+			}
+		}
+
+		fmt.Printf("Total payment: %s\n", types.FIL(totalPayment))
+		fmt.Printf("Total number of deals finished their lifetime: %d\n", totalCompletedDeals)
+		return nil
+	},
+}
+
+// getMinerAllDeals returns all deals for a miner
+func getMinerAllDeals(ctx context.Context, full v1.FullNode, maddr address.Address, key types.TipSetKey) (dealIDs []uint64, err error) {
+	allDeals, err := full.StateMarketDeals(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+
+	// filter the deals for the miner
+	var dealId uint64
+	for k, d := range allDeals {
+		if d.Proposal.Provider != maddr {
+			continue
+		}
+
+		dealId, err = strconv.ParseUint(k, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing deal id: %w", err)
+		}
+
+		dealIDs = append(dealIDs, dealId)
+	}
+
+	return dealIDs, nil
 }
