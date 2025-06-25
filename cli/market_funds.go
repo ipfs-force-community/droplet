@@ -380,7 +380,7 @@ var dealSettlementCmd = &cli.Command{
 		}
 
 		msgCID, err := api.MessagerPushMessage(ctx, &types.Message{
-			To:     maddr,
+			To:     market.Address,
 			From:   from,
 			Value:  types.NewInt(0),
 			Method: market.Methods.SettleDealPaymentsExported,
