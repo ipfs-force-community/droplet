@@ -85,6 +85,14 @@ AllocationID  Client    Miner    PieceCid                                       
 31654         t018678   t060973  baga6ea4seaqgozgsl7ddfjqig6za3l7o5sf6oiw5hd4ggug7tiqfhi5gajwq4ja  2097152    518400   777600   1386797
 ```
 
+#### 通过合约发布订单
+
+新增加 --evm-client-contract 来指定 client 合约地址
+
+```
+./droplet-client direct-deal allocate --miner t060973 --wallet t3wivhkdivcxj5zp2l4wjkzon232s52smnd5m3na66ujl5nel75jggguhgaa3zbhjo3as4epf5ytxl6ly3qoha --manifest ./data2/manifest.csv --evm-client-contract f04xxxxx
+```
+
 #### 批量导入订单
 
 flag 解释：
