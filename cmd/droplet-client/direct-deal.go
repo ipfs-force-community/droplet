@@ -81,7 +81,7 @@ var directDealAllocate = &cli.Command{
 		expirationFlag,
 		&cli.StringSliceFlag{
 			Name:   "piece-info",
-			Usage:  "data pieceInfo[s] to create the allocation. The format must be pieceCid1=pieceSize1 pieceCid2=pieceSize2",
+			Usage:  "data pieceInfo[s] to create the allocation. The format must be pieceCid1=pieceSize1=payloadCid1=payloadSize1 pieceCid2=pieceSize2=payloadCid2=payloadSize2 ...",
 			Hidden: true,
 		},
 		&cli.BoolFlag{
@@ -344,7 +344,7 @@ func pieceInfosFromCtx(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
 
 	for _, p := range pieces {
 		pieceDetail := strings.Split(p, "=")
-		if len(pieceDetail) > 2 {
+		if len(pieceDetail) != 4 {
 			return nil, 0, fmt.Errorf("incorrect pieceInfo format: %s", pieceDetail)
 		}
 
@@ -360,14 +360,25 @@ func pieceInfosFromCtx(cctx *cli.Context) ([]*pieceInfo, uint64, error) {
 			return nil, 0, fmt.Errorf("failed to parse the pieceCid for %s: %w", pieceDetail[0], err)
 		}
 
+		payloadCid, err := cid.Parse(pieceDetail[2])
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to parse the payloadCid for %s: %w", pieceDetail[0], err)
+		}
+		payloadSize, err := strconv.ParseUint(pieceDetail[3], 10, 64)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to parse the payload size for %s for pieceCid %s: %w", pieceDetail[0], pieceDetail[1], err)
+		}
+
 		pieceSize := abi.UnpaddedPieceSize(n).Padded()
 		if pieceSizePadded {
 			pieceSize = abi.PaddedPieceSize(n)
 		}
 
 		pieceInfos = append(pieceInfos, &pieceInfo{
-			pieceSize: pieceSize,
-			pieceCID:  pcid,
+			pieceSize:   pieceSize,
+			pieceCID:    pcid,
+			payloadSize: payloadSize,
+			payloadCID:  payloadCid,
 		})
 		rDataCap += uint64(pieceSize)
 	}
