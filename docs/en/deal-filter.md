@@ -1,17 +1,17 @@
-# 订单过滤器
+# Deal Filter
 
-## 背景
+## Background
 
-有时候, `SP` 可能会希望可以对是否接受订单以及接受哪些订单做出一些更加精细化的控制. 例如, 有些 `SP` 可能希望只接受来自特定 `peer` 的订单, 或者只接受来自特定 `peer` 的订单, 并且订单的价格必须在某个范围内. 
+Sometimes, `SP` may want more fine-grained control over whether to accept deals and which deals to accept. For example, some `SP` may want to only accept deals from specific `peer`, or only accept deals from specific `peer` where the deal price must be within a certain range.
 
-## 详情
+## Details
 
-为了满足这些需求, 可以在 `Droplet` 的配置文件中给特定的 `miner` 配置一个订单过滤器, 该过滤器在配置文件中的表现形式是一个表示一个 `shell` 命令的字符串, 每当 `Droplet` 决定是否接受指向某个 `miner` 的订单时, 就会调用该命令, 并将 `订单的信息` ( json 字符串) 作为命令的参数 (标准输入) 传递给该命令. 如果命令退出码为 `0`, 则表示接受该订单, 否则拒绝该订单.
+To meet these requirements, an deal filter can be configured for a specific `miner` in the `Droplet` configuration file. This filter is represented in the configuration file as a string indicating a `shell` command. Whenever `Droplet` decides whether to accept an deal directed to a certain `miner`, it will call this command and pass the `deal information` (a JSON string) as a parameter (standard input) to the command. If the command exits with code `0`, it means the deal is accepted; otherwise, the deal is rejected.
 
-- exit with 0 :  接受订单
-- exit with non-0 :  拒绝订单
+- exit with 0: Accept the deal
+- exit with non-0: Reject the deal
 
-### 订单信息
+### Deal Information
 
 - Storage Deal
 
@@ -47,8 +47,7 @@
 }
 ```
 
-
-- Retrivel Deal
+- Retrieval Deal
 
 ```json
 {
@@ -76,8 +75,7 @@
 }
 ```
 
-
-## 示例
+## Examples
 
 ```toml
 # Storage Deal
@@ -87,35 +85,35 @@ Filter = ""
 RetrievalFilter = ""
 ```
 
-- 例子: 最简单的订单过滤器
+- Example: The simplest deal filter
 
 ```toml
-# 拒绝所有订单
+# Reject all deals
 Filter = "exit 1"
 
-# 接受所有订单
+# Accept all deals
 Filter = "exit 0"
 ```
 
-- 例子: 只接受来自 `f01000` 的订单
+- Example: Only accept deals from `f01000`
 
 ```toml
 Filter = "jq -r '.ClientDealProposal.Proposal.Provider' | grep -q '^f01000$'"
 ```
 
-- 例子: 只接受来自 `f1aaaaaaaaaaaaaaaaaaaaaaaaa` 、 `f1bbbbbbbbbbbbbbbbbbbbbbbbb` 和 `f1ccccccccccccccccccccccccc` 地址发送过来的订单
+- Example: Only accept deals sent from addresses `f1aaaaaaaaaaaaaaaaaaaaaaaaa`, `f1bbbbbbbbbbbbbbbbbbbbbbbbb`, and `f1ccccccccccccccccccccccccc`
 
 ```toml
 Filter = "jq -e '.Proposal.Client == \"f1aaaaaaaaaaaaaaaaaaaaaaaaa\" or .Proposal.Client == \"f1bbbbbbbbbbbbbbbbbbbbbbbbb\" or .Proposal.Client == \"f1ccccccccccccccccccccccccc\"'"
 ```
 
-- 例子：只接受 Verified 订单
+- Example: Only accept Verified deals
 
 ```
 Filter = "jq -e '.ClientDealProposal.Proposal.VerifiedDeal == true'"
 ```
 
-- 例子: 使用 `python` 脚本
+- Example: Using a `python` script
 
 ```toml
 # config.toml

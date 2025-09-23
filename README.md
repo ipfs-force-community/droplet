@@ -18,6 +18,10 @@ droplet will deliver a complete deal making experience as what lotus offers. Thi
 
 Use [Droplet Issues](https://github.com/ipfs-force-community/droplet/issues) for reporting issues about this repository.
 
+Droplet provides comprehensive documentation in two languages.
+  * [English](https://github.com/ipfs-force-community/droplet/tree/master/docs/en)
+  * [中文](https://github.com/ipfs-force-community/droplet/tree/master/docs/zh)
+
 ## feature
 1. market 2.0 mainly implements the aggregation of multiple storage miners. clients can issue orders or retrieve any providers registered to droplet. 
 2. all metadata of provider server is stored in the mysql database that providing better data security.
