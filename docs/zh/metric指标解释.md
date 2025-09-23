@@ -34,7 +34,6 @@ GraphsyncSendingTotalMemoryAllocated    = stats.Int64("graphsync/sending_total_a
 GraphsyncSendingTotalPendingAllocations = stats.Int64("graphsync/sending_pending_allocations", "amount of block memory on hold from sending pending allocation", stats.UnitBytes)
 // 因为可用发送内存不足而被挂起的 peer 的数量
 GraphsyncSendingPeersPending            = stats.Int64("graphsync/sending_peers_pending", "number of peers we can't send more data to cause of pending allocations", stats.UnitDimensionless)
-
 ```
 
 
@@ -44,6 +43,8 @@ GraphsyncSendingPeersPending            = stats.Int64("graphsync/sending_peers_p
 DagStorePRInitCount      = stats.Int64("dagstore/pr_init_count", "Retrieval init count", stats.UnitDimensionless)
 // DagStore 中的 Retrieval 占用的存储容量
 DagStorePRBytesRequested = stats.Int64("dagstore/pr_requested_bytes", "Retrieval requested bytes", stats.UnitBytes)
+// DagStore active shard 数量
+DagStoreActiveShardCount = stats.Int64("dagstore/active_shard_count", "Active shard count", stats.UnitMilliseconds)
 
 ```
 
@@ -56,11 +57,19 @@ StorageSaveHitCount      = stats.Int64("piecestorage/save_hit", "PieceStorage hi
 ```
 
 ### rpc
-```
+```go
 # 调用无效RPC方法的次数
 RPCInvalidMethod = stats.Int64("rpc/invalid_method", "Total number of invalid RPC methods called", stats.UnitDimensionless)
 # RPC请求失败的次数
 RPCRequestError  = stats.Int64("rpc/request_error", "Total number of request errors handled", stats.UnitDimensionless)
 # RPC响应失败的次数
 RPCResponseError = stats.Int64("rpc/response_error", "Total number of responses errors handled", stats.UnitDimensionless)
+```
+
+### spark deal index
+```go
+# Spark 可用的订单数量
+SparkEligibleDealCount = stats.Int64("spark_eligible_deal_count", "Spark eligible deal count", stats.UnitDimensionless)
+# Spark 检索成功率
+SparkRetrievalRate = stats.Int64("spark_retrieval_rate", "Spark retrieval rate", stats.UnitDimensionless)
 ```

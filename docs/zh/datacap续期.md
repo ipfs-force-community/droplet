@@ -29,8 +29,9 @@ eg.
 # --from 需使用 datacap 地址，为空则使用 droplet client 默认地址
 # --max-term 新的最大期限时间
 # --expiration-cutoff 忽略过期时间大于 cutoff 的 datacap，例：如果 cutoff 的值为 2880（一天），则会对过期时间小于一天的 datacap 进行续期
-./droplet-client datacap extend --max-term 1909697 --from <address> --auto --expiration-cutoff 2880 <address>
+# --max-claims 每条续期消息包含的订单数量
+./droplet-client datacap extend --max-claims 310 --max-term 1909697 --from <address> --auto --expiration-cutoff 2880 <address>
 
 eg.
-./droplet-client datacap extend --max-term 1909597 --from t3wp7bkktkeybm42kvxtyuqsmod262fmwn7zuo3nf3xll34xaokhm4n4x5rgivwg6fcu2mnjecourodjmil3fq --auto --expiration-cutoff 2880 t01000
+./droplet-client datacap extend --max-claims 310 --max-term 1909597 --from t3wp7bkktkeybm42kvxtyuqsmod262fmwn7zuo3nf3xll34xaokhm4n4x5rgivwg6fcu2mnjecourodjmil3fq --auto --expiration-cutoff 2880 t01000
 ```
