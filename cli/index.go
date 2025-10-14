@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -317,6 +318,15 @@ var indexProvAnnounceAllCmd = &cli.Command{
 			Usage:    `specify miner address`,
 			Required: true,
 		},
+		&cli.BoolFlag{
+			Name:  "loop",
+			Usage: `loop announce all deals, default is false`,
+		},
+		&cli.IntFlag{
+			Name:  "interval",
+			Usage: `the interval time(minutes) for loop announce, default is 30 minutes`,
+			Value: 30,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeAPI, closer, err := NewMarketNode(cctx)
@@ -332,7 +342,29 @@ var indexProvAnnounceAllCmd = &cli.Command{
 			return err
 		}
 
-		return nodeAPI.IndexerAnnounceAllDeals(ctx, minerAddr)
+		loop := cctx.Bool("loop")
+		interval := cctx.Int("interval")
+		if !loop {
+			return nodeAPI.IndexerAnnounceAllDeals(ctx, minerAddr)
+		}
+
+		count := 0
+		for count < 20 {
+			if err = nodeAPI.IndexerAnnounceAllDeals(ctx, minerAddr); err == nil {
+				return nil
+			}
+
+			if !strings.Contains(err.Error(), "Too Many Requests") {
+				return err
+			}
+
+			count++
+			fmt.Printf("index announce all deals failed, count: %d, err: %v\n", count, err)
+			fmt.Printf("after %d minutes try again\n", interval)
+			time.Sleep(time.Duration(interval) * time.Minute)
+		}
+
+		return nil
 	},
 }
 
