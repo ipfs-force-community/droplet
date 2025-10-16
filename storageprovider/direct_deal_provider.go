@@ -22,6 +22,7 @@ import (
 	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 	"github.com/ipfs-force-community/droplet/v2/utils"
 	logging "github.com/ipfs/go-log/v2"
+	provider "github.com/ipni/index-provider"
 	"go.uber.org/fx"
 )
 
@@ -333,7 +334,9 @@ func (t *tracker) checkActive(ctx context.Context) error {
 			return err
 		}
 		if c, err := t.indexProviderMgr.AnnounceDirectDeal(ctx, d); err != nil {
-			log.Errorf("announce direct deal %s failed: %v", d.ID, err)
+			if !errors.Is(err, provider.ErrAlreadyAdvertised) {
+				log.Errorf("announce direct deal %s failed: %v", d.ID, err)
+			}
 		} else {
 			log.Infof("announce direct deal %s success: %v", d.ID, c)
 		}

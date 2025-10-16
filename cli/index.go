@@ -327,6 +327,11 @@ var indexProvAnnounceAllCmd = &cli.Command{
 			Usage: `the interval time(minutes) for loop announce, default is 30 minutes`,
 			Value: 30,
 		},
+		&cli.IntFlag{
+			Name:  "retry",
+			Usage: `the max retry times if announce failed, default is 20 times, only work when --loop is true`,
+			Value: 20,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeAPI, closer, err := NewMarketNode(cctx)
