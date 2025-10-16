@@ -56,6 +56,7 @@ func NewServer(ctx context.Context,
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, ipfsBasePath) {
+		log.Debugf("http retrieval by ipfs, path: %s", r.URL.Path)
 		s.retrievalByIPFS(w, r)
 		return
 	}

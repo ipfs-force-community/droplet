@@ -11,7 +11,7 @@ import (
 func TestDealMetric(t *testing.T) {
 	t.SkipNow()
 	ctx := context.Background()
-	miner := "f02002200"
+	miner := "f02003777"
 
 	c, err := getMinerEligibleDealCount(ctx, miner)
 	assert.NoError(t, err)
