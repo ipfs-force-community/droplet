@@ -347,14 +347,14 @@ var indexProvAnnounceAllCmd = &cli.Command{
 			return err
 		}
 
-		loop := cctx.Bool("loop")
-		interval := cctx.Int("interval")
-		if !loop {
+		if !cctx.Bool("loop") {
 			return nodeAPI.IndexerAnnounceAllDeals(ctx, minerAddr)
 		}
 
 		count := 0
-		for count < 20 {
+		interval := cctx.Int("interval")
+		retry := cctx.Int("retry")
+		for count < retry {
 			if err = nodeAPI.IndexerAnnounceAllDeals(ctx, minerAddr); err == nil {
 				return nil
 			}
