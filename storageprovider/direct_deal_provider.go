@@ -257,10 +257,10 @@ func (t *tracker) start(ctx context.Context) {
 	ticker := time.NewTicker(time.Minute*15 + time.Minute*time.Duration(globalRand.Intn(15)))
 	defer ticker.Stop()
 
-	slashTicker := time.NewTicker(time.Hour*2 + time.Minute*time.Duration(globalRand.Intn(60)))
+	slashTicker := time.NewTicker(time.Hour*24 + time.Minute*time.Duration(globalRand.Intn(60)))
 	defer slashTicker.Stop()
 
-	announceTicker := time.NewTicker(time.Hour*6 + time.Minute*time.Duration(globalRand.Intn(60)))
+	announceTicker := time.NewTicker(time.Hour*2 + time.Minute*time.Duration(globalRand.Intn(60)))
 	defer announceTicker.Stop()
 
 	if err := t.trackDeals(ctx); err != nil {
@@ -453,13 +453,14 @@ func (t *tracker) announceMinerDeals(ctx context.Context, miner address.Address)
 
 	dealActive := types.DealActive
 	offset := 0
+	limit := 1000
 	for {
 		deals, err := t.directDealRepo.ListDeal(ctx, types.DirectDealQueryParams{
 			State:    &dealActive,
 			Provider: miner,
 			Page: types.Page{
 				Offset: offset,
-				Limit:  100,
+				Limit:  limit,
 			},
 		})
 		if err != nil {
@@ -470,12 +471,15 @@ func (t *tracker) announceMinerDeals(ctx context.Context, miner address.Address)
 				if strings.Contains(err.Error(), "Too Many Requests") {
 					return err
 				}
-				log.Warnf("announce direct deal %s failed: %v", d.ID, err)
+				if !errors.Is(err, provider.ErrAlreadyAdvertised) {
+					log.Warnf("announce direct deal %s failed: %v", d.ID, err)
+				}
 			} else {
 				announced++
+				time.Sleep(time.Second * 20)
 			}
 		}
-		if len(deals) < 100 {
+		if len(deals) < limit {
 			return nil
 		}
 		offset += len(deals)

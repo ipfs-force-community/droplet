@@ -350,7 +350,7 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 			}
 			continue
 		}
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 20)
 		success++
 	}
 
