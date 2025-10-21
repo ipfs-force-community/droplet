@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	provider "github.com/ipni/index-provider"
 
 	"github.com/ipfs-force-community/droplet/v2/indexprovider"
 	"github.com/ipfs-force-community/droplet/v2/minermgr"
@@ -144,7 +145,9 @@ func (dealTracker *DealTracker) checkPreCommitAndCommit(ctx metrics.MetricsCtx, 
 				continue
 			}
 			if c, err := dealTracker.indexProviderMgr.AnnounceDeal(ctx, deal); err != nil {
-				log.Errorf("announce deal %s err: %s", deal.ProposalCid, err)
+				if !errors.Is(err, provider.ErrAlreadyAdvertised) {
+					log.Errorf("announce deal %s err: %s", deal.ProposalCid, err)
+				}
 			} else {
 				log.Infof("announce deal %s success, payload cid: %s, cid: %s", deal.ProposalCid, deal.Ref.Root, c)
 			}

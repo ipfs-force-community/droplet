@@ -451,11 +451,7 @@ func (w *Wrapper) AnnounceDealMetadata(ctx context.Context, md metadata.Graphsyn
 	fm := metadata.Default.New(&md)
 	annCid, err := w.prov.NotifyPut(ctx, nil, contextID, fm)
 	if err != nil {
-		// Check if the error is because the deal was already advertised
-		// (we can safely ignore this error)
-		if !errors.Is(err, provider.ErrAlreadyAdvertised) {
-			return cid.Undef, fmt.Errorf("failed to announce deal to index provider: %w", err)
-		}
+		return annCid, err
 	}
 	return annCid, nil
 }

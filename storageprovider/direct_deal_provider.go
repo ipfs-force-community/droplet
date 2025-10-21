@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -18,10 +19,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs-force-community/droplet/v2/indexprovider"
+	"github.com/ipfs-force-community/droplet/v2/minermgr"
 	"github.com/ipfs-force-community/droplet/v2/models/repo"
 	"github.com/ipfs-force-community/droplet/v2/piecestorage"
 	"github.com/ipfs-force-community/droplet/v2/utils"
 	logging "github.com/ipfs/go-log/v2"
+	provider "github.com/ipni/index-provider"
 	"go.uber.org/fx"
 )
 
@@ -43,6 +46,7 @@ func NewDirectDealProvider(lc fx.Lifecycle,
 	fullNode v1.FullNode,
 	dagStoreWrapper stores.DAGStoreWrapper,
 	indexProviderMgr *indexprovider.IndexProviderMgr,
+	minerMgr minermgr.IMinerMgr,
 ) (*DirectDealProvider, error) {
 	ddp := &DirectDealProvider{
 		spn:              spn,
@@ -53,7 +57,7 @@ func NewDirectDealProvider(lc fx.Lifecycle,
 		indexProviderMgr: indexProviderMgr,
 	}
 
-	t := newTracker(repo.DirectDealRepo(), fullNode, indexProviderMgr)
+	t := newTracker(repo.DirectDealRepo(), fullNode, indexProviderMgr, minerMgr)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go t.start(ctx)
@@ -233,16 +237,19 @@ type tracker struct {
 	directDealRepo   repo.DirectDealRepo
 	fullNode         v1.FullNode
 	indexProviderMgr *indexprovider.IndexProviderMgr
+	minerMgr         minermgr.IMinerMgr
 }
 
 func newTracker(directDealRepo repo.DirectDealRepo,
 	fullNode v1.FullNode,
 	indexProviderMgr *indexprovider.IndexProviderMgr,
+	minerMgr minermgr.IMinerMgr,
 ) *tracker {
 	return &tracker{
 		directDealRepo:   directDealRepo,
 		fullNode:         fullNode,
 		indexProviderMgr: indexProviderMgr,
+		minerMgr:         minerMgr,
 	}
 }
 
@@ -250,12 +257,21 @@ func (t *tracker) start(ctx context.Context) {
 	ticker := time.NewTicker(time.Minute*15 + time.Minute*time.Duration(globalRand.Intn(15)))
 	defer ticker.Stop()
 
-	slashTicker := time.NewTicker(time.Hour*2 + time.Minute*time.Duration(globalRand.Intn(60)))
+	slashTicker := time.NewTicker(time.Hour*24 + time.Minute*time.Duration(globalRand.Intn(60)))
 	defer slashTicker.Stop()
+
+	announceTicker := time.NewTicker(time.Hour*2 + time.Minute*time.Duration(globalRand.Intn(60)))
+	defer announceTicker.Stop()
 
 	if err := t.trackDeals(ctx); err != nil {
 		directDealLog.Warnf("track deals failed: %v", err)
 	}
+
+	go func() {
+		if err := t.announceDeals(ctx); err != nil {
+			directDealLog.Warnf("announce deals failed: %v", err)
+		}
+	}()
 
 	for {
 		select {
@@ -268,6 +284,10 @@ func (t *tracker) start(ctx context.Context) {
 		case <-ticker.C:
 			if err := t.trackDeals(ctx); err != nil {
 				directDealLog.Warnf("track deals failed: %v", err)
+			}
+		case <-announceTicker.C:
+			if err := t.announceDeals(ctx); err != nil {
+				directDealLog.Warnf("announce deals failed: %v", err)
 			}
 		}
 	}
@@ -333,7 +353,9 @@ func (t *tracker) checkActive(ctx context.Context) error {
 			return err
 		}
 		if c, err := t.indexProviderMgr.AnnounceDirectDeal(ctx, d); err != nil {
-			log.Errorf("announce direct deal %s failed: %v", d.ID, err)
+			if !errors.Is(err, provider.ErrAlreadyAdvertised) {
+				log.Errorf("announce direct deal %s failed: %v", d.ID, err)
+			}
 		} else {
 			log.Infof("announce direct deal %s success: %v", d.ID, c)
 		}
@@ -401,4 +423,65 @@ func (t *tracker) checkSlash(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (t *tracker) announceDeals(ctx context.Context) error {
+	users, err := t.minerMgr.ActorList(ctx)
+	if err != nil {
+		return fmt.Errorf("get miner list failed: %v", err)
+	}
+	uniqMiners := make(map[address.Address]struct{}, len(users))
+	for _, user := range users {
+		uniqMiners[user.Addr] = struct{}{}
+	}
+	for miner := range uniqMiners {
+		if err := t.announceMinerDeals(ctx, miner); err != nil {
+			return fmt.Errorf("announce miner %s deals failed: %v", miner, err)
+		}
+	}
+
+	return nil
+}
+
+func (t *tracker) announceMinerDeals(ctx context.Context, miner address.Address) error {
+	now := time.Now()
+	announced := 0
+	defer func() {
+		log.Infof("finish announce miner deals, miner: %s, announced: %d, cost: %s", miner,
+			announced, time.Since(now))
+	}()
+
+	dealActive := types.DealActive
+	offset := 0
+	limit := 1000
+	for {
+		deals, err := t.directDealRepo.ListDeal(ctx, types.DirectDealQueryParams{
+			State:    &dealActive,
+			Provider: miner,
+			Page: types.Page{
+				Offset: offset,
+				Limit:  limit,
+			},
+		})
+		if err != nil {
+			return err
+		}
+		for _, d := range deals {
+			if _, err := t.indexProviderMgr.AnnounceDirectDeal(ctx, d); err != nil {
+				if strings.Contains(err.Error(), "Too Many Requests") {
+					return err
+				}
+				if !errors.Is(err, provider.ErrAlreadyAdvertised) {
+					log.Warnf("announce direct deal %s failed: %v", d.ID, err)
+				}
+			} else {
+				announced++
+				time.Sleep(time.Second * 20)
+			}
+		}
+		if len(deals) < limit {
+			return nil
+		}
+		offset += len(deals)
+	}
 }

@@ -301,6 +301,61 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 	count, _ := activeSectors.Count()
 	log.Debugf("IndexAnnounceAllDeals: %s took %s to get active sectors, count: %d", minerAddr, time.Since(start), count)
 
+	dealActive := markettypes.DealActive
+	directDeals, err := m.r.DirectDealRepo().ListDeal(ctx, markettypes.DirectDealQueryParams{
+		Provider: minerAddr,
+		State:    &dealActive,
+	})
+	if err != nil {
+		return err
+	}
+
+	sort.Slice(directDeals, func(i, j int) bool {
+		return directDeals[i].UpdatedAt < directDeals[j].UpdatedAt
+	})
+
+	log.Debugf("IndexAnnounceAllDeals: %s found %d direct deals", minerAddr, len(directDeals))
+
+	success := 0
+	now := time.Now()
+	merr := &multierror.Error{}
+	for _, deal := range directDeals {
+		if deal.CreatedAt < filterDealTimestamp {
+			continue
+		}
+		if deal.EndEpoch <= head.Height() {
+			continue
+		}
+
+		present, err := activeSectors.IsSet(uint64(deal.SectorID))
+		if err != nil {
+			return fmt.Errorf("checking if bitfield is set: %w", err)
+		}
+
+		if !present {
+			continue
+		}
+
+		_, err = w.AnnounceDirectDeal(ctx, deal)
+		if err != nil {
+			if strings.Contains(err.Error(), http.StatusText(http.StatusTooManyRequests)) {
+				log.Errorf("IndexAnnounceAllDeals: %s, err: %s", minerAddr, err.Error())
+				return err
+			}
+
+			// don't log already advertised errors as errors - just skip them
+			if !errors.Is(err, provider.ErrAlreadyAdvertised) {
+				merr = multierror.Append(merr, err)
+				log.Errorw("failed to announce deal to Indexer", "dealAllocation", deal.AllocationID, "err", err)
+			}
+			continue
+		}
+		time.Sleep(time.Second * 20)
+		success++
+	}
+
+	log.Infof("finished announcing all direct deals to indexer, number of deals: %d, took: %v", success, time.Since(now))
+
 	active := storagemarket.StorageDealActive
 	deals, err := m.r.StorageDealRepo().ListDeal(ctx, &markettypes.StorageDealQueryParams{
 		Miner: minerAddr,
@@ -316,9 +371,8 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 		return deals[i].UpdatedAt < deals[j].UpdatedAt
 	})
 
-	merr := &multierror.Error{}
-	success := 0
-	now := time.Now()
+	success = 0
+	now = time.Now()
 	for _, deal := range deals {
 		if deal.CreatedAt < filterDealTimestamp {
 			continue
@@ -354,59 +408,6 @@ func (m *IndexProviderMgr) IndexAnnounceAllDeals(ctx context.Context, minerAddr 
 	}
 
 	log.Infof("finished announcing deals to indexer, number of deals: %d, took: %v", success, time.Since(now))
-
-	dealActive := markettypes.DealActive
-	directDeals, err := m.r.DirectDealRepo().ListDeal(ctx, markettypes.DirectDealQueryParams{
-		Provider: minerAddr,
-		State:    &dealActive,
-	})
-	if err != nil {
-		return err
-	}
-
-	sort.Slice(directDeals, func(i, j int) bool {
-		return directDeals[i].UpdatedAt < directDeals[j].UpdatedAt
-	})
-
-	log.Debugf("IndexAnnounceAllDeals: %s found %d direct deals", minerAddr, len(directDeals))
-	success = 0
-	now = time.Now()
-	for _, deal := range directDeals {
-		if deal.CreatedAt < filterDealTimestamp {
-			continue
-		}
-		if deal.EndEpoch <= head.Height() {
-			continue
-		}
-
-		present, err := activeSectors.IsSet(uint64(deal.SectorID))
-		if err != nil {
-			return fmt.Errorf("checking if bitfield is set: %w", err)
-		}
-
-		if !present {
-			continue
-		}
-
-		_, err = w.AnnounceDirectDeal(ctx, deal)
-		if err != nil {
-			if strings.Contains(err.Error(), http.StatusText(http.StatusTooManyRequests)) {
-				log.Errorf("IndexAnnounceAllDeals: %s, err: %s", minerAddr, err.Error())
-				return err
-			}
-
-			// don't log already advertised errors as errors - just skip them
-			if !errors.Is(err, provider.ErrAlreadyAdvertised) {
-				merr = multierror.Append(merr, err)
-				log.Errorw("failed to announce deal to Indexer", "dealAllocation", deal.AllocationID, "err", err)
-			}
-			continue
-		}
-		time.Sleep(time.Second * 10)
-		success++
-	}
-
-	log.Infof("finished announcing all direct deals to indexer, number of deals: %d, took: %v", success, time.Since(now))
 
 	return merr.ErrorOrNil()
 }
