@@ -103,8 +103,7 @@ require (
 	github.com/Gurpartap/async v0.0.0-20180927173644-4f7f499dd9ee // indirect
 	github.com/bits-and-blooms/bitset v1.20.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
-	github.com/consensys/bavard v0.1.27 // indirect
-	github.com/consensys/gnark-crypto v0.16.0 // indirect
+	github.com/consensys/gnark-crypto v0.18.1 // indirect
 	github.com/dchest/blake2b v1.0.0 // indirect
 	github.com/drand/drand/v2 v2.0.6 // indirect
 	github.com/drand/go-clients v0.2.2 // indirect
@@ -128,7 +127,6 @@ require (
 	github.com/libp2p/go-libp2p-record v0.3.1 // indirect
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.5 // indirect
 	github.com/libp2p/go-yamux/v5 v5.0.1 // indirect
-	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nikkolasg/hexjson v0.1.0 // indirect
 	github.com/pion/datachannel v1.5.10 // indirect
@@ -163,7 +161,6 @@ require (
 	gonum.org/v1/gonum v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250212204824-5a70512c5d8b // indirect
 	google.golang.org/grpc v1.70.0 // indirect
-	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
 require (
@@ -327,7 +324,7 @@ require (
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/spf13/viper v1.12.0 // indirect
 	github.com/subosito/gotenv v1.4.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
