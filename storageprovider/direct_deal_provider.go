@@ -294,6 +294,20 @@ func (t *tracker) start(ctx context.Context) {
 }
 
 func (t *tracker) trackDeals(ctx context.Context) error {
+	miners, err := t.getMiners(ctx)
+	if err != nil {
+		return fmt.Errorf("get miner list failed: %v", err)
+	}
+	for _, miner := range miners {
+		if err := t.trackMinerDeals(ctx, miner); err != nil {
+			return fmt.Errorf("track miner %s deals failed: %v", miner, err)
+		}
+	}
+
+	return nil
+}
+
+func (t *tracker) trackMinerDeals(ctx context.Context, miner address.Address) error {
 	head, err := t.fullNode.ChainHead(ctx)
 	if err != nil {
 		return err
@@ -301,7 +315,8 @@ func (t *tracker) trackDeals(ctx context.Context) error {
 
 	dealAllocation := types.DealAllocated
 	deals, err := t.directDealRepo.ListDeal(ctx, types.DirectDealQueryParams{
-		State: &dealAllocation,
+		State:    &dealAllocation,
+		Provider: miner,
 		Page: types.Page{
 			Limit: math.MaxInt64,
 		},
@@ -318,17 +333,18 @@ func (t *tracker) trackDeals(ctx context.Context) error {
 		}
 	}
 
-	if err := t.checkActive(ctx); err != nil {
+	if err := t.checkActive(ctx, miner); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (t *tracker) checkActive(ctx context.Context) error {
+func (t *tracker) checkActive(ctx context.Context, miner address.Address) error {
 	dealSealing := types.DealSealing
 	deals, err := t.directDealRepo.ListDeal(ctx, types.DirectDealQueryParams{
-		State: &dealSealing,
+		State:    &dealSealing,
+		Provider: miner,
 		Page: types.Page{
 			Limit: math.MaxInt64,
 		},
@@ -365,6 +381,20 @@ func (t *tracker) checkActive(ctx context.Context) error {
 }
 
 func (t *tracker) checkSlash(ctx context.Context) error {
+	miners, err := t.getMiners(ctx)
+	if err != nil {
+		return fmt.Errorf("get miner list failed: %v", err)
+	}
+	for _, miner := range miners {
+		if err := t.checkMinerDealSlash(ctx, miner); err != nil {
+			return fmt.Errorf("check miner %s deal slash failed: %v", miner, err)
+		}
+	}
+
+	return nil
+}
+
+func (t *tracker) checkMinerDealSlash(ctx context.Context, miner address.Address) error {
 	head, err := t.fullNode.ChainHead(ctx)
 	if err != nil {
 		return err
@@ -379,7 +409,8 @@ func (t *tracker) checkSlash(ctx context.Context) error {
 	dealActive := types.DealActive
 	for ctx.Err() == nil {
 		deals, err := t.directDealRepo.ListDeal(ctx, types.DirectDealQueryParams{
-			State: &dealActive,
+			State:    &dealActive,
+			Provider: miner,
 			Page: types.Page{
 				Limit:  limit,
 				Offset: offset,
@@ -425,16 +456,30 @@ func (t *tracker) checkSlash(ctx context.Context) error {
 	return nil
 }
 
-func (t *tracker) announceDeals(ctx context.Context) error {
+func (t *tracker) getMiners(ctx context.Context) ([]address.Address, error) {
 	users, err := t.minerMgr.ActorList(ctx)
 	if err != nil {
-		return fmt.Errorf("get miner list failed: %v", err)
+		return nil, fmt.Errorf("get miner list failed: %v", err)
 	}
+
 	uniqMiners := make(map[address.Address]struct{}, len(users))
 	for _, user := range users {
 		uniqMiners[user.Addr] = struct{}{}
 	}
+	miners := make([]address.Address, 0, len(uniqMiners))
 	for miner := range uniqMiners {
+		miners = append(miners, miner)
+	}
+
+	return miners, nil
+}
+
+func (t *tracker) announceDeals(ctx context.Context) error {
+	miners, err := t.getMiners(ctx)
+	if err != nil {
+		return fmt.Errorf("get miner list failed: %v", err)
+	}
+	for _, miner := range miners {
 		if err := t.announceMinerDeals(ctx, miner); err != nil {
 			return fmt.Errorf("announce miner %s deals failed: %v", miner, err)
 		}
