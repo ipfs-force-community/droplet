@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -38,6 +39,13 @@ func TestSaveDirectDeal(t *testing.T) {
 
 	var deal types.DirectDeal
 	testutil.Provide(t, &deal)
+	fixUint64Fields(&deal)
+
+	// Fix a timestamp to avoid drift caused by GORM's automatic updates
+	fixedTs := uint64(time.Now().Unix())
+	deal.CreatedAt = fixedTs
+	deal.UpdatedAt = fixedTs
+
 	dbDeal := fromDirectDeal(&deal)
 
 	db, err := getMysqlDryrunDB()
