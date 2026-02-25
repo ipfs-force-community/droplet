@@ -1,6 +1,8 @@
 module github.com/ipfs-force-community/droplet/v2
 
-go 1.23.10
+go 1.24.0
+
+toolchain go1.24.10
 
 require (
 	github.com/BurntSushi/toml v1.4.0
@@ -45,7 +47,7 @@ require (
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
 	github.com/ipfs/boxo v0.32.0
 	github.com/ipfs/go-blockservice v0.5.2
-	github.com/ipfs/go-cid v0.5.0
+	github.com/ipfs/go-cid v0.6.0
 	github.com/ipfs/go-cidutil v0.1.0
 	github.com/ipfs/go-datastore v0.8.2
 	github.com/ipfs/go-ds-badger2 v0.1.5
@@ -66,7 +68,7 @@ require (
 	github.com/ipld/go-car v0.6.2
 	github.com/ipld/go-car/v2 v2.15.0
 	github.com/ipld/go-codec-dagpb v1.7.0
-	github.com/ipld/go-ipld-prime v0.21.0
+	github.com/ipld/go-ipld-prime v0.22.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/libp2p/go-libp2p v0.42.0
 	github.com/libp2p/go-maddr-filter v0.1.0
@@ -74,7 +76,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.16.0
 	github.com/multiformats/go-multibase v0.2.0
 	github.com/multiformats/go-multihash v0.2.3
-	github.com/multiformats/go-varint v0.0.7
+	github.com/multiformats/go-varint v0.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.10.0
 	github.com/strikesecurity/strikememongo v0.2.4
@@ -86,7 +88,7 @@ require (
 	go.opencensus.io v0.24.0
 	go.uber.org/fx v1.24.0
 	go.uber.org/multierr v1.11.0
-	golang.org/x/sync v0.15.0
+	golang.org/x/sync v0.19.0
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 	gorm.io/driver/mysql v1.3.5
 	gorm.io/driver/sqlite v1.1.4
@@ -297,7 +299,7 @@ require (
 	github.com/multiformats/go-base36 v0.2.0 // indirect
 	github.com/multiformats/go-multiaddr-dns v0.4.1 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
-	github.com/multiformats/go-multicodec v0.9.2 // indirect
+	github.com/multiformats/go-multicodec v0.10.0 // indirect
 	github.com/multiformats/go-multistream v0.6.1 // indirect
 	github.com/onsi/ginkgo/v2 v2.23.4 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
@@ -308,7 +310,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/polydawn/refmt v0.89.0 // indirect
+	github.com/polydawn/refmt v0.89.1-0.20231129105047-37766d95467a // indirect
 	github.com/prometheus/client_golang v1.22.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.64.0 // indirect
@@ -350,15 +352,15 @@ require (
 	go.uber.org/zap v1.27.0
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20250606033433-dcc06ee1d476
-	golang.org/x/mod v0.25.0 // indirect
-	golang.org/x/net v0.41.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/term v0.32.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	golang.org/x/mod v0.32.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/term v0.40.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	golang.org/x/tools v0.34.0 // indirect
+	golang.org/x/tools v0.41.0 // indirect
 	google.golang.org/api v0.169.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
