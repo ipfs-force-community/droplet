@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 
@@ -160,6 +161,13 @@ func getFullRows(obj interface{}) (*sqlmock.Rows, error) {
 					return nil, err
 				}
 				row = append(row, v.([]byte))
+			} else if tempType.Kind() == reflect.Uint64 {
+				val := temp.Uint()
+				if val <= math.MaxInt64 {
+					row = append(row, int64(val))
+				} else {
+					row = append(row, fmt.Sprintf("%d", val))
+				}
 			} else {
 				row = append(row, temp.Interface())
 			}

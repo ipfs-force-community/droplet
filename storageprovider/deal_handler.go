@@ -2,6 +2,7 @@ package storageprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -257,7 +258,7 @@ func (storageDealPorcess *StorageDealProcessImpl) AcceptDeal(ctx context.Context
 	}
 
 	if !accept {
-		return fmt.Errorf(reason)
+		return errors.New(reason)
 	}
 
 	return nil

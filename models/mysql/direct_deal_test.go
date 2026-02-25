@@ -2,8 +2,11 @@ package mysql
 
 import (
 	"context"
+	"math"
+	"reflect"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -13,12 +16,36 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// fixUint64Fields 修正 Provide 生成的极端 uint64 值，避免 database/sql 报错
+func fixUint64Fields(v any) {
+	rv := reflect.Indirect(reflect.ValueOf(v)) // 处理指针
+	if rv.Kind() != reflect.Struct {
+		return
+	}
+
+	const max = uint64(math.MaxInt64)
+
+	for i := 0; i < rv.NumField(); i++ {
+		f := rv.Field(i)
+		if f.Kind() == reflect.Uint64 && f.CanSet() && f.Uint() > max {
+			f.SetUint(max) // 或 f.SetUint(0)
+		}
+	}
+}
+
 func TestSaveDirectDeal(t *testing.T) {
 	ctx := context.Background()
 	r, mock, sqlDB := setup(t)
 
 	var deal types.DirectDeal
 	testutil.Provide(t, &deal)
+	fixUint64Fields(&deal)
+
+	// Fix a timestamp to avoid drift caused by GORM's automatic updates
+	fixedTs := uint64(time.Now().Unix())
+	deal.CreatedAt = fixedTs
+	deal.UpdatedAt = fixedTs
+
 	dbDeal := fromDirectDeal(&deal)
 
 	db, err := getMysqlDryrunDB()
@@ -51,6 +78,7 @@ func TestGetDirectDeal(t *testing.T) {
 
 	var deal types.DirectDeal
 	testutil.Provide(t, &deal)
+	fixUint64Fields(&deal)
 	dbDeal := fromDirectDeal(&deal)
 
 	rows, err := getFullRows(dbDeal)
@@ -71,6 +99,7 @@ func TestGetDirectDealByAllocationID(t *testing.T) {
 
 	var deal types.DirectDeal
 	testutil.Provide(t, &deal)
+	fixUint64Fields(&deal)
 	dbDeal := fromDirectDeal(&deal)
 
 	rows, err := getFullRows(dbDeal)
@@ -92,6 +121,7 @@ func TestGetDirectDealMinerAndState(t *testing.T) {
 
 	var deal types.DirectDeal
 	testutil.Provide(t, &deal)
+	fixUint64Fields(&deal)
 	dbDeal := fromDirectDeal(&deal)
 
 	rows, err := getFullRows(dbDeal)
@@ -115,6 +145,7 @@ func TestListDirectDeal(t *testing.T) {
 	testutil.Provide(t, &deals)
 	dbDeals := make([]*directDeal, 0, len(deals))
 	for _, deal := range deals {
+		fixUint64Fields(deal)
 		dbDeals = append(dbDeals, fromDirectDeal(deal))
 	}
 
@@ -152,6 +183,7 @@ func TestGetDirectDealPieceSize(t *testing.T) {
 	testutil.Provide(t, &deals)
 	dbDeals := make([]*directDeal, 0, len(deals))
 	for _, deal := range deals {
+		fixUint64Fields(deal)
 		dbDeals = append(dbDeals, fromDirectDeal(deal))
 	}
 
@@ -186,6 +218,7 @@ func TestGetDirectDealPieceInfo(t *testing.T) {
 	testutil.Provide(t, &deals)
 	dbDeals := make([]*directDeal, 0, len(deals))
 	for _, deal := range deals {
+		fixUint64Fields(deal)
 		dbDeals = append(dbDeals, fromDirectDeal(deal))
 	}
 
@@ -228,6 +261,7 @@ func TestCountDDODealByMiner(t *testing.T) {
 
 	var deal types.DirectDeal
 	testutil.Provide(t, &deal)
+	fixUint64Fields(&deal)
 	deal.State = types.DealActive
 
 	count := int64(1)

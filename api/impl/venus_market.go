@@ -241,7 +241,7 @@ func (m *MarketNodeImpl) MarketImportDealData(ctx context.Context, propCid cid.C
 		return err
 	}
 	if len(res[0].Message) > 0 {
-		return fmt.Errorf(res[0].Message)
+		return fmt.Errorf("%v", res[0].Message)
 	}
 
 	return nil
@@ -1170,7 +1170,7 @@ func (m *MarketNodeImpl) DealsImportData(ctx context.Context, ref types.ImportDa
 		return err
 	}
 	if len(res[0].Message) > 0 {
-		return fmt.Errorf(res[0].Message)
+		return errors.New(res[0].Message)
 	}
 
 	return nil
