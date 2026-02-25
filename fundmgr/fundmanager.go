@@ -2,6 +2,7 @@ package fundmgr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -532,7 +533,7 @@ func (a *fundedAddress) processWithdrawals(withdrawals []*fundRequest) (msgCid c
 			if !withdrawalAmt.IsZero() {
 				msg += fmt.Sprintf(" - queued withdrawals (%s)", types2.FIL(withdrawalAmt))
 			}
-			err := fmt.Errorf(msg)
+			err := errors.New(msg)
 			a.debugf("%s", err)
 			req.Complete(cid.Undef, err)
 			continue

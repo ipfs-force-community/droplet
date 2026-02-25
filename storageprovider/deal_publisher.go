@@ -2,6 +2,7 @@ package storageprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -413,7 +414,7 @@ func (p *singleDealPublisher) publishDealProposals(deals []types.ClientDealPropo
 				"not all deals are for same provider: " +
 				fmt.Sprintf("deal with piece CID %s is for provider %s ", deals[0].Proposal.PieceCID, deals[0].Proposal.Provider) +
 				fmt.Sprintf("but deal with piece CID %s is for provider %s", dl.Proposal.PieceCID, dl.Proposal.Provider)
-			return cid.Undef, fmt.Errorf(msg)
+			return cid.Undef, errors.New(msg)
 		}
 	}
 
