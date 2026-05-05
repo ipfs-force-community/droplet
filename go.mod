@@ -256,7 +256,7 @@ require (
 	github.com/ipfs/go-ipld-legacy v0.3.0 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-peertaskqueue v0.8.3 // indirect
-	github.com/ipfs/go-unixfsnode v1.10.2
+	github.com/ipfs/go-unixfsnode v1.10.2 // indirect
 	github.com/ipfs/go-verifcid v0.0.3 // indirect
 	github.com/ipld/go-ipld-adl-hamt v0.0.0-20240322071803-376decb85801 // indirect
 	github.com/ipld/go-trustless-utils v0.4.1 // indirect
@@ -374,7 +374,6 @@ replace (
 	github.com/filecoin-project/go-fil-markets => github.com/ipfs-force-community/go-fil-markets v1.2.6-0.20230822060005-aee2cbae5b01
 	github.com/filecoin-project/go-jsonrpc => github.com/ipfs-force-community/go-jsonrpc v0.1.9
 	github.com/ipfs/boxo => github.com/ipfs/boxo v0.33.0
-	github.com/ipfs/go-graphsync => github.com/ipfs-force-community/go-graphsync v0.17.1
 	github.com/ipni/go-libipni => github.com/ipfs-force-community/go-libipni v0.0.0-20250410050533-cee19573d96d
 	github.com/ipni/index-provider => github.com/ipfs-force-community/index-provider v0.15.6-0.20250403063355-35a77ceb5842
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20240125205218-1f4bbc51befe
