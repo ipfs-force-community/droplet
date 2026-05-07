@@ -69,6 +69,7 @@ func ServeRPC(
 	if authClient != nil {
 		authMux = jwtclient.NewAuthMux(localJwtClient, jwtclient.WarpIJwtAuthClient(authClient), mux)
 	} else {
+		log.Warn("no auth client provided, only local jwt client will be used for authentication")
 		authMux = jwtclient.NewAuthMux(localJwtClient, nil, mux)
 	}
 	authMux.TrustHandle("/healthcheck", healthcheck.Handler())
