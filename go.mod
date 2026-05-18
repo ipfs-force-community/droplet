@@ -31,7 +31,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v7 v7.0.1
-	github.com/filecoin-project/venus v1.20.0-rc1
+	github.com/filecoin-project/venus v1.20.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
@@ -40,8 +40,8 @@ require (
 	github.com/howeyc/gopass v0.0.0-20210920133722-c8aef6fb66ef
 	github.com/ipfs-force-community/metrics v1.0.1-0.20240725062356-39b286636574
 	github.com/ipfs-force-community/sophon-auth v1.16.0
-	github.com/ipfs-force-community/sophon-gateway v1.20.0-rc1
-	github.com/ipfs-force-community/sophon-messager v1.20.0-rc1
+	github.com/ipfs-force-community/sophon-gateway v1.20.0
+	github.com/ipfs-force-community/sophon-messager v1.20.0
 	github.com/ipfs-force-community/venus-common-utils v0.0.0-20220217030526-e5e4c6bc14f7
 	github.com/ipfs/boxo v0.34.0
 	github.com/ipfs/go-blockservice v0.5.2
